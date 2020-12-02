@@ -1,14 +1,20 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
+	"os"
+	"os/exec"
+	"runtime"
 	"strings"
 
+	"github.com/cli/safeexec"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
+// DeviceCodeResponse encapsulates the response for obtaining a device code.
 type DeviceCodeResponse struct {
 	DeviceCode      string `json:"device_code"`
 	VerificationURI string `json:"verification_uri"`
@@ -53,16 +59,56 @@ func LoginCmd() *cobra.Command {
 			}
 
 			defer res.Body.Close()
-			body, err := ioutil.ReadAll(res.Body)
-			if err != nil {
-				return err
-			}
+			deviceCodeRes := &DeviceCodeResponse{}
+			json.NewDecoder(res.Body).Decode(deviceCodeRes)
 
-			fmt.Println(res)
-			fmt.Println(string(body))
+			fmt.Println("Please enter the following code in the web browser.")
+			openCmd := OpenBrowserCmd(runtime.GOOS, deviceCodeRes.VerificationURI)
+			err = openCmd.Run()
+			if err != nil {
+				errors.Wrap(err, "error opening browser")
+			}
+			fmt.Printf("%v\n", deviceCodeRes)
 			return nil
 		},
 	}
 
 	return cmd
 }
+
+func linuxExe() string {
+	exe := "xdg-open"
+
+	_, err := lookPath(exe)
+	if err != nil {
+		_, err := lookPath("wslview")
+		if err == nil {
+			exe = "wslview"
+		}
+	}
+
+	return exe
+}
+
+// OpenBrowserCmd opens a browser at the inputted URL.
+func OpenBrowserCmd(goos, url string) *exec.Cmd {
+	exe := "open"
+	var args []string
+	switch goos {
+	case "darwin":
+		args = append(args, url)
+	case "windows":
+		exe, _ = lookPath("cmd")
+		r := strings.NewReplacer("&", "^&")
+		args = append(args, "/c", "start", r.Replace(url))
+	default:
+		exe = linuxExe()
+		args = append(args, url)
+	}
+	fmt.Println(exe)
+	cmd := exec.Command(exe, args...)
+	cmd.Stderr = os.Stderr
+	return cmd
+}
+
+var lookPath = safeexec.LookPath
