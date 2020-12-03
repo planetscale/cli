@@ -1,4 +1,4 @@
-package cmd
+package auth
 
 import (
 	"bufio"
@@ -20,10 +20,9 @@ import (
 )
 
 const (
-	deviceCodeURL     = "https://planetscale.us.auth0.com/oauth/device/code"
-	oauthTokenURL     = "https://planetscale.us.auth0.com/oauth/token"
-	oauthClientID     = "ZK3V2a5UERfOlWxi5xRXrZZFmvhnf1vg"
-	defaultConfigPath = "~/.config/psctl"
+	deviceCodeURL = "https://planetscale.us.auth0.com/oauth/device/code"
+	oauthTokenURL = "https://planetscale.us.auth0.com/oauth/token"
+	oauthClientID = "ZK3V2a5UERfOlWxi5xRXrZZFmvhnf1vg"
 )
 
 // DeviceCodeResponse encapsulates the response for obtaining a device code.
@@ -33,24 +32,6 @@ type DeviceCodeResponse struct {
 	VerificationCompleteURI string `json:"verification_uri_complete"`
 	ExpiresIn               int    `json:"expires_in"`
 	PollingInterval         int    `json:"interval"`
-}
-
-// ErrorResponse wraps the error from the authorization API.
-type ErrorResponse struct {
-	Error            string `json:"error"`
-	ErrorDescription string `json:"error_description"`
-}
-
-// AuthCmd returns a command for authentication
-func AuthCmd(cfg *config.Config) *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "auth <command>",
-		Short: "Login, logout, and refresh your authentication",
-		Long:  "Manage psctl's Cauthentication state.",
-	}
-
-	cmd.AddCommand(LoginCmd(cfg))
-	return cmd
 }
 
 // LoginCmd is the command for logging into a PlanetScale account.

@@ -20,6 +20,7 @@ import (
 	"os"
 
 	"github.com/planetscale/cli/config"
+	"github.com/planetscale/cli/pkg/cmd/auth"
 	"github.com/spf13/cobra"
 
 	homedir "github.com/mitchellh/go-homedir"
@@ -62,7 +63,7 @@ func init() {
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 
 	cfg := config.New()
-	rootCmd.AddCommand(AuthCmd(cfg))
+	rootCmd.AddCommand(auth.AuthCmd(cfg))
 }
 
 // initConfig reads in config file and ENV variables if set.
