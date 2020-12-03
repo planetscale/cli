@@ -125,11 +125,11 @@ func accessTokenPath() string {
 func writeAccessToken(ctx context.Context, accessToken string) error {
 	_, err := os.Stat(configDir())
 	if os.IsNotExist(err) {
-		err := os.MkdirAll(configDir(), 0600)
+		err := os.MkdirAll(configDir(), 0771)
 		if err != nil {
 			return errors.Wrap(err, "error creating config directory")
 		}
-	} else {
+	} else if err != nil {
 		return err
 	}
 
@@ -140,7 +140,6 @@ func writeAccessToken(ctx context.Context, accessToken string) error {
 	}
 
 	return nil
-
 }
 
 func fetchAccessToken(ctx context.Context, deviceCode string, pollingInterval int, expiresIn int) (string, error) {
