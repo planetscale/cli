@@ -10,14 +10,13 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"path"
 	"runtime"
 	"strings"
 	"time"
 
 	"github.com/cli/safeexec"
-	homedir "github.com/mitchellh/go-homedir"
 	"github.com/pkg/errors"
+	"github.com/planetscale/cli/config"
 	"github.com/spf13/cobra"
 )
 
@@ -44,19 +43,19 @@ type ErrorResponse struct {
 }
 
 // AuthCmd returns a command for authentication
-func AuthCmd() *cobra.Command {
+func AuthCmd(cfg *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "auth <command>",
 		Short: "Login, logout, and refresh your authentication",
 		Long:  "Manage psctl's Cauthentication state.",
 	}
 
-	cmd.AddCommand(LoginCmd())
+	cmd.AddCommand(LoginCmd(cfg))
 	return cmd
 }
 
 // LoginCmd is the command for logging into a PlanetScale account.
-func LoginCmd() *cobra.Command {
+func LoginCmd(cfg *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "login",
 		Args:    cobra.ExactArgs(0),
@@ -65,6 +64,7 @@ func LoginCmd() *cobra.Command {
 		Example: "TODO",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
+
 			fmt.Println("Authenticating")
 			payload := strings.NewReader("client_id=ZK3V2a5UERfOlWxi5xRXrZZFmvhnf1vg&scope=profile&audience=https://bb-test-api.planetscale.com")
 
@@ -100,7 +100,6 @@ func LoginCmd() *cobra.Command {
 				return err
 			}
 
-			// TODO(iheanyi): Write file here
 			err = writeAccessToken(ctx, accessToken)
 			if err != nil {
 				return errors.Wrap(err, "error logging in")
@@ -113,19 +112,10 @@ func LoginCmd() *cobra.Command {
 	return cmd
 }
 
-func configDir() string {
-	dir, _ := homedir.Expand(defaultConfigPath)
-	return dir
-}
-
-func accessTokenPath() string {
-	return path.Join(configDir(), "access-token")
-}
-
 func writeAccessToken(ctx context.Context, accessToken string) error {
-	_, err := os.Stat(configDir())
+	_, err := os.Stat(config.ConfigDir())
 	if os.IsNotExist(err) {
-		err := os.MkdirAll(configDir(), 0771)
+		err := os.MkdirAll(config.ConfigDir(), 0771)
 		if err != nil {
 			return errors.Wrap(err, "error creating config directory")
 		}
@@ -134,7 +124,7 @@ func writeAccessToken(ctx context.Context, accessToken string) error {
 	}
 
 	tokenBytes := []byte(accessToken)
-	err = ioutil.WriteFile(accessTokenPath(), tokenBytes, 0666)
+	err = ioutil.WriteFile(config.AccessTokenPath(), tokenBytes, 0666)
 	if err != nil {
 		return errors.Wrap(err, "error writing token")
 	}
