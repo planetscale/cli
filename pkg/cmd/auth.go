@@ -10,11 +10,13 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path"
 	"runtime"
 	"strings"
 	"time"
 
 	"github.com/cli/safeexec"
+	homedir "github.com/mitchellh/go-homedir"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
@@ -23,7 +25,7 @@ const (
 	deviceCodeURL     = "https://planetscale.us.auth0.com/oauth/device/code"
 	oauthTokenURL     = "https://planetscale.us.auth0.com/oauth/token"
 	oauthClientID     = "ZK3V2a5UERfOlWxi5xRXrZZFmvhnf1vg"
-	defaultConfigPath = "$HOME/.config/.psctl"
+	defaultConfigPath = "~/.config/psctl"
 )
 
 // DeviceCodeResponse encapsulates the response for obtaining a device code.
@@ -111,10 +113,19 @@ func LoginCmd() *cobra.Command {
 	return cmd
 }
 
+func configDir() string {
+	dir, _ := homedir.Expand(defaultConfigPath)
+	return dir
+}
+
+func accessTokenPath() string {
+	return path.Join(configDir(), "access-token")
+}
+
 func writeAccessToken(ctx context.Context, accessToken string) error {
-	_, err := os.Stat(defaultConfigPath)
+	_, err := os.Stat(configDir())
 	if os.IsNotExist(err) {
-		err := os.MkdirAll(defaultConfigPath, os.ModeDir)
+		err := os.MkdirAll(configDir(), 0600)
 		if err != nil {
 			return errors.Wrap(err, "error creating config directory")
 		}
@@ -123,7 +134,7 @@ func writeAccessToken(ctx context.Context, accessToken string) error {
 	}
 
 	tokenBytes := []byte(accessToken)
-	err = ioutil.WriteFile(fmt.Sprintf("%s/access-token", defaultConfigPath), tokenBytes, 0644)
+	err = ioutil.WriteFile(accessTokenPath(), tokenBytes, 0666)
 	if err != nil {
 		return errors.Wrap(err, "error writing token")
 	}
