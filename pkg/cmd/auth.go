@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
@@ -19,9 +20,10 @@ import (
 )
 
 const (
-	deviceCodeURL = "https://planetscale.us.auth0.com/oauth/device/code"
-	oauthTokenURL = "https://planetscale.us.auth0.com/oauth/token"
-	oauthClientID = "ZK3V2a5UERfOlWxi5xRXrZZFmvhnf1vg"
+	deviceCodeURL     = "https://planetscale.us.auth0.com/oauth/device/code"
+	oauthTokenURL     = "https://planetscale.us.auth0.com/oauth/token"
+	oauthClientID     = "ZK3V2a5UERfOlWxi5xRXrZZFmvhnf1vg"
+	defaultConfigPath = "$HOME/.config/.psctl"
 )
 
 // DeviceCodeResponse encapsulates the response for obtaining a device code.
@@ -96,12 +98,38 @@ func LoginCmd() *cobra.Command {
 				return err
 			}
 
-			fmt.Printf("Authentication complete. Access token: %s\n", accessToken)
+			// TODO(iheanyi): Write file here
+			err = writeAccessToken(ctx, accessToken)
+			if err != nil {
+				return errors.Wrap(err, "error logging in")
+			}
+			fmt.Println("Authentication complete.")
 			return nil
 		},
 	}
 
 	return cmd
+}
+
+func writeAccessToken(ctx context.Context, accessToken string) error {
+	_, err := os.Stat(defaultConfigPath)
+	if os.IsNotExist(err) {
+		err := os.MkdirAll(defaultConfigPath, os.ModeDir)
+		if err != nil {
+			return errors.Wrap(err, "error creating config directory")
+		}
+	} else {
+		return err
+	}
+
+	tokenBytes := []byte(accessToken)
+	err = ioutil.WriteFile(fmt.Sprintf("%s/access-token", defaultConfigPath), tokenBytes, 0644)
+	if err != nil {
+		return errors.Wrap(err, "error writing token")
+	}
+
+	return nil
+
 }
 
 func fetchAccessToken(ctx context.Context, deviceCode string, pollingInterval int, expiresIn int) (string, error) {
