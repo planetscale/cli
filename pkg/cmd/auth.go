@@ -9,13 +9,12 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"os/exec"
 	"runtime"
 	"strings"
 	"time"
 
-	"github.com/cli/safeexec"
 	"github.com/pkg/errors"
+	"github.com/planetscale/cli/cmdutil"
 	"github.com/planetscale/cli/config"
 	"github.com/spf13/cobra"
 )
@@ -88,7 +87,7 @@ func LoginCmd(cfg *config.Config) *cobra.Command {
 
 			fmt.Println("Press Enter to authenticate via your browser...")
 			_ = waitForEnter(cmd.InOrStdin())
-			openCmd := OpenBrowserCmd(runtime.GOOS, deviceCodeRes.VerificationCompleteURI)
+			openCmd := cmdutil.OpenBrowser(runtime.GOOS, deviceCodeRes.VerificationCompleteURI)
 			err = openCmd.Run()
 			if err != nil {
 				return errors.Wrap(err, "error opening browser")
@@ -193,44 +192,8 @@ func requestToken(ctx context.Context, deviceCode string) (string, error) {
 	return tokenRes.AccessToken, nil
 }
 
-func linuxExe() string {
-	exe := "xdg-open"
-
-	_, err := lookPath(exe)
-	if err != nil {
-		_, err := lookPath("wslview")
-		if err == nil {
-			exe = "wslview"
-		}
-	}
-
-	return exe
-}
-
-// OpenBrowserCmd opens a browser at the inputted URL.
-func OpenBrowserCmd(goos, url string) *exec.Cmd {
-	exe := "open"
-	var args []string
-	switch goos {
-	case "darwin":
-		args = append(args, url)
-	case "windows":
-		exe, _ = lookPath("cmd")
-		r := strings.NewReplacer("&", "^&")
-		args = append(args, "/c", "start", r.Replace(url))
-	default:
-		exe = linuxExe()
-		args = append(args, url)
-	}
-	cmd := exec.Command(exe, args...)
-	cmd.Stderr = os.Stderr
-	return cmd
-}
-
 func waitForEnter(r io.Reader) error {
 	scanner := bufio.NewScanner(r)
 	scanner.Scan()
 	return scanner.Err()
 }
-
-var lookPath = safeexec.LookPath
