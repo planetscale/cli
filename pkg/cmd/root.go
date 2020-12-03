@@ -64,6 +64,7 @@ func init() {
 
 	cfg := config.New()
 	rootCmd.AddCommand(auth.AuthCmd(cfg))
+	rootCmd.AddCommand(DebugCmd(cfg))
 }
 
 // initConfig reads in config file and ENV variables if set.
