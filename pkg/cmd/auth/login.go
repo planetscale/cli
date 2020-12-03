@@ -20,6 +20,9 @@ import (
 )
 
 const (
+	// TODO(iheanyi): Make this nicer and more cleanly asbtractable, should
+	// probably be wrapped in a client and also have the OAuth ClientID be
+	// overrideable as a config setting.
 	deviceCodeURL = "https://planetscale.us.auth0.com/oauth/device/code"
 	oauthTokenURL = "https://planetscale.us.auth0.com/oauth/token"
 	oauthClientID = "ZK3V2a5UERfOlWxi5xRXrZZFmvhnf1vg"
@@ -46,7 +49,7 @@ func LoginCmd(cfg *config.Config) *cobra.Command {
 			ctx := context.Background()
 
 			fmt.Println("Authenticating")
-			payload := strings.NewReader("client_id=ZK3V2a5UERfOlWxi5xRXrZZFmvhnf1vg&scope=profile&audience=https://bb-test-api.planetscale.com")
+			payload := strings.NewReader("client_id=ZK3V2a5UERfOlWxi5xRXrZZFmvhnf1vg&scope=profile,email,read:databases&audience=https://bb-test-api.planetscale.com")
 
 			req, err := http.NewRequest("POST", deviceCodeURL, payload)
 			if err != nil {
