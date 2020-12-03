@@ -21,6 +21,7 @@ import (
 
 	"github.com/planetscale/cli/config"
 	"github.com/planetscale/cli/pkg/cmd/auth"
+	"github.com/planetscale/cli/pkg/cmd/database"
 	"github.com/spf13/cobra"
 
 	homedir "github.com/mitchellh/go-homedir"
@@ -65,6 +66,7 @@ func init() {
 	cfg := config.New()
 	rootCmd.AddCommand(auth.AuthCmd(cfg))
 	rootCmd.AddCommand(DebugCmd(cfg))
+	rootCmd.AddCommand(database.DatabaseCmd(cfg))
 }
 
 // initConfig reads in config file and ENV variables if set.
