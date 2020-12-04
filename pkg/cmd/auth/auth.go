@@ -14,5 +14,6 @@ func AuthCmd(cfg *config.Config) *cobra.Command {
 	}
 
 	cmd.AddCommand(LoginCmd(cfg))
+	cmd.AddCommand(LogoutCmd(cfg))
 	return cmd
 }
