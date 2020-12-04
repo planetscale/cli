@@ -23,8 +23,8 @@ type DatabasesService interface {
 
 // Database represents a PlanetScale Database
 type Database struct {
-	ID   int64  `json:"id,omitempty"`
-	Name string `json:"name"`
+	ID   int64  `json:"id,omitempty" header:"id"`
+	Name string `json:"name" header:"name"`
 }
 
 type databasesService struct {

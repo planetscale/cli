@@ -3,7 +3,9 @@ package database
 import (
 	"context"
 	"fmt"
+	"os"
 
+	"github.com/lensesio/tableprinter"
 	"github.com/pkg/browser"
 	"github.com/pkg/errors"
 	"github.com/planetscale/cli/config"
@@ -35,8 +37,7 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 				return errors.Wrap(err, "error listing databases")
 			}
 
-			fmt.Printf("Successfully listed databases: %v\n", databases)
-
+			tableprinter.Print(os.Stdout, databases)
 			return nil
 		},
 		TraverseChildren: true,
