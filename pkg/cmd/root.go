@@ -21,6 +21,8 @@ import (
 
 	"github.com/planetscale/cli/config"
 	"github.com/planetscale/cli/pkg/cmd/auth"
+	"github.com/planetscale/cli/pkg/cmd/database"
+	"github.com/planetscale/cli/psapi"
 	"github.com/spf13/cobra"
 
 	homedir "github.com/mitchellh/go-homedir"
@@ -31,9 +33,10 @@ var cfgFile string
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "psctl",
-	Short: "A CLI for PlanetScale",
-	Long:  `psctl is a CLI library for communicating with PlanetScale's API.`,
+	Use:              "psctl",
+	Short:            "A CLI for PlanetScale",
+	Long:             `psctl is a CLI library for communicating with PlanetScale's API.`,
+	TraverseChildren: true,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	//	Run: func(cmd *cobra.Command, args []string) { },
@@ -43,7 +46,7 @@ var rootCmd = &cobra.Command{
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
+		// fmt.Println(err)
 		os.Exit(1)
 	}
 }
@@ -63,8 +66,11 @@ func init() {
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 
 	cfg := config.New()
+
+	rootCmd.PersistentFlags().StringVar(&cfg.BaseURL, "api-url", psapi.DefaultBaseURL, "The base URL for the PlanetScale API.")
 	rootCmd.AddCommand(auth.AuthCmd(cfg))
 	rootCmd.AddCommand(DebugCmd(cfg))
+	rootCmd.AddCommand(database.DatabaseCmd(cfg))
 }
 
 // initConfig reads in config file and ENV variables if set.

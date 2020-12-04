@@ -7,6 +7,7 @@ import (
 	"path"
 
 	"github.com/mitchellh/go-homedir"
+	"github.com/planetscale/cli/psapi"
 )
 
 const (
@@ -15,6 +16,7 @@ const (
 
 type Config struct {
 	AccessToken string
+	BaseURL     string
 }
 
 func New() *Config {
@@ -34,6 +36,7 @@ func New() *Config {
 
 	return &Config{
 		AccessToken: string(accessToken),
+		BaseURL:     psapi.DefaultBaseURL,
 	}
 }
 
@@ -50,4 +53,11 @@ func ConfigDir() string {
 // AccessTokenPath is the path for the access token file
 func AccessTokenPath() string {
 	return path.Join(ConfigDir(), "access-token")
+}
+
+// NewClientFromConfig creates a PlaentScale API client from our configuration
+func (c *Config) NewClientFromConfig(opts ...psapi.ClientOption) (*psapi.Client, error) {
+	args := []psapi.ClientOption{psapi.SetBaseURL(c.BaseURL)}
+	args = append(args, opts...)
+	return psapi.NewClientFromToken(c.AccessToken, args...)
 }
