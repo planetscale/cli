@@ -1,6 +1,8 @@
 package database
 
 import (
+	"fmt"
+	"github.com/pkg/browser"
 	"github.com/planetscale/cli/config"
 	"github.com/spf13/cobra"
 )
@@ -13,9 +15,18 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 		Use: "list",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// TODO(iheanyi): Talk to API to list databases here and print them out.
+			web, _:= cmd.Flags().GetBool("web")
+			if web == true {
+				fmt.Println("🌐  Redirecting you to your databases list in your web browser.")
+				browser.OpenURL("https://planetscale-app-bb.vercel.app/databases")
+				return nil
+			} 
 			return nil
 		},
+		TraverseChildren: true,
 	}
+
+	cmd.Flags().BoolP("web", "w", false, "Open in your web browser")
 
 	return cmd
 }

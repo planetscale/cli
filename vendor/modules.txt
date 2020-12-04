@@ -25,6 +25,9 @@ github.com/mitchellh/go-homedir
 github.com/mitchellh/mapstructure
 # github.com/pelletier/go-toml v1.2.0
 github.com/pelletier/go-toml
+# github.com/pkg/browser v0.0.0-20201112035734-206646e67786
+## explicit
+github.com/pkg/browser
 # github.com/pkg/errors v0.8.1
 ## explicit
 github.com/pkg/errors
