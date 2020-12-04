@@ -1,6 +1,9 @@
 # github.com/cli/safeexec v1.0.0
 ## explicit
 github.com/cli/safeexec
+# github.com/dustin/go-humanize v1.0.0
+## explicit
+github.com/dustin/go-humanize
 # github.com/fsnotify/fsnotify v1.4.7
 github.com/fsnotify/fsnotify
 # github.com/golang/protobuf v1.4.2
@@ -18,8 +21,17 @@ github.com/hashicorp/hcl/json/scanner
 github.com/hashicorp/hcl/json/token
 # github.com/inconshreveable/mousetrap v1.0.0
 github.com/inconshreveable/mousetrap
+# github.com/kataras/tablewriter v0.0.0-20180708051242-e063d29b7c23
+## explicit
+github.com/kataras/tablewriter
+# github.com/lensesio/tableprinter v0.0.0-20201125135848-89e81fc956e7
+## explicit
+github.com/lensesio/tableprinter
 # github.com/magiconair/properties v1.8.1
 github.com/magiconair/properties
+# github.com/mattn/go-runewidth v0.0.9
+## explicit
+github.com/mattn/go-runewidth
 # github.com/mitchellh/go-homedir v1.1.0
 ## explicit
 github.com/mitchellh/go-homedir
