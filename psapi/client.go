@@ -99,6 +99,7 @@ func (c *Client) Do(ctx context.Context, req *http.Request, v interface{}) (*htt
 	if res.StatusCode == http.StatusUnauthorized {
 		return nil, errors.New("Unauthorized API request, please login, re-authenticate, or check your permissions.")
 	}
+
 	if v != nil {
 		err = json.NewDecoder(res.Body).Decode(v)
 		if err != nil {

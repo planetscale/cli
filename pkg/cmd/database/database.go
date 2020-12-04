@@ -17,6 +17,7 @@ func DatabaseCmd(cfg *config.Config) *cobra.Command {
 	// TODO(iheanyi): Add `api-url` and `access-token` persistent flags here.
 	cmd.AddCommand(CreateCmd(cfg))
 	cmd.AddCommand(ListCmd(cfg))
+	cmd.AddCommand(DeleteCmd(cfg))
 
 	return cmd
 }
