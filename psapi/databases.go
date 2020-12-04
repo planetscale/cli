@@ -2,6 +2,7 @@ package psapi
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/pkg/errors"
@@ -19,6 +20,7 @@ type CreateDatabaseRequest struct {
 type DatabasesService interface {
 	Create(context.Context, *CreateDatabaseRequest) (*Database, error)
 	List(context.Context) ([]*Database, error)
+	Delete(context.Context, int64) (bool, error)
 }
 
 // Database represents a PlanetScale Database
@@ -79,6 +81,25 @@ func (ds *databasesService) Create(ctx context.Context, createReq *CreateDatabas
 	}
 
 	return createRes.Database, nil
+}
+
+func (ds *databasesService) Delete(ctx context.Context, id int64) (bool, error) {
+	path := fmt.Sprintf("%s/%d", databasesAPIPath, id)
+	req, err := ds.client.NewRequest(http.MethodDelete, path, nil)
+	if err != nil {
+		return false, errors.Wrap(err, "error creating request for delete database")
+	}
+
+	res, err := ds.client.Do(ctx, req, nil)
+	if err != nil {
+		return false, errors.Wrap(err, "error deleting database")
+	}
+
+	if res.StatusCode == http.StatusNotFound {
+		return false, errors.New("database not found")
+	}
+
+	return true, nil
 }
 
 func (ds *databasesService) getListDatabasesEndpoint() string {
