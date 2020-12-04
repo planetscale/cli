@@ -2,16 +2,16 @@ package psapi
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/pkg/errors"
 )
 
+var databasesAPIPath = "databases"
+
 // CreateDatabaseRequest encapsulates the request for creating a new database.
 type CreateDatabaseRequest struct {
-	Name string `json:"name"`
+	Database *Database `json:"demo_api"`
 }
 
 // DatabaseService is an interface for communicating with the PlanetScale
@@ -23,6 +23,7 @@ type DatabasesService interface {
 
 // Database represents a PlanetScale Database
 type Database struct {
+	ID   int64  `json:"id,omitempty"`
 	Name string `json:"name"`
 }
 
@@ -43,28 +44,44 @@ type ListDatabasesResponse struct {
 }
 
 func (ds *databasesService) List(ctx context.Context) ([]*Database, error) {
-	apiEndpoint := ds.client.GetAPIEndpoint("databases")
-
-	req, err := http.NewRequest("GET", apiEndpoint, nil)
+	req, err := ds.client.NewRequest(http.MethodGet, databasesAPIPath, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating http request")
 	}
 
-	res, err := ds.client.Do(ctx, req, nil)
+	listRes := &ListDatabasesResponse{}
+	_, err = ds.client.Do(ctx, req, listRes)
 	if err != nil {
 		return nil, errors.Wrap(err, "error communicating with API")
-	}
-	defer res.Body.Close()
-
-	listRes := &ListDatabasesResponse{}
-	err = json.NewDecoder(res.Body).Decode(listRes)
-	if err != nil {
-		return nil, errors.Wrap(err, "error decoding list databases response")
 	}
 
 	return listRes.Databases, nil
 }
 
-func (ds *databasesService) Create(ctx context.Context, req *CreateDatabaseRequest) (*Database, error) {
-	return nil, fmt.Errorf("unimplemented")
+// CreateDatabaseResponse encapsulates the JSON returned after successfully
+// creating a database.
+type CreateDatabaseResponse struct {
+	Database *Database `json:"database"`
+	ID       int64     `json:"id"`
+	Name     string    `json:"name"`
+}
+
+func (ds *databasesService) Create(ctx context.Context, createReq *CreateDatabaseRequest) (*Database, error) {
+	req, err := ds.client.NewRequest(http.MethodPost, databasesAPIPath, createReq)
+	if err != nil {
+		return nil, errors.Wrap(err, "error creating request for create database")
+	}
+
+	createRes := &CreateDatabaseResponse{}
+	_, err = ds.client.Do(ctx, req, createRes)
+	if err != nil {
+		return nil, errors.Wrap(err, "error communicating with API")
+	}
+
+	return createRes.Database, nil
+}
+
+func (ds *databasesService) getListDatabasesEndpoint() string {
+	return ds.client.GetAPIEndpoint("databases")
+
 }

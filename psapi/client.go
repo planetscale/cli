@@ -1,7 +1,9 @@
 package psapi
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -10,7 +12,10 @@ import (
 	"golang.org/x/oauth2"
 )
 
-const DefaultBaseURL = "https://ps-api-bb-rails-prod.herokuapp.com"
+const (
+	DefaultBaseURL = "https://ps-api-bb-rails-prod.herokuapp.com/"
+	jsonMediaType  = "application/json"
+)
 
 // Client encapsulates a client that talks to the PlanetScale API
 type Client struct {
@@ -19,7 +24,6 @@ type Client struct {
 	// Base URL for the API
 	BaseURL *url.URL
 
-	// WithAccessToken
 	Databases DatabasesService
 }
 
@@ -82,7 +86,7 @@ func (c *Client) GetAPIEndpoint(path string) string {
 	return fmt.Sprintf("%s/%s", c.BaseURL, path)
 }
 
-// Do send an HTTP request
+// Do sends an HTTP request
 func (c *Client) Do(ctx context.Context, req *http.Request, v interface{}) (*http.Response, error) {
 	req = req.WithContext(ctx)
 
@@ -90,7 +94,53 @@ func (c *Client) Do(ctx context.Context, req *http.Request, v interface{}) (*htt
 	if err != nil {
 		return nil, err
 	}
+	defer res.Body.Close()
+
+	if res.StatusCode == http.StatusUnauthorized {
+		return nil, errors.New("Unauthorized API request, please login, re-authenticate, or check your permissions.")
+	}
+	if v != nil {
+		err = json.NewDecoder(res.Body).Decode(v)
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	// TODO(iheanyi): Add basic error response handling here.
 	return res, nil
+}
+
+func (c *Client) NewRequest(method string, path string, body interface{}) (*http.Request, error) {
+	u, err := c.BaseURL.Parse(path)
+	if err != nil {
+		return nil, err
+	}
+
+	var req *http.Request
+	switch method {
+	case http.MethodGet:
+		req, err = http.NewRequest(method, u.String(), nil)
+		if err != nil {
+			return nil, err
+		}
+	default:
+		buf := new(bytes.Buffer)
+		if body != nil {
+			err = json.NewEncoder(buf).Encode(body)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		req, err = http.NewRequest(method, u.String(), buf)
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("Content-Type", jsonMediaType)
+	}
+
+	req.Header.Set("Accept", jsonMediaType)
+
+	return req, nil
 }

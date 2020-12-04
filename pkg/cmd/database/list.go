@@ -18,7 +18,6 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 		Use: "list",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
-			// TODO(iheanyi): Talk to API to list databases here and print them out.
 			web, _ := cmd.Flags().GetBool("web")
 			if web == true {
 				fmt.Println("🌐  Redirecting you to your databases list in your web browser.")
