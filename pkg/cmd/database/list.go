@@ -35,6 +35,11 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 				return errors.Wrap(err, "error listing databases")
 			}
 
+			if len(databases) == 0 {
+				fmt.Println("No databases have been created yet.")
+				return nil
+			}
+
 			tableprinter.Print(os.Stdout, databases)
 			return nil
 		},
