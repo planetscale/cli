@@ -8,7 +8,6 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 	"os"
 	"runtime"
 	"strings"
@@ -50,7 +49,7 @@ func LoginCmd(cfg *config.Config) *cobra.Command {
 			ctx := context.Background()
 
 			fmt.Println("Authenticating")
-			payload := strings.NewReader(url.QueryEscape("client_id=ZK3V2a5UERfOlWxi5xRXrZZFmvhnf1vg&scope=profile,email,read:databases,write:databases&audience=https://bb-test-api.planetscale.com"))
+			payload := strings.NewReader("client_id=ZK3V2a5UERfOlWxi5xRXrZZFmvhnf1vg&scope=profile,email,read:databases,write:databases&audience=https://bb-test-api.planetscale.com")
 
 			req, err := http.NewRequest("POST", deviceCodeURL, payload)
 			if err != nil {
@@ -68,7 +67,10 @@ func LoginCmd(cfg *config.Config) *cobra.Command {
 
 			defer res.Body.Close()
 			deviceCodeRes := &DeviceCodeResponse{}
-			json.NewDecoder(res.Body).Decode(deviceCodeRes)
+			err = json.NewDecoder(res.Body).Decode(deviceCodeRes)
+			if err != nil {
+				return errors.Wrap(err, "error decoding device code response")
+			}
 
 			fmt.Println("Press Enter to authenticate via your browser...")
 			_ = waitForEnter(cmd.InOrStdin())
@@ -167,6 +169,7 @@ func requestToken(ctx context.Context, deviceCode string) (string, error) {
 	}
 
 	defer res.Body.Close()
+
 	tokenRes := &OAuthTokenResponse{}
 
 	err = json.NewDecoder(res.Body).Decode(tokenRes)
