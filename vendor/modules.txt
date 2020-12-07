@@ -8,6 +8,9 @@ github.com/dustin/go-humanize
 github.com/fsnotify/fsnotify
 # github.com/golang/protobuf v1.4.2
 github.com/golang/protobuf/proto
+# github.com/hashicorp/go-cleanhttp v0.5.1
+## explicit
+github.com/hashicorp/go-cleanhttp
 # github.com/hashicorp/hcl v1.0.0
 github.com/hashicorp/hcl
 github.com/hashicorp/hcl/hcl/ast
