@@ -25,6 +25,7 @@ const (
 // Authenticator is the interface for authentication via device oauth
 type Authenticator interface {
 	VerifyDevice(ctx context.Context, oauthClientID string, audienceURL string) (*DeviceVerification, error)
+	GetAccessTokenForDevice(ctx context.Context, v *DeviceVerification, clientID string) (string, error)
 }
 
 var _ Authenticator = (*DeviceAuthenticator)(nil)
@@ -102,6 +103,61 @@ func (d *DeviceAuthenticator) VerifyDevice(ctx context.Context, clientID string,
 		ExpiresAt:               expiresAt,
 		CheckInterval:           checkInterval,
 	}, nil
+}
+
+// GetAccessTokenForDevice uses the device verification response to fetch an
+// access token.
+func (d *DeviceAuthenticator) GetAccessTokenForDevice(ctx context.Context, v *DeviceVerification, clientID string) (string, error) {
+	var accessToken string
+	var err error
+
+	for {
+		time.Sleep(v.CheckInterval)
+		accessToken, err = d.requestToken(ctx, v.DeviceCode, clientID)
+		if accessToken == "" && err == nil {
+			if time.Now().After(v.ExpiresAt) {
+				err = errors.New("authentication timed out")
+			} else {
+				continue
+			}
+		}
+
+		break
+	}
+	return accessToken, err
+}
+
+// OAuthTokenResponse contains the information returned after fetching an access
+// token for a device.
+type OAuthTokenResponse struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+	IDToken      string `json:"id_token"`
+	ExpiresIn    int    `json:"expires_in"`
+}
+
+func (d *DeviceAuthenticator) requestToken(ctx context.Context, deviceCode string, clientID string) (string, error) {
+	payload := strings.NewReader(fmt.Sprintf("grant_type=urn%%3Aietf%%3Aparams%%3Aoauth%%3Agrant-type%%3Adevice_code&device_code=%s&client_id=%s", deviceCode, clientID))
+	req, err := d.NewFormRequest(ctx, http.MethodPost, "oauth/token", payload)
+	if err != nil {
+		return "", errors.Wrap(err, "error creating request")
+	}
+
+	res, err := d.client.Do(req)
+	if err != nil {
+		return "", errors.Wrap(err, "error performing http request")
+	}
+
+	defer res.Body.Close()
+
+	tokenRes := &OAuthTokenResponse{}
+
+	err = json.NewDecoder(res.Body).Decode(tokenRes)
+	if err != nil {
+		return "", errors.Wrap(err, "error decoding token response")
+	}
+
+	return tokenRes.AccessToken, nil
 }
 
 // NewFormRequest creates a new form URL encoded request

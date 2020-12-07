@@ -3,15 +3,11 @@ package auth
 import (
 	"bufio"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net/http"
 	"os"
 	"runtime"
-	"strings"
-	"time"
 
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/pkg/errors"
@@ -20,25 +16,6 @@ import (
 	"github.com/planetscale/cli/config"
 	"github.com/spf13/cobra"
 )
-
-const (
-	// TODO(iheanyi): Make this nicer and more cleanly asbtractable, should
-	// probably be wrapped in a client and also have the OAuth ClientID be
-	// overrideable as a config setting.
-	deviceCodeURL = "https://planetscale.us.auth0.com/oauth/device/code"
-	oauthTokenURL = "https://planetscale.us.auth0.com/oauth/token"
-	oauthClientID = "ZK3V2a5UERfOlWxi5xRXrZZFmvhnf1vg"
-)
-
-// DeviceCodeResponse encapsulates the response for obtaining a device code.
-type DeviceCodeResponse struct {
-	DeviceCode              string `json:"device_code"`
-	UserCode                string `json:"user_code"`
-	VerificationURI         string `json:"verification_uri"`
-	VerificationCompleteURI string `json:"verification_uri_complete"`
-	ExpiresIn               int    `json:"expires_in"`
-	PollingInterval         int    `json:"interval"`
-}
 
 // LoginCmd is the command for logging into a PlanetScale account.
 func LoginCmd(cfg *config.Config) *cobra.Command {
@@ -71,8 +48,7 @@ func LoginCmd(cfg *config.Config) *cobra.Command {
 
 			fmt.Printf("Confirmation Code: %s\n", deviceVerification.UserCode)
 
-			// TODO(iheanyi): Revisit why the OAuth login doesn't work as expected.
-			accessToken, err := fetchAccessToken(ctx, deviceVerification.DeviceCode, deviceVerification.CheckInterval, deviceVerification.ExpiresAt)
+			accessToken, err := authenticator.GetAccessTokenForDevice(ctx, deviceVerification, auth.DefaultOAuthClientID)
 			if err != nil {
 				return err
 			}
@@ -81,7 +57,7 @@ func LoginCmd(cfg *config.Config) *cobra.Command {
 			if err != nil {
 				return errors.Wrap(err, "error logging in")
 			}
-			fmt.Println("Authentication complete.")
+			fmt.Println("Successfully logged in!")
 			return nil
 		},
 	}
@@ -107,65 +83,6 @@ func writeAccessToken(ctx context.Context, accessToken string) error {
 	}
 
 	return nil
-}
-
-func fetchAccessToken(ctx context.Context, deviceCode string, checkInterval time.Duration, expiresAt time.Time) (string, error) {
-	var accessToken string
-	var err error
-
-	for {
-		time.Sleep(checkInterval)
-		accessToken, err = requestToken(ctx, deviceCode)
-		if accessToken == "" && err == nil {
-			if time.Now().After(expiresAt) {
-				err = errors.New("authentication timed out")
-			} else {
-				continue
-			}
-		}
-
-		break
-	}
-
-	return accessToken, err
-}
-
-// OAuthTokenResponse contains the information returned after fetching an access
-// token for a device.
-type OAuthTokenResponse struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-	IDToken      string `json:"id_token"`
-	ExpiresIn    int    `json:"expires_in"`
-}
-
-func requestToken(ctx context.Context, deviceCode string) (string, error) {
-	payload := strings.NewReader(fmt.Sprintf("grant_type=urn%%3Aietf%%3Aparams%%3Aoauth%%3Agrant-type%%3Adevice_code&device_code=%s&client_id=%s", deviceCode, oauthClientID))
-	req, err := http.NewRequest("POST", oauthTokenURL, payload)
-	if err != nil {
-		return "", errors.Wrap(err, "error creating request")
-	}
-
-	req.Header.Add("content-type", "application/x-www-form-urlencoded")
-
-	req.WithContext(ctx)
-
-	// TODO(iheanyi): Use a better HTTP client than the default one.
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return "", errors.Wrap(err, "error performing http request")
-	}
-
-	defer res.Body.Close()
-
-	tokenRes := &OAuthTokenResponse{}
-
-	err = json.NewDecoder(res.Body).Decode(tokenRes)
-	if err != nil {
-		return "", errors.Wrap(err, "error decoding token response")
-	}
-
-	return tokenRes.AccessToken, nil
 }
 
 func waitForEnter(r io.Reader) error {
