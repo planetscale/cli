@@ -10,7 +10,7 @@ func AuthCmd(cfg *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "auth <command>",
 		Short: "Login, logout, and refresh your authentication",
-		Long:  "Manage psctl's Cauthentication state.",
+		Long:  "Manage psctl's authentication state.",
 	}
 
 	cmd.AddCommand(LoginCmd(cfg))
