@@ -50,6 +50,16 @@ type DeviceVerification struct {
 	ExpiresAt               time.Time
 }
 
+// ErrorResponse is an error response from the API.
+type ErrorResponse struct {
+	ErrorCode   string `json:"error"`
+	Description string `json:"error_description"`
+}
+
+func (e ErrorResponse) Error() string {
+	return e.Description
+}
+
 // DeviceAuthenticator performs the authentication flow for logging in.
 type DeviceAuthenticator struct {
 	client  *http.Client
@@ -149,6 +159,22 @@ func (d *DeviceAuthenticator) requestToken(ctx context.Context, deviceCode strin
 	}
 
 	defer res.Body.Close()
+
+	if res.StatusCode >= 400 {
+		errorRes := &ErrorResponse{}
+		err := json.NewDecoder(res.Body).Decode(errorRes)
+		if err != nil {
+			return "", errors.Wrap(err, "error decoding token response")
+		}
+
+		// If we're polling and haven't authorized yet or we need to slow down, we
+		// don't wanna terminate the polling
+		if errorRes.ErrorCode == "authorization_pending" || errorRes.ErrorCode == "slow_down" {
+			return "", nil
+		}
+
+		return "", errorRes
+	}
 
 	tokenRes := &OAuthTokenResponse{}
 
