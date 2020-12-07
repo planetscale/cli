@@ -9,6 +9,7 @@ import (
 	"os"
 	"runtime"
 
+	"github.com/fatih/color"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/pkg/errors"
 	"github.com/planetscale/cli/auth"
@@ -46,7 +47,10 @@ func LoginCmd(cfg *config.Config) *cobra.Command {
 				return errors.Wrap(err, "error opening browser")
 			}
 
-			fmt.Printf("Confirmation Code: %s\n", deviceVerification.UserCode)
+			bold := color.New(color.Bold)
+			bold.Printf("Confirmation Code: ")
+			boldGreen := bold.Add(color.FgGreen)
+			boldGreen.Println(deviceVerification.UserCode)
 
 			accessToken, err := authenticator.GetAccessTokenForDevice(ctx, deviceVerification, auth.DefaultOAuthClientID)
 			if err != nil {
