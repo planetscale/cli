@@ -13,7 +13,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/go-cleanhttp"
 	"github.com/pkg/errors"
+	"github.com/planetscale/cli/auth"
 	"github.com/planetscale/cli/cmdutil"
 	"github.com/planetscale/cli/config"
 	"github.com/spf13/cobra"
@@ -47,44 +49,30 @@ func LoginCmd(cfg *config.Config) *cobra.Command {
 		Long:    "TODO",
 		Example: "TODO",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			authenticator, err := auth.New(cleanhttp.DefaultClient())
+			if err != nil {
+				return err
+			}
 			ctx := context.Background()
 
-			fmt.Println("Authenticating")
-			payload := strings.NewReader("client_id=ZK3V2a5UERfOlWxi5xRXrZZFmvhnf1vg&scope=profile,email,read:databases,write:databases&audience=https://bb-test-api.planetscale.com")
-
-			req, err := http.NewRequest("POST", deviceCodeURL, payload)
+			fmt.Println("Authenticating...")
+			deviceVerification, err := authenticator.VerifyDevice(ctx, auth.DefaultOAuthClientID, auth.DefaultAudienceURL)
 			if err != nil {
 				return err
-			}
-
-			req = req.WithContext(ctx)
-			req.Header.Add("content-type", "application/x-www-form-urlencoded")
-
-			// TODO(iheanyi): Use a better HTTP client than the default one.
-			res, err := http.DefaultClient.Do(req)
-			if err != nil {
-				return err
-			}
-
-			defer res.Body.Close()
-			deviceCodeRes := &DeviceCodeResponse{}
-			err = json.NewDecoder(res.Body).Decode(deviceCodeRes)
-			if err != nil {
-				return errors.Wrap(err, "error decoding device code response")
 			}
 
 			fmt.Println("Press Enter to authenticate via your browser...")
 			_ = waitForEnter(cmd.InOrStdin())
-			openCmd := cmdutil.OpenBrowser(runtime.GOOS, deviceCodeRes.VerificationCompleteURI)
+			openCmd := cmdutil.OpenBrowser(runtime.GOOS, deviceVerification.VerificationCompleteURL)
 			err = openCmd.Run()
 			if err != nil {
 				return errors.Wrap(err, "error opening browser")
 			}
 
-			fmt.Printf("Confirmation Code: %s\n", deviceCodeRes.UserCode)
+			fmt.Printf("Confirmation Code: %s\n", deviceVerification.UserCode)
 
 			// TODO(iheanyi): Revisit why the OAuth login doesn't work as expected.
-			accessToken, err := fetchAccessToken(ctx, deviceCodeRes.DeviceCode, deviceCodeRes.PollingInterval, deviceCodeRes.ExpiresIn)
+			accessToken, err := fetchAccessToken(ctx, deviceVerification.DeviceCode, deviceVerification.CheckInterval, deviceVerification.ExpiresAt)
 			if err != nil {
 				return err
 			}
@@ -121,10 +109,7 @@ func writeAccessToken(ctx context.Context, accessToken string) error {
 	return nil
 }
 
-func fetchAccessToken(ctx context.Context, deviceCode string, pollingInterval int, expiresIn int) (string, error) {
-	expiresAt := time.Now().Add(time.Duration(expiresIn) * time.Second)
-
-	checkInterval := time.Duration(pollingInterval) * time.Second
+func fetchAccessToken(ctx context.Context, deviceCode string, checkInterval time.Duration, expiresAt time.Time) (string, error) {
 	var accessToken string
 	var err error
 

@@ -49,7 +49,10 @@ func NewClient(client *http.Client, opts ...ClientOption) (*Client, error) {
 		client = http.DefaultClient
 	}
 
-	baseURL, _ := url.Parse(DefaultBaseURL)
+	baseURL, err := url.Parse(DefaultBaseURL)
+	if err != nil {
+		return nil, err
+	}
 	c := &Client{
 		client:  client,
 		BaseURL: baseURL,
