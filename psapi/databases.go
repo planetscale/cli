@@ -101,8 +101,3 @@ func (ds *databasesService) Delete(ctx context.Context, id int64) (bool, error) 
 
 	return true, nil
 }
-
-func (ds *databasesService) getListDatabasesEndpoint() string {
-	return ds.client.GetAPIEndpoint("databases")
-
-}

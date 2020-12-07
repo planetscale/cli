@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"runtime"
@@ -32,6 +31,10 @@ func LogoutCmd(cfg *config.Config) *cobra.Command {
 				return errors.Wrap(err, "error opening browser")
 			}
 
+			err = deleteAccessToken()
+			if err != nil {
+				return err
+			}
 			fmt.Println("Successfully logged out.")
 
 			return nil
@@ -41,10 +44,13 @@ func LogoutCmd(cfg *config.Config) *cobra.Command {
 	return cmd
 }
 
-func deleteAccessToken(ctx context.Context, accessToken string) error {
+func deleteAccessToken() error {
 	_, err := os.Stat(config.AccessTokenPath())
-	if os.IsNotExist(err) {
-		return nil
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
 	}
 
 	err = os.Remove(config.AccessTokenPath())
