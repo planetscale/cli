@@ -61,6 +61,7 @@ func init() {
 	// TODO(iheanyi): Change this to be something in ~/.config/psctl/config.yml)
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.psctl.yaml)")
 
+	rootCmd.SilenceUsage = true
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")

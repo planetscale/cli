@@ -13,7 +13,6 @@ func DatabaseCmd(cfg *config.Config) *cobra.Command {
 		Long:  "TODO",
 	}
 
-	cmd.SilenceUsage = true
 	// TODO(iheanyi): Add `api-url` and `access-token` persistent flags here.
 	cmd.AddCommand(CreateCmd(cfg))
 	cmd.AddCommand(ListCmd(cfg))
