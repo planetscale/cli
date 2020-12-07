@@ -31,6 +31,7 @@ const (
 // DeviceCodeResponse encapsulates the response for obtaining a device code.
 type DeviceCodeResponse struct {
 	DeviceCode              string `json:"device_code"`
+	UserCode                string `json:"user_code"`
 	VerificationURI         string `json:"verification_uri"`
 	VerificationCompleteURI string `json:"verification_uri_complete"`
 	ExpiresIn               int    `json:"expires_in"`
@@ -79,6 +80,8 @@ func LoginCmd(cfg *config.Config) *cobra.Command {
 			if err != nil {
 				return errors.Wrap(err, "error opening browser")
 			}
+
+			fmt.Printf("Confirmation Code: %s\n", deviceCodeRes.UserCode)
 
 			// TODO(iheanyi): Revisit why the OAuth login doesn't work as expected.
 			accessToken, err := fetchAccessToken(ctx, deviceCodeRes.DeviceCode, deviceCodeRes.PollingInterval, deviceCodeRes.ExpiresIn)
