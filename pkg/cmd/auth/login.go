@@ -55,7 +55,11 @@ func LoginCmd(cfg *config.Config) *cobra.Command {
 
 			s := spinner.New(spinner.CharSets[14], 100*time.Millisecond)
 			s.Suffix = " Waiting for confirmation..."
-			s.Color("bold")
+			err = s.Color("bold", "blue")
+			if err != nil {
+				return errors.Wrap(err, "error setting color")
+			}
+
 			s.Start()
 			defer s.Stop()
 			accessToken, err := authenticator.GetAccessTokenForDevice(ctx, deviceVerification, auth.DefaultOAuthClientID)
