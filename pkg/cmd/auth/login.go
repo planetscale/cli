@@ -55,7 +55,7 @@ func LoginCmd(cfg *config.Config) *cobra.Command {
 
 			s := spinner.New(spinner.CharSets[14], 100*time.Millisecond)
 			s.Suffix = " Waiting for confirmation..."
-			err = s.Color("bold", "blue")
+			err = s.Color("bold", "green")
 			if err != nil {
 				return errors.Wrap(err, "error setting color")
 			}
