@@ -8,7 +8,9 @@ import (
 	"io/ioutil"
 	"os"
 	"runtime"
+	"time"
 
+	"github.com/briandowns/spinner"
 	"github.com/fatih/color"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/pkg/errors"
@@ -33,7 +35,6 @@ func LoginCmd(cfg *config.Config) *cobra.Command {
 			}
 			ctx := context.Background()
 
-			fmt.Println("Authenticating...")
 			deviceVerification, err := authenticator.VerifyDevice(ctx, auth.DefaultOAuthClientID, auth.DefaultAudienceURL)
 			if err != nil {
 				return err
@@ -52,6 +53,15 @@ func LoginCmd(cfg *config.Config) *cobra.Command {
 			boldGreen := bold.Add(color.FgGreen)
 			boldGreen.Println(deviceVerification.UserCode)
 
+			s := spinner.New(spinner.CharSets[14], 100*time.Millisecond)
+			s.Suffix = " Waiting for confirmation..."
+			err = s.Color("bold", "green")
+			if err != nil {
+				return errors.Wrap(err, "error setting color")
+			}
+
+			s.Start()
+			defer s.Stop()
 			accessToken, err := authenticator.GetAccessTokenForDevice(ctx, deviceVerification, auth.DefaultOAuthClientID)
 			if err != nil {
 				return err
@@ -61,6 +71,10 @@ func LoginCmd(cfg *config.Config) *cobra.Command {
 			if err != nil {
 				return errors.Wrap(err, "error logging in")
 			}
+
+			// We explicitly stop here so we can replace the spinner with our success
+			// message.
+			s.Stop()
 			fmt.Println("Successfully logged in!")
 			return nil
 		},
