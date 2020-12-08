@@ -163,7 +163,7 @@ func requestToken(ctx context.Context, deviceCode string) (string, error) {
 
 	req.Header.Add("content-type", "application/x-www-form-urlencoded")
 
-	req.WithContext(ctx)
+	req = req.WithContext(ctx)
 
 	// TODO(iheanyi): Use a better HTTP client than the default one.
 	res, err := http.DefaultClient.Do(req)
