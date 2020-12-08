@@ -18,10 +18,17 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 		Use: "list",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
-			web, _ := cmd.Flags().GetBool("web")
-			if web == true {
+			web, err := cmd.Flags().GetBool("web")
+			if err != nil {
+				return err
+			}
+
+			if web {
 				fmt.Println("🌐  Redirecting you to your databases list in your web browser.")
-				browser.OpenURL("https://planetscale-app-bb.vercel.app/databases")
+				err := browser.OpenURL("https://planetscale-app-bb.vercel.app/databases")
+				if err != nil {
+					return err
+				}
 				return nil
 			}
 
