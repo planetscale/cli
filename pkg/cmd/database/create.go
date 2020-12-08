@@ -34,7 +34,6 @@ func CreateCmd(cfg *config.Config) *cobra.Command {
 		},
 	}
 
-	cmd.SilenceUsage = true
 	cmd.Flags().StringVarP(&createReq.Database.Name, "name", "n", "", "the name of the database (required)")
 	_ = cmd.MarkFlagRequired("name")
 	return cmd
