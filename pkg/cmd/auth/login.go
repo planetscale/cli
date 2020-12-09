@@ -83,6 +83,7 @@ func LoginCmd(cfg *config.Config) *cobra.Command {
 	return cmd
 }
 
+// TODO(iheanyi): Double-check the file permissions in this function.
 func writeAccessToken(ctx context.Context, accessToken string) error {
 	_, err := os.Stat(config.ConfigDir())
 	if os.IsNotExist(err) {
