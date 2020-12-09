@@ -8,9 +8,10 @@ import (
 // DatabaseCmd encapsulates the commands for creating a database
 func DatabaseCmd(cfg *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "database <command>",
-		Short: "Create, read, destroy, and update databases",
-		Long:  "TODO",
+		Use:     "database <command>",
+		Short:   "Create, read, destroy, and update databases",
+		Aliases: []string{"db"},
+		Long:    "TODO",
 	}
 
 	// TODO(iheanyi): Add `api-url` and `access-token` persistent flags here.
