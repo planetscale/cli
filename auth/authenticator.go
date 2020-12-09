@@ -15,20 +15,36 @@ import (
 )
 
 const (
-	DefaultBaseURL       = "https://planetscale.us.auth0.com/"
+	// TODO(iheanyi): Switch to using the production API URL.
+	DefaultBaseURL = "http://localhost:3000/"
+	// TODO(iheanyi): Switch to using the production Client ID for the application.
+	DefaultOAuthClientID = "vg-7DlMb4cOrEDRfTlH6vjlgWZzGBzBqEWG7yD4-F7g"
 	formMediaType        = "application/x-www-form-urlencoded"
 	jsonMediaType        = "application/json"
-	DefaultAudienceURL   = "https://bb-test-api.planetscale.com"
-	DefaultOAuthClientID = "ZK3V2a5UERfOlWxi5xRXrZZFmvhnf1vg"
 )
 
 // Authenticator is the interface for authentication via device oauth
 type Authenticator interface {
-	VerifyDevice(ctx context.Context, oauthClientID string, audienceURL string) (*DeviceVerification, error)
+	VerifyDevice(ctx context.Context, oauthClientID string) (*DeviceVerification, error)
 	GetAccessTokenForDevice(ctx context.Context, v *DeviceVerification, clientID string) (string, error)
 }
 
 var _ Authenticator = (*DeviceAuthenticator)(nil)
+
+type AuthenticatorOption func(c *DeviceAuthenticator) error
+
+// SetBaseURL overrides the base URL for the DeviceAuthenticator.
+func SetBaseURL(baseURL string) AuthenticatorOption {
+	return func(d *DeviceAuthenticator) error {
+		parsedURL, err := url.Parse(baseURL)
+		if err != nil {
+			return err
+		}
+
+		d.BaseURL = parsedURL
+		return nil
+	}
+}
 
 // DeviceCodeResponse encapsulates the response for obtaining a device code.
 type DeviceCodeResponse struct {
@@ -67,7 +83,7 @@ type DeviceAuthenticator struct {
 }
 
 // New returns an instance of the DeviceAuthenticator
-func New(client *http.Client) (*DeviceAuthenticator, error) {
+func New(client *http.Client, opts ...AuthenticatorOption) (*DeviceAuthenticator, error) {
 	if client == nil {
 		client = cleanhttp.DefaultClient()
 	}
@@ -76,16 +92,26 @@ func New(client *http.Client) (*DeviceAuthenticator, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &DeviceAuthenticator{
+
+	authenticator := &DeviceAuthenticator{
 		client:  client,
 		BaseURL: baseURL,
-	}, nil
+	}
+
+	for _, opt := range opts {
+		err := opt(authenticator)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return authenticator, nil
 }
 
 // VerifyDevice performs the device verification API calls.
-func (d *DeviceAuthenticator) VerifyDevice(ctx context.Context, clientID string, audienceURL string) (*DeviceVerification, error) {
-	payload := strings.NewReader(fmt.Sprintf("client_id=%s&scope=profile,email,read:databases,write:databases&audience=%s", clientID, audienceURL))
-	req, err := d.NewFormRequest(ctx, http.MethodPost, "oauth/device/code", payload)
+func (d *DeviceAuthenticator) VerifyDevice(ctx context.Context, clientID string) (*DeviceVerification, error) {
+	payload := strings.NewReader(fmt.Sprintf("client_id=%s&scope=read_databases,write_databases", clientID))
+	req, err := d.NewFormRequest(ctx, http.MethodPost, "oauth/authorize_device", payload)
 	if err != nil {
 		return nil, err
 	}
@@ -96,6 +122,11 @@ func (d *DeviceAuthenticator) VerifyDevice(ctx context.Context, clientID string,
 	}
 
 	defer res.Body.Close()
+
+	if _, err = checkErrorResponse(res); err != nil {
+		return nil, err
+	}
+
 	deviceCodeRes := &DeviceCodeResponse{}
 	err = json.NewDecoder(res.Body).Decode(deviceCodeRes)
 	if err != nil {
@@ -147,7 +178,7 @@ type OAuthTokenResponse struct {
 }
 
 func (d *DeviceAuthenticator) requestToken(ctx context.Context, deviceCode string, clientID string) (string, error) {
-	payload := strings.NewReader(fmt.Sprintf("grant_type=urn%%3Aietf%%3Aparams%%3Aoauth%%3Agrant-type%%3Adevice_code&device_code=%s&client_id=%s", deviceCode, clientID))
+	payload := strings.NewReader(fmt.Sprintf("grant_type=device_code&device_code=%s&client_id=%s", deviceCode, clientID))
 	req, err := d.NewFormRequest(ctx, http.MethodPost, "oauth/token", payload)
 	if err != nil {
 		return "", errors.Wrap(err, "error creating request")
@@ -160,20 +191,14 @@ func (d *DeviceAuthenticator) requestToken(ctx context.Context, deviceCode strin
 
 	defer res.Body.Close()
 
-	if res.StatusCode >= 400 {
-		errorRes := &ErrorResponse{}
-		err := json.NewDecoder(res.Body).Decode(errorRes)
-		if err != nil {
-			return "", errors.Wrap(err, "error decoding token response")
-		}
+	isRetryable, err := checkErrorResponse(res)
+	if err != nil {
+		return "", err
+	}
 
-		// If we're polling and haven't authorized yet or we need to slow down, we
-		// don't wanna terminate the polling
-		if errorRes.ErrorCode == "authorization_pending" || errorRes.ErrorCode == "slow_down" {
-			return "", nil
-		}
-
-		return "", errorRes
+	// Bail early so the token fetching is retried.
+	if isRetryable {
+		return "", nil
 	}
 
 	tokenRes := &OAuthTokenResponse{}
@@ -212,4 +237,26 @@ func (d *DeviceAuthenticator) NewFormRequest(ctx context.Context, method string,
 	req.Header.Set("Accept", jsonMediaType)
 	req = req.WithContext(ctx)
 	return req, nil
+}
+
+// checkErrorResponse returns whether the error is retryable or not and the
+// error itself.
+func checkErrorResponse(res *http.Response) (bool, error) {
+	if res.StatusCode >= 400 {
+		errorRes := &ErrorResponse{}
+		err := json.NewDecoder(res.Body).Decode(errorRes)
+		if err != nil {
+			return false, errors.Wrap(err, "error decoding error response")
+		}
+
+		// If we're polling and haven't authorized yet or we need to slow down, we
+		// don't wanna terminate the polling
+		if errorRes.ErrorCode == "authorization_pending" || errorRes.ErrorCode == "slow_down" {
+			return true, nil
+		}
+
+		return false, errorRes
+	}
+
+	return false, nil
 }

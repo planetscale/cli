@@ -77,7 +77,7 @@ func (ds *databasesService) Create(ctx context.Context, createReq *CreateDatabas
 	createRes := &CreateDatabaseResponse{}
 	_, err = ds.client.Do(ctx, req, createRes)
 	if err != nil {
-		return nil, errors.Wrap(err, "error communicating with API")
+		return nil, err
 	}
 
 	return createRes.Database, nil

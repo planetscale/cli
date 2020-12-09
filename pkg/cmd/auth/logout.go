@@ -3,35 +3,24 @@ package auth
 import (
 	"fmt"
 	"os"
-	"runtime"
 
 	"github.com/pkg/errors"
-	"github.com/planetscale/cli/cmdutil"
 	"github.com/planetscale/cli/config"
 	"github.com/spf13/cobra"
-)
-
-const (
-	logoutURL = "https://planetscale.us.auth0.com/v2/logout"
 )
 
 func LogoutCmd(cfg *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "logout",
 		Args:    cobra.ExactArgs(0),
-		Short:   "Log the user out",
+		Short:   "Log out of the PlanetScale API",
 		Long:    "TODO",
 		Example: "TODO",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			fmt.Println("Press Enter to logout via browser...")
+			fmt.Println("Press Enter to log out of the PlanetScale API.")
 			_ = waitForEnter(cmd.InOrStdin())
-			openCmd := cmdutil.OpenBrowser(runtime.GOOS, logoutURL)
-			err := openCmd.Run()
-			if err != nil {
-				return errors.Wrap(err, "error opening browser")
-			}
 
-			err = deleteAccessToken()
+			err := deleteAccessToken()
 			if err != nil {
 				return err
 			}

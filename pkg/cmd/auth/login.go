@@ -22,6 +22,9 @@ import (
 
 // LoginCmd is the command for logging into a PlanetScale account.
 func LoginCmd(cfg *config.Config) *cobra.Command {
+	var clientID string
+	var apiURL string
+
 	cmd := &cobra.Command{
 		Use:     "login",
 		Args:    cobra.ExactArgs(0),
@@ -29,18 +32,19 @@ func LoginCmd(cfg *config.Config) *cobra.Command {
 		Long:    "TODO",
 		Example: "TODO",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			authenticator, err := auth.New(cleanhttp.DefaultClient())
+			authenticator, err := auth.New(cleanhttp.DefaultClient(), auth.SetBaseURL(apiURL))
 			if err != nil {
 				return err
 			}
 			ctx := context.Background()
 
-			deviceVerification, err := authenticator.VerifyDevice(ctx, auth.DefaultOAuthClientID, auth.DefaultAudienceURL)
+			deviceVerification, err := authenticator.VerifyDevice(ctx, clientID)
 			if err != nil {
 				return err
 			}
 
 			fmt.Println("Press Enter to authenticate via your browser...")
+
 			_ = waitForEnter(cmd.InOrStdin())
 			openCmd := cmdutil.OpenBrowser(runtime.GOOS, deviceVerification.VerificationCompleteURL)
 			err = openCmd.Run()
@@ -80,9 +84,13 @@ func LoginCmd(cfg *config.Config) *cobra.Command {
 		},
 	}
 
+	cmd.Flags().StringVar(&clientID, "client-id", auth.DefaultOAuthClientID, "The client ID for the PlanetScale application.")
+	cmd.Flags().StringVar(&apiURL, "api-url", auth.DefaultBaseURL, "The PlanetScale base API URL.")
+
 	return cmd
 }
 
+// TODO(iheanyi): Double-check the file permissions in this function.
 func writeAccessToken(ctx context.Context, accessToken string) error {
 	_, err := os.Stat(config.ConfigDir())
 	if os.IsNotExist(err) {
