@@ -89,7 +89,7 @@ func (c *Client) GetAPIEndpoint(path string) string {
 	return fmt.Sprintf("%s/%s", c.BaseURL, path)
 }
 
-// Do sends an HTTP request
+// Do executes the inputted HTTP request.
 func (c *Client) Do(ctx context.Context, req *http.Request, v interface{}) (*http.Response, error) {
 	req = req.WithContext(ctx)
 
@@ -98,14 +98,6 @@ func (c *Client) Do(ctx context.Context, req *http.Request, v interface{}) (*htt
 		return nil, err
 	}
 	defer res.Body.Close()
-
-	if res.StatusCode == http.StatusUnauthorized {
-		return nil, errors.New("Unauthorized API request, please login, re-authenticate, or check your permissions.")
-	}
-
-	if res.StatusCode >= 400 {
-		return nil, errors.New(http.StatusText(res.StatusCode))
-	}
 
 	if v != nil {
 		err = json.NewDecoder(res.Body).Decode(v)
