@@ -54,7 +54,7 @@ func (ds *databasesService) List(ctx context.Context) ([]*Database, error) {
 	listRes := &ListDatabasesResponse{}
 	_, err = ds.client.Do(ctx, req, listRes)
 	if err != nil {
-		return nil, errors.Wrap(err, "error communicating with API")
+		return nil, err
 	}
 
 	return listRes.Databases, nil

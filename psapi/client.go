@@ -99,6 +99,16 @@ func (c *Client) Do(ctx context.Context, req *http.Request, v interface{}) (*htt
 	}
 	defer res.Body.Close()
 
+	if res.StatusCode >= 400 {
+		errorRes := &ErrorResponse{}
+		err = json.NewDecoder(res.Body).Decode(errorRes)
+		if err != nil {
+			return nil, err
+		}
+
+		return nil, errorRes
+	}
+
 	if v != nil {
 		err = json.NewDecoder(res.Body).Decode(v)
 		if err != nil {
@@ -143,4 +153,14 @@ func (c *Client) NewRequest(method string, path string, body interface{}) (*http
 	req.Header.Set("Accept", jsonMediaType)
 
 	return req, nil
+}
+
+// ErrorResponse represents an error response from the API
+type ErrorResponse struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
+}
+
+func (e ErrorResponse) Error() string {
+	return e.Message
 }
