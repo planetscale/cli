@@ -96,6 +96,11 @@ func (d *DeviceAuthenticator) VerifyDevice(ctx context.Context, clientID string,
 	}
 
 	defer res.Body.Close()
+
+	if err = checkErrorResponse(res); err != nil {
+		return nil, err
+	}
+
 	deviceCodeRes := &DeviceCodeResponse{}
 	err = json.NewDecoder(res.Body).Decode(deviceCodeRes)
 	if err != nil {
@@ -160,20 +165,8 @@ func (d *DeviceAuthenticator) requestToken(ctx context.Context, deviceCode strin
 
 	defer res.Body.Close()
 
-	if res.StatusCode >= 400 {
-		errorRes := &ErrorResponse{}
-		err := json.NewDecoder(res.Body).Decode(errorRes)
-		if err != nil {
-			return "", errors.Wrap(err, "error decoding token response")
-		}
-
-		// If we're polling and haven't authorized yet or we need to slow down, we
-		// don't wanna terminate the polling
-		if errorRes.ErrorCode == "authorization_pending" || errorRes.ErrorCode == "slow_down" {
-			return "", nil
-		}
-
-		return "", errorRes
+	if err = checkErrorResponse(res); err != nil {
+		return "", err
 	}
 
 	tokenRes := &OAuthTokenResponse{}
@@ -212,4 +205,24 @@ func (d *DeviceAuthenticator) NewFormRequest(ctx context.Context, method string,
 	req.Header.Set("Accept", jsonMediaType)
 	req = req.WithContext(ctx)
 	return req, nil
+}
+
+func checkErrorResponse(res *http.Response) error {
+	if res.StatusCode >= 400 {
+		errorRes := &ErrorResponse{}
+		err := json.NewDecoder(res.Body).Decode(errorRes)
+		if err != nil {
+			return errors.Wrap(err, "error decoding token response")
+		}
+
+		// If we're polling and haven't authorized yet or we need to slow down, we
+		// don't wanna terminate the polling
+		if errorRes.ErrorCode == "authorization_pending" || errorRes.ErrorCode == "slow_down" {
+			return nil
+		}
+
+		return errorRes
+	}
+
+	return nil
 }
