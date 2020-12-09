@@ -35,7 +35,7 @@ func LoginCmd(cfg *config.Config) *cobra.Command {
 			}
 			ctx := context.Background()
 
-			deviceVerification, err := authenticator.VerifyDevice(ctx, auth.DefaultOAuthClientID, auth.DefaultAudienceURL)
+			deviceVerification, err := authenticator.VerifyDevice(ctx, auth.DefaultOAuthClientID)
 			if err != nil {
 				return err
 			}
