@@ -9,10 +9,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const (
-	logoutURL = "https://planetscale.us.auth0.com/v2/logout"
-)
-
 func LogoutCmd(cfg *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "logout",
