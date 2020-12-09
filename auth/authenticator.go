@@ -31,6 +31,21 @@ type Authenticator interface {
 
 var _ Authenticator = (*DeviceAuthenticator)(nil)
 
+type AuthenticatorOption func(c *DeviceAuthenticator) error
+
+// SetBaseURL overrides the base URL for the DeviceAuthenticator.
+func SetBaseURL(baseURL string) AuthenticatorOption {
+	return func(d *DeviceAuthenticator) error {
+		parsedURL, err := url.Parse(baseURL)
+		if err != nil {
+			return err
+		}
+
+		d.BaseURL = parsedURL
+		return nil
+	}
+}
+
 // DeviceCodeResponse encapsulates the response for obtaining a device code.
 type DeviceCodeResponse struct {
 	DeviceCode              string `json:"device_code"`
@@ -68,7 +83,7 @@ type DeviceAuthenticator struct {
 }
 
 // New returns an instance of the DeviceAuthenticator
-func New(client *http.Client) (*DeviceAuthenticator, error) {
+func New(client *http.Client, opts ...AuthenticatorOption) (*DeviceAuthenticator, error) {
 	if client == nil {
 		client = cleanhttp.DefaultClient()
 	}
@@ -77,10 +92,20 @@ func New(client *http.Client) (*DeviceAuthenticator, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &DeviceAuthenticator{
+
+	authenticator := &DeviceAuthenticator{
 		client:  client,
 		BaseURL: baseURL,
-	}, nil
+	}
+
+	for _, opt := range opts {
+		err := opt(authenticator)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return authenticator, nil
 }
 
 // VerifyDevice performs the device verification API calls.
