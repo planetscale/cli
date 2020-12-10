@@ -66,7 +66,7 @@ func LoginCmd(cfg *config.Config) *cobra.Command {
 
 			s.Start()
 			defer s.Stop()
-			accessToken, err := authenticator.GetAccessTokenForDevice(ctx, deviceVerification, auth.DefaultOAuthClientID)
+			accessToken, err := authenticator.GetAccessTokenForDevice(ctx, deviceVerification, clientID)
 			if err != nil {
 				return err
 			}
