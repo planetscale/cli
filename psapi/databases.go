@@ -12,7 +12,7 @@ var databasesAPIPath = "databases"
 
 // CreateDatabaseRequest encapsulates the request for creating a new database.
 type CreateDatabaseRequest struct {
-	Database *Database `json:"demo_api"`
+	Database *Database `json:"database"`
 }
 
 // DatabaseService is an interface for communicating with the PlanetScale
@@ -25,8 +25,11 @@ type DatabasesService interface {
 
 // Database represents a PlanetScale Database
 type Database struct {
-	ID   int64  `json:"id,omitempty" header:"id"`
-	Name string `json:"name" header:"name"`
+	ID          int64  `json:"id,omitempty" header:"id"`
+	Label       string `json:"label" header:"label"`
+	Name        string `json:"name" header:"name"`
+	Slug        string `json:"slug" header:"slug"`
+	Description string `json:"description" header:"description"`
 }
 
 type databasesService struct {
@@ -64,8 +67,6 @@ func (ds *databasesService) List(ctx context.Context) ([]*Database, error) {
 // creating a database.
 type CreateDatabaseResponse struct {
 	Database *Database `json:"database"`
-	ID       int64     `json:"id"`
-	Name     string    `json:"name"`
 }
 
 func (ds *databasesService) Create(ctx context.Context, createReq *CreateDatabaseRequest) (*Database, error) {
