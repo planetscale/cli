@@ -34,7 +34,11 @@ func CreateCmd(cfg *config.Config) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&createReq.Database.Name, "name", "n", "", "the name of the database (required)")
-	_ = cmd.MarkFlagRequired("name")
+	cmd.Flags().StringVarP(&createReq.Database.Label, "label", "l", "", "the label for the database (required)")
+	cmd.Flags().StringVarP(&createReq.Database.Slug, "slug", "s", "", "the slug for the database (required)")
+	cmd.Flags().StringVarP(&createReq.Database.Description, "description", "d", "", "a description for the database (required)")
+	_ = cmd.MarkFlagRequired("label")
+	_ = cmd.MarkFlagRequired("slug")
+
 	return cmd
 }
