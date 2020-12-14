@@ -16,11 +16,12 @@ import (
 
 const (
 	// TODO(iheanyi): Switch to using the production API URL.
-	DefaultBaseURL = "http://localhost:3000/"
+	DefaultBaseURL = "https://auth.planetscaledb.io/"
 	// TODO(iheanyi): Switch to using the production Client ID for the application.
-	DefaultOAuthClientID = "vg-7DlMb4cOrEDRfTlH6vjlgWZzGBzBqEWG7yD4-F7g"
-	formMediaType        = "application/x-www-form-urlencoded"
-	jsonMediaType        = "application/json"
+	DefaultOAuthClientID = "dPLmLcw0S5pmeWeSRWxXxgsD8tG5Tzjj5ziMsbUKym8"
+
+	formMediaType = "application/x-www-form-urlencoded"
+	jsonMediaType = "application/json"
 )
 
 // Authenticator is the interface for authentication via device oauth
