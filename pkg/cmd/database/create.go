@@ -28,7 +28,7 @@ func CreateCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
-			fmt.Printf("Successfully created database: %s\n", database.Name)
+			fmt.Printf("Successfully created database: %s\n", database.Label)
 
 			return nil
 		},
