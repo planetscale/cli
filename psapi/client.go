@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	DefaultBaseURL = "https://ps-api-bb-rails-prod.herokuapp.com/"
+	DefaultBaseURL = "https://api.planetscaledb.io/"
 	jsonMediaType  = "application/json"
 )
 
