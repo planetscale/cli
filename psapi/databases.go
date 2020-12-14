@@ -27,7 +27,6 @@ type DatabasesService interface {
 type Database struct {
 	ID          int64  `json:"id,omitempty" header:"id"`
 	Label       string `json:"label" header:"label"`
-	Name        string `json:"name" header:"name"`
 	Slug        string `json:"slug" header:"slug"`
 	Description string `json:"description" header:"description"`
 }
