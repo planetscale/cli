@@ -2,20 +2,21 @@ package database
 
 import (
 	"context"
-	"fmt"
+	"os"
 	"strconv"
 
+	"github.com/lensesio/tableprinter"
 	"github.com/planetscale/cli/config"
 	"github.com/spf13/cobra"
 )
 
-// DeleteCmd is the Cobra command for deleting a database for an authenticated
-// user.
-func DeleteCmd(cfg *config.Config) *cobra.Command {
+// StatusCmd encapsulates the
+func StatusCmd(cfg *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "delete <database_id>",
-		Short: "Delete a database instance",
+		Use:   "status <database_id>",
+		Short: "Get the status of a database",
 		Args:  cobra.ExactArgs(1),
+		Long:  "TODO",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 			client, err := cfg.NewClientFromConfig()
@@ -28,15 +29,12 @@ func DeleteCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
-			deleted, err := client.Databases.Delete(ctx, int64(id))
+			status, err := client.Databases.Status(ctx, int64(id))
 			if err != nil {
 				return err
 			}
 
-			if deleted {
-				fmt.Printf("Successfully deleted database with ID: %d\n", id)
-			}
-
+			tableprinter.Print(os.Stdout, status)
 			return nil
 		},
 	}
