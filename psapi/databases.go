@@ -38,8 +38,12 @@ type Database struct {
 
 // DatabaseStatus represents the status of a PlanetScale database.
 type DatabaseStatus struct {
-	DatabaseID  int64  `json:"database_id" header:"database_id"`
-	DeployPhase string `json:"deploy_phase" header:"Status"`
+	DatabaseID    int64  `json:"database_id" header:"database_id"`
+	DeployPhase   string `json:"deploy_phase" header:"status"`
+	GatewayHost   string `json:"mysql_gateway_host" header:"gateway_host"`
+	GatewayPort   int    `json:"mysql_gateway_port" header:"gateway_port"`
+	MySQLUser     string `json:"mysql_gateway_user" header:"user"`
+	MySQLPassword string `json:"mysql_gateway_pass" header:"password"`
 }
 
 type databasesService struct {
