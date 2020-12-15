@@ -39,7 +39,8 @@ type Database struct {
 
 // DatabaseStatus represents the status of a PlanetScale database.
 type DatabaseStatus struct {
-	Status string `json:"status" header:"status"`
+	DatabaseID  int64  `json:"database_id" header:"database_id"`
+	DeployPhase string `json:"deploy_phase" header:"Status"`
 }
 
 type databasesService struct {
