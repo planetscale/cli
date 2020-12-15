@@ -25,7 +25,7 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 
 			if web {
 				fmt.Println("🌐  Redirecting you to your databases list in your web browser.")
-				err := browser.OpenURL("https://planetscale-app-bb.vercel.app/databases")
+				err := browser.OpenURL("https://app.planetscaledb.io/databases")
 				if err != nil {
 					return err
 				}
