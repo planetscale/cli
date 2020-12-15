@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/pkg/errors"
 )
@@ -23,12 +24,20 @@ type DatabasesService interface {
 	Delete(context.Context, int64) (bool, error)
 }
 
-// Database represents a PlanetScale Database
+// Database represents a PlanetScale database
 type Database struct {
-	ID          int64  `json:"id,omitempty" header:"id"`
-	Label       string `json:"label" header:"label"`
-	Slug        string `json:"slug" header:"slug"`
-	Description string `json:"description" header:"description"`
+	ID          int64           `json:"id,omitempty" header:"id"`
+	Label       string          `json:"label" header:"label"`
+	Slug        string          `json:"slug" header:"slug"`
+	Description string          `json:"description" header:"description"`
+	CreatedAt   *time.Time      `json:"created_at" header:"created_at,unixtime_human"`
+	UpdatedAt   *time.Time      `json:"updated_at" header:"updated_at,unixtime_human"`
+	Status      *DatabaseStatus `json:"status"`
+}
+
+// DatabaseStatus represents the status of a PlanetScale database.
+type DatabaseStatus struct {
+	Status string `json:"status" header:"status"`
 }
 
 type databasesService struct {
