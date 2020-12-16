@@ -2,4 +2,8 @@
 
 set -e
 
+echo "Linting..."
+golangci-lint run
+
+echo "Running tests..."
 go test -v ./...
