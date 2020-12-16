@@ -3,4 +3,3 @@
 set -e
 
 go install ./...
-echo "Finished installing cmd/* programs"

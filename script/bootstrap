@@ -15,6 +15,3 @@ fi
 echo "Installing dependencies..."
 # Install Homebrew bundle
 brew bundle
-
-# TODO(iheanyi): Should we check for the GOPATH being properly set here?
-echo "Bootstrap finished!"

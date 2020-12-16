@@ -6,4 +6,3 @@ script/bootstrap
 script/build
 
 echo "Setup done!"
-
