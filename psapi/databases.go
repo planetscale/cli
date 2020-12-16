@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/pkg/errors"
 )
@@ -19,16 +20,30 @@ type CreateDatabaseRequest struct {
 // Databases API endpoint.
 type DatabasesService interface {
 	Create(context.Context, *CreateDatabaseRequest) (*Database, error)
+	Get(context.Context, int64) (*Database, error)
+	Status(context.Context, int64) (*DatabaseStatus, error)
 	List(context.Context) ([]*Database, error)
 	Delete(context.Context, int64) (bool, error)
 }
 
-// Database represents a PlanetScale Database
+// Database represents a PlanetScale database
 type Database struct {
-	ID          int64  `json:"id,omitempty" header:"id"`
-	Label       string `json:"label" header:"label"`
-	Slug        string `json:"slug" header:"slug"`
-	Description string `json:"description" header:"description"`
+	ID          int64      `json:"id,omitempty" header:"id"`
+	Label       string     `json:"label" header:"label"`
+	Slug        string     `json:"slug" header:"slug"`
+	Description string     `json:"description" header:"description"`
+	CreatedAt   *time.Time `json:"created_at" header:"created_at,unixtime_human"`
+	UpdatedAt   *time.Time `json:"updated_at" header:"updated_at,unixtime_human"`
+}
+
+// DatabaseStatus represents the status of a PlanetScale database.
+type DatabaseStatus struct {
+	DatabaseID    int64  `json:"database_id" header:"database_id"`
+	DeployPhase   string `json:"deploy_phase" header:"status"`
+	GatewayHost   string `json:"mysql_gateway_host" header:"gateway_host"`
+	GatewayPort   int    `json:"mysql_gateway_port" header:"gateway_port"`
+	MySQLUser     string `json:"mysql_gateway_user" header:"user"`
+	MySQLPassword string `json:"mysql_gateway_pass" header:"password"`
 }
 
 type databasesService struct {
@@ -62,9 +77,9 @@ func (ds *databasesService) List(ctx context.Context) ([]*Database, error) {
 	return listRes.Databases, nil
 }
 
-// CreateDatabaseResponse encapsulates the JSON returned after successfully
-// creating a database.
-type CreateDatabaseResponse struct {
+// DatabaseResponse encapsulates the JSON returned after successfully creating
+// or fetching a database.
+type DatabaseResponse struct {
 	Database *Database `json:"database"`
 }
 
@@ -74,13 +89,34 @@ func (ds *databasesService) Create(ctx context.Context, createReq *CreateDatabas
 		return nil, errors.Wrap(err, "error creating request for create database")
 	}
 
-	createRes := &CreateDatabaseResponse{}
+	createRes := &DatabaseResponse{}
 	_, err = ds.client.Do(ctx, req, createRes)
 	if err != nil {
 		return nil, err
 	}
 
 	return createRes.Database, nil
+}
+
+func (ds *databasesService) Get(ctx context.Context, id int64) (*Database, error) {
+	path := fmt.Sprintf("%s/%d", databasesAPIPath, id)
+	req, err := ds.client.NewRequest(http.MethodGet, path, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "error creating request for get database")
+	}
+
+	_, err = ds.client.Do(ctx, req, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	dbRes := &DatabaseResponse{}
+	_, err = ds.client.Do(ctx, req, dbRes)
+	if err != nil {
+		return nil, err
+	}
+
+	return dbRes.Database, nil
 }
 
 func (ds *databasesService) Delete(ctx context.Context, id int64) (bool, error) {
@@ -100,4 +136,25 @@ func (ds *databasesService) Delete(ctx context.Context, id int64) (bool, error) 
 	}
 
 	return true, nil
+}
+
+// StatusResponse returns a response for the status of a database
+type StatusResponse struct {
+	Status *DatabaseStatus `json:"status"`
+}
+
+func (ds *databasesService) Status(ctx context.Context, id int64) (*DatabaseStatus, error) {
+	path := fmt.Sprintf("%s/%d/status", databasesAPIPath, id)
+	req, err := ds.client.NewRequest(http.MethodGet, path, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "error creating request for database status")
+	}
+
+	status := &StatusResponse{}
+	_, err = ds.client.Do(ctx, req, status)
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting database status")
+	}
+
+	return status.Status, nil
 }
