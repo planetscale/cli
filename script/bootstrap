@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -eu
+set -e
 
 echo "Installing Homebrew..."
 # Install Homebrew if necessary

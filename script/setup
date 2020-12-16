@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -eu
+set -e
 
 script/bootstrap
 script/build
