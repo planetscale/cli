@@ -1,0 +1,20 @@
+#!/bin/bash
+
+set -eu
+
+echo "Installing Homebrew..."
+# Install Homebrew if necessary
+which -s brew
+if [[ $? != 0 ]] ; then
+    # Install Homebrew
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+else
+    brew update
+fi
+
+echo "Installing dependencies..."
+# Install Homebrew bundle
+brew bundle
+
+# TODO(iheanyi): Should we check for the GOPATH being properly set here?
+echo "Bootstrap finished!"

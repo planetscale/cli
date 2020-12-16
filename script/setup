@@ -1,0 +1,9 @@
+#!/bin/bash
+
+set -eu
+
+script/bootstrap
+script/build
+
+echo "Setup done!"
+

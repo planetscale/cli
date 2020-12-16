@@ -1,0 +1,6 @@
+#!/bin/bash
+
+set -eu
+
+go install ./...
+echo "Finished installing cmd/* programs"
