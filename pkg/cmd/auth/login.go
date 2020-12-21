@@ -23,6 +23,7 @@ import (
 // LoginCmd is the command for logging into a PlanetScale account.
 func LoginCmd(cfg *config.Config) *cobra.Command {
 	var clientID string
+	var clientSecret string
 	var apiURL string
 
 	cmd := &cobra.Command{
@@ -32,13 +33,13 @@ func LoginCmd(cfg *config.Config) *cobra.Command {
 		Long:    "TODO",
 		Example: "TODO",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			authenticator, err := auth.New(cleanhttp.DefaultClient(), auth.SetBaseURL(apiURL))
+			authenticator, err := auth.New(cleanhttp.DefaultClient(), auth.OAuthClientID, auth.OAuthClientSecret, auth.SetBaseURL(apiURL))
 			if err != nil {
 				return err
 			}
 			ctx := context.Background()
 
-			deviceVerification, err := authenticator.VerifyDevice(ctx, clientID)
+			deviceVerification, err := authenticator.VerifyDevice(ctx)
 			if err != nil {
 				return err
 			}
@@ -66,7 +67,7 @@ func LoginCmd(cfg *config.Config) *cobra.Command {
 
 			s.Start()
 			defer s.Stop()
-			accessToken, err := authenticator.GetAccessTokenForDevice(ctx, deviceVerification, clientID)
+			accessToken, err := authenticator.GetAccessTokenForDevice(ctx, deviceVerification)
 			if err != nil {
 				return err
 			}
@@ -84,7 +85,8 @@ func LoginCmd(cfg *config.Config) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&clientID, "client-id", auth.DefaultOAuthClientID, "The client ID for the PlanetScale application.")
+	cmd.Flags().StringVar(&clientID, "client-id", auth.OAuthClientID, "The client ID for the PlanetScale CLI application.")
+	cmd.Flags().StringVar(&clientSecret, "client-secret", auth.OAuthClientSecret, "The client ID for the PlanetScale CLI application")
 	cmd.Flags().StringVar(&apiURL, "api-url", auth.DefaultBaseURL, "The PlanetScale base API URL.")
 
 	return cmd
