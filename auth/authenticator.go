@@ -98,8 +98,10 @@ func New(client *http.Client, clientID string, clientSecret string, opts ...Auth
 	}
 
 	authenticator := &DeviceAuthenticator{
-		client:  client,
-		BaseURL: baseURL,
+		client:       client,
+		BaseURL:      baseURL,
+		ClientID:     clientID,
+		ClientSecret: clientSecret,
 	}
 
 	for _, opt := range opts {
