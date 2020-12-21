@@ -33,7 +33,7 @@ func LoginCmd(cfg *config.Config) *cobra.Command {
 		Long:    "TODO",
 		Example: "TODO",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			authenticator, err := auth.New(cleanhttp.DefaultClient(), auth.OAuthClientID, auth.OAuthClientSecret, auth.SetBaseURL(apiURL))
+			authenticator, err := auth.New(cleanhttp.DefaultClient(), clientID, clientSecret, auth.SetBaseURL(apiURL))
 			if err != nil {
 				return err
 			}
