@@ -25,13 +25,13 @@ func LogoutCmd(cfg *config.Config) *cobra.Command {
 		Example: "TODO",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if cfg.AccessToken == "" {
-				return errors.New("Requires authentication")
+				fmt.Println("Already logged out. Exiting...")
+				return nil
 			}
-
 			fmt.Println("Press Enter to log out of the PlanetScale API.")
 			_ = waitForEnter(cmd.InOrStdin())
 
-			authenticator, err := auth.New(cleanhttp.DefaultClient(), auth.OAuthClientID, auth.OAuthClientSecret, auth.SetBaseURL(apiURL))
+			authenticator, err := auth.New(cleanhttp.DefaultClient(), clientID, clientSecret, auth.SetBaseURL(apiURL))
 			if err != nil {
 				return err
 			}
