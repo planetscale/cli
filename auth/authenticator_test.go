@@ -2,13 +2,13 @@ package auth
 
 import (
 	"context"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
+	"github.com/benbjohnson/clock"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/stretchr/testify/assert"
 )
@@ -45,6 +45,7 @@ func TestVerifyDevice(t *testing.T) {
 				DeviceCode:              "some_device_code",
 				UserCode:                "1234567",
 				CheckInterval:           time.Second * 5,
+				ExpiresAt:               clock.NewMock().Now().Add(time.Duration(1800) * time.Second),
 			},
 		},
 	}
@@ -53,7 +54,6 @@ func TestVerifyDevice(t *testing.T) {
 		t.Run(tt.desc, func(t *testing.T) {
 			srv, cleanup := setupServer(func(mux *http.ServeMux) {
 				mux.HandleFunc("/oauth/authorize_device", func(w http.ResponseWriter, r *http.Request) {
-					fmt.Println("in the endpoint")
 					payload, err := ioutil.ReadAll(r.Body)
 					if err != nil {
 						t.Fatal(err)
@@ -73,7 +73,8 @@ func TestVerifyDevice(t *testing.T) {
 
 			t.Cleanup(cleanup)
 
-			authenticator, err := New(cleanhttp.DefaultClient(), testClientID, testClientSecret, SetBaseURL(srv.URL))
+			mockClock := clock.NewMock()
+			authenticator, err := New(cleanhttp.DefaultClient(), testClientID, testClientSecret, SetBaseURL(srv.URL), WithMockClock(mockClock))
 			if err != nil {
 				t.Fatalf("error creating client: %s", err.Error())
 			}
