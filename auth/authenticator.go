@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/benbjohnson/clock"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/pkg/errors"
 )
@@ -49,6 +50,14 @@ func SetBaseURL(baseURL string) AuthenticatorOption {
 	}
 }
 
+// WithMockClock replaces the clock on the authenticator with a mock clock.
+func WithMockClock(mock *clock.Mock) AuthenticatorOption {
+	return func(d *DeviceAuthenticator) error {
+		d.Clock = mock
+		return nil
+	}
+}
+
 // DeviceCodeResponse encapsulates the response for obtaining a device code.
 type DeviceCodeResponse struct {
 	DeviceCode              string `json:"device_code"`
@@ -81,9 +90,9 @@ func (e ErrorResponse) Error() string {
 
 // DeviceAuthenticator performs the authentication flow for logging in.
 type DeviceAuthenticator struct {
-	client  *http.Client
-	BaseURL *url.URL
-
+	client       *http.Client
+	BaseURL      *url.URL
+	Clock        clock.Clock
 	ClientID     string
 	ClientSecret string
 }
@@ -102,6 +111,7 @@ func New(client *http.Client, clientID string, clientSecret string, opts ...Auth
 	authenticator := &DeviceAuthenticator{
 		client:       client,
 		BaseURL:      baseURL,
+		Clock:        clock.New(),
 		ClientID:     clientID,
 		ClientSecret: clientSecret,
 	}
@@ -142,7 +152,11 @@ func (d *DeviceAuthenticator) VerifyDevice(ctx context.Context) (*DeviceVerifica
 	}
 
 	checkInterval := time.Duration(deviceCodeRes.PollingInterval) * time.Second
-	expiresAt := time.Now().Add(time.Duration(deviceCodeRes.ExpiresIn) * time.Second)
+	if checkInterval == 0 {
+		checkInterval = time.Duration(5) * time.Second
+	}
+
+	expiresAt := d.Clock.Now().Add(time.Duration(deviceCodeRes.ExpiresIn) * time.Second)
 
 	return &DeviceVerification{
 		DeviceCode:              deviceCodeRes.DeviceCode,
@@ -164,7 +178,7 @@ func (d *DeviceAuthenticator) GetAccessTokenForDevice(ctx context.Context, v *De
 		time.Sleep(v.CheckInterval)
 		accessToken, err = d.requestToken(ctx, v.DeviceCode, d.ClientID)
 		if accessToken == "" && err == nil {
-			if time.Now().After(v.ExpiresAt) {
+			if d.Clock.Now().After(v.ExpiresAt) {
 				err = errors.New("authentication timed out")
 			} else {
 				continue
