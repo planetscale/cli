@@ -24,6 +24,7 @@ import (
 func LoginCmd(cfg *config.Config) *cobra.Command {
 	var clientID string
 	var clientSecret string
+	var authURL string
 
 	cmd := &cobra.Command{
 		Use:     "login",
@@ -32,7 +33,7 @@ func LoginCmd(cfg *config.Config) *cobra.Command {
 		Long:    "TODO",
 		Example: "TODO",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			authenticator, err := auth.New(cleanhttp.DefaultClient(), clientID, clientSecret, auth.SetBaseURL(cfg.BaseURL))
+			authenticator, err := auth.New(cleanhttp.DefaultClient(), clientID, clientSecret, auth.SetBaseURL(authURL))
 			if err != nil {
 				return err
 			}
@@ -86,6 +87,7 @@ func LoginCmd(cfg *config.Config) *cobra.Command {
 
 	cmd.Flags().StringVar(&clientID, "client-id", auth.OAuthClientID, "The client ID for the PlanetScale CLI application.")
 	cmd.Flags().StringVar(&clientSecret, "client-secret", auth.OAuthClientSecret, "The client ID for the PlanetScale CLI application")
+	cmd.Flags().StringVar(&authURL, "api-url", auth.DefaultBaseURL, "The PlanetScale Auth API base URL.")
 
 	return cmd
 }
