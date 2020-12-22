@@ -69,6 +69,7 @@ func init() {
 	cfg := config.New()
 
 	rootCmd.PersistentFlags().StringVar(&cfg.BaseURL, "api-url", psapi.DefaultBaseURL, "The base URL for the PlanetScale API.")
+	rootCmd.PersistentFlags().StringVar(&cfg.AccessToken, "api-token", cfg.AccessToken, "The API token for a given user")
 	rootCmd.AddCommand(auth.AuthCmd(cfg))
 	rootCmd.AddCommand(DebugCmd(cfg))
 	rootCmd.AddCommand(database.DatabaseCmd(cfg))
