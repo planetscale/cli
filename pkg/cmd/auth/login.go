@@ -23,7 +23,6 @@ import (
 // LoginCmd is the command for logging into a PlanetScale account.
 func LoginCmd(cfg *config.Config) *cobra.Command {
 	var clientID string
-	var apiURL string
 
 	cmd := &cobra.Command{
 		Use:     "login",
@@ -32,7 +31,7 @@ func LoginCmd(cfg *config.Config) *cobra.Command {
 		Long:    "TODO",
 		Example: "TODO",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			authenticator, err := auth.New(cleanhttp.DefaultClient(), auth.SetBaseURL(apiURL))
+			authenticator, err := auth.New(cleanhttp.DefaultClient(), auth.SetBaseURL(cfg.BaseURL))
 			if err != nil {
 				return err
 			}
@@ -85,7 +84,6 @@ func LoginCmd(cfg *config.Config) *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&clientID, "client-id", auth.DefaultOAuthClientID, "The client ID for the PlanetScale application.")
-	cmd.Flags().StringVar(&apiURL, "api-url", auth.DefaultBaseURL, "The PlanetScale base API URL.")
 
 	return cmd
 }
