@@ -15,10 +15,9 @@ import (
 )
 
 const (
-	// TODO(iheanyi): Switch to using the production API URL.
-	DefaultBaseURL = "https://auth.planetscaledb.io/"
-	// TODO(iheanyi): Switch to using the production Client ID for the application.
-	DefaultOAuthClientID = "dPLmLcw0S5pmeWeSRWxXxgsD8tG5Tzjj5ziMsbUKym8"
+	DefaultBaseURL    = "https://auth.planetscaledb.io/"
+	OAuthClientID     = "dPLmLcw0S5pmeWeSRWxXxgsD8tG5Tzjj5ziMsbUKym8"
+	OAuthClientSecret = "YTiMkrVjxQXUnvTA1sGu3MnIS0m05NZ6aQyuUOXaX5Y"
 
 	formMediaType = "application/x-www-form-urlencoded"
 	jsonMediaType = "application/json"
@@ -26,8 +25,9 @@ const (
 
 // Authenticator is the interface for authentication via device oauth
 type Authenticator interface {
-	VerifyDevice(ctx context.Context, oauthClientID string) (*DeviceVerification, error)
-	GetAccessTokenForDevice(ctx context.Context, v *DeviceVerification, clientID string) (string, error)
+	VerifyDevice(ctx context.Context) (*DeviceVerification, error)
+	GetAccessTokenForDevice(ctx context.Context, v *DeviceVerification) (string, error)
+	RevokeToken(ctx context.Context, token string) error
 }
 
 var _ Authenticator = (*DeviceAuthenticator)(nil)
@@ -81,10 +81,13 @@ func (e ErrorResponse) Error() string {
 type DeviceAuthenticator struct {
 	client  *http.Client
 	BaseURL *url.URL
+
+	ClientID     string
+	ClientSecret string
 }
 
 // New returns an instance of the DeviceAuthenticator
-func New(client *http.Client, opts ...AuthenticatorOption) (*DeviceAuthenticator, error) {
+func New(client *http.Client, clientID string, clientSecret string, opts ...AuthenticatorOption) (*DeviceAuthenticator, error) {
 	if client == nil {
 		client = cleanhttp.DefaultClient()
 	}
@@ -95,8 +98,10 @@ func New(client *http.Client, opts ...AuthenticatorOption) (*DeviceAuthenticator
 	}
 
 	authenticator := &DeviceAuthenticator{
-		client:  client,
-		BaseURL: baseURL,
+		client:       client,
+		BaseURL:      baseURL,
+		ClientID:     clientID,
+		ClientSecret: clientSecret,
 	}
 
 	for _, opt := range opts {
@@ -110,8 +115,8 @@ func New(client *http.Client, opts ...AuthenticatorOption) (*DeviceAuthenticator
 }
 
 // VerifyDevice performs the device verification API calls.
-func (d *DeviceAuthenticator) VerifyDevice(ctx context.Context, clientID string) (*DeviceVerification, error) {
-	payload := strings.NewReader(fmt.Sprintf("client_id=%s&scope=read_databases,write_databases", clientID))
+func (d *DeviceAuthenticator) VerifyDevice(ctx context.Context) (*DeviceVerification, error) {
+	payload := strings.NewReader(fmt.Sprintf("client_id=%s&scope=read_databases,write_databases", d.ClientID))
 	req, err := d.NewFormRequest(ctx, http.MethodPost, "oauth/authorize_device", payload)
 	if err != nil {
 		return nil, err
@@ -149,13 +154,13 @@ func (d *DeviceAuthenticator) VerifyDevice(ctx context.Context, clientID string)
 
 // GetAccessTokenForDevice uses the device verification response to fetch an
 // access token.
-func (d *DeviceAuthenticator) GetAccessTokenForDevice(ctx context.Context, v *DeviceVerification, clientID string) (string, error) {
+func (d *DeviceAuthenticator) GetAccessTokenForDevice(ctx context.Context, v *DeviceVerification) (string, error) {
 	var accessToken string
 	var err error
 
 	for {
 		time.Sleep(v.CheckInterval)
-		accessToken, err = d.requestToken(ctx, v.DeviceCode, clientID)
+		accessToken, err = d.requestToken(ctx, v.DeviceCode, d.ClientID)
 		if accessToken == "" && err == nil {
 			if time.Now().After(v.ExpiresAt) {
 				err = errors.New("authentication timed out")
@@ -210,6 +215,27 @@ func (d *DeviceAuthenticator) requestToken(ctx context.Context, deviceCode strin
 	}
 
 	return tokenRes.AccessToken, nil
+}
+
+// RevokeToken revokes an access token.
+func (d *DeviceAuthenticator) RevokeToken(ctx context.Context, token string) error {
+	payload := strings.NewReader(fmt.Sprintf("client_id=%s&client_secret=%s&token=%s", d.ClientID, d.ClientSecret, token))
+	req, err := d.NewFormRequest(ctx, http.MethodPost, "oauth/revoke", payload)
+	if err != nil {
+		return errors.Wrap(err, "error creating request")
+	}
+
+	res, err := d.client.Do(req)
+	if err != nil {
+		return errors.Wrap(err, "error performing http request")
+	}
+
+	defer res.Body.Close()
+
+	if _, err = checkErrorResponse(res); err != nil {
+		return err
+	}
+	return nil
 }
 
 // NewFormRequest creates a new form URL encoded request
