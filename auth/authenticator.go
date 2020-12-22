@@ -152,6 +152,10 @@ func (d *DeviceAuthenticator) VerifyDevice(ctx context.Context) (*DeviceVerifica
 	}
 
 	checkInterval := time.Duration(deviceCodeRes.PollingInterval) * time.Second
+	if checkInterval == 0 {
+		checkInterval = time.Duration(5) * time.Second
+	}
+
 	expiresAt := d.Clock.Now().Add(time.Duration(deviceCodeRes.ExpiresIn) * time.Second)
 
 	return &DeviceVerification{

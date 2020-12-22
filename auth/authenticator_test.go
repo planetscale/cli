@@ -48,6 +48,27 @@ func TestVerifyDevice(t *testing.T) {
 				ExpiresAt:               clock.NewMock().Now().Add(time.Duration(1800) * time.Second),
 			},
 		},
+		{
+			desc:         "returns device verification with check interval of 5 seconds when interval is 0",
+			statusCode:   http.StatusOK,
+			expectedBody: "client_id=some-client-id&scope=read_databases,write_databases",
+			deviceCodeRes: `{
+			"device_code": "some_device_code",
+			"user_code": "1234567",
+			"verification_uri": "http://example.com/device",
+			"verification_uri_complete": "http://example.com/device?user_code=1234567",
+			"expires_in": 1800,
+			"interval": 0
+			}`,
+			want: &DeviceVerification{
+				VerificationCompleteURL: "http://example.com/device?user_code=1234567",
+				VerificationURL:         "http://example.com/device",
+				DeviceCode:              "some_device_code",
+				UserCode:                "1234567",
+				CheckInterval:           time.Second * 5,
+				ExpiresAt:               clock.NewMock().Now().Add(time.Duration(1800) * time.Second),
+			},
+		},
 	}
 
 	for _, tt := range tests {
