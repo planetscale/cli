@@ -44,17 +44,15 @@ func CreateCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
-			fmt.Printf("Successfully created database: %s\n", database.Label)
+			fmt.Printf("Successfully created database: %s\n", database.Name)
 
 			return nil
 		},
 	}
 
-	cmd.Flags().StringVarP(&createReq.Database.Label, "label", "l", "", "the label for the database (required)")
-	cmd.Flags().StringVarP(&createReq.Database.Slug, "slug", "s", "", "the slug for the database (required)")
-	cmd.Flags().StringVarP(&createReq.Database.Description, "description", "d", "", "a description for the database (required)")
-	_ = cmd.MarkFlagRequired("label")
-	_ = cmd.MarkFlagRequired("slug")
+	cmd.Flags().StringVar(&createReq.Database.Name, "name", "", "the name for the database (required)")
+	cmd.Flags().StringVar(&createReq.Database.Notes, "notes", "", "notes for the database")
+	_ = cmd.MarkFlagRequired("name")
 	cmd.Flags().BoolP("web", "w", false, "Create a database in your web browser")
 
 	return cmd
