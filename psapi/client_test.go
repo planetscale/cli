@@ -17,15 +17,18 @@ func TestDo(t *testing.T) {
 		statusCode    int
 		method        string
 		expectedError error
+		body          interface{}
+		v             interface{}
+		want          interface{}
 	}{
 		{
-			desc:       "returns an HTTP response 200 when everything is fine",
+			desc:       "returns an HTTP response and no error for 2xx responses",
 			statusCode: http.StatusOK,
 			response:   `{}`,
 			method:     http.MethodGet,
 		},
 		{
-			desc:       "returns an error response when the response is an error",
+			desc:       "returns ErrorResponse for 4xx errors",
 			statusCode: http.StatusNotFound,
 			method:     http.MethodGet,
 			response: `{
@@ -35,6 +38,28 @@ func TestDo(t *testing.T) {
 			expectedError: &ErrorResponse{
 				Code:    "not_found",
 				Message: "Not Found",
+			},
+		},
+		{
+			desc:       "returns an HTTP response 200 when posting a request",
+			statusCode: http.StatusOK,
+			response: `{
+			"database": {
+				"id": 1,
+				"name": "foo-bar"
+			}
+			}`,
+			body: &CreateDatabaseRequest{
+				Database: &Database{
+					Name: "foo-bar",
+				},
+			},
+			v: &DatabaseResponse{},
+			want: &DatabaseResponse{
+				Database: &Database{
+					ID:   1,
+					Name: "foo-bar",
+				},
 			},
 		},
 	}
@@ -62,13 +87,13 @@ func TestDo(t *testing.T) {
 				return
 			}
 
-			req, err := client.NewRequest(tt.method, "/api-endpoint", nil)
+			req, err := client.NewRequest(tt.method, "/api-endpoint", tt.body)
 			if err != nil {
 				t.Fatal(err)
 				return
 			}
 
-			res, err := client.Do(context.Background(), req, nil)
+			res, err := client.Do(context.Background(), req, tt.v)
 			if err != nil && tt.expectedError == nil {
 				if tt.expectedError != nil {
 					assert.Equal(t, tt.expectedError, err)
@@ -82,6 +107,7 @@ func TestDo(t *testing.T) {
 			assert.Equal(t, tt.expectedError, err)
 			assert.NotNil(t, res)
 			assert.Equal(t, res.StatusCode, tt.statusCode)
+			assert.Equal(t, tt.want, tt.v)
 		})
 	}
 }
