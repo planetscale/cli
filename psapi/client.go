@@ -107,7 +107,7 @@ func (c *Client) Do(ctx context.Context, req *http.Request, v interface{}) (*htt
 			return nil, err
 		}
 
-		return nil, errorRes
+		return res, errorRes
 	}
 
 	if v != nil {
@@ -117,7 +117,6 @@ func (c *Client) Do(ctx context.Context, req *http.Request, v interface{}) (*htt
 		}
 	}
 
-	// TODO(iheanyi): Add basic error response handling here.
 	return res, nil
 }
 
