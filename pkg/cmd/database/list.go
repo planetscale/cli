@@ -15,7 +15,8 @@ import (
 // ListCmd is the command for listing all databases for an authenticated user.
 func ListCmd(cfg *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
-		Use: "list",
+		Use:   "list",
+		Short: "List databases",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 			web, err := cmd.Flags().GetBool("web")

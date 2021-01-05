@@ -17,7 +17,8 @@ func CreateCmd(cfg *config.Config) *cobra.Command {
 		Database: new(psapi.Database),
 	}
 	cmd := &cobra.Command{
-		Use: "create",
+		Use:   "create",
+		Short: "Create a database instance",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 			web, err := cmd.Flags().GetBool("web")
