@@ -17,10 +17,11 @@ import (
 
 const (
 	DefaultBaseURL = "https://auth.planetscaledb.io/"
-	OAuthClientID  = "t2BvqIt05FumxPxrF8pOAPuGI6WzANy80N_Knz99jng"
+	OAuthClientID  = "wzzkYKOfRcxFAiMgDgfbhO9yIikNIlt9-yhosmvPBQA"
+
 	// This is safe to be committed to version control, since our OAuth
 	// Application isn't confidential.
-	OAuthClientSecret = "e3piy8W8qXkk3uSkkWWQp8XGE0O5v78E0gGKnBG_BYA"
+	OAuthClientSecret = "eIDdgw21BYsovcrpC4iKZQ0o7ol9cN1LsSr8fuNyg5o"
 
 	formMediaType = "application/x-www-form-urlencoded"
 	jsonMediaType = "application/json"

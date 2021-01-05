@@ -17,7 +17,8 @@ func CreateCmd(cfg *config.Config) *cobra.Command {
 		Database: new(psapi.Database),
 	}
 	cmd := &cobra.Command{
-		Use: "create",
+		Use:   "create",
+		Short: "Create a database instance",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 			web, err := cmd.Flags().GetBool("web")
@@ -27,7 +28,7 @@ func CreateCmd(cfg *config.Config) *cobra.Command {
 
 			if web {
 				fmt.Println("🌐  Redirecting you to create a database in your web browser.")
-				err := browser.OpenURL(fmt.Sprintf("https://app.planetscaledb.io/databases?slug=%s&label=%s&description=%s&showDialog=true", url.QueryEscape(createReq.Database.Slug), url.QueryEscape(createReq.Database.Label), url.QueryEscape(createReq.Database.Description)))
+				err := browser.OpenURL(fmt.Sprintf("https://app.planetscaledb.io/databases?name=%s&notes=%s&showDialog=true", url.QueryEscape(createReq.Database.Name), url.QueryEscape(createReq.Database.Notes)))
 				if err != nil {
 					return err
 				}
@@ -44,17 +45,15 @@ func CreateCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
-			fmt.Printf("Successfully created database: %s\n", database.Label)
+			fmt.Printf("Successfully created database: %s\n", database.Name)
 
 			return nil
 		},
 	}
 
-	cmd.Flags().StringVarP(&createReq.Database.Label, "label", "l", "", "the label for the database (required)")
-	cmd.Flags().StringVarP(&createReq.Database.Slug, "slug", "s", "", "the slug for the database (required)")
-	cmd.Flags().StringVarP(&createReq.Database.Description, "description", "d", "", "a description for the database (required)")
-	_ = cmd.MarkFlagRequired("label")
-	_ = cmd.MarkFlagRequired("slug")
+	cmd.Flags().StringVar(&createReq.Database.Name, "name", "", "the name for the database (required)")
+	cmd.Flags().StringVar(&createReq.Database.Notes, "notes", "", "notes for the database")
+	_ = cmd.MarkFlagRequired("name")
 	cmd.Flags().BoolP("web", "w", false, "Create a database in your web browser")
 
 	return cmd

@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 
@@ -15,12 +16,15 @@ func DeleteCmd(cfg *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete <database_id>",
 		Short: "Delete a database instance",
-		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 			client, err := cfg.NewClientFromConfig()
 			if err != nil {
 				return err
+			}
+
+			if len(args) == 0 {
+				return errors.New("<database_id> is missing")
 			}
 
 			id, err := strconv.Atoi(args[0])
