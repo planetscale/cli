@@ -27,7 +27,7 @@ func CreateCmd(cfg *config.Config) *cobra.Command {
 
 			if web {
 				fmt.Println("🌐  Redirecting you to create a database in your web browser.")
-				err := browser.OpenURL(fmt.Sprintf("https://app.planetscaledb.io/databases?slug=%s&label=%s&description=%s&showDialog=true", url.QueryEscape(createReq.Database.Slug), url.QueryEscape(createReq.Database.Label), url.QueryEscape(createReq.Database.Description)))
+				err := browser.OpenURL(fmt.Sprintf("https://app.planetscaledb.io/databases?name=%s&notes=%s&showDialog=true", url.QueryEscape(createReq.Database.Name), url.QueryEscape(createReq.Database.Notes)))
 				if err != nil {
 					return err
 				}
