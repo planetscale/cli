@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 
@@ -101,10 +102,25 @@ func (c *Client) Do(ctx context.Context, req *http.Request, v interface{}) (*htt
 	defer res.Body.Close()
 
 	if res.StatusCode >= 400 {
-		errorRes := &ErrorResponse{}
-		err = json.NewDecoder(res.Body).Decode(errorRes)
+		out, err := ioutil.ReadAll(res.Body)
 		if err != nil {
 			return nil, err
+		}
+
+		errorRes := &ErrorResponse{}
+		err = json.Unmarshal(out, errorRes)
+		if err != nil {
+			return nil, err
+		}
+
+		// json.Unmarshal doesn't return an error if the response
+		// body has a different protocol then "ErrorResponse". We
+		// check here to make sure that errorRes is populated. If
+		// not, we return the full response back to the user, so
+		// they can debug the issue.
+		// TODO(arslan): fix the behavior on the API side
+		if *errorRes == (ErrorResponse{}) {
+			return nil, errors.New(string(out))
 		}
 
 		return res, errorRes
