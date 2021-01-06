@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/hashicorp/go-cleanhttp"
 	"golang.org/x/oauth2"
 )
 
@@ -47,7 +48,7 @@ func SetBaseURL(baseURL string) ClientOption {
 // NewClient instantiates an instance of the PlanetScale API client
 func NewClient(client *http.Client, opts ...ClientOption) (*Client, error) {
 	if client == nil {
-		client = http.DefaultClient
+		client = cleanhttp.DefaultClient()
 	}
 
 	baseURL, err := url.Parse(DefaultBaseURL)
@@ -122,7 +123,7 @@ func (c *Client) Do(ctx context.Context, req *http.Request, v interface{}) (*htt
 			return nil, errors.New(string(out))
 		}
 
-		return nil, errorRes
+		return res, errorRes
 	}
 
 	if v != nil {
@@ -132,7 +133,6 @@ func (c *Client) Do(ctx context.Context, req *http.Request, v interface{}) (*htt
 		}
 	}
 
-	// TODO(iheanyi): Add basic error response handling here.
 	return res, nil
 }
 
