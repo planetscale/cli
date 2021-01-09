@@ -22,7 +22,7 @@ import (
 	"github.com/planetscale/cli/config"
 	"github.com/planetscale/cli/pkg/cmd/auth"
 	"github.com/planetscale/cli/pkg/cmd/database"
-	"github.com/planetscale/cli/psapi"
+	ps "github.com/planetscale/planetscale-go"
 	"github.com/spf13/cobra"
 
 	homedir "github.com/mitchellh/go-homedir"
@@ -68,7 +68,7 @@ func init() {
 
 	cfg := config.New()
 
-	rootCmd.PersistentFlags().StringVar(&cfg.BaseURL, "api-url", psapi.DefaultBaseURL, "The base URL for the PlanetScale API.")
+	rootCmd.PersistentFlags().StringVar(&cfg.BaseURL, "api-url", ps.DefaultBaseURL, "The base URL for the PlanetScale API.")
 	rootCmd.PersistentFlags().StringVar(&cfg.AccessToken, "api-token", cfg.AccessToken, "The API token to use for authenticating against the PlanetScale API.")
 	rootCmd.AddCommand(auth.AuthCmd(cfg))
 	rootCmd.AddCommand(database.DatabaseCmd(cfg))

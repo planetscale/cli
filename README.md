@@ -7,8 +7,25 @@ In order to get setup and running with this project, you can run `script/setup` 
 You can install and use the program using `script/build` or `go install ./...`. After doing so, you can run the tool using `psctl <command> [subcommand] [flags]`.
 
 
-
 For using the CLI locally, there's some extra setup involved to get authenticated.
+
+### Updating the vendored API package 
+
+
+To update the vendored `github.com/planetscale/planetscale-go` API package,
+first make sure to set up Go for private repositories:
+
+```
+go env -w GOPRIVATE="github.com/planetscale/*"
+```
+
+Then, use the following commands to fetch the `latest` HEAD version of the CLI:
+
+```
+go get github.com/planetscale/planetscale-go
+go mod vendor
+go mod tidy
+```
 
 #### For logging in: 
 1. Create a Rails OAuth application at `http://auth.planetscaledb.local:3000/oauth/applications/new`. Make sure the `Confidential` box is unchecked and that the scopes are `read_database write_database`. You can make the `Redirect URI` be anything.
