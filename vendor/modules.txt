@@ -92,7 +92,6 @@ github.com/subosito/gotenv
 golang.org/x/net/context
 golang.org/x/net/context/ctxhttp
 # golang.org/x/oauth2 v0.0.0-20201208152858-08078c50e5b5
-## explicit
 golang.org/x/oauth2
 golang.org/x/oauth2/internal
 # golang.org/x/sys v0.0.0-20200803210538-64077c9b5642
