@@ -7,14 +7,15 @@ import (
 
 	"github.com/pkg/browser"
 	"github.com/planetscale/cli/config"
-	"github.com/planetscale/cli/psapi"
+	ps "github.com/planetscale/planetscale-go"
+
 	"github.com/spf13/cobra"
 )
 
 // CreateCmd is the command for creating a database.
 func CreateCmd(cfg *config.Config) *cobra.Command {
-	createReq := &psapi.CreateDatabaseRequest{
-		Database: new(psapi.Database),
+	createReq := &ps.CreateDatabaseRequest{
+		Database: new(ps.Database),
 	}
 	cmd := &cobra.Command{
 		Use:   "create",

@@ -1,4 +1,4 @@
-package psapi
+package planetscale
 
 import (
 	"context"
