@@ -44,6 +44,7 @@ func BranchCmd(cfg *config.Config) *cobra.Command {
 	cmd.Flags().StringVar(&notes, "notes", "", "notes for the database branch")
 	cmd.AddCommand(ListCmd(cfg))
 	cmd.AddCommand(StatusCmd(cfg))
+	cmd.AddCommand(DeleteCmd(cfg))
 
 	return cmd
 }
