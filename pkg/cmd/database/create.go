@@ -54,9 +54,7 @@ func CreateCmd(cfg *config.Config) *cobra.Command {
 
 	cmd.Flags().StringVar(&createReq.Database.Name, "name", "", "the name for the database (required)")
 	cmd.Flags().StringVar(&createReq.Database.Notes, "notes", "", "notes for the database")
-	cmd.Flags().StringVar(&organization, "org", "damp-dew-7358", "organization to create the database in")
 	_ = cmd.MarkFlagRequired("name")
-	_ = cmd.MarkFlagRequired("org")
 	cmd.Flags().BoolP("web", "w", false, "Create a database in your web browser")
 
 	return cmd
