@@ -1,7 +1,6 @@
 package branch
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/planetscale/cli/config"
@@ -11,11 +10,11 @@ import (
 // StatusCmd gets the status of a database branch using the PlanetScale API.
 func StatusCmd(cfg *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "status <branch>",
+		Use:   "status <db_name> <branch_name>",
 		Short: "Check the status of a branch of a database",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) == 0 {
-				return errors.New("missing <branch>")
+			if len(args) != 2 {
+				return cmd.Usage()
 			}
 
 			_, err := cfg.NewClientFromConfig()
