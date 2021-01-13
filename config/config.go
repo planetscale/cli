@@ -15,8 +15,9 @@ const (
 )
 
 type Config struct {
-	AccessToken string
-	BaseURL     string
+	AccessToken  string
+	BaseURL      string
+	Organization string
 }
 
 func New() *Config {
