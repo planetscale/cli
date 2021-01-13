@@ -21,6 +21,7 @@ import (
 
 	"github.com/planetscale/cli/config"
 	"github.com/planetscale/cli/pkg/cmd/auth"
+	"github.com/planetscale/cli/pkg/cmd/branch"
 	"github.com/planetscale/cli/pkg/cmd/database"
 	ps "github.com/planetscale/planetscale-go"
 	"github.com/spf13/cobra"
@@ -73,6 +74,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&cfg.Organization, "org", cfg.Organization, "The organization for the current user")
 	rootCmd.AddCommand(auth.AuthCmd(cfg))
 	rootCmd.AddCommand(database.DatabaseCmd(cfg))
+	rootCmd.AddCommand(branch.BranchCmd(cfg))
 
 	_ = rootCmd.MarkFlagRequired("org")
 }
