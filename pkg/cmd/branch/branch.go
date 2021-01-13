@@ -20,6 +20,14 @@ func BranchCmd(cfg *config.Config) *cobra.Command {
 				return cmd.Usage()
 			}
 
+			source := args[0]
+			branch := args[1]
+
+			// Simplest case, the names are equivalent
+			if source == branch {
+				return fmt.Errorf("A branch named '%s' already exists", branch)
+			}
+
 			_, err := cfg.NewClientFromConfig()
 			if err != nil {
 				return err
