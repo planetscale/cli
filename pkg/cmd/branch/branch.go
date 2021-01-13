@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// BranchCmd handles the branching of a database.
 func BranchCmd(cfg *config.Config) *cobra.Command {
 	var notes string
 	cmd := &cobra.Command{
@@ -42,6 +43,7 @@ func BranchCmd(cfg *config.Config) *cobra.Command {
 
 	cmd.Flags().StringVar(&notes, "notes", "", "notes for the database branch")
 	cmd.AddCommand(ListCmd(cfg))
+	cmd.AddCommand(StatusCmd(cfg))
 
 	return cmd
 }
