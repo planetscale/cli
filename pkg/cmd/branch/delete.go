@@ -1,6 +1,7 @@
 package branch
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/planetscale/cli/config"
@@ -12,18 +13,30 @@ func DeleteCmd(cfg *config.Config) *cobra.Command {
 		Use:   "delete <db_name> <branch_name>",
 		Short: "Delete a specific branch of a database and all of it's data",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := context.Background()
 			if len(args) != 2 {
 				return cmd.Usage()
 			}
 
-			_, err := cfg.NewClientFromConfig()
+			source := args[0]
+			branch := args[1]
+
+			client, err := cfg.NewClientFromConfig()
 			if err != nil {
 				return err
 			}
 
-			// TODO: Call PlanetScale API here to destroy the database branch.
+			deleted, err := client.DatabaseBranches.Delete(ctx, cfg.Organization, source, branch)
+			if err != nil {
+				return err
+			}
 
-			fmt.Println("destroying a database branch has not been implemented yet")
+			if deleted {
+				fmt.Printf("Successfully deleted branch `%s` from `%s`\n", branch, source)
+			} else {
+				fmt.Printf("Failed to delete branch `%s` from `%s`\n", branch, source)
+			}
+
 			return nil
 		},
 	}
