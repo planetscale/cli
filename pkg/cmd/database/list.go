@@ -39,7 +39,7 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
-			databases, err := client.Databases.List(ctx)
+			databases, err := client.Databases.List(ctx, cfg.Organization)
 			if err != nil {
 				return errors.Wrap(err, "error listing databases")
 			}

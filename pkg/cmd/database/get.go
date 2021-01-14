@@ -2,8 +2,8 @@ package database
 
 import (
 	"context"
+	"errors"
 	"os"
-	"strconv"
 
 	"github.com/lensesio/tableprinter"
 	"github.com/planetscale/cli/config"
@@ -12,7 +12,7 @@ import (
 
 func GetCmd(cfg *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "get <databases_id>",
+		Use:   "get <databases_name>",
 		Short: "Retrieve information about a database",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -22,12 +22,12 @@ func GetCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
-			id, err := strconv.Atoi(args[0])
-			if err != nil {
-				return err
+			if len(args) == 0 {
+				return errors.New("<database_name> is missing")
 			}
+			name := args[0]
 
-			database, err := client.Databases.Get(ctx, int64(id))
+			database, err := client.Databases.Get(ctx, cfg.Organization, name)
 			if err != nil {
 				return err
 			}

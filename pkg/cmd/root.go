@@ -45,14 +45,7 @@ var rootCmd = &cobra.Command{
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
-func Execute() {
-	if err := rootCmd.Execute(); err != nil {
-		// fmt.Println(err)
-		os.Exit(1)
-	}
-}
-
-func init() {
+func Execute() error {
 	cobra.OnInitialize(initConfig)
 
 	// Here you will define your flags and configuration settings.
@@ -76,7 +69,11 @@ func init() {
 	rootCmd.AddCommand(database.DatabaseCmd(cfg))
 	rootCmd.AddCommand(branch.BranchCmd(cfg))
 
-	_ = rootCmd.MarkFlagRequired("org")
+	if err := rootCmd.MarkPersistentFlagRequired("org"); err != nil {
+		return err
+	}
+
+	return rootCmd.Execute()
 }
 
 // initConfig reads in config file and ENV variables if set.

@@ -1,7 +1,15 @@
 package main
 
-import "github.com/planetscale/cli/pkg/cmd"
+import (
+	"fmt"
+	"os"
+
+	"github.com/planetscale/cli/pkg/cmd"
+)
 
 func main() {
-	cmd.Execute()
+	if err := cmd.Execute(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 }
