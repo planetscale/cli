@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/browser"
 	"github.com/pkg/errors"
 	"github.com/planetscale/cli/config"
+	"github.com/planetscale/cli/printer"
 	"github.com/spf13/cobra"
 )
 
@@ -49,7 +50,7 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 				return nil
 			}
 
-			tableprinter.Print(os.Stdout, databases)
+			tableprinter.Print(os.Stdout, printer.NewDatabasePrinterSlice(databases))
 			return nil
 		},
 		TraverseChildren: true,
