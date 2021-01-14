@@ -15,7 +15,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/pkg/browser v0.0.0-20201112035734-206646e67786
 	github.com/pkg/errors v0.9.1
-	github.com/planetscale/planetscale-go v0.0.0-20210109112707-8edffde9c156
+	github.com/planetscale/planetscale-go v0.0.0-20210114105521-791addc2b6ea
 	github.com/spf13/cobra v1.1.1
 	github.com/spf13/viper v1.7.0
 	github.com/stretchr/testify v1.6.1

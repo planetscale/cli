@@ -1,7 +1,14 @@
 package main
 
-import "github.com/planetscale/cli/pkg/cmd"
+import (
+	"os"
+
+	"github.com/planetscale/cli/pkg/cmd"
+)
 
 func main() {
-	cmd.Execute()
+	if err := cmd.Execute(); err != nil {
+		// we don't print the error, because cobra does it for us
+		os.Exit(1)
+	}
 }

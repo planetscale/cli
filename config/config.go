@@ -57,8 +57,12 @@ func AccessTokenPath() string {
 }
 
 // NewClientFromConfig creates a PlaentScale API client from our configuration
-func (c *Config) NewClientFromConfig(opts ...ps.ClientOption) (*ps.Client, error) {
-	args := []ps.ClientOption{ps.SetBaseURL(c.BaseURL)}
-	args = append(args, opts...)
-	return ps.NewClientFromToken(c.AccessToken, args...)
+func (c *Config) NewClientFromConfig(clientOpts ...ps.ClientOption) (*ps.Client, error) {
+	opts := []ps.ClientOption{
+		ps.WithBaseURL(c.BaseURL),
+		ps.WithAccessToken(c.AccessToken),
+	}
+	opts = append(opts, clientOpts...)
+
+	return ps.NewClient(opts...)
 }
