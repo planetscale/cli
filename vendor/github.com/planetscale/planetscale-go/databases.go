@@ -72,13 +72,20 @@ func (ds *databasesService) List(ctx context.Context, org string) ([]*Database, 
 	}
 	defer res.Body.Close()
 
-	listRes := &ListDatabasesResponse{}
-	_, err = jsonapi.UnmarshalManyPayload(res.Body, reflect.TypeOf(listRes))
+	databases, err := jsonapi.UnmarshalManyPayload(res.Body, reflect.TypeOf(new(Database)))
 	if err != nil {
 		return nil, err
 	}
 
-	return listRes.Databases, nil
+	dbs := make([]*Database, 0, len(databases))
+	for _, database := range databases {
+		db, ok := database.(*Database)
+		if ok {
+			dbs = append(dbs, db)
+		}
+	}
+
+	return dbs, nil
 }
 
 func (ds *databasesService) Create(ctx context.Context, org string, createReq *CreateDatabaseRequest) (*Database, error) {
