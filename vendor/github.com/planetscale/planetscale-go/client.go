@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -21,10 +20,11 @@ const (
 
 // Client encapsulates a client that talks to the PlanetScale API
 type Client struct {
+	// client represents the HTTP client used for making HTTP requests.
 	client *http.Client
 
-	// Base URL for the API
-	BaseURL *url.URL
+	// base URL for the API
+	baseURL *url.URL
 
 	Databases DatabasesService
 }
@@ -32,32 +32,59 @@ type Client struct {
 // ClientOption provides a variadic option for configuring the client
 type ClientOption func(c *Client) error
 
-// SetBaseURL overrides the base URL for the API.
-func SetBaseURL(baseURL string) ClientOption {
+// WithBaseURL overrides the base URL for the API.
+func WithBaseURL(baseURL string) ClientOption {
 	return func(c *Client) error {
 		parsedURL, err := url.Parse(baseURL)
 		if err != nil {
 			return err
 		}
 
-		c.BaseURL = parsedURL
+		c.baseURL = parsedURL
 		return nil
 	}
 }
 
-// NewClient instantiates an instance of the PlanetScale API client
-func NewClient(client *http.Client, opts ...ClientOption) (*Client, error) {
-	if client == nil {
-		client = cleanhttp.DefaultClient()
-	}
+// WithAccessToken configures a client with the tiven PlanetScale access token.
+func WithAccessToken(token string) ClientOption {
+	return func(c *Client) error {
+		if token == "" {
+			return errors.New("missing access token")
+		}
 
+		tokenSource := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
+
+		// make sure we use our own HTTP client
+		ctx := context.WithValue(context.Background(), oauth2.HTTPClient, c.client)
+		oauthClient := oauth2.NewClient(ctx, tokenSource)
+
+		c.client = oauthClient
+		return nil
+	}
+}
+
+// WithHTTPClient configures the PLanetScale client with the given HTTP client.
+func WithHTTPClient(client *http.Client) ClientOption {
+	return func(c *Client) error {
+		if client == nil {
+			client = cleanhttp.DefaultClient()
+		}
+
+		c.client = client
+		return nil
+	}
+}
+
+// NewClient instantiates an instance of the PlanetScale API client.
+func NewClient(opts ...ClientOption) (*Client, error) {
 	baseURL, err := url.Parse(DefaultBaseURL)
 	if err != nil {
 		return nil, err
 	}
+
 	c := &Client{
-		client:  client,
-		BaseURL: baseURL,
+		client:  cleanhttp.DefaultClient(),
+		baseURL: baseURL,
 	}
 
 	for _, opt := range opts {
@@ -67,39 +94,20 @@ func NewClient(client *http.Client, opts ...ClientOption) (*Client, error) {
 		}
 	}
 
-	c.Databases = &databasesService{
-		client: c,
-	}
+	c.Databases = &databasesService{client: c}
 
 	return c, nil
 }
 
-// NewClientFromToken instantiates an API client with a given access token.
-func NewClientFromToken(accessToken string, opts ...ClientOption) (*Client, error) {
-	if accessToken == "" {
-		return nil, errors.New("missing access token")
-	}
-
-	tokenSource := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: accessToken})
-	oauthClient := oauth2.NewClient(context.Background(), tokenSource)
-
-	return NewClient(oauthClient, opts...)
-}
-
-// GetAPIEndpoint simply returns an API endpoint.
-func (c *Client) GetAPIEndpoint(path string) string {
-	return fmt.Sprintf("%s/%s", c.BaseURL, path)
-}
-
-// Do executes the inputted HTTP request.
-func (c *Client) Do(ctx context.Context, req *http.Request, v interface{}) (*http.Response, error) {
+// Do sends an HTTP request and returns an HTTP response with the configured
+// HTTP client.
+func (c *Client) Do(ctx context.Context, req *http.Request) (*http.Response, error) {
 	req = req.WithContext(ctx)
 
 	res, err := c.client.Do(req)
 	if err != nil {
 		return nil, err
 	}
-	defer res.Body.Close()
 
 	if res.StatusCode >= 400 {
 		out, err := ioutil.ReadAll(res.Body)
@@ -118,7 +126,7 @@ func (c *Client) Do(ctx context.Context, req *http.Request, v interface{}) (*htt
 		// check here to make sure that errorRes is populated. If
 		// not, we return the full response back to the user, so
 		// they can debug the issue.
-		// TODO(arslan): fix the behavior on the API side
+		// TODO(fatih): fix the behavior on the API side
 		if *errorRes == (ErrorResponse{}) {
 			return nil, errors.New(string(out))
 		}
@@ -126,18 +134,11 @@ func (c *Client) Do(ctx context.Context, req *http.Request, v interface{}) (*htt
 		return res, errorRes
 	}
 
-	if v != nil {
-		err = json.NewDecoder(res.Body).Decode(v)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	return res, nil
 }
 
-func (c *Client) NewRequest(method string, path string, body interface{}) (*http.Request, error) {
-	u, err := c.BaseURL.Parse(path)
+func (c *Client) newRequest(method string, path string, body interface{}) (*http.Request, error) {
+	u, err := c.baseURL.Parse(path)
 	if err != nil {
 		return nil, err
 	}

@@ -3,6 +3,7 @@ module github.com/planetscale/planetscale-go
 go 1.15
 
 require (
+	github.com/google/jsonapi v0.0.0-20201022225600-f822737867f6
 	github.com/hashicorp/go-cleanhttp v0.5.1
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.4.0
