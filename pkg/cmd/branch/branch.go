@@ -5,13 +5,14 @@ import (
 	"fmt"
 
 	"github.com/planetscale/cli/config"
+	ps "github.com/planetscale/planetscale-go"
 	"github.com/spf13/cobra"
 )
 
 // BranchCmd handles the branching of a database.
 func BranchCmd(cfg *config.Config) *cobra.Command {
 	createReq := &ps.CreateDatabaseBranchRequest{
-		DatabaseBranch: new(ps.DatabaseBranch),
+		Branch: new(ps.DatabaseBranch),
 	}
 
 	cmd := &cobra.Command{
@@ -34,7 +35,7 @@ func BranchCmd(cfg *config.Config) *cobra.Command {
 				return fmt.Errorf("A branch named '%s' already exists", branch)
 			}
 
-			createReq.DatabaseBranch.Name = branch
+			createReq.Branch.Name = branch
 
 			client, err := cfg.NewClientFromConfig()
 			if err != nil {
@@ -52,7 +53,7 @@ func BranchCmd(cfg *config.Config) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&createReq.DatabaseBranch.Notes, "notes", "", "notes for the database branch")
+	cmd.Flags().StringVar(&createReq.Branch.Notes, "notes", "", "notes for the database branch")
 	cmd.AddCommand(ListCmd(cfg))
 	cmd.AddCommand(StatusCmd(cfg))
 	cmd.AddCommand(DeleteCmd(cfg))
