@@ -2,8 +2,8 @@ package database
 
 import (
 	"context"
+	"errors"
 	"os"
-	"strconv"
 
 	"github.com/lensesio/tableprinter"
 	"github.com/planetscale/cli/config"
@@ -13,7 +13,7 @@ import (
 // StatusCmd encapsulates the
 func StatusCmd(cfg *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "status <database_id>",
+		Use:   "status <database_name>",
 		Short: "Get the status of a database",
 		Args:  cobra.ExactArgs(1),
 		Long:  "TODO",
@@ -24,12 +24,12 @@ func StatusCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
-			id, err := strconv.Atoi(args[0])
-			if err != nil {
-				return err
+			if len(args) == 0 {
+				return errors.New("<database_name> is missing")
 			}
+			name := args[0]
 
-			status, err := client.Databases.Status(ctx, int64(id))
+			status, err := client.Databases.Status(ctx, cfg.Organization, name)
 			if err != nil {
 				return err
 			}

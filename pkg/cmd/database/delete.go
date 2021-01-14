@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
 
 	"github.com/planetscale/cli/config"
 	"github.com/spf13/cobra"
@@ -14,7 +13,7 @@ import (
 // user.
 func DeleteCmd(cfg *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "delete <database_id>",
+		Use:   "delete <database_name>",
 		Short: "Delete a database instance",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
@@ -24,21 +23,17 @@ func DeleteCmd(cfg *config.Config) *cobra.Command {
 			}
 
 			if len(args) == 0 {
-				return errors.New("<database_id> is missing")
+				return errors.New("<database_name> is missing")
 			}
+			name := args[0]
 
-			id, err := strconv.Atoi(args[0])
-			if err != nil {
-				return err
-			}
-
-			deleted, err := client.Databases.Delete(ctx, int64(id))
+			deleted, err := client.Databases.Delete(ctx, cfg.Organization, name)
 			if err != nil {
 				return err
 			}
 
 			if deleted {
-				fmt.Printf("Successfully deleted database with ID: %d\n", id)
+				fmt.Printf("Successfully deleted database with the name: %q\n", name)
 			}
 
 			return nil

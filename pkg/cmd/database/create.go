@@ -41,7 +41,7 @@ func CreateCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
-			database, err := client.Databases.Create(ctx, createReq)
+			database, err := client.Databases.Create(ctx, cfg.Organization, createReq)
 			if err != nil {
 				return err
 			}
