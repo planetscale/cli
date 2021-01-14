@@ -25,8 +25,8 @@ func NewDatabasePrinter(db *ps.Database) *Database {
 	}
 }
 
-// NewDatabasePrinterSlice returns a slice of printable databases.
-func NewDatabasePrinterSlice(databases []*ps.Database) []*Database {
+// NewDatabaseSlicePrinter returns a slice of printable databases.
+func NewDatabaseSlicePrinter(databases []*ps.Database) []*Database {
 	dbs := make([]*Database, 0, len(databases))
 
 	for _, db := range databases {

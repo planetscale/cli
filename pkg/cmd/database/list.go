@@ -50,7 +50,7 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 				return nil
 			}
 
-			tableprinter.Print(os.Stdout, printer.NewDatabasePrinterSlice(databases))
+			tableprinter.Print(os.Stdout, printer.NewDatabaseSlicePrinter(databases))
 			return nil
 		},
 		TraverseChildren: true,
