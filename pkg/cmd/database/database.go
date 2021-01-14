@@ -18,7 +18,6 @@ func DatabaseCmd(cfg *config.Config) *cobra.Command {
 	cmd.AddCommand(ListCmd(cfg))
 	cmd.AddCommand(DeleteCmd(cfg))
 	cmd.AddCommand(GetCmd(cfg))
-	cmd.AddCommand(StatusCmd(cfg))
 
 	return cmd
 }
