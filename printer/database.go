@@ -6,6 +6,7 @@ import (
 	"github.com/planetscale/planetscale-go"
 )
 
+// Database returns a table-serializable database model.
 type Database struct {
 	Name      string     `header:"name"`
 	Notes     string     `header:"notes"`
@@ -13,7 +14,7 @@ type Database struct {
 	UpdatedAt *time.Time `header:"updated_at,timestamp"`
 }
 
-// DatabasePrinter returns a struct that prints out the various fields of a
+// NewDatabasePrinter returns a struct that prints out the various fields of a
 // database model.
 func NewDatabasePrinter(db *planetscale.Database) *Database {
 	return &Database{
@@ -22,4 +23,15 @@ func NewDatabasePrinter(db *planetscale.Database) *Database {
 		CreatedAt: &db.CreatedAt,
 		UpdatedAt: &db.UpdatedAt,
 	}
+}
+
+// NewDatabasePrinterSlice returns a slice of printable databases.
+func NewDatabasePrinterSlice(databases []*planetscale.Database) []*Database {
+	dbs := make([]*Database, 0, len(databases))
+
+	for _, db := range databases {
+		dbs = append(dbs, NewDatabasePrinter(db))
+	}
+
+	return dbs
 }
