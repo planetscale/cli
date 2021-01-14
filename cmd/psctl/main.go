@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/planetscale/cli/pkg/cmd"
@@ -9,7 +8,7 @@ import (
 
 func main() {
 	if err := cmd.Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		// we don't print the error, because cobra does it for us
 		os.Exit(1)
 	}
 }

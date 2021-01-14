@@ -99,13 +99,13 @@ func (ds *databasesService) Create(ctx context.Context, org string, createReq *C
 	}
 	defer res.Body.Close()
 
-	createRes := &DatabaseResponse{}
+	createRes := &Database{}
 	err = jsonapi.UnmarshalPayload(res.Body, createRes)
 	if err != nil {
 		return nil, err
 	}
 
-	return createRes.Database, nil
+	return createRes, nil
 }
 
 func (ds *databasesService) Get(ctx context.Context, org string, name string) (*Database, error) {

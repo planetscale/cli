@@ -65,7 +65,7 @@ github.com/pkg/browser
 # github.com/pkg/errors v0.9.1
 ## explicit
 github.com/pkg/errors
-# github.com/planetscale/planetscale-go v0.0.0-20210114094631-5f5895213ae1
+# github.com/planetscale/planetscale-go v0.0.0-20210114105521-791addc2b6ea
 ## explicit
 github.com/planetscale/planetscale-go
 # github.com/pmezard/go-difflib v1.0.0
