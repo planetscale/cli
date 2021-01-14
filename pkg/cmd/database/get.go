@@ -7,6 +7,7 @@ import (
 
 	"github.com/lensesio/tableprinter"
 	"github.com/planetscale/cli/config"
+	"github.com/planetscale/cli/printer"
 	"github.com/spf13/cobra"
 )
 
@@ -32,7 +33,7 @@ func GetCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
-			tableprinter.Print(os.Stdout, database)
+			tableprinter.Print(os.Stdout, printer.NewDatabasePrinter(database))
 			return nil
 		},
 	}
