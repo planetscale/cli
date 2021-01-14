@@ -3,7 +3,7 @@ package printer
 import (
 	"time"
 
-	"github.com/planetscale/planetscale-go"
+	ps "github.com/planetscale/planetscale-go"
 )
 
 // Database returns a table-serializable database model.
@@ -16,7 +16,7 @@ type Database struct {
 
 // NewDatabasePrinter returns a struct that prints out the various fields of a
 // database model.
-func NewDatabasePrinter(db *planetscale.Database) *Database {
+func NewDatabasePrinter(db *ps.Database) *Database {
 	return &Database{
 		Name:      db.Name,
 		Notes:     db.Notes,
@@ -26,7 +26,7 @@ func NewDatabasePrinter(db *planetscale.Database) *Database {
 }
 
 // NewDatabasePrinterSlice returns a slice of printable databases.
-func NewDatabasePrinterSlice(databases []*planetscale.Database) []*Database {
+func NewDatabasePrinterSlice(databases []*ps.Database) []*Database {
 	dbs := make([]*Database, 0, len(databases))
 
 	for _, db := range databases {
