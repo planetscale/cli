@@ -7,7 +7,9 @@ import (
 	"os"
 
 	"github.com/lensesio/tableprinter"
+	"github.com/pkg/browser"
 	errs "github.com/pkg/errors"
+	"github.com/planetscale/cli/cmdutil"
 	"github.com/planetscale/cli/config"
 	"github.com/planetscale/cli/printer"
 	"github.com/spf13/cobra"
@@ -20,10 +22,6 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 		Short: "List all branches of a database",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
-			client, err := cfg.NewClientFromConfig()
-			if err != nil {
-				return err
-			}
 
 			if len(args) == 0 {
 				return errors.New("<db_name> is missing")
@@ -31,7 +29,25 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 
 			source := args[0]
 
-			// TODO: Actually call database branch endpoints here.
+			web, err := cmd.Flags().GetBool("web")
+			if err != nil {
+				return err
+			}
+
+			if web {
+				fmt.Println("🌐  Redirecting you to your database branches in your web browser.")
+				err := browser.OpenURL(fmt.Sprintf("%s/%s/%s/branches", cmdutil.ApplicationURL, cfg.Organization, source))
+				if err != nil {
+					return err
+				}
+				return nil
+			}
+
+			client, err := cfg.NewClientFromConfig()
+			if err != nil {
+				return err
+			}
+
 			branches, err := client.DatabaseBranches.List(ctx, cfg.Organization, source)
 			if err != nil {
 				return errs.Wrap(err, "error listing databases")
@@ -49,5 +65,6 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 		},
 	}
 
+	cmd.Flags().BoolP("web", "w", false, "List database branches in your web browser.")
 	return cmd
 }
