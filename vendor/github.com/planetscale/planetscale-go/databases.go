@@ -21,7 +21,6 @@ type CreateDatabaseRequest struct {
 type DatabasesService interface {
 	Create(context.Context, string, *CreateDatabaseRequest) (*Database, error)
 	Get(context.Context, string, string) (*Database, error)
-	Status(context.Context, string, string) (*DatabaseStatus, error)
 	List(context.Context, string) ([]*Database, error)
 	Delete(context.Context, string, string) (bool, error)
 }
@@ -32,16 +31,6 @@ type Database struct {
 	Notes     string    `jsonapi:"attr,notes" json:"notes"`
 	CreatedAt time.Time `jsonapi:"attr,created_at,iso8601" json:"created_at"`
 	UpdatedAt time.Time `jsonapi:"attr,updated_at,iso8601" json:"updated_at"`
-}
-
-// DatabaseStatus represents the status of a PlanetScale database.
-type DatabaseStatus struct {
-	DatabaseID    int64  `json:"database_id" jsonapi:"database_id"`
-	DeployPhase   string `json:"deploy_phase" jsonapi:"deploy_phase"`
-	GatewayHost   string `json:"mysql_gateway_host" jsonapi:"gateway_host"`
-	GatewayPort   int    `json:"mysql_gateway_port" jsonapi:"gateway_port"`
-	MySQLUser     string `json:"mysql_gateway_user" jsonapi:"my_sql_user"`
-	MySQLPassword string `json:"mysql_gateway_pass" jsonapi:"my_sql_password"`
 }
 
 type databasesService struct {
@@ -100,13 +89,13 @@ func (ds *databasesService) Create(ctx context.Context, org string, createReq *C
 	}
 	defer res.Body.Close()
 
-	createRes := &Database{}
-	err = jsonapi.UnmarshalPayload(res.Body, createRes)
+	db := &Database{}
+	err = jsonapi.UnmarshalPayload(res.Body, db)
 	if err != nil {
 		return nil, err
 	}
 
-	return createRes, nil
+	return db, nil
 }
 
 func (ds *databasesService) Get(ctx context.Context, org string, name string) (*Database, error) {
@@ -151,33 +140,6 @@ func (ds *databasesService) Delete(ctx context.Context, org string, name string)
 	return true, nil
 }
 
-// StatusResponse returns a response for the status of a database
-type StatusResponse struct {
-	Status *DatabaseStatus `json:"status"`
-}
-
 func databasesAPIPath(org string) string {
 	return fmt.Sprintf("organizations/%s/databases", org)
-}
-
-func (ds *databasesService) Status(ctx context.Context, org string, name string) (*DatabaseStatus, error) {
-	path := fmt.Sprintf("%s/%s/status", databasesAPIPath(org), name)
-	req, err := ds.client.newRequest(http.MethodGet, path, nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "error creating request for database status")
-	}
-
-	res, err := ds.client.Do(ctx, req)
-	if err != nil {
-		return nil, errors.Wrap(err, "error getting database status")
-	}
-	defer res.Body.Close()
-
-	status := &StatusResponse{}
-	err = jsonapi.UnmarshalPayload(res.Body, status)
-	if err != nil {
-		return nil, err
-	}
-
-	return status.Status, nil
 }
