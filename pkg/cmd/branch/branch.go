@@ -1,20 +1,26 @@
 package branch
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/planetscale/cli/config"
+	ps "github.com/planetscale/planetscale-go"
 	"github.com/spf13/cobra"
 )
 
 // BranchCmd handles the branching of a database.
 func BranchCmd(cfg *config.Config) *cobra.Command {
-	var notes string
+	createReq := &ps.CreateDatabaseBranchRequest{
+		Branch: new(ps.DatabaseBranch),
+	}
+
 	cmd := &cobra.Command{
 		Use:     "branch <source-database> <branch-name> [options]",
 		Short:   "Branch a production database",
 		Aliases: []string{"b"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := context.Background()
 			// If the user does not provide a source database and a branch name,
 			// show the usage.
 			if len(args) != 2 {
@@ -29,19 +35,25 @@ func BranchCmd(cfg *config.Config) *cobra.Command {
 				return fmt.Errorf("A branch named '%s' already exists", branch)
 			}
 
-			_, err := cfg.NewClientFromConfig()
+			createReq.Branch.Name = branch
+
+			client, err := cfg.NewClientFromConfig()
 			if err != nil {
 				return err
 			}
 
-			// TODO: Call PlanetScale API client here to create the database branch.
+			dbBranch, err := client.DatabaseBranches.Create(ctx, cfg.Organization, source, createReq)
+			if err != nil {
+				return err
+			}
 
-			fmt.Println("database branching has not been implemented yet")
+			fmt.Printf("Successfully created database branch: %s\n", dbBranch.Name)
+
 			return nil
 		},
 	}
 
-	cmd.Flags().StringVar(&notes, "notes", "", "notes for the database branch")
+	cmd.Flags().StringVar(&createReq.Branch.Notes, "notes", "", "notes for the database branch")
 	cmd.AddCommand(ListCmd(cfg))
 	cmd.AddCommand(StatusCmd(cfg))
 	cmd.AddCommand(DeleteCmd(cfg))

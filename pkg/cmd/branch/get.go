@@ -1,29 +1,40 @@
 package branch
 
 import (
-	"fmt"
+	"context"
+	"os"
 
+	"github.com/lensesio/tableprinter"
 	"github.com/planetscale/cli/config"
+	"github.com/planetscale/cli/printer"
 	"github.com/spf13/cobra"
 )
 
 func GetCmd(cfg *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "get <db_name> <branch_name>",
+		Use:   "get <source_name> <branch_name>",
 		Short: "Get a specific branch of a database",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := context.Background()
 			if len(args) != 2 {
 				return cmd.Usage()
 			}
 
-			_, err := cfg.NewClientFromConfig()
+			source := args[0]
+			branch := args[1]
+
+			client, err := cfg.NewClientFromConfig()
 			if err != nil {
 				return err
 			}
 
-			// TODO: Call PlanetScale API here to get the database branch.
+			b, err := client.DatabaseBranches.Get(ctx, cfg.Organization, source, branch)
+			if err != nil {
+				return err
+			}
 
-			fmt.Println("getting a database branch has not been implemented yet")
+			tableprinter.Print(os.Stdout, printer.NewDatabaseBranchPrinter(b))
+
 			return nil
 		},
 	}

@@ -1,9 +1,12 @@
 package branch
 
 import (
-	"fmt"
+	"context"
+	"os"
 
+	"github.com/lensesio/tableprinter"
 	"github.com/planetscale/cli/config"
+	"github.com/planetscale/cli/printer"
 	"github.com/spf13/cobra"
 )
 
@@ -13,18 +16,26 @@ func StatusCmd(cfg *config.Config) *cobra.Command {
 		Use:   "status <db_name> <branch_name>",
 		Short: "Check the status of a branch of a database",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := context.Background()
 			if len(args) != 2 {
 				return cmd.Usage()
 			}
 
-			_, err := cfg.NewClientFromConfig()
+			client, err := cfg.NewClientFromConfig()
 			if err != nil {
 				return err
 			}
 
-			// TODO: Call PlanetScale API here to get database branch status.
+			source := args[0]
+			branch := args[1]
 
-			fmt.Println("database branch status has not been implemented yet")
+			status, err := client.DatabaseBranches.Status(ctx, cfg.Organization, source, branch)
+			if err != nil {
+				return err
+			}
+
+			tableprinter.Print(os.Stdout, printer.NewDatabaseBranchStatusPrinter(status))
+
 			return nil
 		},
 	}
