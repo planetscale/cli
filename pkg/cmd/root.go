@@ -91,7 +91,7 @@ func initConfig() {
 
 		// Search config in home directory with name ".cli" (without extension).
 		viper.AddConfigPath(home)
-		viper.SetConfigName(".psctl")
+		viper.SetConfigName(".planetscale")
 	}
 
 	viper.AutomaticEnv() // read in environment variables that match
