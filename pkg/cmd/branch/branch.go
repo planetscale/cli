@@ -71,6 +71,7 @@ func BranchCmd(cfg *config.Config) *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&createReq.Branch.Notes, "notes", "", "notes for the database branch")
+	cmd.Flags().StringVar(&createReq.Branch.ParentBranch, "parent", "", "parent branch to branch off of")
 	cmd.Flags().BoolP("web", "w", false, "Create a branch in your web browser")
 	cmd.AddCommand(ListCmd(cfg))
 	cmd.AddCommand(StatusCmd(cfg))
