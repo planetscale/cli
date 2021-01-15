@@ -91,6 +91,7 @@ func initConfig() {
 
 		// Search config in home directory with name ".cli" (without extension).
 		viper.AddConfigPath(home)
+		viper.AddConfigPath(".")
 		viper.SetConfigName(".planetscale")
 	}
 
