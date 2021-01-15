@@ -2,9 +2,12 @@ package branch
 
 import (
 	"context"
+	"fmt"
 	"os"
 
 	"github.com/lensesio/tableprinter"
+	"github.com/pkg/browser"
+	"github.com/planetscale/cli/cmdutil"
 	"github.com/planetscale/cli/config"
 	"github.com/planetscale/cli/printer"
 	"github.com/spf13/cobra"
@@ -23,6 +26,20 @@ func GetCmd(cfg *config.Config) *cobra.Command {
 			source := args[0]
 			branch := args[1]
 
+			web, err := cmd.Flags().GetBool("web")
+			if err != nil {
+				return err
+			}
+
+			if web {
+				fmt.Println("🌐  Redirecting you to your database branch in your web browser.")
+				err := browser.OpenURL(fmt.Sprintf("%s/%s/%s/branches/%s", cmdutil.ApplicationURL, cfg.Organization, source, branch))
+				if err != nil {
+					return err
+				}
+				return nil
+			}
+
 			client, err := cfg.NewClientFromConfig()
 			if err != nil {
 				return err
@@ -39,5 +56,6 @@ func GetCmd(cfg *config.Config) *cobra.Command {
 		},
 	}
 
+	cmd.Flags().BoolP("web", "w", false, "Show a database branch in your web browser.")
 	return cmd
 }

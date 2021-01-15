@@ -3,7 +3,10 @@ package branch
 import (
 	"context"
 	"fmt"
+	"net/url"
 
+	"github.com/pkg/browser"
+	"github.com/planetscale/cli/cmdutil"
 	"github.com/planetscale/cli/config"
 	ps "github.com/planetscale/planetscale-go"
 	"github.com/spf13/cobra"
@@ -37,6 +40,20 @@ func BranchCmd(cfg *config.Config) *cobra.Command {
 
 			createReq.Branch.Name = branch
 
+			web, err := cmd.Flags().GetBool("web")
+			if err != nil {
+				return err
+			}
+
+			if web {
+				fmt.Println("🌐  Redirecting you to branch a database in your web browser.")
+				err := browser.OpenURL(fmt.Sprintf("%s/%s/%s/branches?name=%s&notes=%s&showDialog=true", cmdutil.ApplicationURL, cfg.Organization, source, url.QueryEscape(createReq.Branch.Name), url.QueryEscape(createReq.Branch.Notes)))
+				if err != nil {
+					return err
+				}
+				return nil
+			}
+
 			client, err := cfg.NewClientFromConfig()
 			if err != nil {
 				return err
@@ -54,6 +71,7 @@ func BranchCmd(cfg *config.Config) *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&createReq.Branch.Notes, "notes", "", "notes for the database branch")
+	cmd.Flags().BoolP("web", "w", false, "Create a branch in your web browser")
 	cmd.AddCommand(ListCmd(cfg))
 	cmd.AddCommand(StatusCmd(cfg))
 	cmd.AddCommand(DeleteCmd(cfg))

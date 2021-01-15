@@ -8,6 +8,7 @@ import (
 	"github.com/lensesio/tableprinter"
 	"github.com/pkg/browser"
 	"github.com/pkg/errors"
+	"github.com/planetscale/cli/cmdutil"
 	"github.com/planetscale/cli/config"
 	"github.com/planetscale/cli/printer"
 	"github.com/spf13/cobra"
@@ -28,7 +29,7 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 
 			if web {
 				fmt.Println("🌐  Redirecting you to your databases list in your web browser.")
-				err := browser.OpenURL("https://app.planetscaledb.io/databases")
+				err := browser.OpenURL(fmt.Sprintf("%s/%s", cmdutil.ApplicationURL, cfg.Organization))
 				if err != nil {
 					return err
 				}

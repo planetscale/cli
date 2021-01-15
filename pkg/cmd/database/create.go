@@ -6,6 +6,7 @@ import (
 	"net/url"
 
 	"github.com/pkg/browser"
+	"github.com/planetscale/cli/cmdutil"
 	"github.com/planetscale/cli/config"
 	ps "github.com/planetscale/planetscale-go"
 
@@ -29,7 +30,7 @@ func CreateCmd(cfg *config.Config) *cobra.Command {
 
 			if web {
 				fmt.Println("🌐  Redirecting you to create a database in your web browser.")
-				err := browser.OpenURL(fmt.Sprintf("https://app.planetscaledb.io/databases?name=%s&notes=%s&showDialog=true", url.QueryEscape(createReq.Database.Name), url.QueryEscape(createReq.Database.Notes)))
+				err := browser.OpenURL(fmt.Sprintf("%s/%s?name=%s&notes=%s&showDialog=true", cmdutil.ApplicationURL, cfg.Organization, url.QueryEscape(createReq.Database.Name), url.QueryEscape(createReq.Database.Notes)))
 				if err != nil {
 					return err
 				}
