@@ -18,6 +18,7 @@ type DatabaseBranch struct {
 	ParentBranch string    `jsonapi:"attr,parent_branch" json:"parent_branch,omitempty"`
 	CreatedAt    time.Time `jsonapi:"attr,created_at,iso8601" json:"created_at"`
 	UpdatedAt    time.Time `jsonapi:"attr,updated_at,iso8601" json:"updated_at"`
+	Status       string    `jsonapi:"attr,status" json:"status,omitempty"`
 }
 
 // CreateDatabaseBranchRequest encapsulates the request for creating a new
@@ -60,9 +61,6 @@ func NewDatabaseBranchesService(client *Client) *databaseBranchesService {
 // Create creates a new branch for an organization's database.
 func (ds *databaseBranchesService) Create(ctx context.Context, org, db string, createReq *CreateDatabaseBranchRequest) (*DatabaseBranch, error) {
 	path := databaseBranchesAPIPath(org, db)
-	if createReq.Branch.ParentBranch != "" {
-		path = fmt.Sprintf("%s?parent_branch=%s", path, createReq.Branch.ParentBranch)
-	}
 
 	req, err := ds.client.newRequest(http.MethodPost, path, createReq)
 	if err != nil {
