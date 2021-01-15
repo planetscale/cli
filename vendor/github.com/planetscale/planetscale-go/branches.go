@@ -19,18 +19,33 @@ type DatabaseBranch struct {
 	UpdatedAt time.Time `jsonapi:"attr,updated_at,iso8601" json:"updated_at"`
 }
 
+// CreateDatabaseBranchRequest encapsulates the request for creating a new
+// database branch
+type CreateDatabaseBranchRequest struct {
+	Branch *DatabaseBranch `json:"branch"`
+}
+
 // DatabaseBranchesService is an interface for communicating with the PlanetScale
 // Database Branch API endpoint.
 type DatabaseBranchesService interface {
 	Create(context.Context, string, string, *CreateDatabaseBranchRequest) (*DatabaseBranch, error)
 	List(context.Context, string, string) ([]*DatabaseBranch, error)
 	Get(context.Context, string, string, string) (*DatabaseBranch, error)
-	Delete(context.Context, string, string, string) (bool, error)
+	Delete(context.Context, string, string, string) error
 	Status(context.Context, string, string, string) (*DatabaseBranchStatus, error)
 }
 
 type databaseBranchesService struct {
 	client *Client
+}
+
+// DatabaseBranchStatus represents the status of a PlanetScale database branch.
+type DatabaseBranchStatus struct {
+	DeployPhase string `json:"deploy_phase" jsonapi:"attr,deploy_phase"`
+	GatewayHost string `json:"mysql_gateway_host" jsonapi:"attr,mysql_gateway_host"`
+	GatewayPort int    `json:"mysql_gateway_port" jsonapi:"attr,mysql_gateway_port"`
+	User        string `json:"mysql_gateway_user" jsonapi:"attr,mysql_gateway_user"`
+	Password    string `json:"mysql_gateway_pass" jsonapi:"attr,mysql_gateway_pass"`
 }
 
 var _ DatabaseBranchesService = &databaseBranchesService{}
@@ -39,12 +54,6 @@ func NewDatabaseBranchesService(client *Client) *databaseBranchesService {
 	return &databaseBranchesService{
 		client: client,
 	}
-}
-
-// CreateDatabaseBranchRequest encapsulates the request for creating a new
-// database branch
-type CreateDatabaseBranchRequest struct {
-	Branch *DatabaseBranch `json:"branch"`
 }
 
 // Create creates a new branch for an organization's database.
@@ -111,7 +120,7 @@ func (ds *databaseBranchesService) List(ctx context.Context, org, db string) ([]
 		return nil, err
 	}
 
-	dbBranches := make([]*DatabaseBranch, 0, len(databases))
+	dbBranches := make([]*DatabaseBranch, 0)
 
 	for _, database := range databases {
 		db, ok := database.(*DatabaseBranch)
@@ -124,33 +133,24 @@ func (ds *databaseBranchesService) List(ctx context.Context, org, db string) ([]
 }
 
 // Delete deletes a database branch from an organization's database.
-func (ds *databaseBranchesService) Delete(ctx context.Context, org, db, branch string) (bool, error) {
+func (ds *databaseBranchesService) Delete(ctx context.Context, org, db, branch string) error {
 	path := fmt.Sprintf("%s/%s", databaseBranchesAPIPath(org, db), branch)
 	req, err := ds.client.newRequest(http.MethodDelete, path, nil)
 	if err != nil {
-		return false, errors.Wrap(err, "error creating request for delete branch")
+		return errors.Wrap(err, "error creating request for delete branch")
 	}
 
 	res, err := ds.client.Do(ctx, req)
 	if err != nil {
-		return false, err
+		return err
 	}
 	defer res.Body.Close()
 
 	if res.StatusCode == http.StatusNotFound {
-		return false, errors.New("database branch not found")
+		return errors.New("database branch not found")
 	}
 
-	return true, nil
-}
-
-// DatabaseBranchStatus represents the status of a PlanetScale database branch.
-type DatabaseBranchStatus struct {
-	DeployPhase string `json:"deploy_phase" jsonapi:"attr,deploy_phase"`
-	GatewayHost string `json:"mysql_gateway_host" jsonapi:"attr,mysql_gateway_host"`
-	GatewayPort int    `json:"mysql_gateway_port" jsonapi:"attr,mysql_gateway_port"`
-	User        string `json:"mysql_gateway_user" jsonapi:"attr,mysql_gateway_user"`
-	Password    string `json:"mysql_gateway_pass" jsonapi:"attr,mysql_gateway_pass"`
+	return nil
 }
 
 // Status returns the status of a specific database branch
