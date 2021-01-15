@@ -11,6 +11,7 @@ type DatabaseBranch struct {
 	Notes     string `header:"notes"`
 	CreatedAt int64  `header:"created_at,timestamp(ms|utc|human)"`
 	UpdatedAt int64  `header:"updated_at,timestamp(ms|utc|human)"`
+	Status    string `header:"status"`
 }
 
 // NewDatabaseBranchPrinter returns a struct that prints out the various fields of a
@@ -19,6 +20,7 @@ func NewDatabaseBranchPrinter(db *ps.DatabaseBranch) *DatabaseBranch {
 	return &DatabaseBranch{
 		Name:      db.Name,
 		Notes:     db.Notes,
+		Status:    db.Status,
 		CreatedAt: db.CreatedAt.UTC().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond)),
 		UpdatedAt: db.UpdatedAt.UTC().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond)),
 	}
@@ -28,12 +30,7 @@ func NewDatabaseBranchSlicePrinter(branches []*ps.DatabaseBranch) []*DatabaseBra
 	bs := make([]*DatabaseBranch, 0, len(branches))
 
 	for _, db := range branches {
-		bs = append(bs, &DatabaseBranch{
-			Name:      db.Name,
-			Notes:     db.Notes,
-			CreatedAt: db.CreatedAt.UTC().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond)),
-			UpdatedAt: db.UpdatedAt.UTC().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond)),
-		})
+		bs = append(bs, NewDatabaseBranchPrinter(db))
 	}
 
 	return bs
