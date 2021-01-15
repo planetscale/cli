@@ -29,7 +29,6 @@ func StatusCmd(cfg *config.Config) *cobra.Command {
 			source := args[0]
 			branch := args[1]
 
-			// TODO: Call PlanetScale API here to get database branch status.
 			status, err := client.DatabaseBranches.Status(ctx, cfg.Organization, source, branch)
 			if err != nil {
 				return err
