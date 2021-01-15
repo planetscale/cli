@@ -8,11 +8,11 @@ import (
 
 type DatabaseBranch struct {
 	Name         string `header:"name"`
-	Notes        string `header:"notes"`
 	Status       string `header:"status"`
 	ParentBranch string `header:"parent branch,n/a"`
 	CreatedAt    int64  `header:"created_at,timestamp(ms|utc|human)"`
 	UpdatedAt    int64  `header:"updated_at,timestamp(ms|utc|human)"`
+	Notes        string `header:"notes"`
 }
 
 // NewDatabaseBranchPrinter returns a struct that prints out the various fields of a
