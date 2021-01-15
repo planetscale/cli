@@ -26,16 +26,12 @@ func DeleteCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
-			deleted, err := client.DatabaseBranches.Delete(ctx, cfg.Organization, source, branch)
+			err = client.DatabaseBranches.Delete(ctx, cfg.Organization, source, branch)
 			if err != nil {
 				return err
 			}
 
-			if deleted {
-				fmt.Printf("Successfully deleted branch `%s` from `%s`\n", branch, source)
-			} else {
-				fmt.Printf("Failed to delete branch `%s` from `%s`\n", branch, source)
-			}
+			fmt.Printf("Successfully deleted branch `%s` from `%s`\n", branch, source)
 
 			return nil
 		},
