@@ -14,6 +14,8 @@ func DatabaseCmd(cfg *config.Config) *cobra.Command {
 		Long:    "TODO",
 	}
 
+	cmd.PersistentFlags().Bool("json", false, "Show output as JSON")
+
 	cmd.AddCommand(CreateCmd(cfg))
 	cmd.AddCommand(ListCmd(cfg))
 	cmd.AddCommand(DeleteCmd(cfg))
