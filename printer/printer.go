@@ -12,13 +12,13 @@ import (
 func PrintOutput(isJSON bool, obj interface{}) error {
 	if isJSON {
 		return PrintJSON(obj)
-	} else {
-		tableprinter.Print(os.Stdout, obj)
 	}
 
+	tableprinter.Print(os.Stdout, obj)
 	return nil
 }
 
+// PrintJSON pretty prints the object as JSON.
 func PrintJSON(obj interface{}) error {
 	output, err := json.MarshalIndent(obj, "", "  ")
 	if err != nil {
