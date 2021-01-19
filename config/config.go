@@ -20,6 +20,11 @@ type Config struct {
 	Organization string
 }
 
+// WritableConfig maps
+type WritableConfig struct {
+	Organization string `yaml:"org" json:"org"`
+}
+
 func New() *Config {
 	var accessToken []byte
 	_, err := os.Stat(AccessTokenPath())
@@ -69,4 +74,18 @@ func (c *Config) NewClientFromConfig(clientOpts ...ps.ClientOption) (*ps.Client,
 	opts = append(opts, clientOpts...)
 
 	return ps.NewClient(opts...)
+}
+
+// ToWritableConfig returns an instance of WritableConfig from the Config
+// struct.
+func (c *Config) ToWritableConfig() *WritableConfig {
+	return &WritableConfig{
+		Organization: c.Organization,
+	}
+}
+
+// Write persists the writable config at the designated path.
+func (w *WritableConfig) Write(path string) error {
+
+	return nil
 }

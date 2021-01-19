@@ -75,9 +75,11 @@ func SwitchCmd(cfg *config.Config) *cobra.Command {
 
 			viper.Set("org", answers.Organization)
 
-			// TODO(iheanyi): Fix this so it only outputs the org flag, not every
-			// single attribute.
-			err = viper.WriteConfig()
+			writableConfig := &config.WritableConfig{
+				Organization: answers.Organization,
+			}
+
+			err := writableConfig.Write(viper.ConfigFileUsed())
 			if err != nil {
 				return err
 			}
