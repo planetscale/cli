@@ -45,10 +45,6 @@ func NewDatabasesService(client *Client) *databasesService {
 	}
 }
 
-type ListDatabasesResponse struct {
-	Databases []*Database `json:"databases"`
-}
-
 func (ds *databasesService) List(ctx context.Context, org string) ([]*Database, error) {
 	req, err := ds.client.newRequest(http.MethodGet, databasesAPIPath(org), nil)
 	if err != nil {
@@ -66,7 +62,7 @@ func (ds *databasesService) List(ctx context.Context, org string) ([]*Database, 
 		return nil, err
 	}
 
-	dbs := make([]*Database, 0, len(databases))
+	dbs := make([]*Database, 0)
 	for _, database := range databases {
 		db, ok := database.(*Database)
 		if ok {
