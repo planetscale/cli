@@ -17,7 +17,9 @@ import (
 	"github.com/planetscale/cli/auth"
 	"github.com/planetscale/cli/cmdutil"
 	"github.com/planetscale/cli/config"
+	"github.com/planetscale/planetscale-go"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // LoginCmd is the command for logging into a PlanetScale account.
@@ -81,6 +83,12 @@ func LoginCmd(cfg *config.Config) *cobra.Command {
 			// message.
 			s.Stop()
 			fmt.Println("Successfully logged in!")
+
+			err = writeDefaultOrganization(ctx, accessToken)
+			if err != nil {
+				return err
+			}
+
 			return nil
 		},
 	}
@@ -90,6 +98,33 @@ func LoginCmd(cfg *config.Config) *cobra.Command {
 	cmd.Flags().StringVar(&authURL, "api-url", auth.DefaultBaseURL, "The PlanetScale Auth API base URL.")
 
 	return cmd
+}
+
+func writeDefaultOrganization(ctx context.Context, accessToken string) error {
+	// After successfully logging in, attempt to set the org by default.
+	client, err := planetscale.NewClient(planetscale.WithAccessToken(accessToken))
+	if err != nil {
+		return err
+	}
+
+	orgs, err := client.Organizations.List(ctx)
+	if err != nil {
+		return err
+	}
+
+	if len(orgs) > 0 {
+		defaultOrg := orgs[0].Name
+		writableConfig := &config.WritableConfig{
+			Organization: defaultOrg,
+		}
+
+		err := writableConfig.Write(viper.ConfigFileUsed())
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // TODO(iheanyi): Double-check the file permissions in this function.
