@@ -8,6 +8,7 @@ import (
 
 	"github.com/mitchellh/go-homedir"
 	ps "github.com/planetscale/planetscale-go"
+	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -18,6 +19,11 @@ type Config struct {
 	AccessToken  string
 	BaseURL      string
 	Organization string
+}
+
+// WritableConfig maps
+type WritableConfig struct {
+	Organization string `yaml:"org" json:"org"`
 }
 
 func New() *Config {
@@ -69,4 +75,27 @@ func (c *Config) NewClientFromConfig(clientOpts ...ps.ClientOption) (*ps.Client,
 	opts = append(opts, clientOpts...)
 
 	return ps.NewClient(opts...)
+}
+
+// ToWritableConfig returns an instance of WritableConfig from the Config
+// struct.
+func (c *Config) ToWritableConfig() *WritableConfig {
+	return &WritableConfig{
+		Organization: c.Organization,
+	}
+}
+
+// Write persists the writable config at the designated path.
+func (w *WritableConfig) Write(path string) error {
+	d, err := yaml.Marshal(w)
+	if err != nil {
+		return err
+	}
+
+	err = ioutil.WriteFile(path, d, 0644)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
