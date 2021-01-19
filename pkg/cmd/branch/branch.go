@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/browser"
 	"github.com/planetscale/cli/cmdutil"
 	"github.com/planetscale/cli/config"
+	"github.com/planetscale/cli/printer"
 	ps "github.com/planetscale/planetscale-go"
 	"github.com/spf13/cobra"
 )
@@ -64,7 +65,19 @@ func BranchCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
-			fmt.Printf("Successfully created database branch: %s\n", dbBranch.Name)
+			isJSON, err := cmd.Flags().GetBool("json")
+			if err != nil {
+				return err
+			}
+
+			if isJSON {
+				err := printer.PrintJSON(dbBranch)
+				if err != nil {
+					return err
+				}
+			} else {
+				fmt.Printf("Database branch `%s` was successfully created\n", dbBranch.Name)
+			}
 
 			return nil
 		},
@@ -73,6 +86,7 @@ func BranchCmd(cfg *config.Config) *cobra.Command {
 	cmd.Flags().StringVar(&createReq.Branch.Notes, "notes", "", "notes for the database branch")
 	cmd.Flags().StringVar(&createReq.Branch.ParentBranch, "parent", "", "parent branch to branch off of")
 	cmd.Flags().BoolP("web", "w", false, "Create a branch in your web browser")
+	cmd.PersistentFlags().Bool("json", false, "Show output as JSON")
 	cmd.AddCommand(ListCmd(cfg))
 	cmd.AddCommand(StatusCmd(cfg))
 	cmd.AddCommand(DeleteCmd(cfg))

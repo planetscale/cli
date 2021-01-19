@@ -4,9 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 
-	"github.com/lensesio/tableprinter"
 	"github.com/pkg/browser"
 	errs "github.com/pkg/errors"
 	"github.com/planetscale/cli/cmdutil"
@@ -59,7 +57,15 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 				return nil
 			}
 
-			tableprinter.Print(os.Stdout, printer.NewDatabaseBranchSlicePrinter(branches))
+			isJSON, err := cmd.Flags().GetBool("json")
+			if err != nil {
+				return err
+			}
+
+			err = printer.PrintOutput(isJSON, printer.NewDatabaseBranchSlicePrinter(branches))
+			if err != nil {
+				return err
+			}
 
 			return nil
 		},

@@ -3,9 +3,7 @@ package branch
 import (
 	"context"
 	"fmt"
-	"os"
 
-	"github.com/lensesio/tableprinter"
 	"github.com/pkg/browser"
 	"github.com/planetscale/cli/cmdutil"
 	"github.com/planetscale/cli/config"
@@ -50,7 +48,15 @@ func GetCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
-			tableprinter.Print(os.Stdout, printer.NewDatabaseBranchPrinter(b))
+			isJSON, err := cmd.Flags().GetBool("json")
+			if err != nil {
+				return err
+			}
+
+			err = printer.PrintOutput(isJSON, printer.NewDatabaseBranchPrinter(b))
+			if err != nil {
+				return err
+			}
 
 			return nil
 		},
