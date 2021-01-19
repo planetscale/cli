@@ -24,6 +24,7 @@ import (
 	"github.com/planetscale/cli/pkg/cmd/auth"
 	"github.com/planetscale/cli/pkg/cmd/branch"
 	"github.com/planetscale/cli/pkg/cmd/database"
+	"github.com/planetscale/cli/pkg/cmd/org"
 	ps "github.com/planetscale/planetscale-go"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -74,6 +75,7 @@ func Execute() error {
 	rootCmd.AddCommand(auth.AuthCmd(cfg))
 	rootCmd.AddCommand(database.DatabaseCmd(cfg))
 	rootCmd.AddCommand(branch.BranchCmd(cfg))
+	rootCmd.AddCommand(org.OrgCmd(cfg))
 
 	if err := rootCmd.MarkPersistentFlagRequired("org"); err != nil {
 		return err
