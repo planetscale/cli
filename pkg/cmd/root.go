@@ -17,6 +17,7 @@ package cmd
 
 import (
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/planetscale/cli/config"
@@ -25,8 +26,8 @@ import (
 	"github.com/planetscale/cli/pkg/cmd/database"
 	ps "github.com/planetscale/planetscale-go"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
-	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
 )
 
@@ -52,8 +53,7 @@ func Execute() error {
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
 
-	// TODO(iheanyi): Change this to be something in ~/.config/psctl/config.yml)
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.psctl.yaml)")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/config/planetscale/config.yaml)")
 
 	rootCmd.SilenceUsage = true
 	// Cobra also supports local flags, which will only run
@@ -65,6 +65,12 @@ func Execute() error {
 	rootCmd.PersistentFlags().StringVar(&cfg.BaseURL, "api-url", ps.DefaultBaseURL, "The base URL for the PlanetScale API.")
 	rootCmd.PersistentFlags().StringVar(&cfg.AccessToken, "api-token", cfg.AccessToken, "The API token to use for authenticating against the PlanetScale API.")
 	rootCmd.PersistentFlags().StringVar(&cfg.Organization, "org", cfg.Organization, "The organization for the current user")
+
+	err := viper.BindPFlag("org", rootCmd.PersistentFlags().Lookup("org"))
+	if err != nil {
+		return err
+	}
+
 	rootCmd.AddCommand(auth.AuthCmd(cfg))
 	rootCmd.AddCommand(database.DatabaseCmd(cfg))
 	rootCmd.AddCommand(branch.BranchCmd(cfg))
@@ -82,22 +88,50 @@ func initConfig() {
 		// Use config file from the flag.
 		viper.SetConfigFile(cfgFile)
 	} else {
-		// Find home directory.
-		home, err := homedir.Dir()
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-
-		// Search config in home directory with name ".cli" (without extension).
-		viper.AddConfigPath(home)
-		viper.SetConfigName(".psctl")
+		// Order of preference for configuration files:
+		// (1) $PWD/.planetscale
+		// (2) $HOME/config/planetscale
+		viper.AddConfigPath(".planetscale")
+		viper.AddConfigPath(config.ConfigDir())
+		viper.SetConfigName("config")
+		viper.SetConfigType("yaml")
 	}
 
+	viper.SetEnvPrefix("planetscale")
 	viper.AutomaticEnv() // read in environment variables that match
 
 	// If a config file is found, read it in.
-	if err := viper.ReadInConfig(); err == nil {
-		fmt.Println("Using config file:", viper.ConfigFileUsed())
+	if err := viper.ReadInConfig(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
 	}
+
+	postInitCommands(rootCmd.Commands())
+}
+
+// Hacky fix for getting Cobra required flags and Viper playing well together.
+// See: https://github.com/spf13/viper/issues/397
+func postInitCommands(commands []*cobra.Command) {
+	for _, cmd := range commands {
+		presetRequiredFlags(cmd)
+		if cmd.HasSubCommands() {
+			postInitCommands(cmd.Commands())
+		}
+	}
+}
+
+func presetRequiredFlags(cmd *cobra.Command) {
+	err := viper.BindPFlags(cmd.Flags())
+	if err != nil {
+		log.Fatalf("error binding flags: %v", err)
+	}
+
+	cmd.Flags().VisitAll(func(f *pflag.Flag) {
+		if viper.IsSet(f.Name) && viper.GetString(f.Name) != "" {
+			err = cmd.Flags().Set(f.Name, viper.GetString(f.Name))
+			if err != nil {
+				log.Fatalf("error setting flag %s: %v", f.Name, err)
+			}
+		}
+	})
 }

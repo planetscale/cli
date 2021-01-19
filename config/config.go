@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	defaultConfigPath = "~/.config/psctl"
+	defaultConfigPath = "~/.config/planetscale"
 )
 
 type Config struct {
@@ -25,7 +25,6 @@ func New() *Config {
 	_, err := os.Stat(AccessTokenPath())
 	if err != nil {
 		if !os.IsNotExist(err) {
-			// TODO(iheanyi): Is fatal the right move here?
 			log.Fatal(err)
 		}
 	} else {
@@ -45,10 +44,15 @@ func (c *Config) IsAuthenticated() bool {
 	return c.AccessToken != ""
 }
 
-// ConfigDir is the directory for psctl config.
+// ConfigDir is the directory for PlanetScale config.
 func ConfigDir() string {
 	dir, _ := homedir.Expand(defaultConfigPath)
 	return dir
+}
+
+// ConfigPath is the path for the config file.
+func ConfigPath() string {
+	return path.Join(ConfigDir(), "config.yml")
 }
 
 // AccessTokenPath is the path for the access token file
