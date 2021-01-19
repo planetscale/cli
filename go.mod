@@ -3,6 +3,7 @@ module github.com/planetscale/cli
 go 1.15
 
 require (
+	github.com/AlecAivazis/survey/v2 v2.2.7
 	github.com/benbjohnson/clock v1.1.0
 	github.com/briandowns/spinner v1.12.0
 	github.com/cli/safeexec v1.0.0
