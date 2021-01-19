@@ -10,6 +10,7 @@ import (
 	"github.com/planetscale/cli/auth"
 	"github.com/planetscale/cli/config"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 func LogoutCmd(cfg *config.Config) *cobra.Command {
@@ -68,7 +69,12 @@ func deleteAccessToken() error {
 
 	err = os.Remove(config.AccessTokenPath())
 	if err != nil {
-		return errors.Wrap(err, "error removing file")
+		return errors.Wrap(err, "error removing access token file")
+	}
+
+	err = os.Remove(viper.ConfigFileUsed())
+	if err != nil {
+		return errors.Wrap(err, "error removing config file")
 	}
 
 	return nil
