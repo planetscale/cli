@@ -96,9 +96,14 @@ func initConfig() {
 	viper.AutomaticEnv() // read in environment variables that match
 
 	// If a config file is found, read it in.
+
 	if err := viper.ReadInConfig(); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+			// Only handle errors when it's something unrelated to the config file not
+			// existing.
+			fmt.Println(err)
+			os.Exit(1)
+		}
 	}
 
 	postInitCommands(rootCmd.Commands())
