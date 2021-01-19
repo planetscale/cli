@@ -52,8 +52,8 @@ func Execute() error {
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
 
-	// TODO(iheanyi): Change this to be something in ~/.config/psctl/config.yml)
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.psctl.yaml)")
+	// TODO(iheanyi): Change this to be something in ~/.config/planetscale/config.yml)
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.planetscale/config.yaml)")
 
 	rootCmd.SilenceUsage = true
 	// Cobra also supports local flags, which will only run
