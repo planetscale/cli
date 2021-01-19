@@ -76,6 +76,7 @@ func Execute() error {
 	rootCmd.AddCommand(database.DatabaseCmd(cfg))
 	rootCmd.AddCommand(branch.BranchCmd(cfg))
 	rootCmd.AddCommand(org.OrgCmd(cfg))
+	rootCmd.AddCommand(org.SwitchCmd(cfg))
 
 	if err := rootCmd.MarkPersistentFlagRequired("org"); err != nil {
 		return err
