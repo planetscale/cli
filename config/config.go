@@ -8,6 +8,7 @@ import (
 
 	"github.com/mitchellh/go-homedir"
 	ps "github.com/planetscale/planetscale-go"
+	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -86,6 +87,15 @@ func (c *Config) ToWritableConfig() *WritableConfig {
 
 // Write persists the writable config at the designated path.
 func (w *WritableConfig) Write(path string) error {
+	d, err := yaml.Marshal(w)
+	if err != nil {
+		return err
+	}
+
+	err = ioutil.WriteFile(path, d, 0644)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
