@@ -60,7 +60,6 @@ func SwitchCmd(cfg *config.Config) *cobra.Command {
 						Prompt: &survey.Select{
 							Message: "Switch to: ",
 							Options: orgNames,
-							Default: cfg.Organization,
 						},
 					},
 				}
