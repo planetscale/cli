@@ -73,8 +73,6 @@ func SwitchCmd(cfg *config.Config) *cobra.Command {
 				return cmd.Usage()
 			}
 
-			viper.Set("org", answers.Organization)
-
 			writableConfig := &config.WritableConfig{
 				Organization: answers.Organization,
 			}
