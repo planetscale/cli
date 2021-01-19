@@ -50,6 +50,11 @@ func ConfigDir() string {
 	return dir
 }
 
+// ConfigPath is the path for the config file.
+func ConfigPath() string {
+	return path.Join(ConfigDir(), "config.yml")
+}
+
 // AccessTokenPath is the path for the access token file
 func AccessTokenPath() string {
 	return path.Join(ConfigDir(), "access-token")
