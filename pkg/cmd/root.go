@@ -114,9 +114,38 @@ func initConfig() {
 	}
 
 	viper.AutomaticEnv() // read in environment variables that match
+	postInitCommands(rootCmd.Commands())
 
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
 		fmt.Println("Using config file:", viper.ConfigFileUsed())
 	}
+
+}
+
+// Hacky fix for getting Cobra required flags and Viper playing well together.
+// See: https://github.com/spf13/viper/issues/397
+func postInitCommands(commands []*cobra.Command) {
+	for _, cmd := range commands {
+		presetRequiredFlags(cmd)
+		if cmd.HasSubCommands() {
+			postInitCommands(cmd.Commands())
+		}
+	}
+}
+
+func presetRequiredFlags(cmd *cobra.Command) {
+	err := viper.BindPFlags(cmd.Flags())
+	if err != nil {
+		log.Fatalf("error binding flags: %v", err)
+	}
+
+	cmd.Flags().VisitAll(func(f *pflag.Flag) {
+		if viper.IsSet(f.Name) && viper.GetString(f.Name) != "" {
+			err = cmd.Flags().Set(f.Name, viper.GetString(f.Name))
+			if err != nil {
+				log.Fatalf("error setting flag %s: %v", f.Name, err)
+			}
+		}
+	})
 }
