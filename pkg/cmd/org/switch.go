@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	survey "github.com/AlecAivazis/survey/v2"
+	"github.com/fatih/color"
 	"github.com/planetscale/cli/config"
 	"github.com/spf13/cobra"
 )
@@ -66,7 +67,9 @@ func SwitchCmd(cfg *config.Config) *cobra.Command {
 				return cmd.Usage()
 			}
 
-			fmt.Printf("Successfully switched to team %s.\n", answers.Organization)
+			// TODO: Write config for `answers.Organization` here.
+			bold := color.New(color.Bold).SprintFunc()
+			fmt.Printf("Successfully switched to organization %s.\n", bold(answers.Organization))
 
 			return nil
 		},
