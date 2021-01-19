@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path"
 
 	"github.com/planetscale/cli/config"
 	"github.com/planetscale/cli/pkg/cmd/auth"
@@ -29,7 +28,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
-	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
 )
 
@@ -90,19 +88,10 @@ func initConfig() {
 		// Use config file from the flag.
 		viper.SetConfigFile(cfgFile)
 	} else {
-		// Find home directory.
-		home, err := homedir.Dir()
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-
 		// Order of preference for configuration files:
 		// (1) $PWD/.planetscale
-		// (2) $HOME/.planetscale
-		// (3) $HOME/config/planetscale
+		// (2) $HOME/config/planetscale
 		viper.AddConfigPath(".planetscale")
-		viper.AddConfigPath(path.Join(home, ".planetscale"))
 		viper.AddConfigPath(config.ConfigDir())
 		viper.SetConfigName("config")
 		viper.SetConfigType("yaml")
