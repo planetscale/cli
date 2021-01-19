@@ -56,8 +56,8 @@ func ConfigDir() string {
 	return dir
 }
 
-// ConfigPath is the path for the config file.
-func ConfigPath() string {
+// DefaultConfigPath is the path for the config file.
+func DefaultConfigPath() string {
 	return path.Join(ConfigDir(), "config.yml")
 }
 
@@ -88,7 +88,7 @@ func (c *Config) ToWritableConfig() *WritableConfig {
 // Write persists the writable config at the designated path.
 func (w *WritableConfig) Write(path string) error {
 	if path == "" {
-		path = ConfigPath()
+		path = DefaultConfigPath()
 	}
 
 	d, err := yaml.Marshal(w)
