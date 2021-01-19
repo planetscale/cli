@@ -87,6 +87,10 @@ func (c *Config) ToWritableConfig() *WritableConfig {
 
 // Write persists the writable config at the designated path.
 func (w *WritableConfig) Write(path string) error {
+	if path == "" {
+		path = ConfigPath()
+	}
+
 	d, err := yaml.Marshal(w)
 	if err != nil {
 		return err
