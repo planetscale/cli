@@ -8,6 +8,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/planetscale/cli/config"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 func SwitchCmd(cfg *config.Config) *cobra.Command {
@@ -72,7 +73,15 @@ func SwitchCmd(cfg *config.Config) *cobra.Command {
 				return cmd.Usage()
 			}
 
-			// TODO: Write config for `answers.Organization` here.
+			viper.Set("org", answers.Organization)
+
+			// TODO(iheanyi): Fix this so it only outputs the org flag, not every
+			// single attribute.
+			err = viper.WriteConfig()
+			if err != nil {
+				return err
+			}
+
 			bold := color.New(color.Bold).SprintFunc()
 			fmt.Printf("Successfully switched to organization %s.\n", bold(answers.Organization))
 
