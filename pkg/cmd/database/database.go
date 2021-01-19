@@ -16,7 +16,7 @@ func DatabaseCmd(cfg *config.Config) *cobra.Command {
 
 	cmd.PersistentFlags().Bool("json", false, "Show output as JSON")
 	cmd.PersistentFlags().StringVar(&cfg.Organization, "org", cfg.Organization, "The organization for the current user")
-	cmd.MarkPersistentFlagRequired("org")
+	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
 
 	cmd.AddCommand(CreateCmd(cfg))
 	cmd.AddCommand(ListCmd(cfg))
