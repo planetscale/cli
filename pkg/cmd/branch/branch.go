@@ -87,6 +87,10 @@ func BranchCmd(cfg *config.Config) *cobra.Command {
 	cmd.Flags().StringVar(&createReq.Branch.ParentBranch, "parent", "", "parent branch to branch off of")
 	cmd.Flags().BoolP("web", "w", false, "Create a branch in your web browser")
 	cmd.PersistentFlags().Bool("json", false, "Show output as JSON")
+
+	cmd.PersistentFlags().StringVar(&cfg.Organization, "org", cfg.Organization, "The organization for the current user")
+	cmd.MarkPersistentFlagRequired("org")
+
 	cmd.AddCommand(ListCmd(cfg))
 	cmd.AddCommand(StatusCmd(cfg))
 	cmd.AddCommand(DeleteCmd(cfg))
