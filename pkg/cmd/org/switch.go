@@ -29,6 +29,11 @@ func SwitchCmd(cfg *config.Config) *cobra.Command {
 			if len(args) == 1 {
 				orgName := args[0]
 
+				if orgName == cfg.Organization {
+					color.White("No changes made")
+					return nil
+				}
+
 				org, err := client.Organizations.Get(ctx, orgName)
 				if err != nil {
 					return err
