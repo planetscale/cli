@@ -79,7 +79,7 @@ func SwitchCmd(cfg *config.Config) *cobra.Command {
 				Organization: answers.Organization,
 			}
 
-			err := writableConfig.Write(viper.ConfigFileUsed())
+			err = writableConfig.Write(viper.ConfigFileUsed())
 			if err != nil {
 				return err
 			}
