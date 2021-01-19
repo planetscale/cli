@@ -7,12 +7,12 @@ import (
 )
 
 type DatabaseBranch struct {
-	Name         string `header:"name"`
-	Status       string `header:"status"`
-	ParentBranch string `header:"parent branch,n/a"`
-	CreatedAt    int64  `header:"created_at,timestamp(ms|utc|human)"`
-	UpdatedAt    int64  `header:"updated_at,timestamp(ms|utc|human)"`
-	Notes        string `header:"notes"`
+	Name         string `header:"name" json:"name"`
+	Status       string `header:"status" json:"status"`
+	ParentBranch string `header:"parent branch,n/a" json:"parent_branch"`
+	CreatedAt    int64  `header:"created_at,timestamp(ms|utc|human)" json:"created_at"`
+	UpdatedAt    int64  `header:"updated_at,timestamp(ms|utc|human)" json:"updated_at"`
+	Notes        string `header:"notes" json:"notes"`
 }
 
 // NewDatabaseBranchPrinter returns a struct that prints out the various fields of a

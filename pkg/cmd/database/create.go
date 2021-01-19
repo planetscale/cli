@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/browser"
 	"github.com/planetscale/cli/cmdutil"
 	"github.com/planetscale/cli/config"
+	"github.com/planetscale/cli/printer"
 	ps "github.com/planetscale/planetscale-go"
 
 	"github.com/spf13/cobra"
@@ -47,7 +48,19 @@ func CreateCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
-			fmt.Printf("Successfully created database: %s\n", database.Name)
+			isJSON, err := cmd.Flags().GetBool("json")
+			if err != nil {
+				return err
+			}
+
+			if isJSON {
+				err := printer.PrintJSON(database)
+				if err != nil {
+					return err
+				}
+			} else {
+				fmt.Printf("Database `%s` was successfully created\n", database.Name)
+			}
 
 			return nil
 		},

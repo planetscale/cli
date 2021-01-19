@@ -2,9 +2,7 @@ package branch
 
 import (
 	"context"
-	"os"
 
-	"github.com/lensesio/tableprinter"
 	"github.com/planetscale/cli/config"
 	"github.com/planetscale/cli/printer"
 	"github.com/spf13/cobra"
@@ -34,7 +32,15 @@ func StatusCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
-			tableprinter.Print(os.Stdout, printer.NewDatabaseBranchStatusPrinter(status))
+			isJSON, err := cmd.Flags().GetBool("json")
+			if err != nil {
+				return err
+			}
+
+			err = printer.PrintOutput(isJSON, printer.NewDatabaseBranchStatusPrinter(status))
+			if err != nil {
+				return err
+			}
 
 			return nil
 		},
