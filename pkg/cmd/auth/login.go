@@ -84,7 +84,7 @@ func LoginCmd(cfg *config.Config) *cobra.Command {
 			s.Stop()
 			fmt.Println("Successfully logged in!")
 
-			err = writeDefaultOrganization(ctx, accessToken)
+			err = writeDefaultOrganization(ctx, accessToken, authURL)
 			if err != nil {
 				return err
 			}
@@ -100,9 +100,9 @@ func LoginCmd(cfg *config.Config) *cobra.Command {
 	return cmd
 }
 
-func writeDefaultOrganization(ctx context.Context, accessToken string) error {
+func writeDefaultOrganization(ctx context.Context, accessToken, authURL string) error {
 	// After successfully logging in, attempt to set the org by default.
-	client, err := planetscale.NewClient(planetscale.WithAccessToken(accessToken))
+	client, err := planetscale.NewClient(planetscale.WithAccessToken(accessToken), planetscale.WithBaseURL(authURL))
 	if err != nil {
 		return err
 	}
