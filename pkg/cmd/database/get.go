@@ -43,6 +43,9 @@ func GetCmd(cfg *config.Config) *cobra.Command {
 			if err != nil {
 				return err
 			}
+
+			end := cmdutil.PrintProgress("Fetching database...")
+			defer end()
 			database, err := client.Databases.Get(ctx, cfg.Organization, name)
 			if err != nil {
 				return err
@@ -53,6 +56,7 @@ func GetCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
+			end()
 			err = printer.PrintOutput(isJSON, printer.NewDatabasePrinter(database))
 			if err != nil {
 				return err

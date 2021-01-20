@@ -9,6 +9,7 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/fatih/color"
+	"github.com/planetscale/cli/cmdutil"
 	"github.com/planetscale/cli/config"
 	"github.com/spf13/cobra"
 )
@@ -59,11 +60,15 @@ func DeleteCmd(cfg *config.Config) *cobra.Command {
 				}
 			}
 
+			end := cmdutil.PrintProgress("Deleting database...")
+			defer end()
+
 			deleted, err := client.Databases.Delete(ctx, cfg.Organization, name)
 			if err != nil {
 				return err
 			}
 
+			end()
 			if deleted {
 				fmt.Printf("Successfully deleted database %s\n", boldBlue(name))
 			}
