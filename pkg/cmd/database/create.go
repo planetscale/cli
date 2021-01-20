@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/url"
 
+	"github.com/fatih/color"
 	"github.com/pkg/browser"
 	"github.com/planetscale/cli/cmdutil"
 	"github.com/planetscale/cli/config"
@@ -60,13 +61,14 @@ func CreateCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
+			boldBlue := color.New(color.FgBlue).Add(color.Bold).SprintfFunc()
 			if isJSON {
 				err := printer.PrintJSON(database)
 				if err != nil {
 					return err
 				}
 			} else {
-				fmt.Printf("Database `%s` was successfully created\n", database.Name)
+				fmt.Printf("Successfully created database %s\n", boldBlue(database.Name))
 			}
 
 			return nil
