@@ -8,7 +8,6 @@ import (
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/terminal"
-	"github.com/fatih/color"
 	"github.com/planetscale/cli/cmdutil"
 	"github.com/planetscale/cli/config"
 	"github.com/spf13/cobra"
@@ -35,12 +34,9 @@ func DeleteCmd(cfg *config.Config) *cobra.Command {
 
 			name := args[0]
 
-			boldBlue := color.New(color.FgBlue).Add(color.Bold).SprintFunc()
-			bold := color.New(color.Bold).SprintfFunc()
-
 			if !force {
 				userInput := ""
-				confirmationMessage := fmt.Sprintf("%s %s %s", bold("Please type"), boldBlue(name), bold("to confirm:"))
+				confirmationMessage := fmt.Sprintf("%s %s %s", cmdutil.Bold("Please type"), cmdutil.BoldBlue(name), cmdutil.Bold("to confirm:"))
 
 				prompt := &survey.Input{
 					Message: confirmationMessage,
@@ -60,7 +56,7 @@ func DeleteCmd(cfg *config.Config) *cobra.Command {
 				}
 			}
 
-			end := cmdutil.PrintProgress("Deleting database...")
+			end := cmdutil.PrintProgress(fmt.Sprintf("Deleting database %s...", cmdutil.BoldBlue(name)))
 			defer end()
 
 			deleted, err := client.Databases.Delete(ctx, cfg.Organization, name)
@@ -70,7 +66,7 @@ func DeleteCmd(cfg *config.Config) *cobra.Command {
 
 			end()
 			if deleted {
-				fmt.Printf("Successfully deleted database %s\n", boldBlue(name))
+				fmt.Printf("Successfully deleted database %s\n", cmdutil.BoldBlue(name))
 			}
 
 			return nil

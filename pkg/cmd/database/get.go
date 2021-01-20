@@ -44,7 +44,7 @@ func GetCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
-			end := cmdutil.PrintProgress("Fetching database...")
+			end := cmdutil.PrintProgress(fmt.Sprintf("Fetching database %s...", cmdutil.BoldBlue(name)))
 			defer end()
 			database, err := client.Databases.Get(ctx, cfg.Organization, name)
 			if err != nil {
