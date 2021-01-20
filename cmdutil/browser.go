@@ -9,7 +9,6 @@ import (
 
 	"github.com/briandowns/spinner"
 	"github.com/cli/safeexec"
-	"github.com/pkg/errors"
 )
 
 const ApplicationURL = "https://app.planetscaledb.io"
@@ -50,21 +49,14 @@ func linuxExe() string {
 
 var lookPath = safeexec.LookPath
 
-func WithSpinner(message string, fn func() error) error {
+// PrintProgress starts a spinner with the relevant message
+func PrintProgress(message string) func() {
 	s := spinner.New(spinner.CharSets[14], 100*time.Millisecond)
 	s.Suffix = fmt.Sprintf(" %s", message)
 
-	err := s.Color("bold", "green")
-	if err != nil {
-		return errors.Wrap(err, "error setting color")
-	}
-
+	s.Color("bold", "green") // nolint:errcheck
 	s.Start()
-	defer s.Stop()
-	err = fn()
-	if err != nil {
-		return err
+	return func() {
+		s.Stop()
 	}
-
-	return nil
 }
