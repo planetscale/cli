@@ -64,7 +64,7 @@ func Execute() error {
 	cfg := config.New()
 
 	rootCmd.PersistentFlags().StringVar(&cfg.BaseURL, "api-url", ps.DefaultBaseURL, "The base URL for the PlanetScale API.")
-	rootCmd.PersistentFlags().StringVar(&cfg.AccessToken, "api-token", cfg.AccessToken, "The API token to use for authenticating against the PlanetScale API.")
+	rootCmd.PersistentFlags().StringVar(&cfg.AccessToken, "api-token", "", "The API token to use for authenticating against the PlanetScale API.")
 
 	err := viper.BindPFlag("org", rootCmd.PersistentFlags().Lookup("org"))
 	if err != nil {
