@@ -33,14 +33,13 @@ func DeleteCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
+			blue := color.New(color.FgBlue).SprintFunc()
+			bold := color.New(color.Bold).SprintFunc()
 			if !force {
 				confirmationName := fmt.Sprintf("%s/%s", source, branch)
 				userInput := ""
 
-				blue := color.New(color.FgBlue).SprintFunc()
-				bold := color.New(color.Bold).SprintFunc()
-				confirmationMessage := fmt.Sprintf("Please type %s %s", blue(confirmationName), bold("to confirm:"))
-				// Prompt user to enter the database name and branch here.
+				confirmationMessage := fmt.Sprintf("%s %s %s", bold("Please type"), bold(blue(confirmationName)), bold("to confirm:"))
 
 				prompt := &survey.Input{
 					Message: confirmationMessage,
@@ -57,7 +56,7 @@ func DeleteCmd(cfg *config.Config) *cobra.Command {
 
 				// If the confirmations don't match up, let's return an error.
 				if userInput != confirmationName {
-					return errors.New("Incorrect database and branch entered, skipping branch deletion...")
+					return errors.New("Incorrect database and branch name entered, skipping branch deletion...")
 				}
 			}
 
@@ -66,7 +65,7 @@ func DeleteCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
-			fmt.Printf("Successfully deleted branch `%s` from `%s`\n", branch, source)
+			fmt.Printf("Successfully deleted branch `%s` from `%s`\n", bold(blue(branch)), bold(blue(source)))
 
 			return nil
 		},
