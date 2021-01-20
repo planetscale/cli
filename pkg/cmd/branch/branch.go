@@ -60,7 +60,7 @@ func BranchCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
-			end := cmdutil.PrintProgress(fmt.Sprintf("Creating database branch from %s...", cmdutil.BoldBlue(source)))
+			end := cmdutil.PrintProgress(fmt.Sprintf("Creating branch from %s...", cmdutil.BoldBlue(source)))
 			defer end()
 			dbBranch, err := client.DatabaseBranches.Create(ctx, cfg.Organization, source, createReq)
 			if err != nil {
@@ -79,7 +79,7 @@ func BranchCmd(cfg *config.Config) *cobra.Command {
 					return err
 				}
 			} else {
-				fmt.Printf("Database branch `%s` was successfully created\n", dbBranch.Name)
+				fmt.Printf("Branch `%s` was successfully created\n", dbBranch.Name)
 			}
 
 			return nil

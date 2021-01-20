@@ -58,7 +58,7 @@ func DeleteCmd(cfg *config.Config) *cobra.Command {
 				}
 			}
 
-			end := cmdutil.PrintProgress(fmt.Sprintf("Deleting database branch %s from %s", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(source)))
+			end := cmdutil.PrintProgress(fmt.Sprintf("Deleting branch %s from %s", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(source)))
 			defer end()
 			err = client.DatabaseBranches.Delete(ctx, cfg.Organization, source, branch)
 			if err != nil {
@@ -72,6 +72,6 @@ func DeleteCmd(cfg *config.Config) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().BoolVarP(&force, "force", "f", false, "Delete a databse without confirmation")
+	cmd.Flags().BoolVarP(&force, "force", "f", false, "Delete a branch without confirmation")
 	return cmd
 }
