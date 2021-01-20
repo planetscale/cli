@@ -7,7 +7,7 @@ import (
 
 	survey "github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/terminal"
-	"github.com/fatih/color"
+	"github.com/planetscale/cli/cmdutil"
 	"github.com/planetscale/cli/config"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -26,27 +26,28 @@ func SwitchCmd(cfg *config.Config) *cobra.Command {
 			if err != nil {
 				return err
 			}
+
 			// If user provides an organization, check if they have access to it.
 			if len(args) == 1 {
 				orgName := args[0]
 
-				if orgName == cfg.Organization {
-					color.White("No changes made")
-					return nil
-				}
-
+				end := cmdutil.PrintProgress(fmt.Sprintf("Fetching organization %s...", cmdutil.Bold(orgName)))
+				defer end()
 				org, err := client.Organizations.Get(ctx, orgName)
 				if err != nil {
 					return err
 				}
-
+				end()
 				organization = org.Name
 			} else if len(args) == 0 {
 				// Get organization names to show the user
+				end := cmdutil.PrintProgress("Fetching organizations...")
+				defer end()
 				orgs, err := client.Organizations.List(ctx)
 				if err != nil {
 					return err
 				}
+				end()
 
 				orgNames := make([]string, 0, len(orgs))
 
@@ -80,8 +81,7 @@ func SwitchCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
-			bold := color.New(color.Bold).SprintFunc()
-			fmt.Printf("Successfully switched to organization %s\n", bold(organization))
+			fmt.Printf("Successfully switched to organization %s\n", cmdutil.Bold(organization))
 
 			return nil
 		},
