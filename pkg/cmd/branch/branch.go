@@ -60,6 +60,8 @@ func BranchCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
+			end := cmdutil.PrintProgress(fmt.Sprintf("Creating database branch from %s...", cmdutil.BoldBlue(source)))
+			defer end()
 			dbBranch, err := client.DatabaseBranches.Create(ctx, cfg.Organization, source, createReq)
 			if err != nil {
 				return err
@@ -70,6 +72,7 @@ func BranchCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
+			end()
 			if isJSON {
 				err := printer.PrintJSON(dbBranch)
 				if err != nil {

@@ -58,11 +58,14 @@ func DeleteCmd(cfg *config.Config) *cobra.Command {
 				}
 			}
 
+			end := cmdutil.PrintProgress(fmt.Sprintf("Deleting database branch %s from %s", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(source)))
+			defer end()
 			err = client.DatabaseBranches.Delete(ctx, cfg.Organization, source, branch)
 			if err != nil {
 				return err
 			}
 
+			end()
 			fmt.Printf("Successfully deleted branch %s from %s\n", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(source))
 
 			return nil

@@ -46,6 +46,8 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
+			end := cmdutil.PrintProgress(fmt.Sprintf("Fetching database branches for %s", cmdutil.BoldBlue(source)))
+			defer end()
 			branches, err := client.DatabaseBranches.List(ctx, cfg.Organization, source)
 			if err != nil {
 				return errs.Wrap(err, "error listing databases")
@@ -62,6 +64,7 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
+			end()
 			err = printer.PrintOutput(isJSON, printer.NewDatabaseBranchSlicePrinter(branches))
 			if err != nil {
 				return err
