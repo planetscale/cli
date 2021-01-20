@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/pkg/errors"
 	"github.com/planetscale/cli/auth"
+	"github.com/planetscale/cli/cmdutil"
 	"github.com/planetscale/cli/config"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -38,6 +39,8 @@ func LogoutCmd(cfg *config.Config) *cobra.Command {
 			}
 			ctx := context.Background()
 
+			end := cmdutil.PrintProgress("Logging out...")
+			defer end()
 			err = authenticator.RevokeToken(ctx, cfg.AccessToken)
 			if err != nil {
 				return err
@@ -46,6 +49,7 @@ func LogoutCmd(cfg *config.Config) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			end()
 			fmt.Println("Successfully logged out.")
 
 			return nil
