@@ -1,13 +1,10 @@
 package cmdutil
 
 import (
-	"fmt"
 	"os"
 	"os/exec"
 	"strings"
-	"time"
 
-	"github.com/briandowns/spinner"
 	"github.com/cli/safeexec"
 )
 
@@ -48,16 +45,3 @@ func linuxExe() string {
 }
 
 var lookPath = safeexec.LookPath
-
-// PrintProgress starts a spinner with the relevant message.
-func PrintProgress(message string) func() {
-	// Output to STDERR so we don't polluate STDOUT.
-	s := spinner.New(spinner.CharSets[14], 100*time.Millisecond, spinner.WithWriter(os.Stderr))
-	s.Suffix = fmt.Sprintf(" %s", message)
-
-	s.Color("bold", "green") // nolint:errcheck
-	s.Start()
-	return func() {
-		s.Stop()
-	}
-}
