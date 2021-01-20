@@ -58,7 +58,7 @@ func LoginCmd(cfg *config.Config) *cobra.Command {
 			boldGreen := bold.Add(color.FgGreen)
 			boldGreen.Println(deviceVerification.UserCode)
 
-			end := cmdutil.PrintProgress("Waiting for confirmation")
+			end := cmdutil.PrintProgress("Waiting for confirmation...")
 			defer end()
 			accessToken, err := authenticator.GetAccessTokenForDevice(ctx, deviceVerification)
 			if err != nil {
