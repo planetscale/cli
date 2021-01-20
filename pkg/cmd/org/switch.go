@@ -3,8 +3,10 @@ package org
 import (
 	"context"
 	"fmt"
+	"os"
 
 	survey "github.com/AlecAivazis/survey/v2"
+	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/fatih/color"
 	"github.com/planetscale/cli/config"
 	"github.com/spf13/cobra"
@@ -18,9 +20,7 @@ func SwitchCmd(cfg *config.Config) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 
-			answers := &struct {
-				Organization string
-			}{}
+			organization := ""
 
 			client, err := cfg.NewClientFromConfig()
 			if err != nil {
@@ -40,7 +40,7 @@ func SwitchCmd(cfg *config.Config) *cobra.Command {
 					return err
 				}
 
-				answers.Organization = org.Name
+				organization = org.Name
 			} else if len(args) == 0 {
 				// Get organization names to show the user
 				orgs, err := client.Organizations.List(ctx)
@@ -54,26 +54,25 @@ func SwitchCmd(cfg *config.Config) *cobra.Command {
 					orgNames = append(orgNames, org.Name)
 				}
 
-				qs := []*survey.Question{
-					{
-						Name: "organization",
-						Prompt: &survey.Select{
-							Message: "Switch to: ",
-							Options: orgNames,
-						},
-					},
+				prompt := &survey.Select{
+					Message: "Switch to: ",
+					Options: orgNames,
 				}
 
-				err = survey.Ask(qs, answers)
+				err = survey.AskOne(prompt, &organization)
 				if err != nil {
-					return err
+					if err == terminal.InterruptErr {
+						os.Exit(0)
+					} else {
+						return err
+					}
 				}
 			} else {
 				return cmd.Usage()
 			}
 
 			writableConfig := &config.WritableConfig{
-				Organization: answers.Organization,
+				Organization: organization,
 			}
 
 			err = writableConfig.Write(viper.ConfigFileUsed())
@@ -82,7 +81,7 @@ func SwitchCmd(cfg *config.Config) *cobra.Command {
 			}
 
 			bold := color.New(color.Bold).SprintFunc()
-			fmt.Printf("Successfully switched to organization %s.\n", bold(answers.Organization))
+			fmt.Printf("Successfully switched to organization %s\n", bold(organization))
 
 			return nil
 		},
