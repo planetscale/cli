@@ -1,11 +1,15 @@
 package cmdutil
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
+	"github.com/briandowns/spinner"
 	"github.com/cli/safeexec"
+	"github.com/pkg/errors"
 )
 
 const ApplicationURL = "https://app.planetscaledb.io"
@@ -45,3 +49,22 @@ func linuxExe() string {
 }
 
 var lookPath = safeexec.LookPath
+
+func WithSpinner(message string, fn func() error) error {
+	s := spinner.New(spinner.CharSets[14], 100*time.Millisecond)
+	s.Suffix = fmt.Sprintf(" %s", message)
+
+	err := s.Color("bold", "green")
+	if err != nil {
+		return errors.Wrap(err, "error setting color")
+	}
+
+	s.Start()
+	defer s.Stop()
+	err = fn()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
