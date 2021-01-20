@@ -66,7 +66,7 @@ func DeleteCmd(cfg *config.Config) *cobra.Command {
 
 			end()
 			if deleted {
-				fmt.Printf("Successfully deleted database %s\n", cmdutil.BoldBlue(name))
+				fmt.Printf("Database %s was successfully deleted!\n", cmdutil.BoldBlue(name))
 			}
 
 			return nil

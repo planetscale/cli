@@ -69,7 +69,7 @@ func CreateCmd(cfg *config.Config) *cobra.Command {
 					return err
 				}
 			} else {
-				fmt.Printf("Successfully created database %s\n", cmdutil.BoldBlue(database.Name))
+				fmt.Printf("Database %s was successfully created!\n", cmdutil.BoldBlue(database.Name))
 			}
 
 			return nil

@@ -33,7 +33,7 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 			}
 
 			if web {
-				fmt.Println("🌐  Redirecting you to your database branches in your web browser.")
+				fmt.Println("🌐  Redirecting you to your branches in your web browser.")
 				err := browser.OpenURL(fmt.Sprintf("%s/%s/%s/branches", cmdutil.ApplicationURL, cfg.Organization, source))
 				if err != nil {
 					return err
@@ -46,11 +46,11 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
-			end := cmdutil.PrintProgress(fmt.Sprintf("Fetching database branches for %s", cmdutil.BoldBlue(source)))
+			end := cmdutil.PrintProgress(fmt.Sprintf("Fetching branches for %s", cmdutil.BoldBlue(source)))
 			defer end()
 			branches, err := client.DatabaseBranches.List(ctx, cfg.Organization, source)
 			if err != nil {
-				return errs.Wrap(err, "error listing databases")
+				return errs.Wrap(err, "error listing branches")
 			}
 
 			// Technically, this should never actually happen.
@@ -74,6 +74,6 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().BoolP("web", "w", false, "List database branches in your web browser.")
+	cmd.Flags().BoolP("web", "w", false, "List branches in your web browser.")
 	return cmd
 }
