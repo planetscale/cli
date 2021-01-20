@@ -29,7 +29,7 @@ func StatusCmd(cfg *config.Config) *cobra.Command {
 			source := args[0]
 			branch := args[1]
 
-			end := cmdutil.PrintProgress(fmt.Sprintf("Getting status for branch %s in %s", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(source)))
+			end := cmdutil.PrintProgress(fmt.Sprintf("Getting status for branch %s in %s...", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(source)))
 			defer end()
 			status, err := client.DatabaseBranches.Status(ctx, cfg.Organization, source, branch)
 			if err != nil {
