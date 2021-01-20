@@ -79,7 +79,7 @@ func BranchCmd(cfg *config.Config) *cobra.Command {
 					return err
 				}
 			} else {
-				fmt.Printf("Branch `%s` was successfully created\n", dbBranch.Name)
+				fmt.Printf("Branch `%s` was successfully created\n", cmdutil.BoldBlue(dbBranch.Name))
 			}
 
 			return nil
