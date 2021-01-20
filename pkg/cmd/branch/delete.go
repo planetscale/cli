@@ -66,7 +66,7 @@ func DeleteCmd(cfg *config.Config) *cobra.Command {
 			}
 
 			end()
-			fmt.Printf("Successfully deleted branch %s from %s\n", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(source))
+			fmt.Printf("Branch %s was successfully deleted from %s!\n", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(source))
 
 			return nil
 		},
