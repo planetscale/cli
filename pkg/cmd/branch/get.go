@@ -43,6 +43,8 @@ func GetCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
+			end := cmdutil.PrintProgress(fmt.Sprintf("Fetching database branch %s for %s", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(source)))
+			defer end()
 			b, err := client.DatabaseBranches.Get(ctx, cfg.Organization, source, branch)
 			if err != nil {
 				return err
@@ -53,6 +55,7 @@ func GetCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
+			end()
 			err = printer.PrintOutput(isJSON, printer.NewDatabaseBranchPrinter(b))
 			if err != nil {
 				return err

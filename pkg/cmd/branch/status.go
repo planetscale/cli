@@ -2,7 +2,9 @@ package branch
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/planetscale/cli/cmdutil"
 	"github.com/planetscale/cli/config"
 	"github.com/planetscale/cli/printer"
 	"github.com/spf13/cobra"
@@ -27,6 +29,8 @@ func StatusCmd(cfg *config.Config) *cobra.Command {
 			source := args[0]
 			branch := args[1]
 
+			end := cmdutil.PrintProgress(fmt.Sprintf("Getting status for branch %s in %s...", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(source)))
+			defer end()
 			status, err := client.DatabaseBranches.Status(ctx, cfg.Organization, source, branch)
 			if err != nil {
 				return err
@@ -37,6 +41,7 @@ func StatusCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
+			end()
 			err = printer.PrintOutput(isJSON, printer.NewDatabaseBranchStatusPrinter(status))
 			if err != nil {
 				return err

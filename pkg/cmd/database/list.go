@@ -39,6 +39,8 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
+			end := cmdutil.PrintProgress("Fetching databases...")
+			defer end()
 			databases, err := client.Databases.List(ctx, cfg.Organization)
 			if err != nil {
 				return errors.Wrap(err, "error listing databases")
@@ -54,6 +56,7 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
+			end()
 			err = printer.PrintOutput(isJSON, printer.NewDatabaseSlicePrinter(databases))
 			if err != nil {
 				return err

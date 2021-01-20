@@ -8,7 +8,7 @@ import (
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/terminal"
-	"github.com/fatih/color"
+	"github.com/planetscale/cli/cmdutil"
 	"github.com/planetscale/cli/config"
 	"github.com/spf13/cobra"
 )
@@ -33,14 +33,11 @@ func DeleteCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
-			boldBlue := color.New(color.FgBlue).Add(color.Bold).SprintFunc()
-			bold := color.New(color.Bold).SprintFunc()
-
 			if !force {
 				confirmationName := fmt.Sprintf("%s/%s", source, branch)
 				userInput := ""
 
-				confirmationMessage := fmt.Sprintf("%s %s %s", bold("Please type"), boldBlue(confirmationName), bold("to confirm:"))
+				confirmationMessage := fmt.Sprintf("%s %s %s", cmdutil.Bold("Please type"), cmdutil.BoldBlue(confirmationName), cmdutil.Bold("to confirm:"))
 
 				prompt := &survey.Input{
 					Message: confirmationMessage,
@@ -61,12 +58,15 @@ func DeleteCmd(cfg *config.Config) *cobra.Command {
 				}
 			}
 
+			end := cmdutil.PrintProgress(fmt.Sprintf("Deleting database branch %s from %s", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(source)))
+			defer end()
 			err = client.DatabaseBranches.Delete(ctx, cfg.Organization, source, branch)
 			if err != nil {
 				return err
 			}
 
-			fmt.Printf("Successfully deleted branch %s from %s\n", boldBlue(branch), boldBlue(source))
+			end()
+			fmt.Printf("Successfully deleted branch %s from %s\n", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(source))
 
 			return nil
 		},

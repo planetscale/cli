@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/fatih/color"
 	"github.com/pkg/browser"
 	"github.com/planetscale/cli/cmdutil"
 	"github.com/planetscale/cli/config"
@@ -51,6 +50,8 @@ func CreateCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
+			end := cmdutil.PrintProgress("Creating database...")
+			defer end()
 			database, err := client.Databases.Create(ctx, cfg.Organization, createReq)
 			if err != nil {
 				return err
@@ -61,14 +62,14 @@ func CreateCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
-			boldBlue := color.New(color.FgBlue).Add(color.Bold).SprintfFunc()
+			end()
 			if isJSON {
 				err := printer.PrintJSON(database)
 				if err != nil {
 					return err
 				}
 			} else {
-				fmt.Printf("Successfully created database %s\n", boldBlue(database.Name))
+				fmt.Printf("Successfully created database %s\n", cmdutil.BoldBlue(database.Name))
 			}
 
 			return nil
