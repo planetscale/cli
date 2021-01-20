@@ -34,11 +34,12 @@ func DeleteCmd(cfg *config.Config) *cobra.Command {
 
 			name := args[0]
 
-			blue := color.New(color.FgBlue).SprintFunc()
+			boldBlue := color.New(color.FgBlue).Add(color.Bold).SprintFunc()
 			bold := color.New(color.Bold).SprintfFunc()
+
 			if !force {
 				userInput := ""
-				confirmationMessage := fmt.Sprintf("%s %s %s", bold("Please type"), bold(blue(name)), bold("to confirm:"))
+				confirmationMessage := fmt.Sprintf("%s %s %s", bold("Please type"), boldBlue(name), bold("to confirm:"))
 
 				prompt := &survey.Input{
 					Message: confirmationMessage,
@@ -64,7 +65,7 @@ func DeleteCmd(cfg *config.Config) *cobra.Command {
 			}
 
 			if deleted {
-				fmt.Printf("Successfully deleted database %s\n", bold(blue(name)))
+				fmt.Printf("Successfully deleted database %s\n", boldBlue(name))
 			}
 
 			return nil

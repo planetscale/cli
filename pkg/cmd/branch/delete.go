@@ -33,13 +33,14 @@ func DeleteCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
-			blue := color.New(color.FgBlue).SprintFunc()
+			boldBlue := color.New(color.FgBlue).Add(color.Bold).SprintFunc()
 			bold := color.New(color.Bold).SprintFunc()
+
 			if !force {
 				confirmationName := fmt.Sprintf("%s/%s", source, branch)
 				userInput := ""
 
-				confirmationMessage := fmt.Sprintf("%s %s %s", bold("Please type"), bold(blue(confirmationName)), bold("to confirm:"))
+				confirmationMessage := fmt.Sprintf("%s %s %s", bold("Please type"), boldBlue(confirmationName), bold("to confirm:"))
 
 				prompt := &survey.Input{
 					Message: confirmationMessage,
@@ -65,7 +66,7 @@ func DeleteCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
-			fmt.Printf("Successfully deleted branch `%s` from `%s`\n", bold(blue(branch)), bold(blue(source)))
+			fmt.Printf("Successfully deleted branch %s from %s\n", boldBlue(branch), boldBlue(source))
 
 			return nil
 		},
