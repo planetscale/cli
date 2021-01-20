@@ -51,23 +51,25 @@ func CreateCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
+			end := cmdutil.PrintProgress("Creating database...")
+			defer end()
 			database, err := client.Databases.Create(ctx, cfg.Organization, createReq)
 			if err != nil {
 				return err
 			}
 
+			end()
 			isJSON, err := cmd.Flags().GetBool("json")
 			if err != nil {
 				return err
 			}
-
-			boldBlue := color.New(color.FgBlue).Add(color.Bold).SprintfFunc()
 			if isJSON {
 				err := printer.PrintJSON(database)
 				if err != nil {
 					return err
 				}
 			} else {
+				boldBlue := color.New(color.FgBlue).Add(color.Bold).SprintfFunc()
 				fmt.Printf("Successfully created database %s\n", boldBlue(database.Name))
 			}
 
