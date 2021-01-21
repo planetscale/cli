@@ -57,6 +57,7 @@ func LoginCmd(cfg *config.Config) *cobra.Command {
 			bold.Printf("Confirmation Code: ")
 			boldGreen := bold.Add(color.FgGreen)
 			boldGreen.Println(deviceVerification.UserCode)
+			fmt.Println("If launching the browser does not work, use this URL:", deviceVerification.VerificationCompleteURL)
 
 			end := cmdutil.PrintProgress("Waiting for confirmation...")
 			defer end()
