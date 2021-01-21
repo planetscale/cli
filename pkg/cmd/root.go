@@ -36,9 +36,9 @@ var cfgFile string
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:              "psctl",
+	Use:              "planet",
 	Short:            "A CLI for PlanetScale",
-	Long:             `psctl is a CLI library for communicating with PlanetScale's API.`,
+	Long:             `planet is a CLI library for communicating with PlanetScale's API.`,
 	TraverseChildren: true,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
