@@ -9,9 +9,9 @@ import (
 // Database returns a table-serializable database model.
 type Database struct {
 	Name      string `header:"name" json:"name"`
-	Notes     string `header:"notes" json:"notes"`
 	CreatedAt int64  `header:"created_at,timestamp(ms|utc|human)" json:"created_at"`
 	UpdatedAt int64  `header:"updated_at,timestamp(ms|utc|human)" json:"updated_at"`
+	Notes     string `header:"notes" json:"notes"`
 }
 
 // NewDatabasePrinter returns a struct that prints out the various fields of a
