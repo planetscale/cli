@@ -53,6 +53,7 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 				return errs.Wrap(err, "error listing branches")
 			}
 
+			end()
 			// Technically, this should never actually happen.
 			if len(branches) == 0 {
 				fmt.Println("No branches exist for this database.")
@@ -64,7 +65,6 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
-			end()
 			err = printer.PrintOutput(isJSON, printer.NewDatabaseBranchSlicePrinter(branches))
 			if err != nil {
 				return err

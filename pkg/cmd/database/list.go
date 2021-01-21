@@ -46,6 +46,7 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 				return errors.Wrap(err, "error listing databases")
 			}
 
+			end()
 			if len(databases) == 0 {
 				fmt.Println("No databases have been created yet.")
 				return nil
@@ -56,7 +57,6 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
-			end()
 			err = printer.PrintOutput(isJSON, printer.NewDatabaseSlicePrinter(databases))
 			if err != nil {
 				return err
