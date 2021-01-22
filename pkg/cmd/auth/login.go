@@ -27,11 +27,9 @@ func LoginCmd(cfg *config.Config) *cobra.Command {
 	var authURL string
 
 	cmd := &cobra.Command{
-		Use:     "login",
-		Args:    cobra.ExactArgs(0),
-		Short:   "Authenticate with PlanetScale",
-		Long:    "TODO",
-		Example: "TODO",
+		Use:   "login",
+		Args:  cobra.ExactArgs(0),
+		Short: "Authenticate with PlanetScale",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			authenticator, err := auth.New(cleanhttp.DefaultClient(), clientID, clientSecret, auth.SetBaseURL(authURL))
 			if err != nil {
@@ -57,7 +55,8 @@ func LoginCmd(cfg *config.Config) *cobra.Command {
 			bold.Printf("Confirmation Code: ")
 			boldGreen := bold.Add(color.FgGreen)
 			boldGreen.Println(deviceVerification.UserCode)
-			fmt.Println("If launching the browser does not work, use this URL:", deviceVerification.VerificationCompleteURL)
+
+			fmt.Printf("\nIf something goes wrong, copy and paste this URL into your browser: %s\n\n", cmdutil.Bold(deviceVerification.VerificationCompleteURL))
 
 			end := cmdutil.PrintProgress("Waiting for confirmation...")
 			defer end()
