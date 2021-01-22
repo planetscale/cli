@@ -11,7 +11,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-const organizationsAPIPath = "organizations"
+const organizationsAPIPath = "v1/organizations"
 
 // OrganizationsService is an interface for communicating with the PlanetScale
 // Organizations API endpoints.
