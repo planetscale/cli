@@ -150,7 +150,7 @@ func (ds *databaseBranchesService) Delete(ctx context.Context, org, db, branch s
 	defer res.Body.Close()
 
 	if res.StatusCode == http.StatusNotFound {
-		return errors.New("database branch not found")
+		return errors.New("branch not found")
 	}
 
 	return nil

@@ -137,5 +137,5 @@ func (ds *databasesService) Delete(ctx context.Context, org string, name string)
 }
 
 func databasesAPIPath(org string) string {
-	return fmt.Sprintf("organizations/%s/databases", org)
+	return fmt.Sprintf("v1/organizations/%s/databases", org)
 }
