@@ -19,8 +19,9 @@ func DeleteCmd(cfg *config.Config) *cobra.Command {
 	var force bool
 
 	cmd := &cobra.Command{
-		Use:   "delete <database_name>",
-		Short: "Delete a database instance",
+		Use:     "delete <database_name>",
+		Short:   "Delete a database instance",
+		Aliases: []string{"rm"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 			client, err := cfg.NewClientFromConfig()

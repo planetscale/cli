@@ -16,8 +16,9 @@ import (
 // ListCmd encapsulates the command for listing branches for a database.
 func ListCmd(cfg *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "list <db-name>",
-		Short: "List all branches of a database",
+		Use:     "list <db-name>",
+		Short:   "List all branches of a database",
+		Aliases: []string{"ls"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 
