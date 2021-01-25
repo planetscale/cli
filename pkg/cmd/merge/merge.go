@@ -8,6 +8,7 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/planetscale/cli/cmdutil"
 	"github.com/planetscale/cli/config"
+	"github.com/planetscale/planetscale-go"
 	"github.com/spf13/cobra"
 )
 
@@ -45,33 +46,7 @@ func MergeCmd(cfg *config.Config) *cobra.Command {
 			// If mergeInto is blank, then we need to prompt the user to select a
 			// branch.
 			if mergeInto == "" {
-				end := cmdutil.PrintProgress(fmt.Sprintf("Fetching branches for %s", cmdutil.BoldBlue(database)))
-				defer end()
-
-				branches, err := client.DatabaseBranches.List(ctx, cfg.Organization, database)
-				if err != nil {
-					return err
-				}
-				end()
-
-				if len(branches) == 1 && branches[0].Name == branch.Name {
-					return fmt.Errorf("There are no other branches to merge %s into", branch.Name)
-				}
-
-				branchNames := []string{}
-				for _, b := range branches {
-					if b.Name == fromBranch {
-						continue
-					}
-					branchNames = append(branchNames, b.Name)
-				}
-
-				prompt := &survey.Select{
-					Message: fmt.Sprintf("Select a branch to merge %s into: ", cmdutil.BoldBlue(branch.Name)),
-					Options: branchNames,
-				}
-
-				err = survey.AskOne(prompt, &mergeInto)
+				err := selectBranch(ctx, client, fromBranch, &mergeInto, database, cfg.Organization)
 				if err != nil {
 					return err
 				}
@@ -93,4 +68,39 @@ func MergeCmd(cfg *config.Config) *cobra.Command {
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
 
 	return cmd
+}
+
+func selectBranch(ctx context.Context, client *planetscale.Client, fromBranch string, mergeInto *string, database string, organization string) error {
+	end := cmdutil.PrintProgress(fmt.Sprintf("Fetching branches for %s", cmdutil.BoldBlue(database)))
+	defer end()
+
+	branches, err := client.DatabaseBranches.List(ctx, organization, database)
+	if err != nil {
+		return err
+	}
+	end()
+
+	if len(branches) == 1 && branches[0].Name == fromBranch {
+		return fmt.Errorf("There are no other branches to merge %s into", fromBranch)
+	}
+
+	branchNames := make([]string, 0, len(branches)-1)
+	for _, b := range branches {
+		if b.Name == fromBranch {
+			continue
+		}
+		branchNames = append(branchNames, b.Name)
+	}
+
+	prompt := &survey.Select{
+		Message: fmt.Sprintf("Select a branch to merge %s into: ", cmdutil.BoldBlue(fromBranch)),
+		Options: branchNames,
+	}
+
+	err = survey.AskOne(prompt, mergeInto)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
