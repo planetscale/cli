@@ -64,7 +64,10 @@ func selectBranch(ctx context.Context, client *planetscale.Client, fromBranch st
 	end := cmdutil.PrintProgress(fmt.Sprintf("Fetching branches for %s", cmdutil.BoldBlue(database)))
 	defer end()
 
-	branches, err := client.DatabaseBranches.List(ctx, organization, database)
+	branches, err := client.DatabaseBranches.List(ctx, &planetscale.ListDatabaseBranchesRequest{
+		Organization: organization,
+		Database:     database,
+	})
 	if err != nil {
 		return err
 	}

@@ -7,6 +7,7 @@ import (
 	"github.com/planetscale/cli/cmdutil"
 	"github.com/planetscale/cli/config"
 	"github.com/planetscale/cli/printer"
+	"github.com/planetscale/planetscale-go"
 	"github.com/spf13/cobra"
 )
 
@@ -31,7 +32,11 @@ func StatusCmd(cfg *config.Config) *cobra.Command {
 
 			end := cmdutil.PrintProgress(fmt.Sprintf("Getting status for branch %s in %s...", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(source)))
 			defer end()
-			status, err := client.DatabaseBranches.Status(ctx, cfg.Organization, source, branch)
+			status, err := client.DatabaseBranches.GetStatus(ctx, &planetscale.GetDatabaseBranchStatusRequest{
+				Organization: cfg.Organization,
+				Database:     source,
+				Branch:       branch,
+			})
 			if err != nil {
 				return err
 			}
