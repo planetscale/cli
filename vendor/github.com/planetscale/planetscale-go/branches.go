@@ -2,23 +2,26 @@ package planetscale
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
-	"reflect"
 	"time"
 
-	"github.com/google/jsonapi"
 	"github.com/pkg/errors"
 )
 
 // DatabaseBranch represents a database branch.
 type DatabaseBranch struct {
-	Name         string    `jsonapi:"attr,name" json:"name"`
-	Notes        string    `jsonapi:"attr,notes" json:"notes"`
-	ParentBranch string    `jsonapi:"attr,parent_branch" json:"parent_branch,omitempty"`
-	CreatedAt    time.Time `jsonapi:"attr,created_at,iso8601" json:"created_at"`
-	UpdatedAt    time.Time `jsonapi:"attr,updated_at,iso8601" json:"updated_at"`
-	Status       string    `jsonapi:"attr,status" json:"status,omitempty"`
+	Name         string    `json:"name"`
+	Notes        string    `json:"notes"`
+	ParentBranch string    `json:"parent_branch,omitempty"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+	Status       string    `json:"status,omitempty"`
+}
+
+type databaseBranchesResponse struct {
+	Branches []*DatabaseBranch `json:"data"`
 }
 
 // CreateDatabaseBranchRequest encapsulates the request for creating a new
@@ -43,11 +46,11 @@ type databaseBranchesService struct {
 
 // DatabaseBranchStatus represents the status of a PlanetScale database branch.
 type DatabaseBranchStatus struct {
-	DeployPhase string `json:"deploy_phase" jsonapi:"attr,deploy_phase"`
-	GatewayHost string `json:"mysql_gateway_host" jsonapi:"attr,mysql_gateway_host"`
-	GatewayPort int    `json:"mysql_gateway_port" jsonapi:"attr,mysql_gateway_port"`
-	User        string `json:"mysql_gateway_user" jsonapi:"attr,mysql_gateway_user"`
-	Password    string `json:"mysql_gateway_pass" jsonapi:"attr,mysql_gateway_pass"`
+	DeployPhase string `json:"deploy_phase"`
+	GatewayHost string `json:"mysql_gateway_host"`
+	GatewayPort int    `json:"mysql_gateway_port"`
+	User        string `json:"mysql_gateway_user"`
+	Password    string `json:"mysql_gateway_pass"`
 }
 
 var _ DatabaseBranchesService = &databaseBranchesService{}
@@ -73,7 +76,8 @@ func (ds *databaseBranchesService) Create(ctx context.Context, org, db string, c
 	defer res.Body.Close()
 
 	dbBranch := &DatabaseBranch{}
-	err = jsonapi.UnmarshalPayload(res.Body, dbBranch)
+	err = json.NewDecoder(res.Body).Decode(&dbBranch)
+
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +100,8 @@ func (ds *databaseBranchesService) Get(ctx context.Context, org, db, branch stri
 	defer res.Body.Close()
 
 	dbBranch := &DatabaseBranch{}
-	err = jsonapi.UnmarshalPayload(res.Body, dbBranch)
+	err = json.NewDecoder(res.Body).Decode(&dbBranch)
+
 	if err != nil {
 		return nil, err
 	}
@@ -118,21 +123,14 @@ func (ds *databaseBranchesService) List(ctx context.Context, org, db string) ([]
 	}
 	defer res.Body.Close()
 
-	databases, err := jsonapi.UnmarshalManyPayload(res.Body, reflect.TypeOf(new(DatabaseBranch)))
+	dbBranches := &databaseBranchesResponse{}
+	err = json.NewDecoder(res.Body).Decode(&dbBranches)
+
 	if err != nil {
 		return nil, err
 	}
 
-	dbBranches := make([]*DatabaseBranch, 0)
-
-	for _, database := range databases {
-		db, ok := database.(*DatabaseBranch)
-		if ok {
-			dbBranches = append(dbBranches, db)
-		}
-	}
-
-	return dbBranches, nil
+	return dbBranches.Branches, nil
 }
 
 // Delete deletes a database branch from an organization's database.
@@ -170,7 +168,8 @@ func (ds *databaseBranchesService) Status(ctx context.Context, org, db, branch s
 	}
 
 	status := &DatabaseBranchStatus{}
-	err = jsonapi.UnmarshalPayload(res.Body, status)
+	err = json.NewDecoder(res.Body).Decode(&status)
+
 	if err != nil {
 		return nil, err
 	}

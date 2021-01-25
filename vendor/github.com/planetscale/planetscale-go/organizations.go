@@ -2,12 +2,11 @@ package planetscale
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
-	"reflect"
 	"time"
 
-	"github.com/google/jsonapi"
 	"github.com/pkg/errors"
 )
 
@@ -22,9 +21,13 @@ type OrganizationsService interface {
 
 // Organization represents a PlanetScale organization.
 type Organization struct {
-	Name      string    `jsonapi:"attr,name" json:"name"`
-	CreatedAt time.Time `jsonapi:"attr,created_at,iso8601" json:"created_at"`
-	UpdatedAt time.Time `jsonapi:"attr,updated_at,iso8601" json:"updated_at"`
+	Name      string    `json:"name"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type OrganizationsResponse struct {
+	Organizations []*Organization `json:"data"`
 }
 
 type organizationsService struct {
@@ -53,7 +56,9 @@ func (o *organizationsService) Get(ctx context.Context, org string) (*Organizati
 	defer res.Body.Close()
 
 	organization := &Organization{}
-	err = jsonapi.UnmarshalPayload(res.Body, organization)
+	decoder := json.NewDecoder(res.Body)
+	err = decoder.Decode(&organization)
+
 	if err != nil {
 		return nil, err
 	}
@@ -74,19 +79,12 @@ func (o *organizationsService) List(ctx context.Context) ([]*Organization, error
 	}
 	defer res.Body.Close()
 
-	organizations, err := jsonapi.UnmarshalManyPayload(res.Body, reflect.TypeOf(new(Organization)))
+	orgResponse := &OrganizationsResponse{}
+	err = json.NewDecoder(res.Body).Decode(&orgResponse)
+
 	if err != nil {
 		return nil, err
 	}
 
-	orgs := make([]*Organization, 0)
-
-	for _, organization := range organizations {
-		org, ok := organization.(*Organization)
-		if ok {
-			orgs = append(orgs, org)
-		}
-	}
-
-	return orgs, nil
+	return orgResponse.Organizations, nil
 }
