@@ -24,8 +24,6 @@ github.com/fatih/color
 github.com/fsnotify/fsnotify
 # github.com/golang/protobuf v1.4.2
 github.com/golang/protobuf/proto
-# github.com/google/jsonapi v0.0.0-20201022225600-f822737867f6
-github.com/google/jsonapi
 # github.com/hashicorp/go-cleanhttp v0.5.1
 ## explicit
 github.com/hashicorp/go-cleanhttp
@@ -74,7 +72,7 @@ github.com/pkg/browser
 # github.com/pkg/errors v0.9.1
 ## explicit
 github.com/pkg/errors
-# github.com/planetscale/planetscale-go v0.1.0
+# github.com/planetscale/planetscale-go v0.2.0
 ## explicit
 github.com/planetscale/planetscale-go
 # github.com/pmezard/go-difflib v1.0.0
