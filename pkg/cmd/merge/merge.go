@@ -33,16 +33,6 @@ func MergeCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
-			// end := cmdutil.PrintProgress(fmt.Sprintf("Fetching branch %s for %s", cmdutil.BoldBlue(fromBranch), cmdutil.BoldBlue(database)))
-			// defer end()
-
-			// Check that the branch actually exists.
-			branch, err := client.DatabaseBranches.Get(ctx, cfg.Organization, database, fromBranch)
-			if err != nil {
-				return err
-			}
-			// end()
-
 			// If mergeInto is blank, then we need to prompt the user to select a
 			// branch.
 			if mergeInto == "" {
@@ -52,12 +42,12 @@ func MergeCmd(cfg *config.Config) *cobra.Command {
 				}
 			}
 
-			if mergeInto == branch.Name {
+			if mergeInto == fromBranch {
 				return errors.New("Cannot merge a branch into itself")
 			}
 
 			// TODO(iheanyi): Call branch merge request here.
-			fmt.Printf("Will merge %s into %s\n", cmdutil.BoldBlue(branch.Name), cmdutil.BoldBlue(mergeInto))
+			fmt.Printf("Will merge %s into %s\n", cmdutil.BoldBlue(fromBranch), cmdutil.BoldBlue(mergeInto))
 
 			return nil
 		},
