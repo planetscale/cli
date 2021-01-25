@@ -58,7 +58,7 @@ func MergeCmd(cfg *config.Config) *cobra.Command {
 					return fmt.Errorf("There are no other branches to merge %s into", branch.Name)
 				}
 
-				branchNames := make([]string, 0, len(branches)-1)
+				branchNames := []string{}
 				for _, b := range branches {
 					if b.Name == fromBranch {
 						continue
