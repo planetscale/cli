@@ -2,12 +2,11 @@ package planetscale
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
-	"reflect"
 	"time"
 
-	"github.com/google/jsonapi"
 	"github.com/pkg/errors"
 )
 
@@ -27,10 +26,15 @@ type DatabasesService interface {
 
 // Database represents a PlanetScale database
 type Database struct {
-	Name      string    `jsonapi:"attr,name" json:"name"`
-	Notes     string    `jsonapi:"attr,notes" json:"notes"`
-	CreatedAt time.Time `jsonapi:"attr,created_at,iso8601" json:"created_at"`
-	UpdatedAt time.Time `jsonapi:"attr,updated_at,iso8601" json:"updated_at"`
+	Name      string    `json:"name"`
+	Notes     string    `json:"notes"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// Database represents a list of PlanetScale databases
+type Databases struct {
+	Data []*Database `json:"data"`
 }
 
 type databasesService struct {
@@ -57,20 +61,15 @@ func (ds *databasesService) List(ctx context.Context, org string) ([]*Database, 
 	}
 	defer res.Body.Close()
 
-	databases, err := jsonapi.UnmarshalManyPayload(res.Body, reflect.TypeOf(new(Database)))
+	databases := Databases{}
+	decoder := json.NewDecoder(res.Body)
+	err = decoder.Decode(&databases)
+
 	if err != nil {
 		return nil, err
 	}
 
-	dbs := make([]*Database, 0)
-	for _, database := range databases {
-		db, ok := database.(*Database)
-		if ok {
-			dbs = append(dbs, db)
-		}
-	}
-
-	return dbs, nil
+	return databases.Data, nil
 }
 
 func (ds *databasesService) Create(ctx context.Context, org string, createReq *CreateDatabaseRequest) (*Database, error) {
@@ -86,7 +85,8 @@ func (ds *databasesService) Create(ctx context.Context, org string, createReq *C
 	defer res.Body.Close()
 
 	db := &Database{}
-	err = jsonapi.UnmarshalPayload(res.Body, db)
+	decoder := json.NewDecoder(res.Body)
+	err = decoder.Decode(&db)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +108,8 @@ func (ds *databasesService) Get(ctx context.Context, org string, name string) (*
 	defer res.Body.Close()
 
 	db := &Database{}
-	err = jsonapi.UnmarshalPayload(res.Body, db)
+	decoder := json.NewDecoder(res.Body)
+	err = decoder.Decode(&db)
 	if err != nil {
 		return nil, err
 	}
