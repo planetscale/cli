@@ -10,6 +10,7 @@ import (
 	"github.com/planetscale/cli/cmdutil"
 	"github.com/planetscale/cli/config"
 	"github.com/planetscale/cli/printer"
+	"github.com/planetscale/planetscale-go"
 	"github.com/spf13/cobra"
 )
 
@@ -49,7 +50,10 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 
 			end := cmdutil.PrintProgress(fmt.Sprintf("Fetching branches for %s", cmdutil.BoldBlue(source)))
 			defer end()
-			branches, err := client.DatabaseBranches.List(ctx, cfg.Organization, source)
+			branches, err := client.DatabaseBranches.List(ctx, &planetscale.ListDatabaseBranchesRequest{
+				Organization: cfg.Organization,
+				Database:     source,
+			})
 			if err != nil {
 				return errs.Wrap(err, "error listing branches")
 			}

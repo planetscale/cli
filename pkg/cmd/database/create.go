@@ -18,7 +18,8 @@ import (
 // CreateCmd is the command for creating a database.
 func CreateCmd(cfg *config.Config) *cobra.Command {
 	createReq := &ps.CreateDatabaseRequest{
-		Database: new(ps.Database),
+		Organization: cfg.Organization,
+		Database:     new(ps.Database),
 	}
 	cmd := &cobra.Command{
 		Use:   "create <name>",
@@ -52,7 +53,7 @@ func CreateCmd(cfg *config.Config) *cobra.Command {
 
 			end := cmdutil.PrintProgress("Creating database...")
 			defer end()
-			database, err := client.Databases.Create(ctx, cfg.Organization, createReq)
+			database, err := client.Databases.Create(ctx, createReq)
 			if err != nil {
 				return err
 			}

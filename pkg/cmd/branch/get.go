@@ -8,6 +8,7 @@ import (
 	"github.com/planetscale/cli/cmdutil"
 	"github.com/planetscale/cli/config"
 	"github.com/planetscale/cli/printer"
+	"github.com/planetscale/planetscale-go"
 	"github.com/spf13/cobra"
 )
 
@@ -45,7 +46,11 @@ func GetCmd(cfg *config.Config) *cobra.Command {
 
 			end := cmdutil.PrintProgress(fmt.Sprintf("Fetching branch %s for %s", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(source)))
 			defer end()
-			b, err := client.DatabaseBranches.Get(ctx, cfg.Organization, source, branch)
+			b, err := client.DatabaseBranches.Get(ctx, &planetscale.GetDatabaseBranchRequest{
+				Organization: cfg.Organization,
+				Database:     source,
+				Branch:       branch,
+			})
 			if err != nil {
 				return err
 			}

@@ -9,6 +9,7 @@ import (
 	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/planetscale/cli/cmdutil"
 	"github.com/planetscale/cli/config"
+	"github.com/planetscale/planetscale-go"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -33,7 +34,9 @@ func SwitchCmd(cfg *config.Config) *cobra.Command {
 
 				end := cmdutil.PrintProgress(fmt.Sprintf("Fetching organization %s...", cmdutil.Bold(orgName)))
 				defer end()
-				org, err := client.Organizations.Get(ctx, orgName)
+				org, err := client.Organizations.Get(ctx, &planetscale.GetOrganizationRequest{
+					Organization: orgName,
+				})
 				if err != nil {
 					return err
 				}

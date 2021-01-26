@@ -10,6 +10,7 @@ import (
 	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/planetscale/cli/cmdutil"
 	"github.com/planetscale/cli/config"
+	"github.com/planetscale/planetscale-go"
 	"github.com/spf13/cobra"
 )
 
@@ -61,7 +62,11 @@ func DeleteCmd(cfg *config.Config) *cobra.Command {
 
 			end := cmdutil.PrintProgress(fmt.Sprintf("Deleting branch %s from %s", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(source)))
 			defer end()
-			err = client.DatabaseBranches.Delete(ctx, cfg.Organization, source, branch)
+			err = client.DatabaseBranches.Delete(ctx, &planetscale.DeleteDatabaseBranchRequest{
+				Organization: cfg.Organization,
+				Database:     source,
+				Branch:       branch,
+			})
 			if err != nil {
 				return err
 			}

@@ -10,6 +10,7 @@ import (
 	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/planetscale/cli/cmdutil"
 	"github.com/planetscale/cli/config"
+	"github.com/planetscale/planetscale-go"
 	"github.com/spf13/cobra"
 )
 
@@ -60,15 +61,16 @@ func DeleteCmd(cfg *config.Config) *cobra.Command {
 			end := cmdutil.PrintProgress(fmt.Sprintf("Deleting database %s...", cmdutil.BoldBlue(name)))
 			defer end()
 
-			deleted, err := client.Databases.Delete(ctx, cfg.Organization, name)
+			err = client.Databases.Delete(ctx, &planetscale.DeleteDatabaseRequest{
+				Organization: cfg.Organization,
+				Database:     name,
+			})
 			if err != nil {
 				return err
 			}
 
 			end()
-			if deleted {
-				fmt.Printf("Database %s was successfully deleted!\n", cmdutil.BoldBlue(name))
-			}
+			fmt.Printf("Database %s was successfully deleted!\n", cmdutil.BoldBlue(name))
 
 			return nil
 		},

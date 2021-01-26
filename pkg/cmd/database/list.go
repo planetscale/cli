@@ -9,6 +9,7 @@ import (
 	"github.com/planetscale/cli/cmdutil"
 	"github.com/planetscale/cli/config"
 	"github.com/planetscale/cli/printer"
+	"github.com/planetscale/planetscale-go"
 	"github.com/spf13/cobra"
 )
 
@@ -41,7 +42,9 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 
 			end := cmdutil.PrintProgress("Fetching databases...")
 			defer end()
-			databases, err := client.Databases.List(ctx, cfg.Organization)
+			databases, err := client.Databases.List(ctx, &planetscale.ListDatabasesRequest{
+				Organization: cfg.Organization,
+			})
 			if err != nil {
 				return errors.Wrap(err, "error listing databases")
 			}

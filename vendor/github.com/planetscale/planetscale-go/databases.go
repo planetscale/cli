@@ -12,16 +12,36 @@ import (
 
 // CreateDatabaseRequest encapsulates the request for creating a new database.
 type CreateDatabaseRequest struct {
-	Database *Database `json:"database"`
+	Organization string
+	Database     *Database `json:"database"`
+}
+
+// DatabaseRequest encapsulates the request for getting a single database.
+type GetDatabaseRequest struct {
+	Organization string
+	Database     string
+}
+
+// ListDatabasesRequest encapsulates the request for listing all databases in an
+// organization.
+type ListDatabasesRequest struct {
+	Organization string
+}
+
+// DeleteDatabaseRequest encapsulates the request for deleting a database from
+// an organization.
+type DeleteDatabaseRequest struct {
+	Organization string
+	Database     string
 }
 
 // DatabaseService is an interface for communicating with the PlanetScale
 // Databases API endpoint.
 type DatabasesService interface {
-	Create(context.Context, string, *CreateDatabaseRequest) (*Database, error)
-	Get(context.Context, string, string) (*Database, error)
-	List(context.Context, string) ([]*Database, error)
-	Delete(context.Context, string, string) (bool, error)
+	Create(context.Context, *CreateDatabaseRequest) (*Database, error)
+	Get(context.Context, *GetDatabaseRequest) (*Database, error)
+	List(context.Context, *ListDatabasesRequest) ([]*Database, error)
+	Delete(context.Context, *DeleteDatabaseRequest) error
 }
 
 // Database represents a PlanetScale database
@@ -33,8 +53,8 @@ type Database struct {
 }
 
 // Database represents a list of PlanetScale databases
-type Databases struct {
-	Data []*Database `json:"data"`
+type databasesResponse struct {
+	Databases []*Database `json:"data"`
 }
 
 type databasesService struct {
@@ -49,8 +69,8 @@ func NewDatabasesService(client *Client) *databasesService {
 	}
 }
 
-func (ds *databasesService) List(ctx context.Context, org string) ([]*Database, error) {
-	req, err := ds.client.newRequest(http.MethodGet, databasesAPIPath(org), nil)
+func (ds *databasesService) List(ctx context.Context, listReq *ListDatabasesRequest) ([]*Database, error) {
+	req, err := ds.client.newRequest(http.MethodGet, databasesAPIPath(listReq.Organization), nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating http request")
 	}
@@ -61,19 +81,18 @@ func (ds *databasesService) List(ctx context.Context, org string) ([]*Database, 
 	}
 	defer res.Body.Close()
 
-	databases := Databases{}
-	decoder := json.NewDecoder(res.Body)
-	err = decoder.Decode(&databases)
+	dbResponse := databasesResponse{}
+	err = json.NewDecoder(res.Body).Decode(&dbResponse)
 
 	if err != nil {
 		return nil, err
 	}
 
-	return databases.Data, nil
+	return dbResponse.Databases, nil
 }
 
-func (ds *databasesService) Create(ctx context.Context, org string, createReq *CreateDatabaseRequest) (*Database, error) {
-	req, err := ds.client.newRequest(http.MethodPost, databasesAPIPath(org), createReq)
+func (ds *databasesService) Create(ctx context.Context, createReq *CreateDatabaseRequest) (*Database, error) {
+	req, err := ds.client.newRequest(http.MethodPost, databasesAPIPath(createReq.Organization), createReq)
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating request for create database")
 	}
@@ -85,8 +104,8 @@ func (ds *databasesService) Create(ctx context.Context, org string, createReq *C
 	defer res.Body.Close()
 
 	db := &Database{}
-	decoder := json.NewDecoder(res.Body)
-	err = decoder.Decode(&db)
+	err = json.NewDecoder(res.Body).Decode(&db)
+
 	if err != nil {
 		return nil, err
 	}
@@ -94,8 +113,8 @@ func (ds *databasesService) Create(ctx context.Context, org string, createReq *C
 	return db, nil
 }
 
-func (ds *databasesService) Get(ctx context.Context, org string, name string) (*Database, error) {
-	path := fmt.Sprintf("%s/%s", databasesAPIPath(org), name)
+func (ds *databasesService) Get(ctx context.Context, getReq *GetDatabaseRequest) (*Database, error) {
+	path := fmt.Sprintf("%s/%s", databasesAPIPath(getReq.Organization), getReq.Database)
 	req, err := ds.client.newRequest(http.MethodGet, path, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating request for get database")
@@ -108,8 +127,8 @@ func (ds *databasesService) Get(ctx context.Context, org string, name string) (*
 	defer res.Body.Close()
 
 	db := &Database{}
-	decoder := json.NewDecoder(res.Body)
-	err = decoder.Decode(&db)
+	err = json.NewDecoder(res.Body).Decode(&db)
+
 	if err != nil {
 		return nil, err
 	}
@@ -117,24 +136,20 @@ func (ds *databasesService) Get(ctx context.Context, org string, name string) (*
 	return db, nil
 }
 
-func (ds *databasesService) Delete(ctx context.Context, org string, name string) (bool, error) {
-	path := fmt.Sprintf("%s/%s", databasesAPIPath(org), name)
+func (ds *databasesService) Delete(ctx context.Context, deleteReq *DeleteDatabaseRequest) error {
+	path := fmt.Sprintf("%s/%s", databasesAPIPath(deleteReq.Organization), deleteReq.Database)
 	req, err := ds.client.newRequest(http.MethodDelete, path, nil)
 	if err != nil {
-		return false, errors.Wrap(err, "error creating request for delete database")
+		return errors.Wrap(err, "error creating request for delete database")
 	}
 
 	res, err := ds.client.Do(ctx, req)
 	if err != nil {
-		return false, errors.Wrap(err, "error deleting database")
+		return err
 	}
 	defer res.Body.Close()
 
-	if res.StatusCode == http.StatusNotFound {
-		return false, errors.New("database not found")
-	}
-
-	return true, nil
+	return nil
 }
 
 func databasesAPIPath(org string) string {
