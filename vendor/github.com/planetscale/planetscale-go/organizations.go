@@ -12,10 +12,16 @@ import (
 
 const organizationsAPIPath = "v1/organizations"
 
+// GetOrganizationRequest encapsulates the request for getting a single
+// organization.
+type GetOrganizationRequest struct {
+	Organization string
+}
+
 // OrganizationsService is an interface for communicating with the PlanetScale
 // Organizations API endpoints.
 type OrganizationsService interface {
-	Get(context.Context, string) (*Organization, error)
+	Get(context.Context, *GetOrganizationRequest) (*Organization, error)
 	List(context.Context) ([]*Organization, error)
 }
 
@@ -26,7 +32,7 @@ type Organization struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-type OrganizationsResponse struct {
+type organizationsResponse struct {
 	Organizations []*Organization `json:"data"`
 }
 
@@ -43,8 +49,8 @@ func NewOrganizationsService(client *Client) *organizationsService {
 }
 
 // Get fetches a single organization by name.
-func (o *organizationsService) Get(ctx context.Context, org string) (*Organization, error) {
-	req, err := o.client.newRequest(http.MethodGet, fmt.Sprintf("%s/%s", organizationsAPIPath, org), nil)
+func (o *organizationsService) Get(ctx context.Context, getReq *GetOrganizationRequest) (*Organization, error) {
+	req, err := o.client.newRequest(http.MethodGet, fmt.Sprintf("%s/%s", organizationsAPIPath, getReq.Organization), nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating request for get organization")
 	}
@@ -56,8 +62,7 @@ func (o *organizationsService) Get(ctx context.Context, org string) (*Organizati
 	defer res.Body.Close()
 
 	organization := &Organization{}
-	decoder := json.NewDecoder(res.Body)
-	err = decoder.Decode(&organization)
+	err = json.NewDecoder(res.Body).Decode(&organization)
 
 	if err != nil {
 		return nil, err
@@ -79,7 +84,7 @@ func (o *organizationsService) List(ctx context.Context) ([]*Organization, error
 	}
 	defer res.Body.Close()
 
-	orgResponse := &OrganizationsResponse{}
+	orgResponse := &organizationsResponse{}
 	err = json.NewDecoder(res.Body).Decode(&orgResponse)
 
 	if err != nil {

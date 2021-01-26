@@ -27,17 +27,50 @@ type databaseBranchesResponse struct {
 // CreateDatabaseBranchRequest encapsulates the request for creating a new
 // database branch
 type CreateDatabaseBranchRequest struct {
-	Branch *DatabaseBranch `json:"branch"`
+	Organization string
+	Database     string
+	Branch       *DatabaseBranch `json:"branch"`
+}
+
+// ListDatabaseBranchesRequest encapsulates the request for listing the branches
+// of a database.
+type ListDatabaseBranchesRequest struct {
+	Organization string
+	Database     string
+}
+
+// GetDatabaseBranchRequest encapsulates the request for getting a single
+// database branch for a database.
+type GetDatabaseBranchRequest struct {
+	Organization string
+	Database     string
+	Branch       string
+}
+
+// DeleteDatabaseRequest encapsulates the request for deleting a database branch
+// from a database.
+type DeleteDatabaseBranchRequest struct {
+	Organization string
+	Database     string
+	Branch       string
+}
+
+// GetDatabaseBranchStatusRequest encapsulates the request for getting the status
+// of a specific database branch.
+type GetDatabaseBranchStatusRequest struct {
+	Organization string
+	Database     string
+	Branch       string
 }
 
 // DatabaseBranchesService is an interface for communicating with the PlanetScale
 // Database Branch API endpoint.
 type DatabaseBranchesService interface {
-	Create(context.Context, string, string, *CreateDatabaseBranchRequest) (*DatabaseBranch, error)
-	List(context.Context, string, string) ([]*DatabaseBranch, error)
-	Get(context.Context, string, string, string) (*DatabaseBranch, error)
-	Delete(context.Context, string, string, string) error
-	Status(context.Context, string, string, string) (*DatabaseBranchStatus, error)
+	Create(context.Context, *CreateDatabaseBranchRequest) (*DatabaseBranch, error)
+	List(context.Context, *ListDatabaseBranchesRequest) ([]*DatabaseBranch, error)
+	Get(context.Context, *GetDatabaseBranchRequest) (*DatabaseBranch, error)
+	Delete(context.Context, *DeleteDatabaseBranchRequest) error
+	GetStatus(context.Context, *GetDatabaseBranchStatusRequest) (*DatabaseBranchStatus, error)
 }
 
 type databaseBranchesService struct {
@@ -62,8 +95,8 @@ func NewDatabaseBranchesService(client *Client) *databaseBranchesService {
 }
 
 // Create creates a new branch for an organization's database.
-func (ds *databaseBranchesService) Create(ctx context.Context, org, db string, createReq *CreateDatabaseBranchRequest) (*DatabaseBranch, error) {
-	path := databaseBranchesAPIPath(org, db)
+func (ds *databaseBranchesService) Create(ctx context.Context, createReq *CreateDatabaseBranchRequest) (*DatabaseBranch, error) {
+	path := databaseBranchesAPIPath(createReq.Organization, createReq.Database)
 
 	req, err := ds.client.newRequest(http.MethodPost, path, createReq)
 	if err != nil {
@@ -86,8 +119,8 @@ func (ds *databaseBranchesService) Create(ctx context.Context, org, db string, c
 }
 
 // Get returns a database branch for an organization's database.
-func (ds *databaseBranchesService) Get(ctx context.Context, org, db, branch string) (*DatabaseBranch, error) {
-	path := fmt.Sprintf("%s/%s", databaseBranchesAPIPath(org, db), branch)
+func (ds *databaseBranchesService) Get(ctx context.Context, getReq *GetDatabaseBranchRequest) (*DatabaseBranch, error) {
+	path := fmt.Sprintf("%s/%s", databaseBranchesAPIPath(getReq.Organization, getReq.Database), getReq.Branch)
 	req, err := ds.client.newRequest(http.MethodGet, path, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating http request")
@@ -111,8 +144,8 @@ func (ds *databaseBranchesService) Get(ctx context.Context, org, db, branch stri
 
 // List returns all of the branches for an organization's
 // database.
-func (ds *databaseBranchesService) List(ctx context.Context, org, db string) ([]*DatabaseBranch, error) {
-	req, err := ds.client.newRequest(http.MethodGet, databaseBranchesAPIPath(org, db), nil)
+func (ds *databaseBranchesService) List(ctx context.Context, listReq *ListDatabaseBranchesRequest) ([]*DatabaseBranch, error) {
+	req, err := ds.client.newRequest(http.MethodGet, databaseBranchesAPIPath(listReq.Organization, listReq.Database), nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating http request")
 	}
@@ -134,8 +167,8 @@ func (ds *databaseBranchesService) List(ctx context.Context, org, db string) ([]
 }
 
 // Delete deletes a database branch from an organization's database.
-func (ds *databaseBranchesService) Delete(ctx context.Context, org, db, branch string) error {
-	path := fmt.Sprintf("%s/%s", databaseBranchesAPIPath(org, db), branch)
+func (ds *databaseBranchesService) Delete(ctx context.Context, deleteReq *DeleteDatabaseBranchRequest) error {
+	path := fmt.Sprintf("%s/%s", databaseBranchesAPIPath(deleteReq.Organization, deleteReq.Database), deleteReq.Branch)
 	req, err := ds.client.newRequest(http.MethodDelete, path, nil)
 	if err != nil {
 		return errors.Wrap(err, "error creating request for delete branch")
@@ -147,16 +180,12 @@ func (ds *databaseBranchesService) Delete(ctx context.Context, org, db, branch s
 	}
 	defer res.Body.Close()
 
-	if res.StatusCode == http.StatusNotFound {
-		return errors.New("branch not found")
-	}
-
 	return nil
 }
 
 // Status returns the status of a specific database branch
-func (ds *databaseBranchesService) Status(ctx context.Context, org, db, branch string) (*DatabaseBranchStatus, error) {
-	path := fmt.Sprintf("%s/%s/status", databaseBranchesAPIPath(org, db), branch)
+func (ds *databaseBranchesService) GetStatus(ctx context.Context, statusReq *GetDatabaseBranchStatusRequest) (*DatabaseBranchStatus, error) {
+	path := fmt.Sprintf("%s/%s/status", databaseBranchesAPIPath(statusReq.Organization, statusReq.Database), statusReq.Branch)
 	req, err := ds.client.newRequest(http.MethodGet, path, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating request for branch status")
