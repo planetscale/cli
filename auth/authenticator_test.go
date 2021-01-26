@@ -30,7 +30,7 @@ func TestVerifyDevice(t *testing.T) {
 		{
 			desc:         "returns device verification when authentication is successful",
 			statusCode:   http.StatusOK,
-			expectedBody: "client_id=some-client-id&scope=read_databases,write_databases",
+			expectedBody: "client_id=some-client-id&scope=read_databases,write_databases,read_user,read_organization",
 			deviceCodeRes: `{
 			"device_code": "some_device_code",
 			"user_code": "1234567",
@@ -51,7 +51,7 @@ func TestVerifyDevice(t *testing.T) {
 		{
 			desc:         "returns device verification with check interval of 5 seconds when interval is 0",
 			statusCode:   http.StatusOK,
-			expectedBody: "client_id=some-client-id&scope=read_databases,write_databases",
+			expectedBody: "client_id=some-client-id&scope=read_databases,write_databases,read_user,read_organization",
 			deviceCodeRes: `{
 			"device_code": "some_device_code",
 			"user_code": "1234567",
