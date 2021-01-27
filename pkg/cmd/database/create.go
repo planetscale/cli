@@ -18,9 +18,9 @@ import (
 // CreateCmd is the command for creating a database.
 func CreateCmd(cfg *config.Config) *cobra.Command {
 	createReq := &ps.CreateDatabaseRequest{
-		Organization: cfg.Organization,
-		Database:     new(ps.Database),
+		Database: new(ps.Database),
 	}
+
 	cmd := &cobra.Command{
 		Use:   "create <name>",
 		Short: "Create a database instance",
@@ -36,6 +36,7 @@ func CreateCmd(cfg *config.Config) *cobra.Command {
 			}
 
 			createReq.Database.Name = args[0]
+			createReq.Organization = cfg.Organization
 
 			if web {
 				fmt.Println("🌐  Redirecting you to create a database in your web browser.")

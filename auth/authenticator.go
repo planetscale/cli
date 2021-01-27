@@ -130,7 +130,7 @@ func New(client *http.Client, clientID string, clientSecret string, opts ...Auth
 // VerifyDevice performs the device verification API calls.
 func (d *DeviceAuthenticator) VerifyDevice(ctx context.Context) (*DeviceVerification, error) {
 	oauthScopes := []string{"read_databases", "write_databases", "read_user", "read_organization"}
-	payload := strings.NewReader(fmt.Sprintf("client_id=%s&scope=%s", d.ClientID, strings.Join(oauthScopes, ",")))
+	payload := strings.NewReader(fmt.Sprintf("client_id=%s&scope=%s", d.ClientID, url.PathEscape(strings.Join(oauthScopes, " "))))
 	req, err := d.NewFormRequest(ctx, http.MethodPost, "oauth/authorize_device", payload)
 	if err != nil {
 		return nil, err

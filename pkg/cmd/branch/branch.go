@@ -16,8 +16,7 @@ import (
 // BranchCmd handles the branching of a database.
 func BranchCmd(cfg *config.Config) *cobra.Command {
 	createReq := &ps.CreateDatabaseBranchRequest{
-		Organization: cfg.Organization,
-		Branch:       new(ps.DatabaseBranch),
+		Branch: new(ps.DatabaseBranch),
 	}
 
 	cmd := &cobra.Command{
@@ -42,6 +41,7 @@ func BranchCmd(cfg *config.Config) *cobra.Command {
 
 			createReq.Database = source
 			createReq.Branch.Name = branch
+			createReq.Organization = cfg.Organization
 
 			web, err := cmd.Flags().GetBool("web")
 			if err != nil {
