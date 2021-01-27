@@ -26,7 +26,7 @@ import (
 	"github.com/planetscale/cli/pkg/cmd/database"
 	"github.com/planetscale/cli/pkg/cmd/merge"
 	"github.com/planetscale/cli/pkg/cmd/org"
-	ps "github.com/planetscale/planetscale-go"
+	ps "github.com/planetscale/planetscale-go/planetscale"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 

@@ -8,7 +8,7 @@ import (
 	"github.com/planetscale/cli/cmdutil"
 	"github.com/planetscale/cli/config"
 	"github.com/planetscale/cli/printer"
-	"github.com/planetscale/planetscale-go"
+	"github.com/planetscale/planetscale-go/planetscale"
 	"github.com/spf13/cobra"
 )
 

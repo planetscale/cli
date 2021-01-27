@@ -7,7 +7,7 @@ import (
 	"path"
 
 	"github.com/mitchellh/go-homedir"
-	ps "github.com/planetscale/planetscale-go"
+	ps "github.com/planetscale/planetscale-go/planetscale"
 	"gopkg.in/yaml.v2"
 )
 

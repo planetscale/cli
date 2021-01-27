@@ -22,7 +22,7 @@ go env -w GOPRIVATE="github.com/planetscale/*"
 Then, use the following commands to fetch the `latest` HEAD version of the CLI:
 
 ```
-go get github.com/planetscale/planetscale-go
+go get github.com/planetscale/planetscale-go/planetscale
 go mod vendor
 go mod tidy
 ```

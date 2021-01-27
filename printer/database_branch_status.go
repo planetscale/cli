@@ -1,6 +1,6 @@
 package printer
 
-import ps "github.com/planetscale/planetscale-go"
+import ps "github.com/planetscale/planetscale-go/planetscale"
 
 type DatabaseBranchStatus struct {
 	Status      string `header:"status" json:"status"`

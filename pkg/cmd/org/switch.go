@@ -9,7 +9,7 @@ import (
 	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/planetscale/cli/cmdutil"
 	"github.com/planetscale/cli/config"
-	"github.com/planetscale/planetscale-go"
+	"github.com/planetscale/planetscale-go/planetscale"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
