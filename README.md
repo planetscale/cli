@@ -28,7 +28,7 @@ go mod tidy
 ```
 
 #### For logging in: 
-1. Create a Rails OAuth application at `http://auth.planetscaledb.local:3000/oauth/applications/new`. Make sure the `Confidential` box is unchecked and that the scopes are `read_database write_database`. You can make the `Redirect URI` be anything.
+1. Create a Rails OAuth application at `http://auth.planetscaledb.local:3000/oauth/applications/new`. Make sure the `Confidential` box is unchecked and that the scopes are `read_databases write_databases`. You can make the `Redirect URI` be anything.
 2. After creating this application, keep note of the client ID.
 3. When logging in, you can override the default client ID by using the `--client-id [uid]` flag to override the default client ID with your local one. You can override the API URL to be `http://auth.planetscaledb.local:3000` (or whatever your Rails server is) by passing in the `--api-url http://auth.planetscaledb.local:3000/` flag. An example of the login command will look like `pscale auth login --client-id your_uid --api-url http://auth.planetscaledb.local:3000/`.
 
