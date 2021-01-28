@@ -31,16 +31,3 @@ func BoldBlue(msg string) string {
 func Bold(msg string) string {
 	return color.New(color.Bold).Sprint(msg)
 }
-
-// PrintLinkProgress starts a spinner with the relevant message.
-func PrintLinkProgress(message string) func() {
-	// Output to STDERR so we don't polluate STDOUT.
-	s := spinner.New(spinner.CharSets[34], 100*time.Millisecond, spinner.WithWriter(os.Stderr))
-	s.Suffix = fmt.Sprintf(" %s", message)
-
-	s.Color("bold", "green") // nolint:errcheck
-	s.Start()
-	return func() {
-		s.Stop()
-	}
-}

@@ -1,4 +1,4 @@
-package link
+package connect
 
 import (
 	"context"
@@ -18,7 +18,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func LinkCmd(cfg *config.Config) *cobra.Command {
+func ConnectCmd(cfg *config.Config) *cobra.Command {
 	var flags struct {
 		localAddr  string
 		remoteAddr string
@@ -26,7 +26,7 @@ func LinkCmd(cfg *config.Config) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:   "link [database] [branch]",
+		Use:   "connect [database] [branch]",
 		Short: "Create a secure connection to the given database and branch",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
@@ -65,24 +65,22 @@ func LinkCmd(cfg *config.Config) *cobra.Command {
 			}
 
 			if !flags.verbose {
-				end := cmdutil.PrintLinkProgress(
-					fmt.Sprintf("🔐 Secure link to branch %s is established!. Connect to %s ... (press ctrl-c to quit)",
-						cmdutil.BoldBlue(branch),
-						cmdutil.BoldBlue(flags.localAddr),
-					),
-				)
-				defer end()
 				proxyOpts.Logger = zap.NewNop()
 			}
+
+			fmt.Printf("🔐 Secure connection to databases %s and branch %s is established!.\n\nConnect to %s ... (press ctrl-c to quit)",
+				cmdutil.BoldBlue(database),
+				cmdutil.BoldBlue(branch),
+				cmdutil.BoldBlue(flags.localAddr))
 
 			p, err := proxy.NewClient(proxyOpts)
 			if err != nil {
 				return fmt.Errorf("couldn't create proxy client: %s", err)
 			}
+
 			// TODO(fatih): replace with signal.NotifyContext once Go 1.16 is released
 			// https://go-review.googlesource.com/c/go/+/219640
 			ctx = sigutil.WithSignal(ctx, syscall.SIGINT, syscall.SIGTERM)
-
 			return p.Run(ctx)
 		},
 	}
