@@ -3,7 +3,7 @@ package printer
 import (
 	"time"
 
-	ps "github.com/planetscale/planetscale-go"
+	ps "github.com/planetscale/planetscale-go/planetscale"
 )
 
 // Database returns a table-serializable database model.
