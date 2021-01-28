@@ -20,9 +20,9 @@ github.com/dustin/go-humanize
 # github.com/fatih/color v1.10.0
 ## explicit
 github.com/fatih/color
-# github.com/fsnotify/fsnotify v1.4.7
+# github.com/fsnotify/fsnotify v1.4.9
 github.com/fsnotify/fsnotify
-# github.com/golang/protobuf v1.4.2
+# github.com/golang/protobuf v1.4.3
 github.com/golang/protobuf/proto
 # github.com/hashicorp/go-cleanhttp v0.5.1
 ## explicit
@@ -75,9 +75,13 @@ github.com/pkg/errors
 # github.com/planetscale/planetscale-go v0.4.0
 ## explicit
 github.com/planetscale/planetscale-go/planetscale
+# github.com/planetscale/sql-proxy v0.0.0-20210128004840-d4611befc779
+## explicit
+github.com/planetscale/sql-proxy/proxy
+github.com/planetscale/sql-proxy/sigutil
 # github.com/pmezard/go-difflib v1.0.0
 github.com/pmezard/go-difflib/difflib
-# github.com/spf13/afero v1.1.2
+# github.com/spf13/afero v1.2.2
 github.com/spf13/afero
 github.com/spf13/afero/mem
 # github.com/spf13/cast v1.3.0
@@ -98,19 +102,30 @@ github.com/spf13/viper
 github.com/stretchr/testify/assert
 # github.com/subosito/gotenv v1.2.0
 github.com/subosito/gotenv
-# golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
+# go.uber.org/atomic v1.7.0
+go.uber.org/atomic
+# go.uber.org/multierr v1.6.0
+go.uber.org/multierr
+# go.uber.org/zap v1.16.0
+go.uber.org/zap
+go.uber.org/zap/buffer
+go.uber.org/zap/internal/bufferpool
+go.uber.org/zap/internal/color
+go.uber.org/zap/internal/exit
+go.uber.org/zap/zapcore
+# golang.org/x/crypto v0.0.0-20201002170205-7f63de1d35b0
 golang.org/x/crypto/ssh/terminal
-# golang.org/x/net v0.0.0-20200822124328-c89045814202
+# golang.org/x/net v0.0.0-20210119194325-5f4716e94777
 golang.org/x/net/context
 golang.org/x/net/context/ctxhttp
 # golang.org/x/oauth2 v0.0.0-20201208152858-08078c50e5b5
 golang.org/x/oauth2
 golang.org/x/oauth2/internal
-# golang.org/x/sys v0.0.0-20200803210538-64077c9b5642
+# golang.org/x/sys v0.0.0-20201119102817-f84b799fce68
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
 golang.org/x/sys/windows
-# golang.org/x/text v0.3.3
+# golang.org/x/text v0.3.4
 golang.org/x/text/transform
 golang.org/x/text/unicode/norm
 golang.org/x/text/width
@@ -154,5 +169,5 @@ gopkg.in/ini.v1
 # gopkg.in/yaml.v2 v2.4.0
 ## explicit
 gopkg.in/yaml.v2
-# gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c
+# gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776
 gopkg.in/yaml.v3
