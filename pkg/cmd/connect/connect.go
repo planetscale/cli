@@ -154,7 +154,7 @@ func fetchBranch(ctx context.Context, client *planetscale.Client, org, db string
 	}
 
 	prompt := &survey.Select{
-		Message: "Select a branch to connect",
+		Message: "Select a branch to connect to:",
 		Options: branchNames,
 	}
 
