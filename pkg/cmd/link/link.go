@@ -4,12 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
-	"crypto/tls"
-	"crypto/x509"
-	"encoding/pem"
-	"errors"
 	"fmt"
-	"io/ioutil"
 	"syscall"
 
 	"github.com/AlecAivazis/survey/v2"
@@ -127,50 +122,6 @@ func (r *remoteCertSource) Cert(ctx context.Context, org, db, branch string) (*p
 		ClientCert: cert.ClientCert,
 		CACert:     cert.CACert,
 	}, nil
-}
-
-func newLocalCertSource(caPath, certPath, keyPath string) (*localCertSource, error) {
-	pem, err := ioutil.ReadFile(caPath)
-	if err != nil {
-		return nil, err
-	}
-
-	caCert, err := parseCert(pem)
-	if err != nil {
-		return nil, err
-	}
-
-	cert, err := tls.LoadX509KeyPair(certPath, keyPath)
-	if err != nil {
-		return nil, err
-	}
-	cert.Leaf = caCert
-
-	return &localCertSource{
-		cert:   cert,
-		caCert: caCert,
-	}, nil
-
-}
-
-type localCertSource struct {
-	cert   tls.Certificate
-	caCert *x509.Certificate
-}
-
-func (c *localCertSource) Cert(ctx context.Context, org, db, branch string) (*proxy.Cert, error) {
-	return &proxy.Cert{
-		ClientCert: c.cert,
-		CACert:     c.caCert,
-	}, nil
-}
-
-func parseCert(pemCert []byte) (*x509.Certificate, error) {
-	bl, _ := pem.Decode(pemCert)
-	if bl == nil {
-		return nil, errors.New("invalid PEM: " + string(pemCert))
-	}
-	return x509.ParseCertificate(bl.Bytes)
 }
 
 func fetchBranch(ctx context.Context, client *planetscale.Client, org, db string) (string, error) {
