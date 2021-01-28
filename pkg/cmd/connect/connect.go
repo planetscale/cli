@@ -4,8 +4,10 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
+	"errors"
 	"fmt"
 	"syscall"
+	"time"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/planetscale/cli/cmdutil"
@@ -156,13 +158,30 @@ func fetchBranch(ctx context.Context, client *planetscale.Client, org, db string
 	prompt := &survey.Select{
 		Message: "Select a branch to connect to:",
 		Options: branchNames,
+		VimMode: true,
 	}
 
-	var branch string
-	err = survey.AskOne(prompt, &branch)
-	if err != nil {
-		return "", err
+	type result struct {
+		branch string
+		err    error
 	}
 
-	return branch, nil
+	resp := make(chan result, 0)
+
+	go func() {
+		var branch string
+		err := survey.AskOne(prompt, &branch)
+		resp <- result{
+			branch: branch,
+			err:    err,
+		}
+	}()
+
+	// timeout so CLI is not blocked forever if the user accidently called it
+	select {
+	case <-time.After(time.Second * 5):
+		return "", errors.New("pscale connect timeout: no branch is selected")
+	case r := <-resp:
+		return r.branch, r.err
+	}
 }
