@@ -28,9 +28,21 @@ func ConnectCmd(cfg *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "connect [database] [branch]",
 		Short: "Create a secure connection to the given database and branch",
+		Example: `The connect subcommand establish a secure connection between your host and remote psdb. 
+
+By default, if no branch names are given and there is only one branch, it
+automatically connects to that branch:
+
+  pscale connect mydatabase
+ 
+If there are multiple branches for the given database, you'll be prompted to
+choose one. To connect to a specific branch, pass the branch as a second
+argument:
+
+  pscale connect mydatabase mybranch`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
-			if len(args) != 1 {
+			if len(args) < 1 {
 				return cmd.Usage()
 			}
 
@@ -68,7 +80,7 @@ func ConnectCmd(cfg *config.Config) *cobra.Command {
 				proxyOpts.Logger = zap.NewNop()
 			}
 
-			fmt.Printf("🔐 Secure connection to databases %s and branch %s is established!.\n\nConnect to %s ... (press ctrl-c to quit)",
+			fmt.Printf("Secure connection to databases %s and branch %s is established!.\n\nLocal address to connect your application: %s (press ctrl-c to quit)",
 				cmdutil.BoldBlue(database),
 				cmdutil.BoldBlue(branch),
 				cmdutil.BoldBlue(flags.localAddr))
