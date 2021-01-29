@@ -27,7 +27,7 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 				return errors.New("<db_name> is missing")
 			}
 
-			source := args[0]
+			database := args[0]
 
 			web, err := cmd.Flags().GetBool("web")
 			if err != nil {
@@ -36,7 +36,7 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 
 			if web {
 				fmt.Println("🌐  Redirecting you to your branches in your web browser.")
-				err := browser.OpenURL(fmt.Sprintf("%s/%s/%s/branches", cmdutil.ApplicationURL, cfg.Organization, source))
+				err := browser.OpenURL(fmt.Sprintf("%s/%s/%s/branches", cmdutil.ApplicationURL, cfg.Organization, database))
 				if err != nil {
 					return err
 				}
@@ -48,26 +48,25 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
-			end := cmdutil.PrintProgress(fmt.Sprintf("Fetching branches for %s", cmdutil.BoldBlue(source)))
+			end := cmdutil.PrintProgress(fmt.Sprintf("Fetching branches for %s", cmdutil.BoldBlue(database)))
 			defer end()
 			branches, err := client.DatabaseBranches.List(ctx, &planetscale.ListDatabaseBranchesRequest{
 				Organization: cfg.Organization,
-				Database:     source,
+				Database:     database,
 			})
 			if err != nil {
 				return errs.Wrap(err, "error listing branches")
 			}
-
 			end()
-			// Technically, this should never actually happen.
-			if len(branches) == 0 {
-				fmt.Println("No branches exist for this database.")
-				return nil
-			}
 
 			isJSON, err := cmd.Flags().GetBool("json")
 			if err != nil {
 				return err
+			}
+
+			if len(branches) == 0 && !isJSON {
+				fmt.Printf("No branches exist in %s.\n", cmdutil.BoldBlue(database))
+				return nil
 			}
 
 			err = printer.PrintOutput(isJSON, printer.NewDatabaseBranchSlicePrinter(branches))
