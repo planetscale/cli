@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// ListCmd makes a command for listing all snapshots for a database and branch.
+// ListCmd makes a command for listing all snapshots for a database branch.
 func ListCmd(cfg *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "list <database> <branch>",
