@@ -15,7 +15,6 @@ github.com/cli/safeexec
 # github.com/davecgh/go-spew v1.1.1
 github.com/davecgh/go-spew/spew
 # github.com/dustin/go-humanize v1.0.0
-## explicit
 github.com/dustin/go-humanize
 # github.com/fatih/color v1.10.0
 ## explicit
@@ -72,7 +71,7 @@ github.com/pkg/browser
 # github.com/pkg/errors v0.9.1
 ## explicit
 github.com/pkg/errors
-# github.com/planetscale/planetscale-go v0.4.0
+# github.com/planetscale/planetscale-go v0.4.1
 ## explicit
 github.com/planetscale/planetscale-go/planetscale
 # github.com/planetscale/sql-proxy v0.0.0-20210128004840-d4611befc779
@@ -107,6 +106,7 @@ go.uber.org/atomic
 # go.uber.org/multierr v1.6.0
 go.uber.org/multierr
 # go.uber.org/zap v1.16.0
+## explicit
 go.uber.org/zap
 go.uber.org/zap/buffer
 go.uber.org/zap/internal/bufferpool
