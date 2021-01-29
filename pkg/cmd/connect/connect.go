@@ -179,7 +179,11 @@ func fetchBranch(ctx context.Context, client *planetscale.Client, org, db string
 
 	// timeout so CLI is not blocked forever if the user accidently called it
 	select {
-	case <-time.After(time.Second * 5):
+	case <-time.After(time.Second * 20):
+		// TODO(fatih): this is buggy. Because there is no proper cancellation
+		// in the survey.AskOne() function, it holds to stdin, which causes the
+		// terminal to malfunction. But the timeout is not intended for regular
+		// users, it's meant to catch script invocations, so let's still use it
 		return "", errors.New("pscale connect timeout: no branch is selected")
 	case r := <-resp:
 		return r.branch, r.err
