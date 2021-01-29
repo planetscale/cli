@@ -166,7 +166,7 @@ func fetchBranch(ctx context.Context, client *planetscale.Client, org, db string
 		err    error
 	}
 
-	resp := make(chan result, 0)
+	resp := make(chan result)
 
 	go func() {
 		var branch string
