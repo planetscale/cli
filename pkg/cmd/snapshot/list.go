@@ -29,7 +29,7 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 
 			database, branch := args[0], args[1]
 
-			end := cmdutil.PrintProgress(fmt.Sprintf("Fetching schema snapshots for %s in %s...", cmdutil.BoldBlue(database), cmdutil.BoldBlue(branch)))
+			end := cmdutil.PrintProgress(fmt.Sprintf("Fetching schema snapshots for %s in %s...", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(database)))
 			defer end()
 
 			snapshots, err := client.SchemaSnapshots.List(ctx, &planetscale.ListSchemaSnapshotsRequest{
