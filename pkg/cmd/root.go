@@ -76,8 +76,8 @@ func Execute() error {
 	// service token flags. they are hidden for now.
 	rootCmd.PersistentFlags().StringVar(&cfg.ServiceTokenName, "service-token-name", "", "The Service Token name for authenticating.")
 	rootCmd.PersistentFlags().StringVar(&cfg.ServiceToken, "service-token", "", "Service Token for authenticating.")
-	rootCmd.PersistentFlags().MarkHidden("service-token-name")
-	rootCmd.PersistentFlags().MarkHidden("service-token")
+	_ = rootCmd.PersistentFlags().MarkHidden("service-token-name")
+	_ = rootCmd.PersistentFlags().MarkHidden("service-token")
 
 	// We don't want to show the default value
 	rootCmd.PersistentFlags().Lookup("api-token").DefValue = ""
