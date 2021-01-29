@@ -19,6 +19,9 @@ type Config struct {
 	AccessToken  string
 	BaseURL      string
 	Organization string
+
+	ServiceTokenName string
+	ServiceToken     string
 }
 
 // WritableConfig maps
@@ -70,7 +73,11 @@ func AccessTokenPath() string {
 func (c *Config) NewClientFromConfig(clientOpts ...ps.ClientOption) (*ps.Client, error) {
 	opts := []ps.ClientOption{
 		ps.WithBaseURL(c.BaseURL),
-		ps.WithAccessToken(c.AccessToken),
+	}
+	if c.ServiceToken != "" && c.ServiceTokenName != "" {
+		opts = append(opts, ps.WithServiceToken(c.ServiceTokenName, c.ServiceToken))
+	} else {
+		opts = append(opts, ps.WithAccessToken(c.AccessToken))
 	}
 	opts = append(opts, clientOpts...)
 

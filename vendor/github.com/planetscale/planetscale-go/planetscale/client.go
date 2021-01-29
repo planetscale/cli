@@ -48,7 +48,7 @@ func WithBaseURL(baseURL string) ClientOption {
 	}
 }
 
-// WithAccessToken configures a client with the tiven PlanetScale access token.
+// WithAccessToken configures a client with the given PlanetScale access token.
 func WithAccessToken(token string) ClientOption {
 	return func(c *Client) error {
 		if token == "" {
@@ -62,6 +62,24 @@ func WithAccessToken(token string) ClientOption {
 		oauthClient := oauth2.NewClient(ctx, tokenSource)
 
 		c.client = oauthClient
+		return nil
+	}
+}
+
+// WithServiceToken configures a client with the given PlanetScale Service Token
+func WithServiceToken(name, token string) ClientOption {
+	return func(c *Client) error {
+		if token == "" || name == "" {
+			return errors.New("missing token name and string")
+		}
+
+		transport := serviceTokenTransport{
+			rt:        c.client.Transport,
+			token:     token,
+			tokenName: name,
+		}
+
+		c.client.Transport = &transport
 		return nil
 	}
 }
@@ -185,4 +203,15 @@ type ErrorResponse struct {
 
 func (e ErrorResponse) Error() string {
 	return e.Message
+}
+
+type serviceTokenTransport struct {
+	rt        http.RoundTripper
+	token     string
+	tokenName string
+}
+
+func (t *serviceTokenTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	req.Header.Add("Authorization", t.tokenName+":"+t.token)
+	return t.rt.RoundTrip(req)
 }
