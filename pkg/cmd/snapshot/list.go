@@ -48,7 +48,7 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 			}
 
 			if len(snapshots) == 0 && !isJSON {
-				fmt.Printf("No schema snapshots exist for %s in %s.\n", cmdutil.BoldBlue(database), cmdutil.BoldBlue(branch))
+				fmt.Printf("No schema snapshots exist for %s in %s.\n", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(database))
 				return nil
 			}
 
