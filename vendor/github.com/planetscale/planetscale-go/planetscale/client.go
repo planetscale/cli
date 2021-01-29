@@ -30,6 +30,7 @@ type Client struct {
 	Certificates     CertificatesService
 	DatabaseBranches DatabaseBranchesService
 	Organizations    OrganizationsService
+	SchemaSnapshots  SchemaSnapshotsService
 }
 
 // ClientOption provides a variadic option for configuring the client
@@ -119,6 +120,7 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 	c.Certificates = &certificatesService{client: c}
 	c.DatabaseBranches = &databaseBranchesService{client: c}
 	c.Organizations = &organizationsService{client: c}
+	c.SchemaSnapshots = &schemaSnapshotsService{client: c}
 
 	return c, nil
 }
