@@ -32,13 +32,6 @@ func CreateCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
-			if len(args) != 1 {
-				return errors.New("<name> is missing")
-			}
-
-			createReq.Database.Name = args[0]
-			createReq.Organization = cfg.Organization
-
 			if web {
 				fmt.Println("🌐  Redirecting you to create a database in your web browser.")
 				err := browser.OpenURL(fmt.Sprintf("%s/%s?name=%s&notes=%s&showDialog=true", cmdutil.ApplicationURL, cfg.Organization, url.QueryEscape(createReq.Database.Name), url.QueryEscape(createReq.Database.Notes)))
@@ -47,6 +40,13 @@ func CreateCmd(cfg *config.Config) *cobra.Command {
 				}
 				return nil
 			}
+
+			if len(args) != 1 {
+				return errors.New("<name> is missing")
+			}
+
+			createReq.Database.Name = args[0]
+			createReq.Organization = cfg.Organization
 
 			client, err := cfg.NewClientFromConfig()
 			if err != nil {
