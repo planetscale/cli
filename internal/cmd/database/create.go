@@ -2,7 +2,6 @@ package database
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/url"
 
@@ -32,6 +31,11 @@ func CreateCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
+			createReq.Organization = cfg.Organization
+			if len(args) == 1 {
+				createReq.Database.Name = args[0]
+			}
+
 			if web {
 				fmt.Println("🌐  Redirecting you to create a database in your web browser.")
 				err := browser.OpenURL(fmt.Sprintf("%s/%s?name=%s&notes=%s&showDialog=true", cmdutil.ApplicationURL, cfg.Organization, url.QueryEscape(createReq.Database.Name), url.QueryEscape(createReq.Database.Notes)))
@@ -42,11 +46,8 @@ func CreateCmd(cfg *config.Config) *cobra.Command {
 			}
 
 			if len(args) != 1 {
-				return errors.New("<name> is missing")
+				return cmd.Usage()
 			}
-
-			createReq.Database.Name = args[0]
-			createReq.Organization = cfg.Organization
 
 			client, err := cfg.NewClientFromConfig()
 			if err != nil {
