@@ -145,6 +145,10 @@ func fetchBranch(ctx context.Context, client *planetscale.Client, org, db string
 		return "", err
 	}
 
+	if len(branches) == 0 {
+		return "", fmt.Errorf("no branch exist for database: %q", db)
+	}
+
 	// if there is only one branch, just return it
 	if len(branches) == 1 {
 		return branches[0].Name, nil
