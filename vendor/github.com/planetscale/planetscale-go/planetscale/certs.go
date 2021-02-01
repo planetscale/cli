@@ -31,6 +31,7 @@ type CertificatesService interface {
 type Cert struct {
 	ClientCert tls.Certificate
 	CACert     *x509.Certificate
+	RemoteAddr string
 }
 
 type certificatesService struct {
@@ -96,6 +97,7 @@ func (c *certificatesService) Create(ctx context.Context, r *CreateCertificateRe
 	var cr struct {
 		Certificate      string `json:"certificate"`
 		CertificateChain string `json:"certificate_chain"`
+		RemoteAddr       string `json:"remote_addr"`
 	}
 
 	err = json.NewDecoder(res.Body).Decode(&cr)
@@ -123,6 +125,7 @@ func (c *certificatesService) Create(ctx context.Context, r *CreateCertificateRe
 	return &Cert{
 		ClientCert: clientCert,
 		CACert:     caCert,
+		RemoteAddr: cr.RemoteAddr,
 	}, nil
 }
 
