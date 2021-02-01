@@ -104,7 +104,7 @@ func (ds *databasesService) Create(ctx context.Context, createReq *CreateDatabas
 	defer res.Body.Close()
 
 	db := &Database{}
-	err = json.NewDecoder(res.Body).Decode(&db)
+	err = json.NewDecoder(res.Body).Decode(db)
 
 	if err != nil {
 		return nil, err
