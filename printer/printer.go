@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/lensesio/tableprinter"
 )
@@ -28,4 +29,8 @@ func PrintJSON(obj interface{}) error {
 	fmt.Print(string(output))
 
 	return nil
+}
+
+func getMilliseconds(timestamp time.Time) int64 {
+	return timestamp.UTC().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond))
 }
