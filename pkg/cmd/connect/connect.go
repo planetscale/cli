@@ -102,8 +102,8 @@ argument:
 	cmd.PersistentFlags().StringVar(&cfg.Organization, "org", cfg.Organization, "The organization for the current user")
 	cmd.PersistentFlags().StringVar(&flags.localAddr, "local-addr", "127.0.0.1:3307",
 		"Local address to bind and listen for connections")
-	cmd.PersistentFlags().StringVar(&flags.remoteAddr, "remote-addr", "ac001fde9cdb746988cf56648d20f3d0-cc3d7d661b5e5955.elb.us-east-1.amazonaws.com:3306",
-		"PlanetScale Database remote network address")
+	cmd.PersistentFlags().StringVar(&flags.remoteAddr, "remote-addr", "",
+		"PlanetScale Database remote network address. By default the remote address is populated automatically from the PlanetScale API.")
 	cmd.PersistentFlags().BoolVar(&flags.verbose, "v", false, "enable verbose mode")
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
 
@@ -133,6 +133,7 @@ func (r *remoteCertSource) Cert(ctx context.Context, org, db, branch string) (*p
 	return &proxy.Cert{
 		ClientCert: cert.ClientCert,
 		CACert:     cert.CACert,
+		RemoteAddr: cert.RemoteAddr,
 	}, nil
 }
 
@@ -143,6 +144,10 @@ func fetchBranch(ctx context.Context, client *planetscale.Client, org, db string
 	})
 	if err != nil {
 		return "", err
+	}
+
+	if len(branches) == 0 {
+		return "", fmt.Errorf("no branch exist for database: %q", db)
 	}
 
 	// if there is only one branch, just return it

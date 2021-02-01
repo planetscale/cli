@@ -14,7 +14,8 @@ const expireTTL = 10 * time.Minute
 
 type cacheEntry struct {
 	// cfg defines the TLS config we're caching
-	cfg *tls.Config
+	cfg        *tls.Config
+	remoteAddr string
 
 	// added holds the time the cfg was added to the cache
 	added time.Time
@@ -37,25 +38,26 @@ func newtlsCache() *tlsCache {
 	}
 }
 
-// Add adds the given config for the given instance name
-func (t *tlsCache) Add(instance string, cfg *tls.Config) {
+// Add adds the given config and remote address for the given instance name
+func (t *tlsCache) Add(instance string, cfg *tls.Config, remoteAddr string) {
 	t.configsMu.Lock()
 	defer t.configsMu.Unlock()
 
 	t.configs[instance] = cacheEntry{
-		cfg:   cfg,
-		added: t.nowFn(),
+		cfg:        cfg,
+		remoteAddr: remoteAddr,
+		added:      t.nowFn(),
 	}
 }
 
 // Get retrieves the config for the given instance
-func (t *tlsCache) Get(instance string) (*tls.Config, error) {
+func (t *tlsCache) Get(instance string) (cacheEntry, error) {
 	t.configsMu.Lock()
 	defer t.configsMu.Unlock()
 
 	e, ok := t.configs[instance]
 	if !ok {
-		return nil, errConfigNotFound
+		return cacheEntry{}, errConfigNotFound
 	}
 
 	now := time.Now()
@@ -64,8 +66,8 @@ func (t *tlsCache) Get(instance string) (*tls.Config, error) {
 	// another TLS config.
 	if e.added.Add(expireTTL).Before(now) {
 		delete(t.configs, instance)
-		return nil, errConfigNotFound
+		return cacheEntry{}, errConfigNotFound
 	}
 
-	return e.cfg, nil
+	return e, nil
 }
