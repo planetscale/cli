@@ -23,6 +23,7 @@ const (
 type Cert struct {
 	ClientCert tls.Certificate
 	CACert     *x509.Certificate
+	RemoteAddr string
 }
 
 // CertSource is used
@@ -54,7 +55,9 @@ type Client struct {
 
 // Options are the options for creating a new Client.
 type Options struct {
-	// RemoteAddr defines the address to tunnel local connections
+	// RemoteAddr defines the server address to tunnel local connections. By
+	// default we connect to the remote address given by the CertSource. This
+	// option can be used to over write it.
 	RemoteAddr string
 
 	// LocalAddr defines the address to listen for new connection
@@ -68,7 +71,8 @@ type Options struct {
 	MaxConnections uint64
 
 	// CertSource defines the certificate source to obtain the required TLS
-	// certificates for the client.
+	// certificates for the client and the remote address of the server to
+	// connect.
 	CertSource CertSource
 
 	// Logger defines which zap.Logger to use. Use it to override the default
@@ -100,12 +104,10 @@ func NewClient(opts Options) (*Client, error) {
 	}
 
 	// cache the certs for the given instance(s)
-	go func() {
-		_, err := c.clientCerts(context.Background(), opts.Instance)
-		if err != nil {
-			c.log.Error("couldn't retrieve TLS certificate for the client", zap.Error(err))
-		}
-	}()
+	_, _, err := c.clientCerts(context.Background(), opts.Instance)
+	if err != nil {
+		c.log.Error("couldn't retrieve TLS certificate for the client", zap.Error(err))
+	}
 
 	return c, nil
 }
@@ -214,7 +216,7 @@ func (c *Client) handleConn(ctx context.Context, conn net.Conn, instance string)
 		return fmt.Errorf("too many open connections (max %d)", c.maxConnections)
 	}
 
-	cfg, err := c.clientCerts(ctx, instance)
+	cfg, remoteAddr, err := c.clientCerts(ctx, instance)
 	if err != nil {
 		return fmt.Errorf("couldn't retrieve certs for instance: %q: %w", instance, err)
 	}
@@ -222,11 +224,18 @@ func (c *Client) handleConn(ctx context.Context, conn net.Conn, instance string)
 	// TODO(fatih): implement refreshing certs
 	// go p.refreshCertAfter(instance, timeToRefresh)
 
+	// overwrite the remote address if the user explicitly set it
+	if c.remoteAddr != "" {
+		remoteAddr = c.remoteAddr
+	}
+
+	c.log.Info("conneting to remote server", zap.String("remote_addr", remoteAddr))
+
 	var d net.Dialer
-	remoteConn, err := d.DialContext(ctx, "tcp", c.remoteAddr)
+	remoteConn, err := d.DialContext(ctx, "tcp", remoteAddr)
 	if err != nil {
 		conn.Close()
-		return fmt.Errorf("couldn't connect to %q: %v", c.remoteAddr, err)
+		return fmt.Errorf("couldn't connect to %q: %v", remoteAddr, err)
 	}
 
 	type setKeepAliver interface {
@@ -262,31 +271,31 @@ func (c *Client) handleConn(ctx context.Context, conn net.Conn, instance string)
 
 // clientCerts returns the TLS configuration needed for the TLS handshake and
 // connection
-func (c *Client) clientCerts(ctx context.Context, instance string) (*tls.Config, error) {
-	cfg, err := c.configCache.Get(instance)
+func (c *Client) clientCerts(ctx context.Context, instance string) (*tls.Config, string, error) {
+	cacheEntry, err := c.configCache.Get(instance)
 	if err == nil {
 		c.log.Info("using tls.Config from the cache", zap.String("instance", instance))
-		return cfg, nil
+		return cacheEntry.cfg, cacheEntry.remoteAddr, nil
 	}
 
 	if err != errConfigNotFound {
-		return nil, err // we don't handle non errConfigNotFound errors
+		return nil, "", err // we don't handle non errConfigNotFound errors
 	}
 
 	s := strings.Split(instance, "/")
 	if len(s) != 3 {
-		return nil, fmt.Errorf("instance format is malformed, should be in form organization/dbname/branch, have: %q", instance)
+		return nil, "", fmt.Errorf("instance format is malformed, should be in form organization/dbname/branch, have: %q", instance)
 	}
 
 	cert, err := c.certSource.Cert(ctx, s[0], s[1], s[2])
 	if err != nil {
-		return nil, fmt.Errorf("couldn't retrieve certs from cert source: %s", err)
+		return nil, "", fmt.Errorf("couldn't retrieve certs from cert source: %s", err)
 	}
 
 	rootCertPool := x509.NewCertPool()
 	rootCertPool.AddCert(cert.CACert)
 
-	cfg = &tls.Config{
+	cfg := &tls.Config{
 		ServerName:   instance,
 		Certificates: []tls.Certificate{cert.ClientCert},
 		RootCAs:      rootCertPool,
@@ -315,8 +324,8 @@ func (c *Client) clientCerts(ctx context.Context, instance string) (*tls.Config,
 	}
 
 	c.log.Info("adding tls.Config to the cache", zap.String("instance", instance))
-	c.configCache.Add(instance, cfg)
-	return cfg, nil
+	c.configCache.Add(instance, cfg, cert.RemoteAddr)
+	return cfg, cert.RemoteAddr, nil
 }
 
 // Shutdown waits up to a given amount of time for all active connections to
