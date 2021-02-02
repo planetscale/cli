@@ -12,7 +12,7 @@ import (
 )
 
 func RequestDeployCmd(cfg *config.Config) *cobra.Command {
-	deployReq := &planetscale.RequestDeployRequest{}
+	deployReq := &planetscale.SchemaSnapshotRequestDeployRequest{}
 
 	cmd := &cobra.Command{
 		Use:   "request-deploy <id>",
