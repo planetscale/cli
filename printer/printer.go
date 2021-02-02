@@ -32,5 +32,17 @@ func PrintJSON(obj interface{}) error {
 }
 
 func getMilliseconds(timestamp time.Time) int64 {
-	return timestamp.UTC().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond))
+	numSeconds := timestamp.UTC().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond))
+
+	return numSeconds
+}
+
+func getMillisecondsIfExists(timestamp *time.Time) *int64 {
+	if timestamp == nil {
+		return nil
+	}
+
+	numSeconds := getMilliseconds(*timestamp)
+
+	return &numSeconds
 }
