@@ -142,7 +142,7 @@ func (s *schemaSnapshotsService) Get(ctx context.Context, getReq *GetSchemaSnaps
 
 // RequestDeploy requests a deploy of a schema snapshot.
 func (s *schemaSnapshotsService) RequestDeploy(ctx context.Context, deployReq *RequestDeployRequest) (*DeployRequest, error) {
-	req, err := s.client.newRequest(http.MethodPost, fmt.Sprintf("%s/deploy", schemaSnapshotAPIPath(deployReq.SchemaSnapshotID)), deployReq)
+	req, err := s.client.newRequest(http.MethodPost, fmt.Sprintf("%s/deploy-requests", schemaSnapshotAPIPath(deployReq.SchemaSnapshotID)), deployReq)
 	if err != nil {
 		return nil, err
 	}
