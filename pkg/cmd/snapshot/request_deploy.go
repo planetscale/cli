@@ -49,8 +49,8 @@ func RequestDeployCmd(cfg *config.Config) *cobra.Command {
 					return err
 				}
 			} else {
-				fmt.Printf("Requested to deploy schema snapshot %s from %s into %s branch!\n",
-					cmdutil.BoldBlue(id),
+				fmt.Printf("Successfully requested deploy %s for %s into %s!\n",
+					cmdutil.BoldBlue(deployRequest.ID),
 					cmdutil.BoldBlue(deployRequest.Branch),
 					cmdutil.BoldBlue(deployRequest.IntoBranch))
 			}
