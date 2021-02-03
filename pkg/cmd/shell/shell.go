@@ -28,7 +28,7 @@ func ShellCmd(cfg *config.Config) *cobra.Command {
 	var flags struct {
 		localAddr  string
 		remoteAddr string
-		verbose    bool
+		debug      bool
 	}
 
 	cmd := &cobra.Command{
@@ -79,7 +79,7 @@ second argument:
 				Instance:   fmt.Sprintf("%s/%s/%s", cfg.Organization, database, branch),
 			}
 
-			if !flags.verbose {
+			if !flags.debug {
 				proxyOpts.Logger = zap.NewNop()
 			}
 
@@ -124,7 +124,7 @@ second argument:
 		localProxyAddr+":"+localProxyPort, "Local address to bind and listen for connections")
 	cmd.PersistentFlags().StringVar(&flags.remoteAddr, "remote-addr", "",
 		"PlanetScale Database remote network address. By default the remote address is populated automatically from the PlanetScale API.")
-	cmd.PersistentFlags().BoolVar(&flags.verbose, "v", false, "enable verbose mode")
+	cmd.PersistentFlags().BoolVar(&flags.debug, "debug", false, "enable debug mode")
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
 
 	return cmd
