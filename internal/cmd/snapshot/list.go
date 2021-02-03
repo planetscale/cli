@@ -15,6 +15,7 @@ import (
 func ListCmd(cfg *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "list <database> <branch>",
+		Short:   "List all of the schema snapshots for a database branch",
 		Aliases: []string{"ls"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()

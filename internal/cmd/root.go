@@ -24,7 +24,7 @@ import (
 	"github.com/planetscale/cli/internal/cmd/branch"
 	"github.com/planetscale/cli/internal/cmd/connect"
 	"github.com/planetscale/cli/internal/cmd/database"
-	"github.com/planetscale/cli/internal/cmd/merge"
+	"github.com/planetscale/cli/internal/cmd/deploy"
 	"github.com/planetscale/cli/internal/cmd/org"
 	"github.com/planetscale/cli/internal/cmd/shell"
 	"github.com/planetscale/cli/internal/cmd/snapshot"
@@ -90,10 +90,10 @@ func Execute() error {
 	rootCmd.AddCommand(branch.BranchCmd(cfg))
 	rootCmd.AddCommand(org.OrgCmd(cfg))
 	rootCmd.AddCommand(org.SwitchCmd(cfg))
-	rootCmd.AddCommand(merge.MergeCmd(cfg))
 	rootCmd.AddCommand(connect.ConnectCmd(cfg))
 	rootCmd.AddCommand(shell.ShellCmd(cfg))
 	rootCmd.AddCommand(snapshot.SnapshotCmd(cfg))
+	rootCmd.AddCommand(deploy.DeployCmd(cfg))
 
 	return rootCmd.Execute()
 }

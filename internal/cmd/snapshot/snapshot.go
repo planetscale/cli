@@ -20,5 +20,6 @@ func SnapshotCmd(cfg *config.Config) *cobra.Command {
 	cmd.AddCommand(CreateCmd(cfg))
 	cmd.AddCommand(ListCmd(cfg))
 	cmd.AddCommand(GetCmd(cfg))
+	cmd.AddCommand(RequestDeployCmd(cfg))
 	return cmd
 }
