@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/planetscale/cli/pkg/cmd"
+	"github.com/planetscale/cli/internal/cmd"
 )
 
 func main() {
