@@ -63,6 +63,18 @@ type GetDatabaseBranchStatusRequest struct {
 	Branch       string
 }
 
+// ListDeployRequestsRequest gets the deploy requests for a specific database
+// branch.
+type ListDeployRequestsRequest struct {
+	Organization string
+	Database     string
+	Branch       string
+}
+
+type deployRequestsResponse struct {
+	DeployRequests []*DeployRequest `json:"data"`
+}
+
 // DatabaseBranchesService is an interface for communicating with the PlanetScale
 // Database Branch API endpoint.
 type DatabaseBranchesService interface {
@@ -71,6 +83,7 @@ type DatabaseBranchesService interface {
 	Get(context.Context, *GetDatabaseBranchRequest) (*DatabaseBranch, error)
 	Delete(context.Context, *DeleteDatabaseBranchRequest) error
 	GetStatus(context.Context, *GetDatabaseBranchStatusRequest) (*DatabaseBranchStatus, error)
+	ListDeployRequests(context.Context, *ListDeployRequestsRequest) ([]*DeployRequest, error)
 }
 
 type databaseBranchesService struct {
@@ -195,6 +208,7 @@ func (ds *databaseBranchesService) GetStatus(ctx context.Context, statusReq *Get
 	if err != nil {
 		return nil, err
 	}
+	defer res.Body.Close()
 
 	status := &DatabaseBranchStatus{}
 	err = json.NewDecoder(res.Body).Decode(&status)
@@ -206,6 +220,32 @@ func (ds *databaseBranchesService) GetStatus(ctx context.Context, statusReq *Get
 	return status, nil
 }
 
+func (ds *databaseBranchesService) ListDeployRequests(ctx context.Context, listReq *ListDeployRequestsRequest) ([]*DeployRequest, error) {
+	path := fmt.Sprintf("%s/deploy-requests", databaseBranchAPIPath(listReq.Organization, listReq.Database, listReq.Branch))
+	req, err := ds.client.newRequest(http.MethodGet, path, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "error creating http request")
+	}
+
+	res, err := ds.client.Do(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	deployRequestsResponse := &deployRequestsResponse{}
+	err = json.NewDecoder(res.Body).Decode(deployRequestsResponse)
+	if err != nil {
+		return nil, err
+	}
+
+	return deployRequestsResponse.DeployRequests, nil
+}
+
 func databaseBranchesAPIPath(org, db string) string {
 	return fmt.Sprintf("%s/%s/branches", databasesAPIPath(org), db)
+}
+
+func databaseBranchAPIPath(org, db, branch string) string {
+	return fmt.Sprintf("%s/%s", databaseBranchesAPIPath(org, db), branch)
 }
