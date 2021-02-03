@@ -134,7 +134,7 @@ type mysql struct {
 	Dir string
 }
 
-// Run runs the `mysql` client with the given arguments
+// Run runs the `mysql` client with the given arguments.
 func (m *mysql) Run(ctx context.Context, args ...string) error {
 	c := exec.CommandContext(ctx, "mysql", args...)
 	if m.Dir != "" {
