@@ -41,11 +41,11 @@ type SchemaSnapshot struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-// RequestDeployRequest is a request for requesting a deploy of a schema
+// SchemaSnapshotRequestDeployRequest is a request for requesting a deploy of a schema
 // snapshot.
-type RequestDeployRequest struct {
+type SchemaSnapshotRequestDeployRequest struct {
 	SchemaSnapshotID string `json:"-"`
-	IntoBranch       string `json:"into_branch"`
+	IntoBranch       string `json:"into_branch,omitempty"`
 	Notes            string `json:"notes"`
 }
 
@@ -55,7 +55,7 @@ type SchemaSnapshotsService interface {
 	Create(context.Context, *CreateSchemaSnapshotRequest) (*SchemaSnapshot, error)
 	List(context.Context, *ListSchemaSnapshotsRequest) ([]*SchemaSnapshot, error)
 	Get(context.Context, *GetSchemaSnapshotRequest) (*SchemaSnapshot, error)
-	RequestDeploy(context.Context, *RequestDeployRequest) (*DeployRequest, error)
+	RequestDeploy(context.Context, *SchemaSnapshotRequestDeployRequest) (*DeployRequest, error)
 }
 
 type schemaSnapshotsService struct {
@@ -141,7 +141,7 @@ func (s *schemaSnapshotsService) Get(ctx context.Context, getReq *GetSchemaSnaps
 }
 
 // RequestDeploy requests a deploy of a schema snapshot.
-func (s *schemaSnapshotsService) RequestDeploy(ctx context.Context, deployReq *RequestDeployRequest) (*DeployRequest, error) {
+func (s *schemaSnapshotsService) RequestDeploy(ctx context.Context, deployReq *SchemaSnapshotRequestDeployRequest) (*DeployRequest, error) {
 	req, err := s.client.newRequest(http.MethodPost, fmt.Sprintf("%s/deploy-requests", schemaSnapshotAPIPath(deployReq.SchemaSnapshotID)), deployReq)
 	if err != nil {
 		return nil, err
