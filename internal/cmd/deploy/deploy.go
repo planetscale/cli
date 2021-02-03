@@ -15,7 +15,7 @@ func DeployCmd(cfg *config.Config) *cobra.Command {
 	performReq := &planetscale.PerformDeployRequest{}
 
 	cmd := &cobra.Command{
-		Use:   "deploy [id]",
+		Use:   "deploy <id>",
 		Short: "Approve and deploy a specific deploy request",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
