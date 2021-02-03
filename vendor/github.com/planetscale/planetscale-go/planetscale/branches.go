@@ -253,6 +253,7 @@ func (d *databaseBranchesService) ListDeployRequests(ctx context.Context, listRe
 	return deployRequestsResponse.DeployRequests, nil
 }
 
+// RequestDeploy requests a deploy for a specific database branch.
 func (d *databaseBranchesService) RequestDeploy(ctx context.Context, deployReq *DatabaseBranchRequestDeployRequest) (*DeployRequest, error) {
 	path := branchDeployRequestsAPIPath(deployReq.Organization, deployReq.Database, deployReq.Branch)
 	req, err := d.client.newRequest(http.MethodPost, path, deployReq)
