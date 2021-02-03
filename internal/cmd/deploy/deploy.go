@@ -65,6 +65,7 @@ func DeployCmd(cfg *config.Config) *cobra.Command {
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
 
 	cmd.AddCommand(ListCmd(cfg))
+	cmd.AddCommand(GetCmd(cfg))
 
 	return cmd
 }
