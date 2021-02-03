@@ -55,6 +55,11 @@ second argument:
 
 			database := args[0]
 
+			_, err := exec.LookPath("mysql")
+			if err != nil {
+				return fmt.Errorf("couldn't find the 'mysql' CLI")
+			}
+
 			client, err := cfg.NewClientFromConfig()
 			if err != nil {
 				return err
