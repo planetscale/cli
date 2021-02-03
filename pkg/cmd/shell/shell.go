@@ -104,6 +104,9 @@ second argument:
 				Database:     database,
 				Branch:       branch,
 			})
+			if err != nil {
+				return err
+			}
 
 			mysqlArgs := []string{
 				"-u", status.User,
