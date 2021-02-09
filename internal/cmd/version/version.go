@@ -17,7 +17,7 @@ func VersionCmd(cfg *config.Config, ver, commit, buildDate string) *cobra.Comman
 		// need to be displayed.
 		Hidden: true, //
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Printf(Format(ver, commit, buildDate))
+			fmt.Print(Format(ver, commit, buildDate))
 		},
 	}
 
