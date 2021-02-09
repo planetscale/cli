@@ -28,6 +28,7 @@ import (
 	"github.com/planetscale/cli/internal/cmd/org"
 	"github.com/planetscale/cli/internal/cmd/shell"
 	"github.com/planetscale/cli/internal/cmd/snapshot"
+	"github.com/planetscale/cli/internal/cmd/version"
 	"github.com/planetscale/cli/internal/config"
 
 	ps "github.com/planetscale/planetscale-go/planetscale"
@@ -52,7 +53,7 @@ var rootCmd = &cobra.Command{
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
-func Execute() error {
+func Execute(ver, commit, buildDate string) error {
 	cobra.OnInitialize(initConfig)
 
 	// Here you will define your flags and configuration settings.
@@ -65,6 +66,11 @@ func Execute() error {
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+
+	v := version.Format(ver, commit, buildDate)
+	rootCmd.SetVersionTemplate(v)
+	rootCmd.Version = v
+	rootCmd.Flags().Bool("version", false, "Show pscale version")
 
 	cfg := config.New()
 
@@ -94,6 +100,7 @@ func Execute() error {
 	rootCmd.AddCommand(shell.ShellCmd(cfg))
 	rootCmd.AddCommand(snapshot.SnapshotCmd(cfg))
 	rootCmd.AddCommand(deploy.DeployCmd(cfg))
+	rootCmd.AddCommand(version.VersionCmd(cfg, ver, commit, buildDate))
 
 	return rootCmd.Execute()
 }
