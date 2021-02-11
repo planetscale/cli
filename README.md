@@ -1,5 +1,21 @@
 # PlanetScale CLI
 
+## Installation
+
+**homebrew tap** (only on macOS for now):
+
+```
+brew install planetscale/tap/pscale
+```
+
+**deb/rpm**:
+
+Download the .deb or .rpm from the [releases](https://github.com/planetscale/cli/releases/latest) page and install with dpkg -i and rpm -i respectively.
+
+**manually**:
+
+Download the pre-compiled binaries from the [releases](https://github.com/planetscale/cli/releases/latest) page and copy to the desired location.
+
 ### Local Dev Setup
 
 In order to get setup and running with this project, you can run `script/setup` which will install all of the necessary dependencies. If `script/setup` installs Go, you should ensure that your `$GOPATH` is set properly and that you have added `$GOPATH/bin` to your `$PATH`.
