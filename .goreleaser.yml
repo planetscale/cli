@@ -11,6 +11,7 @@ builds:
     main: ./cmd/pscale/main.go
     ldflags:
      - -s -w -X main.version={{.Version}} -X main.commit={{.ShortCommit}} -X main.date={{.Date}}
+    binary: "pscale"   
 nfpms:
   - maintainer: PlanetScale
     description: The PlanetScale CLI
@@ -21,6 +22,25 @@ nfpms:
     - rpm
     replacements:
       darwin: macOS
+brews:
+  - homepage: "https://planetscale.com/"
+    description: "The PlanetScale CLI"
+    name: "pscale"
+    license: Apache 2.0
+    tap: 
+      owner: planetscale
+      name: homebrew-tap
+    dependencies:
+      - name: mysql # needed for 'pscale shell'
+        type: optional
+    # TODO: remove this once we make the repo public      
+    download_strategy: GitHubPrivateRepositoryReleaseDownloadStrategy
+    custom_require: "../custom_download_strategy"
+    folder: Formula
+    test: |
+         system "#{bin}/pscale --version"
+    install: |
+      bin.install "pscale"
 archives:
   - replacements:
       darwin: macOS
