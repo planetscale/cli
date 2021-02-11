@@ -1,6 +1,6 @@
+project_name: pscale
 release:
   prerelease: auto # don't publish release with -rc1,-pre, etc suffixes
-  draft: true 
 builds:
   - env:
       - CGO_ENABLED=0
