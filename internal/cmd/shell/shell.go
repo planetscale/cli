@@ -3,6 +3,7 @@ package shell
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -114,9 +115,16 @@ second argument:
 				return err
 			}
 
+			tmpFile, err := createLoginFile(status.User, status.Password)
+			if tmpFile != "" {
+				defer os.Remove(tmpFile)
+			}
+			if err != nil {
+				return err
+			}
+
 			mysqlArgs := []string{
-				"-u", status.User,
-				fmt.Sprintf("-p%s", status.Password),
+				fmt.Sprintf("--defaults-extra-file=%s", tmpFile),
 				"-h", localProxyAddr,
 				"-P", localProxyPort,
 			}
@@ -137,6 +145,22 @@ second argument:
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
 
 	return cmd
+}
+
+// createLoginFile creates a temporary file to store the username and password, so we don't have to
+// pass them as `mysql` command-line arguments.
+func createLoginFile(username, password string) (string, error) {
+	// ioutil.TempFile defaults to creating the file in the OS temporary directory with 0600 permissions
+	tmpFile, err := ioutil.TempFile("", "pscale-*")
+	if err != nil {
+		fmt.Println("could not create temporary file: ", err)
+		return "", err
+	}
+	fmt.Fprintln(tmpFile, "[client]")
+	fmt.Fprintf(tmpFile, "user=%s\n", username)
+	fmt.Fprintf(tmpFile, "password=%s\n", password)
+	_ = tmpFile.Close()
+	return tmpFile.Name(), nil
 }
 
 type mysql struct {
