@@ -134,7 +134,6 @@ github.com/google/go-cmp v0.5.0/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/
 github.com/google/go-cmp v0.5.1/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=
 github.com/google/go-cmp v0.5.4 h1:L8R9j+yAqZuZjsqh/z+F1NCffTKKLShY6zXTItVIZ8M=
 github.com/google/go-cmp v0.5.4/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=
-github.com/google/jsonapi v0.0.0-20201022225600-f822737867f6/go.mod h1:XSx4m2SziAqk9DXY9nz659easTq4q6TyrpYd9tHSm0g=
 github.com/google/martian v2.1.0+incompatible/go.mod h1:9I4somxYTbIHy5NJKHRl3wXiIaQGbYVAs8BPL6v8lEs=
 github.com/google/martian/v3 v3.0.0/go.mod h1:y5Zk1BBys9G+gd6Jrk0W3cC1+ELVxBWuIGO+w/tUAp0=
 github.com/google/pprof v0.0.0-20181206194817-3ea8567a2e57/go.mod h1:zfwlbNMJ+OItoe0UupaVj+oy1omPYYDuagoSzA8v9mc=
@@ -246,12 +245,10 @@ github.com/pkg/errors v0.8.0/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINE
 github.com/pkg/errors v0.8.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
-github.com/planetscale/planetscale-go v0.5.0 h1:PvVnfyOFBOVRWBsvADn/BILgUo5KZg5aOTFbIF9MsbA=
-github.com/planetscale/planetscale-go v0.5.0/go.mod h1:zQPOYB6dm4bHPgdp8e1cnoW/zfo330chknPiONmRBTw=
 github.com/planetscale/planetscale-go v0.8.0 h1:gQxLE7kz1S6UnjyNpiornrSHgFXQn25f7Sgq/seDwKQ=
 github.com/planetscale/planetscale-go v0.8.0/go.mod h1:R+07GStW2oGSfeTwWoplnimSEFzxIzEofOHgPFxArg0=
-github.com/planetscale/sql-proxy v0.1.0 h1:vm/p3CuviBPTEFgb5TZJUdy4GGH0OGFKDbET7nCGc1Y=
-github.com/planetscale/sql-proxy v0.1.0/go.mod h1:oabb1tnBXATZ3zD/4hycKl2MQyszpPNfup6qehAbVzs=
+github.com/planetscale/sql-proxy v0.1.2 h1:HSBHKY5tc2IqkXNNJknqMDz+iCiPNCBerbGDDeRN4qs=
+github.com/planetscale/sql-proxy v0.1.2/go.mod h1:Z1F1p5YmoBV0mkbfApaFA0zYv0Ngxm4GT4VnvtCgoro=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/posener/complete v1.1.1/go.mod h1:em0nMJCgc9GFtwrmVmEMR/ZL6WyhyjMBndrE9hABlRI=
