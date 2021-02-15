@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -122,13 +123,24 @@ type Conn struct {
 // proxies the connection over a TLS tunnel to the remote DB instance.
 func (c *Client) Run(ctx context.Context) error {
 	c.log.Info("ready for new connections")
-	l, err := net.Listen("tcp", c.localAddr)
+	l, err := c.getListener()
 	if err != nil {
 		return fmt.Errorf("error net.Listen: %w", err)
 	}
 	defer c.log.Sync() // nolint: errcheck
 
 	return c.run(ctx, l)
+}
+
+func (c *Client) getListener() (net.Listener, error) {
+	if strings.HasPrefix(c.localAddr, "unix://") {
+		p := strings.TrimPrefix(c.localAddr, "unix://")
+		if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
+			return nil, fmt.Errorf("failed to remove unix domain socket file %s, error: %s", p, err)
+		}
+		return net.Listen("unix", p)
+	}
+	return net.Listen("tcp", c.localAddr)
 }
 
 // run is an internal function for testing the Client proxy event loop for
