@@ -2,7 +2,6 @@ package database
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/url"
 
@@ -32,12 +31,10 @@ func CreateCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
-			if len(args) != 1 {
-				return errors.New("<name> is missing")
-			}
-
-			createReq.Database.Name = args[0]
 			createReq.Organization = cfg.Organization
+			if len(args) == 1 {
+				createReq.Database.Name = args[0]
+			}
 
 			if web {
 				fmt.Println("🌐  Redirecting you to create a database in your web browser.")
@@ -46,6 +43,10 @@ func CreateCmd(cfg *config.Config) *cobra.Command {
 					return err
 				}
 				return nil
+			}
+
+			if len(args) != 1 {
+				return cmd.Usage()
 			}
 
 			client, err := cfg.NewClientFromConfig()
