@@ -39,7 +39,9 @@ func DeleteCmd(cfg *config.Config) *cobra.Command {
 
 			if !force {
 				confirmationName := fmt.Sprintf("%s/%s", source, branch)
-				userInput := ""
+				if !cmdutil.IsTTY {
+					return fmt.Errorf("Cannot confirm deletion of branch %q (run with -force to override)", confirmationName)
+				}
 
 				confirmationMessage := fmt.Sprintf("%s %s %s", cmdutil.Bold("Please type"), cmdutil.BoldBlue(confirmationName), cmdutil.Bold("to confirm:"))
 
@@ -47,6 +49,7 @@ func DeleteCmd(cfg *config.Config) *cobra.Command {
 					Message: confirmationMessage,
 				}
 
+				var userInput string
 				err := survey.AskOne(prompt, &userInput)
 				if err != nil {
 					if err == terminal.InterruptErr {

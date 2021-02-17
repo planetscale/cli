@@ -32,6 +32,9 @@ func LoginCmd(cfg *config.Config) *cobra.Command {
 		Args:  cobra.ExactArgs(0),
 		Short: "Authenticate with PlanetScale",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if !cmdutil.IsTTY {
+				return errors.New("The 'login' command requires an interactive shell")
+			}
 			authenticator, err := auth.New(cleanhttp.DefaultClient(), clientID, clientSecret, auth.SetBaseURL(authURL))
 			if err != nil {
 				return err

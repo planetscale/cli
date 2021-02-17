@@ -12,6 +12,9 @@ const ApplicationURL = "https://app.planetscaledb.io"
 
 // OpenBrowser opens a web browser at the specified url.
 func OpenBrowser(goos, url string) *exec.Cmd {
+	if !IsTTY {
+		panic("OpenBrowser called without a TTY")
+	}
 	exe := "open"
 	var args []string
 	switch goos {

@@ -2,12 +2,12 @@ package promptutil
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"time"
 
 	"github.com/AlecAivazis/survey/v2"
 	ps "github.com/planetscale/planetscale-go/planetscale"
+
+	"github.com/planetscale/cli/internal/cmdutil"
 )
 
 // GetBranch returns the database branch. If there is only one branch, it
@@ -31,42 +31,22 @@ func GetBranch(ctx context.Context, client *ps.Client, org, db string) (string, 
 		return branches[0].Name, nil
 	}
 
-	branchNames := make([]string, 0, len(branches)-1)
-	for _, b := range branches {
-		branchNames = append(branchNames, b.Name)
-	}
-
-	prompt := &survey.Select{
-		Message: "Select a branch to connect to:",
-		Options: branchNames,
-		VimMode: true,
-	}
-
-	type result struct {
-		branch string
-		err    error
-	}
-
-	resp := make(chan result)
-
-	go func() {
-		var branch string
-		err := survey.AskOne(prompt, &branch)
-		resp <- result{
-			branch: branch,
-			err:    err,
+	if cmdutil.IsTTY {
+		branchNames := make([]string, 0, len(branches)-1)
+		for _, b := range branches {
+			branchNames = append(branchNames, b.Name)
 		}
-	}()
 
-	// timeout so CLI is not blocked forever if the user accidently called it
-	select {
-	case <-time.After(time.Minute * 5):
-		// TODO(fatih): this is buggy. Because there is no proper cancellation
-		// in the survey.AskOne() function, it holds to stdin, which causes the
-		// terminal to malfunction. But the timeout is not intended for regular
-		// users, it's meant to catch script invocations, so let's still use it.
-		return "", errors.New("pscale connect timeout: no branch is selected")
-	case r := <-resp:
-		return r.branch, r.err
+		prompt := &survey.Select{
+			Message: "Select a branch to connect to:",
+			Options: branchNames,
+			VimMode: true,
+		}
+
+		var branch string
+		err = survey.AskOne(prompt, &branch)
+		return branch, err
 	}
+
+	return "", fmt.Errorf("more than one branch exists for database %q", db)
 }
