@@ -3,7 +3,6 @@ package shell
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -115,22 +114,14 @@ second argument:
 				return err
 			}
 
-			tmpFile, err := createLoginFile(status.User, status.Password)
-			if tmpFile != "" {
-				defer os.Remove(tmpFile)
-			}
-			if err != nil {
-				return err
-			}
-
 			mysqlArgs := []string{
-				fmt.Sprintf("--defaults-extra-file=%s", tmpFile),
+				"-u", status.User,
 				"-h", localProxyAddr,
 				"-P", localProxyPort,
 			}
 
 			m := &mysql{}
-			err = m.Run(ctx, mysqlArgs...)
+			err = m.Run(ctx, status.Password, mysqlArgs...)
 			return err
 
 		},
@@ -147,28 +138,12 @@ second argument:
 	return cmd
 }
 
-// createLoginFile creates a temporary file to store the username and password, so we don't have to
-// pass them as `mysql` command-line arguments.
-func createLoginFile(username, password string) (string, error) {
-	// ioutil.TempFile defaults to creating the file in the OS temporary directory with 0600 permissions
-	tmpFile, err := ioutil.TempFile("", "pscale-*")
-	if err != nil {
-		fmt.Println("could not create temporary file: ", err)
-		return "", err
-	}
-	fmt.Fprintln(tmpFile, "[client]")
-	fmt.Fprintf(tmpFile, "user=%s\n", username)
-	fmt.Fprintf(tmpFile, "password=%s\n", password)
-	_ = tmpFile.Close()
-	return tmpFile.Name(), nil
-}
-
 type mysql struct {
 	Dir string
 }
 
 // Run runs the `mysql` client with the given arguments.
-func (m *mysql) Run(ctx context.Context, args ...string) error {
+func (m *mysql) Run(ctx context.Context, password string, args ...string) error {
 	c := exec.CommandContext(ctx, "mysql", args...)
 	if m.Dir != "" {
 		c.Dir = m.Dir
@@ -177,6 +152,7 @@ func (m *mysql) Run(ctx context.Context, args ...string) error {
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr
 	c.Stdin = os.Stdin
+	c.Env = []string{"MYSQL_PWD=" + password}
 
 	err := c.Start()
 	if err != nil {
