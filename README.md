@@ -25,6 +25,25 @@ You can install and use the program using `script/build` or `go install ./...`. 
 
 For using the CLI locally, there's some extra setup involved to get authenticated.
 
+### Releasing a new version
+
+To release a new version of the CLI make sure to switch to an updated `main` branch:
+
+```
+git checkout main
+git pull origin main
+```
+
+after that create a new tag and push to the repo. Make sure the version is bumped:
+
+```
+git tag -a <version> -m <comment>
+git push origin <version>
+```
+
+This will trigger the CI and invoke `goreleaser`, which will then release all the appropriate packages and archives.
+
+
 ### Updating the vendored API package 
 
 
