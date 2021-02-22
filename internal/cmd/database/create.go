@@ -17,9 +17,7 @@ import (
 
 // CreateCmd is the command for creating a database.
 func CreateCmd(cfg *config.Config) *cobra.Command {
-	createReq := &ps.CreateDatabaseRequest{
-		Database: new(ps.Database),
-	}
+	createReq := &ps.CreateDatabaseRequest{}
 
 	cmd := &cobra.Command{
 		Use:   "create <name>",
@@ -33,12 +31,12 @@ func CreateCmd(cfg *config.Config) *cobra.Command {
 
 			createReq.Organization = cfg.Organization
 			if len(args) == 1 {
-				createReq.Database.Name = args[0]
+				createReq.Name = args[0]
 			}
 
 			if web {
 				fmt.Println("🌐  Redirecting you to create a database in your web browser.")
-				err := browser.OpenURL(fmt.Sprintf("%s/%s?name=%s&notes=%s&showDialog=true", cmdutil.ApplicationURL, cfg.Organization, url.QueryEscape(createReq.Database.Name), url.QueryEscape(createReq.Database.Notes)))
+				err := browser.OpenURL(fmt.Sprintf("%s/%s?name=%s&notes=%s&showDialog=true", cmdutil.ApplicationURL, cfg.Organization, url.QueryEscape(createReq.Name), url.QueryEscape(createReq.Notes)))
 				if err != nil {
 					return err
 				}
@@ -80,7 +78,7 @@ func CreateCmd(cfg *config.Config) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&createReq.Database.Notes, "notes", "", "notes for the database")
+	cmd.Flags().StringVar(&createReq.Notes, "notes", "", "notes for the database")
 	cmd.Flags().BoolP("web", "w", false, "Create a database in your web browser")
 
 	return cmd

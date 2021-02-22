@@ -13,7 +13,8 @@ import (
 // CreateDatabaseRequest encapsulates the request for creating a new database.
 type CreateDatabaseRequest struct {
 	Organization string
-	Database     *Database `json:"database"`
+	Name      string    `json:"name"`
+	Notes     string    `json:"notes"`
 }
 
 // DatabaseRequest encapsulates the request for getting a single database.
