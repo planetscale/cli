@@ -1,4 +1,4 @@
-# github.com/AlecAivazis/survey/v2 v2.2.7
+# github.com/AlecAivazis/survey/v2 v2.2.8
 ## explicit
 github.com/AlecAivazis/survey/v2
 github.com/AlecAivazis/survey/v2/core
