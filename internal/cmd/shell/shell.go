@@ -2,6 +2,7 @@ package shell
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -115,6 +116,10 @@ second argument:
 			})
 			if err != nil {
 				return err
+			}
+
+			if status.User == "" {
+				return errors.New("database branch is not ready yet")
 			}
 
 			tmpFile, err := createLoginFile(status.User, status.Password)
