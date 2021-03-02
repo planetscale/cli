@@ -63,9 +63,15 @@ argument:
 				}
 			}
 
+			const localProxyAddr = "127.0.0.1"
+			localAddr := localProxyAddr + ":0"
+			if flags.localAddr != "" {
+				localAddr = flags.localAddr
+			}
+
 			proxyOpts := proxy.Options{
 				CertSource: proxyutil.NewRemoteCertSource(client),
-				LocalAddr:  flags.localAddr,
+				LocalAddr:  localAddr,
 				RemoteAddr: flags.remoteAddr,
 				Instance:   fmt.Sprintf("%s/%s/%s", cfg.Organization, database, branch),
 			}
@@ -74,15 +80,26 @@ argument:
 				proxyOpts.Logger = zap.NewNop()
 			}
 
-			fmt.Printf("Secure connection to databases %s and branch %s is established!.\n\nLocal address to connect your application: %s (press ctrl-c to quit)",
-				cmdutil.BoldBlue(database),
-				cmdutil.BoldBlue(branch),
-				cmdutil.BoldBlue(flags.localAddr))
-
 			p, err := proxy.NewClient(proxyOpts)
 			if err != nil {
 				return fmt.Errorf("couldn't create proxy client: %s", err)
 			}
+
+			go func() {
+				// this is blocking and will only return once p.Run() below is
+				// invoked
+				addr, err := p.LocalAddr()
+				if err != nil {
+					fmt.Printf("failed getting local addr: %s\n", err)
+					return
+				}
+
+				fmt.Printf("Secure connection to databases %s and branch %s is established!.\n\nLocal address to connect your application: %s (press ctrl-c to quit)",
+					cmdutil.BoldBlue(database),
+					cmdutil.BoldBlue(branch),
+					cmdutil.BoldBlue(addr.String()),
+				)
+			}()
 
 			// TODO(fatih): replace with signal.NotifyContext once Go 1.16 is released
 			// https://go-review.googlesource.com/c/go/+/219640
@@ -92,7 +109,7 @@ argument:
 	}
 
 	cmd.PersistentFlags().StringVar(&cfg.Organization, "org", cfg.Organization, "The organization for the current user")
-	cmd.PersistentFlags().StringVar(&flags.localAddr, "local-addr", "127.0.0.1:3307",
+	cmd.PersistentFlags().StringVar(&flags.localAddr, "local-addr", "",
 		"Local address to bind and listen for connections")
 	cmd.PersistentFlags().StringVar(&flags.remoteAddr, "remote-addr", "",
 		"PlanetScale Database remote network address. By default the remote address is populated automatically from the PlanetScale API.")

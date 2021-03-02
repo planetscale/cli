@@ -75,7 +75,7 @@ github.com/pkg/errors
 # github.com/planetscale/planetscale-go v0.9.0
 ## explicit
 github.com/planetscale/planetscale-go/planetscale
-# github.com/planetscale/sql-proxy v0.1.3
+# github.com/planetscale/sql-proxy v0.1.4
 ## explicit
 github.com/planetscale/sql-proxy/proxy
 github.com/planetscale/sql-proxy/sigutil

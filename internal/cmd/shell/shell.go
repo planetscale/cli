@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net"
 	"os"
 	"os/exec"
 	"syscall"
@@ -19,11 +20,6 @@ import (
 	ps "github.com/planetscale/planetscale-go/planetscale"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
-)
-
-const (
-	localProxyPort = "3307"
-	localProxyAddr = "127.0.0.1"
 )
 
 func ShellCmd(cfg *config.Config) *cobra.Command {
@@ -79,9 +75,15 @@ second argument:
 				}
 			}
 
+			const localProxyAddr = "127.0.0.1"
+			localAddr := localProxyAddr + ":0"
+			if flags.localAddr != "" {
+				localAddr = flags.localAddr
+			}
+
 			proxyOpts := proxy.Options{
 				CertSource: proxyutil.NewRemoteCertSource(client),
-				LocalAddr:  flags.localAddr,
+				LocalAddr:  localAddr,
 				RemoteAddr: flags.remoteAddr,
 				Instance:   fmt.Sprintf("%s/%s/%s", cfg.Organization, database, branch),
 			}
@@ -123,10 +125,20 @@ second argument:
 				return err
 			}
 
+			addr, err := p.LocalAddr()
+			if err != nil {
+				return err
+			}
+
+			host, port, err := net.SplitHostPort(addr.String())
+			if err != nil {
+				return err
+			}
+
 			mysqlArgs := []string{
 				fmt.Sprintf("--defaults-extra-file=%s", tmpFile),
-				"-h", localProxyAddr,
-				"-P", localProxyPort,
+				"-h", host,
+				"-P", port,
 			}
 
 			m := &mysql{}
@@ -138,7 +150,7 @@ second argument:
 
 	cmd.PersistentFlags().StringVar(&cfg.Organization, "org", cfg.Organization, "The organization for the current user")
 	cmd.PersistentFlags().StringVar(&flags.localAddr, "local-addr",
-		localProxyAddr+":"+localProxyPort, "Local address to bind and listen for connections")
+		"", "Local address to bind and listen for connections. By default the proxy binds to 127.0.0.1 with a random port.")
 	cmd.PersistentFlags().StringVar(&flags.remoteAddr, "remote-addr", "",
 		"PlanetScale Database remote network address. By default the remote address is populated automatically from the PlanetScale API.")
 	cmd.PersistentFlags().BoolVar(&flags.debug, "debug", false, "enable debug mode")
