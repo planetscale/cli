@@ -4,6 +4,9 @@ import (
 	"context"
 	"net/http"
 	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
 
 	"github.com/planetscale/cli/internal/config"
 	"github.com/planetscale/planetscale-go/planetscale"
@@ -11,6 +14,10 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
+
+var tl = []string{"rev-parse", "--show-toplevel"}
+
+const psdbFile = ".psdb"
 
 func SwitchCmd(cfg *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
@@ -54,7 +61,14 @@ func SwitchCmd(cfg *config.Config) *cobra.Command {
 				}
 			}
 
-			f, err := os.OpenFile(".psdb", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
+			rootPath, err := getRootDir()
+			if err != nil {
+				return err
+			}
+
+			cfgFile := filepath.Join(rootPath, psdbFile)
+
+			f, err := os.OpenFile(cfgFile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
 			if err != nil {
 				return err
 			}
@@ -81,4 +95,13 @@ func errorIsNotFound(err error) bool {
 		return false
 	}
 	return err.Error() == http.StatusText(http.StatusNotFound)
+}
+
+func getRootDir() (string, error) {
+	out, err := exec.Command("git", tl...).CombinedOutput()
+	if err != nil {
+		return os.Getwd()
+	}
+
+	return string(strings.TrimSuffix(string(out), "\n")), nil
 }
