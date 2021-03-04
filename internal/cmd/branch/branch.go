@@ -102,6 +102,7 @@ func BranchCmd(cfg *config.Config) *cobra.Command {
 	cmd.AddCommand(DeleteCmd(cfg))
 	cmd.AddCommand(GetCmd(cfg))
 	cmd.AddCommand(RequestDeployCmd(cfg))
+	cmd.AddCommand(SwitchCmd(cfg))
 
 	return cmd
 }
