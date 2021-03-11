@@ -32,8 +32,8 @@ cloud.google.com/go/storage v1.6.0/go.mod h1:N7U0C8pVQ/+NIKOBQyamJIeKQKkZ+mxpohl
 cloud.google.com/go/storage v1.8.0/go.mod h1:Wv1Oy7z6Yz3DshWRJFhqM/UCfaWIRTdp0RXyy7KQOVs=
 cloud.google.com/go/storage v1.10.0/go.mod h1:FLPqc6j+Ki4BU591ie1oL6qBQGu2Bl/tZ9ullr3+Kg0=
 dmitri.shuralyov.com/gpu/mtl v0.0.0-20190408044501-666a987793e9/go.mod h1:H6x//7gZCb22OMCxBHrMx7a5I7Hp++hsVxbQ4BYO7hU=
-github.com/AlecAivazis/survey/v2 v2.2.8 h1:TgxCwybKdBckmC+/P9/5h49rw/nAHe/itZL0dgHs+Q0=
-github.com/AlecAivazis/survey/v2 v2.2.8/go.mod h1:9DYvHgXtiXm6nCn+jXnOXLKbH+Yo9u8fAS/SduGdoPk=
+github.com/AlecAivazis/survey/v2 v2.2.9 h1:LWvJtUswz/W9/zVVXELrmlvdwWcKE60ZAw0FWV9vssk=
+github.com/AlecAivazis/survey/v2 v2.2.9/go.mod h1:9DYvHgXtiXm6nCn+jXnOXLKbH+Yo9u8fAS/SduGdoPk=
 github.com/BurntSushi/toml v0.3.1 h1:WXkYYl6Yr3qBf1K79EBnL4mak0OimBfB0XUf9Vl28OQ=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
@@ -245,12 +245,8 @@ github.com/pkg/errors v0.8.0/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINE
 github.com/pkg/errors v0.8.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
-github.com/planetscale/planetscale-go v0.8.0 h1:gQxLE7kz1S6UnjyNpiornrSHgFXQn25f7Sgq/seDwKQ=
-github.com/planetscale/planetscale-go v0.8.0/go.mod h1:R+07GStW2oGSfeTwWoplnimSEFzxIzEofOHgPFxArg0=
 github.com/planetscale/planetscale-go v0.9.0 h1:EY2BQNyBAWx8rjk5ecqcmulKyT8zheWa7C6SH4GhqLk=
 github.com/planetscale/planetscale-go v0.9.0/go.mod h1:R+07GStW2oGSfeTwWoplnimSEFzxIzEofOHgPFxArg0=
-github.com/planetscale/sql-proxy v0.1.3 h1:u0HA78rkasas2JOHEyA21LAtIx+HVU6W7yPeS1XJRow=
-github.com/planetscale/sql-proxy v0.1.3/go.mod h1:Z1F1p5YmoBV0mkbfApaFA0zYv0Ngxm4GT4VnvtCgoro=
 github.com/planetscale/sql-proxy v0.1.4 h1:RBTxrEXiF08W8GHTuHQ1Hn9aM79ibLSFZ3yX/dwsF/c=
 github.com/planetscale/sql-proxy v0.1.4/go.mod h1:lTxdxxilj2oOgVsZ5c1Eyjo/3XTEv0GZ8E2A33y6We8=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
