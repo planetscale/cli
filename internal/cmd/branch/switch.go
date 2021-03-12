@@ -72,6 +72,8 @@ func SwitchCmd(cfg *config.Config) *cobra.Command {
 				return errors.Wrap(err, "error writing project configuration file")
 			}
 
+			fmt.Printf("Successfully switched to branch %s on database %s", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(parentBranch))
+
 			return nil
 		},
 	}
