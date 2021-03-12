@@ -31,7 +31,7 @@ func SwitchCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
-			fmt.Printf("Finding or creating Branch %s on Database %s\n", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(cfg.Database))
+			fmt.Printf("Finding or creating branch %s on database %s\n", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(cfg.Database))
 
 			_, err = client.DatabaseBranches.Get(ctx, &planetscale.GetDatabaseBranchRequest{
 				Organization: cfg.Organization,
