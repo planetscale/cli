@@ -146,7 +146,7 @@ func initConfig() {
 	if rootDir, err := config.GetRootGitRepoDir(); err == nil && cfgFile == "" {
 		viper.AddConfigPath(rootDir)
 		viper.SetConfigName(config.GetProjectConfigFile())
-		viper.MergeInConfig()
+		viper.MergeInConfig() // nolint:errcheck
 	}
 
 	postInitCommands(rootCmd.Commands())
