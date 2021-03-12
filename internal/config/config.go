@@ -16,7 +16,7 @@ import (
 
 const (
 	defaultConfigPath = "~/.config/planetscale"
-	psdbFile          = ".psdb"
+	pscaleProjectFile = ".pscale"
 )
 
 var tl = []string{"rev-parse", "--show-toplevel"}
@@ -89,7 +89,7 @@ func ProjectConfigPath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return path.Join(basePath, psdbFile), nil
+	return path.Join(basePath, pscaleProjectFile), nil
 }
 
 // NewClientFromConfig creates a PlaentScale API client from our configuration
@@ -169,5 +169,5 @@ func GetRootGitRepoDir() (string, error) {
 }
 
 func GetProjectConfigFile() string {
-	return psdbFile
+	return pscaleProjectFile
 }
