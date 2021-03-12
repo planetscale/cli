@@ -77,8 +77,15 @@ func Execute(ver, commit, buildDate string) error {
 	rootCmd.PersistentFlags().StringVar(&cfg.BaseURL, "api-url", ps.DefaultBaseURL, "The base URL for the PlanetScale API.")
 	rootCmd.PersistentFlags().StringVar(&cfg.AccessToken, "api-token", cfg.AccessToken, "The API token to use for authenticating against the PlanetScale API.")
 
-	err := viper.BindPFlag("org", rootCmd.PersistentFlags().Lookup("org"))
-	if err != nil {
+	if err := viper.BindPFlag("org", rootCmd.PersistentFlags().Lookup("org")); err != nil {
+		return err
+	}
+
+	if err := viper.BindPFlag("database", rootCmd.PersistentFlags().Lookup("database")); err != nil {
+		return err
+	}
+
+	if err := viper.BindPFlag("branch", rootCmd.PersistentFlags().Lookup("branch")); err != nil {
 		return err
 	}
 
@@ -132,6 +139,14 @@ func initConfig() {
 			fmt.Println(err)
 			os.Exit(1)
 		}
+	}
+
+	// Check for a project-local configuration file to merge in if the user
+	// has not specified a config file
+	if rootDir, err := config.GetRootGitRepoDir(); err == nil && cfgFile == "" {
+		viper.AddConfigPath(rootDir)
+		viper.SetConfigName(config.GetProjectConfigFile())
+		viper.MergeInConfig()
 	}
 
 	postInitCommands(rootCmd.Commands())

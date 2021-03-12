@@ -2,43 +2,40 @@ package branch
 
 import (
 	"context"
+	"fmt"
 	"net/http"
-	"os"
-	"os/exec"
-	"path/filepath"
-	"strings"
 
+	"github.com/pkg/errors"
+	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/config"
 	"github.com/planetscale/planetscale-go/planetscale"
 	ps "github.com/planetscale/planetscale-go/planetscale"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
 )
 
-var tl = []string{"rev-parse", "--show-toplevel"}
-
-const psdbFile = ".psdb"
-
 func SwitchCmd(cfg *config.Config) *cobra.Command {
+	var parentBranch string
 	cmd := &cobra.Command{
-		Use:   "switch <database> <branch>",
+		Use:   "switch <branch>",
 		Short: "Switches the current project to use the specified branch",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
-			if len(args) != 2 {
+			if len(args) != 1 {
 				return cmd.Usage()
 			}
 
-			database, branch := args[0], args[1]
+			branch := args[0]
 
 			client, err := cfg.NewClientFromConfig()
 			if err != nil {
 				return err
 			}
 
-			b, err := client.DatabaseBranches.Get(ctx, &planetscale.GetDatabaseBranchRequest{
+			fmt.Printf("Finding or creating Branch %s on Database %s\n", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(cfg.Database))
+
+			_, err = client.DatabaseBranches.Get(ctx, &planetscale.GetDatabaseBranchRequest{
 				Organization: cfg.Organization,
-				Database:     database,
+				Database:     cfg.Database,
 				Branch:       branch,
 			})
 			if err != nil && !errorIsNotFound(err) {
@@ -46,48 +43,45 @@ func SwitchCmd(cfg *config.Config) *cobra.Command {
 			}
 
 			if errorIsNotFound(err) {
+				end := cmdutil.PrintProgress(fmt.Sprintf("Branch does not exist, creating %s branch from %s...", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(parentBranch)))
+				defer end()
+
 				createReq := &ps.CreateDatabaseBranchRequest{
 					Organization: cfg.Organization,
-					Database:     database,
+					Database:     cfg.Database,
 					Branch: &ps.DatabaseBranch{
 						Name:         branch,
-						ParentBranch: "main", // todo(nickvanw): can we discern this?
+						ParentBranch: parentBranch,
 					},
 				}
 
-				b, err = client.DatabaseBranches.Create(ctx, createReq)
+				_, err = client.DatabaseBranches.Create(ctx, createReq)
 				if err != nil {
 					return err
 				}
+
+				end()
 			}
 
-			rootPath, err := getRootDir()
-			if err != nil {
-				return err
+			cfg := config.WritableProjectConfig{
+				Database: cfg.Database,
+				Branch:   branch,
 			}
 
-			cfgFile := filepath.Join(rootPath, psdbFile)
-
-			f, err := os.OpenFile(cfgFile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
-			if err != nil {
-				return err
+			if err := cfg.WriteDefault(); err != nil {
+				return errors.Wrap(err, "error writing project configuration file")
 			}
 
-			cfg := projectConfig{
-				Database: database,
-				Branch:   b.Name,
-			}
-
-			return yaml.NewEncoder(f).Encode(cfg)
+			return nil
 		},
 	}
 
-	return cmd
-}
+	cmd.PersistentFlags().StringVar(&cfg.Organization, "org", cfg.Organization, "The organization for the current user")
+	cmd.PersistentFlags().StringVar(&cfg.Database, "database", cfg.Database, "The database this project is using")
+	cmd.Flags().StringVar(&parentBranch, "parent-branch", "main", "parent branch to inherit from if a new branch is being created")
 
-type projectConfig struct {
-	Database string `yaml:"database"`
-	Branch   string `yaml:"branch"`
+	cmd.MarkPersistentFlagRequired("database") // nolint:errcheck
+	return cmd
 }
 
 func errorIsNotFound(err error) bool {
@@ -95,13 +89,4 @@ func errorIsNotFound(err error) bool {
 		return false
 	}
 	return err.Error() == http.StatusText(http.StatusNotFound)
-}
-
-func getRootDir() (string, error) {
-	out, err := exec.Command("git", tl...).CombinedOutput()
-	if err != nil {
-		return os.Getwd()
-	}
-
-	return string(strings.TrimSuffix(string(out), "\n")), nil
 }
