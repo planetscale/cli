@@ -39,6 +39,11 @@ type CertSource interface {
 // localhost port and tunneling them securely over a TLS connection to a remote
 // database instance defined by its PlanetScale unique branch identifier.
 type Client struct {
+	// connectionsCounter is used to enforce the optional maxConnections limit
+	// NOTE: don't move this field, as we need to make sure the fields are
+	// 64-bit aligned
+	connectionsCounter uint64
+
 	remoteAddr     string
 	localAddr      string
 	instance       string
@@ -46,9 +51,6 @@ type Client struct {
 	certSource     CertSource
 
 	log *zap.Logger
-
-	// connectionsCounter is used to enforce the optional maxConnections limit
-	connectionsCounter uint64
 
 	// configCache contains the TLS certificate chache for each indiviual
 	// database
