@@ -15,6 +15,8 @@ import (
 
 func SwitchCmd(cfg *config.Config) *cobra.Command {
 	var parentBranch string
+	var autoCreate bool
+
 	cmd := &cobra.Command{
 		Use:   "switch <branch>",
 		Short: "Switches the current project to use the specified branch",
@@ -31,7 +33,7 @@ func SwitchCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
-			fmt.Printf("Finding or creating branch %s on database %s\n", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(cfg.Database))
+			fmt.Printf("Finding branch %s on database %s\n", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(cfg.Database))
 
 			_, err = client.DatabaseBranches.Get(ctx, &planetscale.GetDatabaseBranchRequest{
 				Organization: cfg.Organization,
@@ -43,6 +45,10 @@ func SwitchCmd(cfg *config.Config) *cobra.Command {
 			}
 
 			if errorIsNotFound(err) {
+				if !autoCreate {
+					return errors.New("branch does not exist in specified database. Use --create to automatically create during switch")
+				}
+
 				end := cmdutil.PrintProgress(fmt.Sprintf("Branch does not exist, creating %s branch from %s...", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(parentBranch)))
 				defer end()
 
@@ -81,6 +87,7 @@ func SwitchCmd(cfg *config.Config) *cobra.Command {
 	cmd.PersistentFlags().StringVar(&cfg.Organization, "org", cfg.Organization, "The organization for the current user")
 	cmd.PersistentFlags().StringVar(&cfg.Database, "database", cfg.Database, "The database this project is using")
 	cmd.Flags().StringVar(&parentBranch, "parent-branch", "main", "parent branch to inherit from if a new branch is being created")
+	cmd.Flags().BoolVar(&autoCreate, "create", false, "if enabled, will automatically create the branch if it does not exist")
 
 	cmd.MarkPersistentFlagRequired("database") // nolint:errcheck
 	return cmd
