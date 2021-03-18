@@ -28,6 +28,7 @@ import (
 	"github.com/planetscale/cli/internal/cmd/org"
 	"github.com/planetscale/cli/internal/cmd/shell"
 	"github.com/planetscale/cli/internal/cmd/snapshot"
+	"github.com/planetscale/cli/internal/cmd/token"
 	"github.com/planetscale/cli/internal/cmd/version"
 	"github.com/planetscale/cli/internal/config"
 
@@ -108,6 +109,7 @@ func Execute(ver, commit, buildDate string) error {
 	rootCmd.AddCommand(snapshot.SnapshotCmd(cfg))
 	rootCmd.AddCommand(deploy.DeployCmd(cfg))
 	rootCmd.AddCommand(version.VersionCmd(cfg, ver, commit, buildDate))
+	rootCmd.AddCommand(token.TokenCmd(cfg))
 
 	return rootCmd.Execute()
 }
