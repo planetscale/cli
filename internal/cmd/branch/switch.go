@@ -20,12 +20,9 @@ func SwitchCmd(cfg *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "switch <branch>",
 		Short: "Switches the current project to use the specified branch",
+		Args:  cmdutil.RequiredArgs("branch"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
-			if len(args) != 1 {
-				return cmd.Usage()
-			}
-
 			branch := args[0]
 
 			client, err := cfg.NewClientFromConfig()

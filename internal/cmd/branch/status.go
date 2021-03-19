@@ -16,21 +16,18 @@ import (
 // StatusCmd gets the status of a database branch using the PlanetScale API.
 func StatusCmd(cfg *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "status <db_name> <branch_name>",
+		Use:   "status <database> <branch>",
 		Short: "Check the status of a branch of a database",
+		Args:  cmdutil.RequiredArgs("database", "branch"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
-			if len(args) != 2 {
-				return cmd.Usage()
-			}
+			source := args[0]
+			branch := args[1]
 
 			client, err := cfg.NewClientFromConfig()
 			if err != nil {
 				return err
 			}
-
-			source := args[0]
-			branch := args[1]
 
 			end := cmdutil.PrintProgress(fmt.Sprintf("Getting status for branch %s in %s...", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(source)))
 			defer end()

@@ -17,18 +17,16 @@ func GetCmd(cfg *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "get [id]",
 		Short: "Get a deploy request",
+		Args:  cmdutil.RequiredArgs("id"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
+			id := args[0]
+
 			client, err := cfg.NewClientFromConfig()
 			if err != nil {
 				return err
 			}
 
-			if len(args) != 1 {
-				return cmd.Usage()
-			}
-
-			id := args[0]
 			getReq.ID = id
 
 			end := cmdutil.PrintProgress(fmt.Sprintf("Fetching deploy %s...", cmdutil.BoldBlue(id)))

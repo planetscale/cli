@@ -16,18 +16,15 @@ func CreateCmd(cfg *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create <database> <branch>",
 		Short: "Create a new schema snapshot for a database branch",
+		Args:  cmdutil.RequiredArgs("database", "branch"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
+			database, branch := args[0], args[1]
+
 			client, err := cfg.NewClientFromConfig()
 			if err != nil {
 				return err
 			}
-
-			if len(args) != 2 {
-				return cmd.Usage()
-			}
-
-			database, branch := args[0], args[1]
 
 			end := cmdutil.PrintProgress(fmt.Sprintf("Creating schema snapshot for %s in %s...", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(database)))
 			defer end()

@@ -21,17 +21,12 @@ func BranchCmd(cfg *config.Config) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:     "branch <source-database> <branch-name> [options]",
+		Use:     "branch <source-database> <branch> [options]",
 		Short:   "Branch a production database",
+		Args:    cmdutil.RequiredArgs("source-database", "branch"),
 		Aliases: []string{"b"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
-			// If the user does not provide a source database and a branch name,
-			// show the usage.
-			if len(args) != 2 {
-				return cmd.Usage()
-			}
-
 			source := args[0]
 			branch := args[1]
 

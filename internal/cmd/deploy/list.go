@@ -15,16 +15,11 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 	listReq := &planetscale.ListDeployRequestsRequest{}
 
 	cmd := &cobra.Command{
-		Use:   "list [database] [branch]",
+		Use:   "list <database> <branch>",
 		Short: "List the deploy requests for a database branch",
+		Args:  cmdutil.RequiredArgs("database", "branch"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
-
-			if len(args) != 2 {
-				fmt.Println(args)
-				return cmd.Usage()
-			}
-
 			database, branch := args[0], args[1]
 
 			listReq.Organization = cfg.Organization
