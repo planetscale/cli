@@ -8,7 +8,7 @@ import (
 	"github.com/cli/safeexec"
 )
 
-const ApplicationURL = "https://app.planetscaledb.io"
+const ApplicationURL = "https://app.planetscale.com"
 
 // OpenBrowser opens a web browser at the specified url.
 func OpenBrowser(goos, url string) *exec.Cmd {
