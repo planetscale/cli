@@ -7,7 +7,7 @@ import (
 // ServiceTokenAccess returns a table and json serializable schema snapshot.
 type ServiceTokenAccess struct {
 	Database string   `header:"database" json:"database"`
-	Accesses []string `header:"grants" json:"grants"`
+	Accesses []string `header:"accesses" json:"accesses"`
 }
 
 // NewServiceTokenPrinter returns a struct that prints out the various fields
