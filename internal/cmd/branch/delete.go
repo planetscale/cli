@@ -20,15 +20,12 @@ func DeleteCmd(cfg *config.Config) *cobra.Command {
 	var force bool
 
 	cmd := &cobra.Command{
-		Use:     "delete <db_name> <branch_name>",
+		Use:     "delete <database> <branch>",
 		Short:   "Delete a branch from a database",
+		Args:    cmdutil.RequiredArgs("database", "branch"),
 		Aliases: []string{"rm"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
-			if len(args) != 2 {
-				return cmd.Usage()
-			}
-
 			source := args[0]
 			branch := args[1]
 

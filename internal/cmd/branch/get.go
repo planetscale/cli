@@ -16,14 +16,11 @@ import (
 
 func GetCmd(cfg *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "get <source_name> <branch_name>",
+		Use:   "get <source-database> <branch>",
 		Short: "Get a specific branch of a database",
+		Args:  cmdutil.RequiredArgs("source-database", "branch"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
-			if len(args) != 2 {
-				return cmd.Usage()
-			}
-
 			source := args[0]
 			branch := args[1]
 

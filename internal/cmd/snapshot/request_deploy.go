@@ -17,12 +17,9 @@ func RequestDeployCmd(cfg *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "request-deploy <id>",
 		Short: "Requests a deploy for a specific schema snapshot ID",
+		Args:  cmdutil.RequiredArgs("id"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
-			if len(args) != 1 {
-				return cmd.Usage()
-			}
-
 			id := args[0]
 			deployReq.SchemaSnapshotID = id
 

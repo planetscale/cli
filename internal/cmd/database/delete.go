@@ -22,21 +22,18 @@ func DeleteCmd(cfg *config.Config) *cobra.Command {
 	var force bool
 
 	cmd := &cobra.Command{
-		Use:     "delete <database_name>",
+		Use:     "delete <database>",
 		Short:   "Delete a database instance",
+		Args:    cmdutil.RequiredArgs("database"),
 		Aliases: []string{"rm"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
+			name := args[0]
+
 			client, err := cfg.NewClientFromConfig()
 			if err != nil {
 				return err
 			}
-
-			if len(args) == 0 {
-				return errors.New("<database_name> is missing")
-			}
-
-			name := args[0]
 
 			if !force {
 				if !cmdutil.IsTTY {
