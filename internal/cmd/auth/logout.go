@@ -31,8 +31,11 @@ func LogoutCmd(cfg *config.Config) *cobra.Command {
 				fmt.Println("Already logged out. Exiting...")
 				return nil
 			}
-			fmt.Println("Press Enter to log out of the PlanetScale API.")
-			_ = waitForEnter(cmd.InOrStdin())
+
+			if cmdutil.IsTTY {
+				fmt.Println("Press Enter to log out of the PlanetScale API.")
+				_ = waitForEnter(cmd.InOrStdin())
+			}
 
 			authenticator, err := auth.New(cleanhttp.DefaultClient(), clientID, clientSecret, auth.SetBaseURL(apiURL))
 			if err != nil {

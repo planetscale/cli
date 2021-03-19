@@ -38,6 +38,10 @@ func MergeCmd(cfg *config.Config) *cobra.Command {
 			// If mergeInto is blank, then we need to prompt the user to select a
 			// branch.
 			if mergeInto == "" {
+				if !cmdutil.IsTTY {
+					return fmt.Errorf("no '-into' branch given")
+				}
+
 				err := selectBranch(ctx, client, fromBranch, &mergeInto, database, cfg.Organization)
 				if err != nil {
 					return err

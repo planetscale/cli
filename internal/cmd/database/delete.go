@@ -39,13 +39,16 @@ func DeleteCmd(cfg *config.Config) *cobra.Command {
 			name := args[0]
 
 			if !force {
-				userInput := ""
+				if !cmdutil.IsTTY {
+					return fmt.Errorf("Cannot confirm deletion of database %q (run with -force to override)", name)
+				}
 				confirmationMessage := fmt.Sprintf("%s %s %s", cmdutil.Bold("Please type"), cmdutil.BoldBlue(name), cmdutil.Bold("to confirm:"))
 
 				prompt := &survey.Input{
 					Message: confirmationMessage,
 				}
 
+				var userInput string
 				err := survey.AskOne(prompt, &userInput)
 				if err != nil {
 					if err == terminal.InterruptErr {
