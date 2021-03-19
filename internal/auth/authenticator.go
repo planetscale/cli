@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	DefaultBaseURL = "https://auth.planetscaledb.io/"
+	DefaultBaseURL = "https://auth.planetscale.com/"
 	OAuthClientID  = "wzzkYKOfRcxFAiMgDgfbhO9yIikNIlt9-yhosmvPBQA"
 
 	// This is safe to be committed to version control, since our OAuth
