@@ -2,7 +2,6 @@ package database
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/planetscale/cli/internal/cmdutil"
@@ -17,21 +16,17 @@ import (
 
 func GetCmd(cfg *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "get <database_name>",
+		Use:   "get <database>",
 		Short: "Retrieve information about a database",
-		Args:  cobra.ExactArgs(1),
+		Args:  cmdutil.RequiredArgs("database"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
+			name := args[0]
+
 			web, err := cmd.Flags().GetBool("web")
 			if err != nil {
 				return err
 			}
-
-			if len(args) == 0 {
-				return errors.New("<database_name> is missing")
-			}
-
-			name := args[0]
 
 			if web {
 				fmt.Println("🌐  Redirecting you to your database in your web browser.")

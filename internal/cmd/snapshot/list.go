@@ -16,19 +16,16 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "list <database> <branch>",
 		Short:   "List all of the schema snapshots for a database branch",
+		Args:    cmdutil.RequiredArgs("database", "branch"),
 		Aliases: []string{"ls"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
+			database, branch := args[0], args[1]
+
 			client, err := cfg.NewClientFromConfig()
 			if err != nil {
 				return err
 			}
-
-			if len(args) != 2 {
-				return cmd.Usage()
-			}
-
-			database, branch := args[0], args[1]
 
 			end := cmdutil.PrintProgress(fmt.Sprintf("Fetching schema snapshots for %s in %s...", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(database)))
 			defer end()

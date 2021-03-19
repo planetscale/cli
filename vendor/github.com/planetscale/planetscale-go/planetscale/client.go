@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	DefaultBaseURL = "https://api.planetscaledb.io/"
+	DefaultBaseURL = "https://api.planetscale.com/"
 	jsonMediaType  = "application/json"
 )
 

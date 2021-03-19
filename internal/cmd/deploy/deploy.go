@@ -17,13 +17,9 @@ func DeployCmd(cfg *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "deploy <id>",
 		Short: "Approve and deploy a specific deploy request",
+		Args:  cmdutil.RequiredArgs("id"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
-
-			if len(args) != 1 {
-				return cmd.Usage()
-			}
-
 			id := args[0]
 
 			performReq.ID = id

@@ -19,14 +19,10 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "list <database>",
 		Short:   "List all branches of a database",
+		Args:    cmdutil.RequiredArgs("database"),
 		Aliases: []string{"ls"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
-
-			if len(args) == 0 {
-				return errors.New("<db_name> is missing")
-			}
-
 			database := args[0]
 
 			web, err := cmd.Flags().GetBool("web")

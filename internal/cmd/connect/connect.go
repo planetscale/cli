@@ -24,7 +24,9 @@ func ConnectCmd(cfg *config.Config) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:   "connect [database] [branch]",
+		Use: "connect [database] [branch]",
+		// we only require database, because we deduct branch automatically
+		Args:  cmdutil.RequiredArgs("database"),
 		Short: "Create a secure connection to the given database and branch",
 		Example: `The connect subcommand establish a secure connection between your host and remote psdb. 
 
@@ -40,10 +42,6 @@ argument:
   pscale connect mydatabase mybranch`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
-			if len(args) < 1 {
-				return cmd.Usage()
-			}
-
 			database := args[0]
 
 			client, err := cfg.NewClientFromConfig()

@@ -15,21 +15,18 @@ import (
 // GetCmd makes a command for fetching a single snapshot by its ID.
 func GetCmd(cfg *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "get <snapshot_id>",
+		Use:   "get <snapshot-id>",
 		Short: "Get a specific schema snapshot",
+		Args:  cmdutil.RequiredArgs("snapshot-id"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
+			id := args[0]
 
 			client, err := cfg.NewClientFromConfig()
 			if err != nil {
 				return err
 			}
 
-			if len(args) != 1 {
-				return cmd.Usage()
-			}
-
-			id := args[0]
 			end := cmdutil.PrintProgress(fmt.Sprintf("Fetching schema snapshot %s", cmdutil.BoldBlue(id)))
 			defer end()
 

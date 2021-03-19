@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"syscall"
 
+	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/config"
 	"github.com/planetscale/cli/internal/promptutil"
 	"github.com/planetscale/cli/internal/proxyutil"
@@ -31,7 +32,9 @@ func ShellCmd(cfg *config.Config) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:   "shell [database] [branch]",
+		Use: "shell [database] [branch]",
+		// we only require database, because we deduct branch automatically
+		Args:  cmdutil.RequiredArgs("database"),
 		Short: "Open a shell instance to the given database and branch",
 		Example: `The shell subcommand opens a secure MySQL shell instance to your database.
 
@@ -48,10 +51,6 @@ second argument:
   pscale shell mydatabase mybranch`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
-			if len(args) < 1 {
-				return cmd.Usage()
-			}
-
 			database := args[0]
 
 			_, err := exec.LookPath("mysql")

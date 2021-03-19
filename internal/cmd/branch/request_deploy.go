@@ -8,6 +8,7 @@ import (
 	"github.com/planetscale/cli/internal/config"
 	"github.com/planetscale/cli/internal/printer"
 	"github.com/planetscale/planetscale-go/planetscale"
+
 	"github.com/spf13/cobra"
 )
 
@@ -17,13 +18,11 @@ func RequestDeployCmd(cfg *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "request-deploy <database> <branch>",
 		Short: "Requests a deploy for a specific schema snapshot ID",
+		Args:  cmdutil.RequiredArgs("database", "branch"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
-			if len(args) != 2 {
-				return cmd.Usage()
-			}
-
 			database, branch := args[0], args[1]
+
 			deployReq.Database = database
 			deployReq.Branch = branch
 			deployReq.Organization = cfg.Organization

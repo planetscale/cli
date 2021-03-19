@@ -44,7 +44,7 @@ func SwitchCmd(cfg *config.Config) *cobra.Command {
 				}
 				end()
 				organization = org.Name
-			} else if len(args) == 0 {
+			} else if len(args) == 0 && cmdutil.IsTTY {
 				// Get organization names to show the user
 				end := cmdutil.PrintProgress("Fetching organizations...")
 				defer end()

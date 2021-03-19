@@ -18,15 +18,11 @@ func MergeCmd(cfg *config.Config) *cobra.Command {
 	mergeInto := ""
 
 	cmd := &cobra.Command{
-		Use:   "merge [database] [from_branch]",
+		Use:   "merge <database> <from-branch>",
 		Short: "Merge the branch from the database",
+		Args:  cmdutil.RequiredArgs("database", "from-branch"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
-
-			if len(args) != 2 {
-				return cmd.Usage()
-			}
-
 			database := args[0]
 			fromBranch := args[1]
 
@@ -38,6 +34,10 @@ func MergeCmd(cfg *config.Config) *cobra.Command {
 			// If mergeInto is blank, then we need to prompt the user to select a
 			// branch.
 			if mergeInto == "" {
+				if !cmdutil.IsTTY {
+					return fmt.Errorf("no '-into' branch given")
+				}
+
 				err := selectBranch(ctx, client, fromBranch, &mergeInto, database, cfg.Organization)
 				if err != nil {
 					return err

@@ -20,8 +20,9 @@ func CreateCmd(cfg *config.Config) *cobra.Command {
 	createReq := &ps.CreateDatabaseRequest{}
 
 	cmd := &cobra.Command{
-		Use:   "create <name>",
+		Use:   "create <database>",
 		Short: "Create a database instance",
+		Args:  cmdutil.RequiredArgs("database"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 			web, err := cmd.Flags().GetBool("web")
@@ -30,9 +31,7 @@ func CreateCmd(cfg *config.Config) *cobra.Command {
 			}
 
 			createReq.Organization = cfg.Organization
-			if len(args) == 1 {
-				createReq.Name = args[0]
-			}
+			createReq.Name = args[0]
 
 			if web {
 				fmt.Println("🌐  Redirecting you to create a database in your web browser.")
@@ -41,10 +40,6 @@ func CreateCmd(cfg *config.Config) *cobra.Command {
 					return err
 				}
 				return nil
-			}
-
-			if len(args) != 1 {
-				return cmd.Usage()
 			}
 
 			client, err := cfg.NewClientFromConfig()

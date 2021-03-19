@@ -22,30 +22,30 @@ func DeleteCmd(cfg *config.Config) *cobra.Command {
 	var force bool
 
 	cmd := &cobra.Command{
-		Use:     "delete <database_name>",
+		Use:     "delete <database>",
 		Short:   "Delete a database instance",
+		Args:    cmdutil.RequiredArgs("database"),
 		Aliases: []string{"rm"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
+			name := args[0]
+
 			client, err := cfg.NewClientFromConfig()
 			if err != nil {
 				return err
 			}
 
-			if len(args) == 0 {
-				return errors.New("<database_name> is missing")
-			}
-
-			name := args[0]
-
 			if !force {
-				userInput := ""
+				if !cmdutil.IsTTY {
+					return fmt.Errorf("Cannot confirm deletion of database %q (run with -force to override)", name)
+				}
 				confirmationMessage := fmt.Sprintf("%s %s %s", cmdutil.Bold("Please type"), cmdutil.BoldBlue(name), cmdutil.Bold("to confirm:"))
 
 				prompt := &survey.Input{
 					Message: confirmationMessage,
 				}
 
+				var userInput string
 				err := survey.AskOne(prompt, &userInput)
 				if err != nil {
 					if err == terminal.InterruptErr {
