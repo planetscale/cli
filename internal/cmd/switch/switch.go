@@ -1,4 +1,4 @@
-package org
+package switchcmd
 
 import (
 	"context"
