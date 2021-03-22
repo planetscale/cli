@@ -77,7 +77,7 @@ func SwitchCmd(cfg *config.Config) *cobra.Command {
 				return cmd.Usage()
 			}
 
-			writableConfig := &config.WritableGlobalConfig{
+			writableConfig := &config.GlobalConfig{
 				Organization: organization,
 			}
 

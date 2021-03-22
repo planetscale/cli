@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -21,6 +22,7 @@ const (
 
 var tl = []string{"rev-parse", "--show-toplevel"}
 
+// Config is dynamically sourced from various files and environment variables.
 type Config struct {
 	AccessToken  string
 	BaseURL      string
@@ -34,8 +36,9 @@ type Config struct {
 	Branch   string
 }
 
-// WritableGlobalConfig maps
-type WritableGlobalConfig struct {
+// GlobalConfig is sourced from the global config path and contains globaly
+// configurable options.
+type GlobalConfig struct {
 	Organization string `yaml:"org" json:"org"`
 }
 
@@ -66,6 +69,29 @@ func New() *Config {
 
 func (c *Config) IsAuthenticated() bool {
 	return c.AccessToken != ""
+}
+
+// DefaultGlobalConfig returns the global config from the default config path.
+func DefaultGlobalConfig() (*GlobalConfig, error) {
+	dir, err := homedir.Expand(defaultConfigPath)
+	if err != nil {
+		return nil, fmt.Errorf("can't expand path %q: %s", defaultConfigPath, err)
+	}
+
+	configFile := path.Join(dir, "config.yml")
+
+	out, err := ioutil.ReadFile(configFile)
+	if err != nil {
+		return nil, err
+	}
+
+	var cfg *GlobalConfig
+	err = yaml.Unmarshal(out, &cfg)
+	if err != nil {
+		return nil, fmt.Errorf("can't unmarshal file %q: %s", configFile, err)
+	}
+
+	return cfg, nil
 }
 
 // ConfigDir is the directory for PlanetScale config.
@@ -109,14 +135,14 @@ func (c *Config) NewClientFromConfig(clientOpts ...ps.ClientOption) (*ps.Client,
 
 // ToWritableGlobalConfig returns an instance of WritableConfig from the Config
 // struct.
-func (c *Config) ToWritableGlobalConfig() *WritableGlobalConfig {
-	return &WritableGlobalConfig{
+func (c *Config) ToWritableGlobalConfig() *GlobalConfig {
+	return &GlobalConfig{
 		Organization: c.Organization,
 	}
 }
 
-// Write persists the writable config at the designated path.
-func (w *WritableGlobalConfig) Write(path string) error {
+// Write persists the writable global config at the designated path.
+func (w *GlobalConfig) Write(path string) error {
 	if path == "" {
 		path = DefaultConfigPath()
 	}

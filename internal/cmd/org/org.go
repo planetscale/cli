@@ -8,7 +8,8 @@ import (
 
 func OrgCmd(cfg *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
-		Use: "org <command>",
+		Use:   "org <command>",
+		Short: "Modify and manage organization options",
 	}
 
 	cmd.AddCommand(SwitchCmd(cfg))
