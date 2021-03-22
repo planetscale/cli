@@ -34,8 +34,8 @@ type Config struct {
 	Branch   string
 }
 
-// WritableConfig maps
-type WritableConfig struct {
+// WritableGlobalConfig maps
+type WritableGlobalConfig struct {
 	Organization string `yaml:"org" json:"org"`
 }
 
@@ -107,16 +107,16 @@ func (c *Config) NewClientFromConfig(clientOpts ...ps.ClientOption) (*ps.Client,
 	return ps.NewClient(opts...)
 }
 
-// ToWritableConfig returns an instance of WritableConfig from the Config
+// ToWritableGlobalConfig returns an instance of WritableConfig from the Config
 // struct.
-func (c *Config) ToWritableConfig() *WritableConfig {
-	return &WritableConfig{
+func (c *Config) ToWritableGlobalConfig() *WritableGlobalConfig {
+	return &WritableGlobalConfig{
 		Organization: c.Organization,
 	}
 }
 
 // Write persists the writable config at the designated path.
-func (w *WritableConfig) Write(path string) error {
+func (w *WritableGlobalConfig) Write(path string) error {
 	if path == "" {
 		path = DefaultConfigPath()
 	}

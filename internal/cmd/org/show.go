@@ -1,4 +1,4 @@
-package switchcmd
+package org
 
 import (
 	"context"
@@ -8,18 +8,17 @@ import (
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/config"
 
-	"github.com/planetscale/planetscale-go/planetscale"
-
 	survey "github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
-func SwitchCmd(cfg *config.Config) *cobra.Command {
+func ShowCmd(cfg *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "switch [organization]",
-		Short: "Switch the currently active organization",
+		Use:   "show",
+		Short: "Show the currently active organization",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 
@@ -30,21 +29,7 @@ func SwitchCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
-			// If user provides an organization, check if they have access to it.
-			if len(args) == 1 {
-				orgName := args[0]
-
-				end := cmdutil.PrintProgress(fmt.Sprintf("Fetching organization %s...", cmdutil.Bold(orgName)))
-				defer end()
-				org, err := client.Organizations.Get(ctx, &planetscale.GetOrganizationRequest{
-					Organization: orgName,
-				})
-				if err != nil {
-					return err
-				}
-				end()
-				organization = org.Name
-			} else if len(args) == 0 && cmdutil.IsTTY {
+			if cmdutil.IsTTY {
 				// Get organization names to show the user
 				end := cmdutil.PrintProgress("Fetching organizations...")
 				defer end()

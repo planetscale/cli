@@ -25,9 +25,9 @@ import (
 	"github.com/planetscale/cli/internal/cmd/connect"
 	"github.com/planetscale/cli/internal/cmd/database"
 	"github.com/planetscale/cli/internal/cmd/deploy"
+	"github.com/planetscale/cli/internal/cmd/org"
 	"github.com/planetscale/cli/internal/cmd/shell"
 	"github.com/planetscale/cli/internal/cmd/snapshot"
-	switchcmd "github.com/planetscale/cli/internal/cmd/switch"
 	"github.com/planetscale/cli/internal/cmd/token"
 	"github.com/planetscale/cli/internal/cmd/version"
 	"github.com/planetscale/cli/internal/config"
@@ -102,7 +102,7 @@ func Execute(ver, commit, buildDate string) error {
 	rootCmd.AddCommand(auth.AuthCmd(cfg))
 	rootCmd.AddCommand(database.DatabaseCmd(cfg))
 	rootCmd.AddCommand(branch.BranchCmd(cfg))
-	rootCmd.AddCommand(switchcmd.SwitchCmd(cfg))
+	rootCmd.AddCommand(org.OrgCmd(cfg))
 	rootCmd.AddCommand(connect.ConnectCmd(cfg))
 	rootCmd.AddCommand(shell.ShellCmd(cfg))
 	rootCmd.AddCommand(snapshot.SnapshotCmd(cfg))

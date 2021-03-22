@@ -1,4 +1,4 @@
-package switchcmd
+package org
 
 import (
 	"context"
@@ -18,7 +18,7 @@ import (
 
 func SwitchCmd(cfg *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "switch [organization]",
+		Use:   "switch <organization>",
 		Short: "Switch the currently active organization",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()

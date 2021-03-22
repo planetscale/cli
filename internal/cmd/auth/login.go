@@ -109,7 +109,7 @@ func writeDefaultOrganization(ctx context.Context, accessToken, authURL string) 
 
 	if len(orgs) > 0 {
 		defaultOrg := orgs[0].Name
-		writableConfig := &config.WritableConfig{
+		writableConfig := &config.WritableGlobalConfig{
 			Organization: defaultOrg,
 		}
 
