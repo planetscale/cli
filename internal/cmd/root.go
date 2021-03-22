@@ -103,7 +103,6 @@ func Execute(ver, commit, buildDate string) error {
 	rootCmd.AddCommand(database.DatabaseCmd(cfg))
 	rootCmd.AddCommand(branch.BranchCmd(cfg))
 	rootCmd.AddCommand(org.OrgCmd(cfg))
-	rootCmd.AddCommand(org.SwitchCmd(cfg))
 	rootCmd.AddCommand(connect.ConnectCmd(cfg))
 	rootCmd.AddCommand(shell.ShellCmd(cfg))
 	rootCmd.AddCommand(snapshot.SnapshotCmd(cfg))
