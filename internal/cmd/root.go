@@ -75,8 +75,10 @@ func Execute(ver, commit, buildDate string) error {
 
 	cfg := config.New()
 
-	rootCmd.PersistentFlags().StringVar(&cfg.BaseURL, "api-url", ps.DefaultBaseURL, "The base URL for the PlanetScale API.")
-	rootCmd.PersistentFlags().StringVar(&cfg.AccessToken, "api-token", cfg.AccessToken, "The API token to use for authenticating against the PlanetScale API.")
+	rootCmd.PersistentFlags().StringVar(&cfg.BaseURL,
+		"api-url", ps.DefaultBaseURL, "The base URL for the PlanetScale API.")
+	rootCmd.PersistentFlags().StringVar(&cfg.AccessToken,
+		"api-token", cfg.AccessToken, "The API token to use for authenticating against the PlanetScale API.")
 
 	if err := viper.BindPFlag("org", rootCmd.PersistentFlags().Lookup("org")); err != nil {
 		return err
@@ -90,9 +92,16 @@ func Execute(ver, commit, buildDate string) error {
 		return err
 	}
 
+	rootCmd.PersistentFlags().BoolVar(&cfg.OutputJSON, "json", false, "Show output as JSON")
+	if err := viper.BindPFlag("json", rootCmd.PersistentFlags().Lookup("json")); err != nil {
+		return err
+	}
+
 	// service token flags. they are hidden for now.
-	rootCmd.PersistentFlags().StringVar(&cfg.ServiceTokenName, "service-token-name", "", "The Service Token name for authenticating.")
-	rootCmd.PersistentFlags().StringVar(&cfg.ServiceToken, "service-token", "", "Service Token for authenticating.")
+	rootCmd.PersistentFlags().StringVar(&cfg.ServiceTokenName,
+		"service-token-name", "", "The Service Token name for authenticating.")
+	rootCmd.PersistentFlags().StringVar(&cfg.ServiceToken,
+		"service-token", "", "Service Token for authenticating.")
 	_ = rootCmd.PersistentFlags().MarkHidden("service-token-name")
 	_ = rootCmd.PersistentFlags().MarkHidden("service-token")
 

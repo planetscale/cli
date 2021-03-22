@@ -12,10 +12,8 @@ func DatabaseCmd(cfg *config.Config) *cobra.Command {
 		Use:     "database <command>",
 		Short:   "Create, read, destroy, and update databases",
 		Aliases: []string{"db"},
-		Long:    "TODO",
 	}
 
-	cmd.PersistentFlags().Bool("json", false, "Show output as JSON")
 	cmd.PersistentFlags().StringVar(&cfg.Organization, "org", cfg.Organization, "The organization for the current user")
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
 

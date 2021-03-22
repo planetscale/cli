@@ -40,13 +40,8 @@ func StatusCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
-			isJSON, err := cmd.Flags().GetBool("json")
-			if err != nil {
-				return err
-			}
-
 			end()
-			err = printer.PrintOutput(isJSON, printer.NewDatabaseBranchStatusPrinter(status))
+			err = printer.PrintOutput(cfg.OutputJSON, printer.NewDatabaseBranchStatusPrinter(status))
 			if err != nil {
 				return err
 			}

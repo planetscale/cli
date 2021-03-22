@@ -36,12 +36,7 @@ func CreateCmd(cfg *config.Config) *cobra.Command {
 
 			end()
 
-			isJSON, err := cmd.Flags().GetBool("json")
-			if err != nil {
-				return err
-			}
-
-			err = printer.PrintOutput(isJSON, printer.NewServiceTokenPrinter(token))
+			err = printer.PrintOutput(cfg.OutputJSON, printer.NewServiceTokenPrinter(token))
 			if err != nil {
 				return err
 			}

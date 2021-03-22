@@ -53,17 +53,12 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 
 			end()
 
-			isJSON, err := cmd.Flags().GetBool("json")
-			if err != nil {
-				return err
-			}
-
-			if len(databases) == 0 && !isJSON {
+			if len(databases) == 0 && !cfg.OutputJSON {
 				fmt.Println("No databases have been created yet.")
 				return nil
 			}
 
-			err = printer.PrintOutput(isJSON, printer.NewDatabaseSlicePrinter(databases))
+			err = printer.PrintOutput(cfg.OutputJSON, printer.NewDatabaseSlicePrinter(databases))
 			if err != nil {
 				return err
 			}

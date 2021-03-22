@@ -40,17 +40,12 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 			}
 			end()
 
-			isJSON, err := cmd.Flags().GetBool("json")
-			if err != nil {
-				return err
-			}
-
-			if len(snapshots) == 0 && !isJSON {
+			if len(snapshots) == 0 && !cfg.OutputJSON {
 				fmt.Printf("No schema snapshots exist for %s in %s.\n", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(database))
 				return nil
 			}
 
-			err = printer.PrintOutput(isJSON, printer.NewSchemaSnapshotSlicePrinter(snapshots))
+			err = printer.PrintOutput(cfg.OutputJSON, printer.NewSchemaSnapshotSlicePrinter(snapshots))
 			if err != nil {
 				return err
 			}

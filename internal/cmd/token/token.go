@@ -13,7 +13,6 @@ func TokenCmd(cfg *config.Config) *cobra.Command {
 		Short: "Create, get, and list service tokens",
 	}
 
-	cmd.PersistentFlags().Bool("json", false, "Show output as JSON")
 	cmd.PersistentFlags().StringVar(&cfg.Organization, "org", cfg.Organization, "The organization for the current user")
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
 
