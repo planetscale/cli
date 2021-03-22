@@ -38,12 +38,7 @@ func DeployCmd(cfg *config.Config) *cobra.Command {
 			}
 			end()
 
-			isJSON, err := cmd.Flags().GetBool("json")
-			if err != nil {
-				return err
-			}
-
-			if isJSON {
+			if cfg.OutputJSON {
 				err := printer.PrintJSON(deployRequest)
 				if err != nil {
 					return err
@@ -56,7 +51,6 @@ func DeployCmd(cfg *config.Config) *cobra.Command {
 		},
 	}
 
-	cmd.PersistentFlags().Bool("json", false, "Show output as JSON")
 	cmd.PersistentFlags().StringVar(&cfg.Organization, "org", cfg.Organization, "The organization for the current user")
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
 

@@ -53,12 +53,7 @@ For a complete list of the access permissions that can be granted to a token, se
 
 			end()
 
-			isJSON, err := cmd.Flags().GetBool("json")
-			if err != nil {
-				return err
-			}
-
-			err = printer.PrintOutput(isJSON, printer.NewServiceTokenAccessPrinter(access))
+			err = printer.PrintOutput(cfg.OutputJSON, printer.NewServiceTokenAccessPrinter(access))
 			if err != nil {
 				return err
 			}

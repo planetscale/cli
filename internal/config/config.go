@@ -34,6 +34,8 @@ type Config struct {
 	// Project Configuration
 	Database string
 	Branch   string
+
+	OutputJSON bool
 }
 
 // GlobalConfig is sourced from the global config path and contains globaly

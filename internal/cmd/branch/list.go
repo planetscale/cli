@@ -55,17 +55,12 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 			}
 			end()
 
-			isJSON, err := cmd.Flags().GetBool("json")
-			if err != nil {
-				return err
-			}
-
-			if len(branches) == 0 && !isJSON {
+			if len(branches) == 0 && !cfg.OutputJSON {
 				fmt.Printf("No branches exist in %s.\n", cmdutil.BoldBlue(database))
 				return nil
 			}
 
-			err = printer.PrintOutput(isJSON, printer.NewDatabaseBranchSlicePrinter(branches))
+			err = printer.PrintOutput(cfg.OutputJSON, printer.NewDatabaseBranchSlicePrinter(branches))
 			if err != nil {
 				return err
 			}

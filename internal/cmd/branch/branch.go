@@ -65,13 +65,8 @@ func BranchCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
-			isJSON, err := cmd.Flags().GetBool("json")
-			if err != nil {
-				return err
-			}
-
 			end()
-			if isJSON {
+			if cfg.OutputJSON {
 				err := printer.PrintJSON(dbBranch)
 				if err != nil {
 					return err
@@ -87,7 +82,6 @@ func BranchCmd(cfg *config.Config) *cobra.Command {
 	cmd.Flags().StringVar(&createReq.Branch.Notes, "notes", "", "notes for the database branch")
 	cmd.Flags().StringVar(&createReq.Branch.ParentBranch, "from", "", "branch to be created from")
 	cmd.Flags().BoolP("web", "w", false, "Create a branch in your web browser")
-	cmd.PersistentFlags().Bool("json", false, "Show output as JSON")
 
 	cmd.PersistentFlags().StringVar(&cfg.Organization, "org", cfg.Organization, "The organization for the current user")
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
