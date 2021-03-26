@@ -12,7 +12,6 @@ import (
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 func LogoutCmd(cfg *config.Config) *cobra.Command {
@@ -80,7 +79,7 @@ func deleteAccessToken() error {
 		return errors.Wrap(err, "error removing access token file")
 	}
 
-	err = os.Remove(viper.ConfigFileUsed())
+	err = os.Remove(config.DefaultGlobalConfigPath())
 	if err != nil {
 		return errors.Wrap(err, "error removing config file")
 	}
