@@ -2,7 +2,6 @@ package config
 
 import (
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -38,12 +37,6 @@ type Config struct {
 	OutputJSON bool
 }
 
-// GlobalConfig is sourced from the global config path and contains globaly
-// configurable options.
-type GlobalConfig struct {
-	Organization string `yaml:"org" json:"org"`
-}
-
 type WritableProjectConfig struct {
 	Database string `yaml:"database"`
 	Branch   string `yaml:"branch"`
@@ -73,38 +66,10 @@ func (c *Config) IsAuthenticated() bool {
 	return c.AccessToken != ""
 }
 
-// DefaultGlobalConfig returns the global config from the default config path.
-func DefaultGlobalConfig() (*GlobalConfig, error) {
-	dir, err := homedir.Expand(defaultConfigPath)
-	if err != nil {
-		return nil, fmt.Errorf("can't expand path %q: %s", defaultConfigPath, err)
-	}
-
-	configFile := path.Join(dir, "config.yml")
-
-	out, err := ioutil.ReadFile(configFile)
-	if err != nil {
-		return nil, err
-	}
-
-	var cfg *GlobalConfig
-	err = yaml.Unmarshal(out, &cfg)
-	if err != nil {
-		return nil, fmt.Errorf("can't unmarshal file %q: %s", configFile, err)
-	}
-
-	return cfg, nil
-}
-
 // ConfigDir is the directory for PlanetScale config.
 func ConfigDir() string {
 	dir, _ := homedir.Expand(defaultConfigPath)
 	return dir
-}
-
-// DefaultConfigPath is the path for the config file.
-func DefaultConfigPath() string {
-	return path.Join(ConfigDir(), "config.yml")
 }
 
 // AccessTokenPath is the path for the access token file
@@ -133,42 +98,6 @@ func (c *Config) NewClientFromConfig(clientOpts ...ps.ClientOption) (*ps.Client,
 	opts = append(opts, clientOpts...)
 
 	return ps.NewClient(opts...)
-}
-
-// ToWritableGlobalConfig returns an instance of WritableConfig from the Config
-// struct.
-func (c *Config) ToWritableGlobalConfig() *GlobalConfig {
-	return &GlobalConfig{
-		Organization: c.Organization,
-	}
-}
-
-// Write persists the writable global config at the designated path.
-func (w *GlobalConfig) Write(path string) error {
-	if path == "" {
-		path = DefaultConfigPath()
-	}
-
-	d, err := yaml.Marshal(w)
-	if err != nil {
-		return err
-	}
-
-	err = ioutil.WriteFile(path, d, 0644)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// ToWritableProjectConfig returns an instance of WritableProjectConfig from
-// the Config struct.
-func (c *Config) ToWritableProjectConfig() *WritableProjectConfig {
-	return &WritableProjectConfig{
-		Database: c.Database,
-		Branch:   c.Branch,
-	}
 }
 
 // WriteDefault persists the writable project config at the default path

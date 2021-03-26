@@ -13,7 +13,6 @@ import (
 	survey "github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 func SwitchCmd(cfg *config.Config) *cobra.Command {
@@ -77,17 +76,16 @@ func SwitchCmd(cfg *config.Config) *cobra.Command {
 				return cmd.Usage()
 			}
 
-			writableConfig := &config.GlobalConfig{
+			globalCfg := &config.GlobalConfig{
 				Organization: organization,
 			}
 
-			err = writableConfig.Write(viper.ConfigFileUsed())
+			err = globalCfg.WriteDefault()
 			if err != nil {
 				return err
 			}
 
 			fmt.Printf("Successfully switched to organization %s\n", cmdutil.Bold(organization))
-
 			return nil
 		},
 	}
