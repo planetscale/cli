@@ -18,7 +18,6 @@ import (
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 // LoginCmd is the command for logging into a PlanetScale account.
@@ -113,7 +112,7 @@ func writeDefaultOrganization(ctx context.Context, accessToken, authURL string) 
 			Organization: defaultOrg,
 		}
 
-		err := writableConfig.Write(viper.ConfigFileUsed())
+		err := writableConfig.WriteDefault()
 		if err != nil {
 			return err
 		}
