@@ -21,6 +21,7 @@ import (
 	"os"
 
 	"github.com/planetscale/cli/internal/cmd/auth"
+	"github.com/planetscale/cli/internal/cmd/backup"
 	"github.com/planetscale/cli/internal/cmd/branch"
 	"github.com/planetscale/cli/internal/cmd/connect"
 	"github.com/planetscale/cli/internal/cmd/database"
@@ -111,6 +112,7 @@ func Execute(ver, commit, buildDate string) error {
 	rootCmd.AddCommand(auth.AuthCmd(cfg))
 	rootCmd.AddCommand(database.DatabaseCmd(cfg))
 	rootCmd.AddCommand(branch.BranchCmd(cfg))
+	rootCmd.AddCommand(backup.BackupCmd(cfg))
 	rootCmd.AddCommand(org.OrgCmd(cfg))
 	rootCmd.AddCommand(connect.ConnectCmd(cfg))
 	rootCmd.AddCommand(shell.ShellCmd(cfg))
