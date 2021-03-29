@@ -11,11 +11,15 @@ type DatabaseBranchStatus struct {
 }
 
 func NewDatabaseBranchStatusPrinter(status *ps.DatabaseBranchStatus) *DatabaseBranchStatus {
+	var ready = "ready"
+	if !status.Ready {
+		ready = "not ready"
+	}
 	return &DatabaseBranchStatus{
-		Status:      status.DeployPhase,
-		GatewayHost: status.GatewayHost,
-		GatewayPort: status.GatewayPort,
-		User:        status.User,
-		Password:    status.Password,
+		Status:      ready,
+		GatewayHost: status.Credentials.GatewayHost,
+		GatewayPort: status.Credentials.GatewayPort,
+		User:        status.Credentials.User,
+		Password:    status.Credentials.Password,
 	}
 }

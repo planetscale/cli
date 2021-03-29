@@ -101,13 +101,17 @@ type databaseBranchesService struct {
 	client *Client
 }
 
-// DatabaseBranchStatus represents the status of a PlanetScale database branch.
-type DatabaseBranchStatus struct {
-	DeployPhase string `json:"deploy_phase"`
+type DatabaseBranchCredentials struct {
 	GatewayHost string `json:"mysql_gateway_host"`
 	GatewayPort int    `json:"mysql_gateway_port"`
 	User        string `json:"mysql_gateway_user"`
 	Password    string `json:"mysql_gateway_pass"`
+}
+
+// DatabaseBranchStatus represents the status of a PlanetScale database branch.
+type DatabaseBranchStatus struct {
+	Ready       bool                      `json:"ready"`
+	Credentials DatabaseBranchCredentials `json:"credentials"`
 }
 
 var _ DatabaseBranchesService = &databaseBranchesService{}
