@@ -117,11 +117,11 @@ second argument:
 				return err
 			}
 
-			if status.User == "" {
+			if status.Credentials.User == "" {
 				return errors.New("database branch is not ready yet")
 			}
 
-			tmpFile, err := createLoginFile(status.User, status.Password)
+			tmpFile, err := createLoginFile(status.Credentials.User, status.Credentials.Password)
 			if tmpFile != "" {
 				defer os.Remove(tmpFile)
 			}
