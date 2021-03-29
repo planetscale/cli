@@ -3,7 +3,7 @@ release:
   prerelease: auto # don't publish release with -rc1,-pre, etc suffixes
   github:
     owner: planetscale
-    name: psdb-alpha
+    name: alpha
 builds:
   - env:
       - CGO_ENABLED=0
@@ -18,7 +18,7 @@ builds:
 nfpms:
   - maintainer: PlanetScale
     description: The PlanetScale CLI
-    homepage: https://github.com/planetscale/psdb-alpha
+    homepage: https://github.com/planetscale/alpha
     license: Apache 2.0
     formats:
     - deb
