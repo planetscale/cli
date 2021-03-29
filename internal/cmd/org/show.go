@@ -3,6 +3,7 @@ package org
 import (
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/planetscale/cli/internal/config"
 
@@ -16,6 +17,10 @@ func ShowCmd(cfg *config.Config) *cobra.Command {
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := config.DefaultGlobalConfig()
+			if os.IsNotExist(err) {
+				return errors.New("not authenticated, please authenticate with: \"pscale auth login\"")
+			}
+
 			if err != nil {
 				return err
 			}
