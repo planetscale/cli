@@ -31,6 +31,8 @@ archives:
     format_overrides:
       - goos: windows
         format: zip
+    files:
+      - none*
 snapshot:
   name_template: "{{ .Tag }}-next"
 changelog:
