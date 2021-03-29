@@ -44,6 +44,28 @@ git push origin <version>
 This will trigger the CI and invoke `goreleaser`, which will then release all the appropriate packages and archives.
 
 
+### Releasing a new `alpha` version
+
+After publishing a new CLI version, you can update the binaries in the https://github.com/planetscale/alpha repository with the following commands. Requirements:
+
+* Set `GITHUB_TOKEN` environment variable
+* [Install `goreleaser`](https://goreleaser.com/install/)
+
+1. Create a changelog you would like to make part of the release:
+```
+echo "Latest release for alpha" > alpha-changelog.md
+```
+
+2. Publish the latest version. This command only works if you already have published a new version and on the `main` branch:
+
+```
+goreleaser release --config .goreleaser-alpha.yml  --rm-dist --release-notes alpha-changelog.md
+```
+
+
+3. Verify by visiting the [releases tab in the `planetscale/alpha`](https://github.com/planetscale/alpha/releases) repository.
+
+
 ### Updating the vendored API package 
 
 
