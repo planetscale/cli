@@ -1,0 +1,41 @@
+project_name: pscale
+release:
+  prerelease: auto # don't publish release with -rc1,-pre, etc suffixes
+  github:
+    owner: planetscale
+    name: psdb-alpha
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+    main: ./cmd/pscale/main.go
+    ldflags:
+     - -s -w -X main.version={{.Version}} -X main.commit={{.ShortCommit}} -X main.date={{.Date}}
+    binary: "pscale"   
+nfpms:
+  - maintainer: PlanetScale
+    description: The PlanetScale CLI
+    homepage: https://github.com/planetscale/psdb-alpha
+    license: Apache 2.0
+    formats:
+    - deb
+    - rpm
+    replacements:
+      darwin: macOS
+archives:
+  - replacements:
+      darwin: macOS
+    format_overrides:
+      - goos: windows
+        format: zip
+snapshot:
+  name_template: "{{ .Tag }}-next"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
