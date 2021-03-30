@@ -14,9 +14,7 @@ type DeployRequest struct {
 
 	DeploymentState     string `header:"deployment_state,n/a" json:"deployment_state"`
 	State               string `header:"state" json:"state"`
-	DeployabilityErrors string `header:"deployability_errors" json:"deployability_errors"`
-
-	Notes string `header:"notes" json:"notes"`
+	DeployabilityErrors string `header:"errors" json:"deployability_errors"`
 
 	CreatedAt int64  `header:"created_at,timestamp(ms|utc|human)" json:"created_at"`
 	UpdatedAt int64  `header:"updated_at,timestamp(ms|utc|human)" json:"updated_at"`
@@ -28,7 +26,6 @@ func NewDeployRequestPrinter(dr *planetscale.DeployRequest) *DeployRequest {
 		ID:                  dr.ID,
 		Branch:              dr.Branch,
 		IntoBranch:          dr.IntoBranch,
-		Notes:               dr.Notes,
 		Number:              dr.Number,
 		Approved:            dr.Approved,
 		State:               dr.State,
