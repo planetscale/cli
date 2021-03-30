@@ -11,14 +11,6 @@ import (
 // required arguments are not available.
 func RequiredArgs(reqArgs ...string) cobra.PositionalArgs {
 	return func(cmd *cobra.Command, args []string) error {
-		// show just the usage line and any examples if they exist
-		var usageTemplate = `Usage:{{if .Runnable}} {{.UseLine}}{{end}}{{if .HasExample}}
-
-Examples:
-{{.Example}}{{end}}
-`
-		cmd.SetUsageTemplate(usageTemplate)
-
 		n := len(reqArgs)
 		if len(args) >= n {
 			return nil
