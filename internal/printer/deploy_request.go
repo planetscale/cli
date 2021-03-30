@@ -4,17 +4,17 @@ import "github.com/planetscale/planetscale-go/planetscale"
 
 // DeployRequest returns a table-serializable deplo request model.
 type DeployRequest struct {
+	ID         string `header:"id" json:"id"`
 	Number     uint64 `header:"number" json:"number"`
 	Branch     string `header:"branch,timestamp(ms|utc|human)" json:"branch"`
 	IntoBranch string `header:"into_branch,timestamp(ms|utc|human)" json:"into_branch"`
 
-	Approved        bool `header:"approved" json:"approved"`
-	Deployed        bool `header:"deployed" json:"deployed"`
-	DeploymentState bool `header:"deployment_state" json:"deployment_state"`
+	Approved bool `header:"approved" json:"approved"`
+	Ready    bool `header:"ready" json:"ready"`
 
-	DeployabilityErrors string `header:"deployability_errors" json:"deployability_errors"`
-	Ready               bool   `header:"ready" json:"ready"`
+	DeploymentState     string `header:"deployment_state,n/a" json:"deployment_state"`
 	State               string `header:"state" json:"state"`
+	DeployabilityErrors string `header:"deployability_errors" json:"deployability_errors"`
 
 	Notes string `header:"notes" json:"notes"`
 
@@ -31,7 +31,6 @@ func NewDeployRequestPrinter(dr *planetscale.DeployRequest) *DeployRequest {
 		Notes:               dr.Notes,
 		Number:              dr.Number,
 		Approved:            dr.Approved,
-		Deployed:            dr.Deployed,
 		State:               dr.State,
 		DeploymentState:     dr.DeploymentState,
 		DeployabilityErrors: dr.DeployabilityErrors,
