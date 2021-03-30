@@ -36,8 +36,29 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			end := cmdutil.PrintProgress(fmt.Sprintf("Fetching deploy requests for %s", cmdutil.BoldBlue(database)))
+			defer end()
 
-			return errors.New("not implemented yet")
+			deployRequests, err := client.DeployRequests.List(ctx, &planetscale.ListDeployRequestsRequest{
+				Organization: cfg.Organization,
+				Database:     database,
+			})
+			if err != nil {
+				return errors.Wrap(err, "error listing deploy requests")
+			}
+			end()
+
+			if len(deployRequests) == 0 && !cfg.OutputJSON {
+				fmt.Printf("No deploy requests exist for %s.\n", cmdutil.BoldBlue(database))
+				return nil
+			}
+
+			err = printer.PrintOutput(cfg.OutputJSON, printer.NewDeployRequestSlicePrinter(deployRequests))
+			if err != nil {
+				return err
+			}
+
+			return nil
 		},
 		TraverseChildren: true,
 	}
