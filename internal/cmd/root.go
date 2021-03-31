@@ -25,7 +25,7 @@ import (
 	"github.com/planetscale/cli/internal/cmd/branch"
 	"github.com/planetscale/cli/internal/cmd/connect"
 	"github.com/planetscale/cli/internal/cmd/database"
-	"github.com/planetscale/cli/internal/cmd/deploy"
+	"github.com/planetscale/cli/internal/cmd/deployrequest"
 	"github.com/planetscale/cli/internal/cmd/org"
 	"github.com/planetscale/cli/internal/cmd/shell"
 	"github.com/planetscale/cli/internal/cmd/snapshot"
@@ -103,16 +103,16 @@ func Execute(ver, commit, buildDate string) error {
 	rootCmd.PersistentFlags().Lookup("api-token").DefValue = ""
 
 	rootCmd.AddCommand(auth.AuthCmd(cfg))
-	rootCmd.AddCommand(database.DatabaseCmd(cfg))
-	rootCmd.AddCommand(branch.BranchCmd(cfg))
 	rootCmd.AddCommand(backup.BackupCmd(cfg))
-	rootCmd.AddCommand(org.OrgCmd(cfg))
+	rootCmd.AddCommand(branch.BranchCmd(cfg))
 	rootCmd.AddCommand(connect.ConnectCmd(cfg))
+	rootCmd.AddCommand(database.DatabaseCmd(cfg))
+	rootCmd.AddCommand(deployrequest.DeployRequestCmd(cfg))
+	rootCmd.AddCommand(org.OrgCmd(cfg))
 	rootCmd.AddCommand(shell.ShellCmd(cfg))
 	rootCmd.AddCommand(snapshot.SnapshotCmd(cfg))
-	rootCmd.AddCommand(deploy.DeployCmd(cfg))
-	rootCmd.AddCommand(version.VersionCmd(cfg, ver, commit, buildDate))
 	rootCmd.AddCommand(token.TokenCmd(cfg))
+	rootCmd.AddCommand(version.VersionCmd(cfg, ver, commit, buildDate))
 
 	return rootCmd.Execute()
 }

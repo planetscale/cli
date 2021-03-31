@@ -4,12 +4,17 @@ import "github.com/planetscale/planetscale-go/planetscale"
 
 // DeployRequest returns a table-serializable deplo request model.
 type DeployRequest struct {
-	ID string `header:"id" json:"id"`
-
+	ID         string `header:"id" json:"id"`
+	Number     uint64 `header:"number" json:"number"`
 	Branch     string `header:"branch,timestamp(ms|utc|human)" json:"branch"`
 	IntoBranch string `header:"into_branch,timestamp(ms|utc|human)" json:"into_branch"`
 
-	Notes string `header:"notes" json:"notes"`
+	Approved bool `header:"approved" json:"approved"`
+	Ready    bool `header:"ready" json:"ready"`
+
+	DeploymentState     string `header:"deployment_state,n/a" json:"deployment_state"`
+	State               string `header:"state" json:"state"`
+	DeployabilityErrors string `header:"errors" json:"deployability_errors"`
 
 	CreatedAt int64  `header:"created_at,timestamp(ms|utc|human)" json:"created_at"`
 	UpdatedAt int64  `header:"updated_at,timestamp(ms|utc|human)" json:"updated_at"`
@@ -18,13 +23,17 @@ type DeployRequest struct {
 
 func NewDeployRequestPrinter(dr *planetscale.DeployRequest) *DeployRequest {
 	return &DeployRequest{
-		ID:         dr.ID,
-		Branch:     dr.Branch,
-		IntoBranch: dr.IntoBranch,
-		Notes:      dr.Notes,
-		CreatedAt:  getMilliseconds(dr.CreatedAt),
-		UpdatedAt:  getMilliseconds(dr.UpdatedAt),
-		ClosedAt:   getMillisecondsIfExists(dr.ClosedAt),
+		ID:                  dr.ID,
+		Branch:              dr.Branch,
+		IntoBranch:          dr.IntoBranch,
+		Number:              dr.Number,
+		Approved:            dr.Approved,
+		State:               dr.State,
+		DeploymentState:     dr.DeploymentState,
+		DeployabilityErrors: dr.DeployabilityErrors,
+		CreatedAt:           getMilliseconds(dr.CreatedAt),
+		UpdatedAt:           getMilliseconds(dr.UpdatedAt),
+		ClosedAt:            getMillisecondsIfExists(dr.ClosedAt),
 	}
 }
 

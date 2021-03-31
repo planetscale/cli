@@ -1,4 +1,4 @@
-package branch
+package deployrequest
 
 import (
 	"context"
@@ -12,20 +12,20 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func RequestDeployCmd(cfg *config.Config) *cobra.Command {
-	deployReq := &planetscale.DatabaseBranchRequestDeployRequest{}
+// CreateCmd is the command for creating deploy requests.
+func CreateCmd(cfg *config.Config) *cobra.Command {
+	var flags struct {
+		deployTo string
+	}
 
 	cmd := &cobra.Command{
-		Use:   "request-deploy <database> <branch>",
-		Short: "Requests a deploy for a specific schema snapshot ID",
+		Use:   "create <database> <branch> [flags]",
+		Short: "Create a deploy request from a branch",
 		Args:  cmdutil.RequiredArgs("database", "branch"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
-			database, branch := args[0], args[1]
-
-			deployReq.Database = database
-			deployReq.Branch = branch
-			deployReq.Organization = cfg.Organization
+			database := args[0]
+			branch := args[1]
 
 			client, err := cfg.NewClientFromConfig()
 			if err != nil {
@@ -35,30 +35,34 @@ func RequestDeployCmd(cfg *config.Config) *cobra.Command {
 			end := cmdutil.PrintProgress(fmt.Sprintf("Request deploying of %s branch in %s...", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(database)))
 			defer end()
 
-			deployRequest, err := client.DatabaseBranches.RequestDeploy(ctx, deployReq)
+			dr, err := client.DeployRequests.Create(ctx, &planetscale.CreateDeployRequestRequest{
+				Organization: cfg.Organization,
+				Database:     database,
+				Branch:       branch,
+				IntoBranch:   flags.deployTo,
+			})
 			if err != nil {
 				return err
 			}
 			end()
 
 			if cfg.OutputJSON {
-				err := printer.PrintJSON(deployRequest)
+				err := printer.PrintJSON(dr)
 				if err != nil {
 					return err
 				}
 			} else {
 				fmt.Printf("Successfully requested deploy %s of %s into %s!\n",
-					cmdutil.BoldBlue(deployRequest.ID),
-					cmdutil.BoldBlue(deployRequest.Branch),
-					cmdutil.BoldBlue(deployRequest.IntoBranch))
+					cmdutil.BoldBlue(dr.ID),
+					cmdutil.BoldBlue(dr.Branch),
+					cmdutil.BoldBlue(dr.IntoBranch))
 			}
 
 			return nil
 		},
 	}
 
-	cmd.Flags().StringVar(&deployReq.Notes, "notes", "", "notes for the database")
-	cmd.Flags().StringVar(&deployReq.IntoBranch, "into", "", "branch to deploy this schema snapshot into")
+	cmd.PersistentFlags().StringVar(&flags.deployTo, "deploy-to", "main", "Branch to deploy the branch. By default it's set to 'main'")
 
 	return cmd
 }
