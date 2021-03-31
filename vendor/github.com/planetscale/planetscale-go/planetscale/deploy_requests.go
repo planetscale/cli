@@ -105,8 +105,34 @@ type ReviewDeployRequestRequest struct {
 	Organization string `json:"-"`
 	Database     string `json:"-"`
 	Number       uint64 `json:"-"`
-	Body         string `json:"body"`
-	State        string `json:"state"`
+
+	// CommentText represents the comment body to be posted
+	CommentText string `json:"-"`
+
+	// ReviewAction defines the action for an individual review.
+	ReviewAction ReviewAction `json:"-"`
+}
+
+// ReviewAction defines the action for an individual review.
+type ReviewAction int
+
+const (
+	// Comment is used to comment a Review with a custom text.
+	ReviewComment ReviewAction = iota
+
+	// Approve is used to approve a Review.
+	ReviewApprove
+)
+
+func (r ReviewAction) String() string {
+	switch r {
+	case ReviewApprove:
+		return "approved"
+	case ReviewComment:
+		fallthrough
+	default:
+		return "commented"
+	}
 }
 
 type CloseDeployRequestRequest struct {
@@ -311,7 +337,21 @@ func (d *deployRequestsService) List(ctx context.Context, listReq *ListDeployReq
 }
 
 func (d *deployRequestsService) CreateReview(ctx context.Context, reviewReq *ReviewDeployRequestRequest) (*DeployRequestReview, error) {
-	req, err := d.client.newRequest(http.MethodGet, deployRequestActionAPIPath(reviewReq.Organization, reviewReq.Database, reviewReq.Number, "reviews"), reviewReq)
+	var reqBody = struct {
+		State string
+		Body  string
+	}{
+		State: reviewReq.ReviewAction.String(),
+		Body:  reviewReq.CommentText,
+	}
+
+	req, err := d.client.newRequest(http.MethodPost,
+		deployRequestActionAPIPath(
+			reviewReq.Organization,
+			reviewReq.Database,
+			reviewReq.Number,
+			"reviews",
+		), reqBody)
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating http request")
 	}

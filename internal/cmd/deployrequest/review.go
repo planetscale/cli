@@ -44,27 +44,27 @@ func ReviewCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
-			state := "commented"
+			action := planetscale.ReviewComment
 			if flags.approve {
-				state = "approved"
+				action = planetscale.ReviewApprove
 			}
 
 			_, err = client.DeployRequests.CreateReview(ctx, &planetscale.ReviewDeployRequestRequest{
 				Organization: cfg.Organization,
 				Database:     database,
 				Number:       n,
-				State:        state,
-				Body:         flags.comment,
+				ReviewAction: action,
+				CommentText:  flags.comment,
 			})
 			if err != nil {
 				return err
 			}
 
-			switch state {
-			case "approved":
+			switch action {
+			case planetscale.ReviewApprove:
 				fmt.Printf("Deploy request %s/%s is approved.\n",
 					cmdutil.BoldBlue(database), cmdutil.BoldBlue(number))
-			case "commented":
+			case planetscale.ReviewComment:
 				fmt.Printf("A comment is added to the deploy request %s/%s.\n",
 					cmdutil.BoldBlue(database), cmdutil.BoldBlue(number))
 			}
