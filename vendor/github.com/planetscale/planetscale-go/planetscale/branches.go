@@ -63,28 +63,6 @@ type GetDatabaseBranchStatusRequest struct {
 	Branch       string
 }
 
-// ListDeployRequestsRequest gets the deploy requests for a specific database
-// branch.
-type ListDeployRequestsRequest struct {
-	Organization string
-	Database     string
-	Branch       string
-}
-
-// DatabaseBranchRequestDeployRequest encapsulates the request for requesting a
-// deploy of a database branch.
-type DatabaseBranchRequestDeployRequest struct {
-	Organization string `json:"-"`
-	Database     string `json:"-"`
-	Branch       string `json:"-"`
-	IntoBranch   string `json:"into_branch,omitempty"`
-	Notes        string `json:"notes"`
-}
-
-type deployRequestsResponse struct {
-	DeployRequests []*DeployRequest `json:"data"`
-}
-
 // DatabaseBranchesService is an interface for communicating with the PlanetScale
 // Database Branch API endpoint.
 type DatabaseBranchesService interface {
@@ -93,8 +71,6 @@ type DatabaseBranchesService interface {
 	Get(context.Context, *GetDatabaseBranchRequest) (*DatabaseBranch, error)
 	Delete(context.Context, *DeleteDatabaseBranchRequest) error
 	GetStatus(context.Context, *GetDatabaseBranchStatusRequest) (*DatabaseBranchStatus, error)
-	ListDeployRequests(context.Context, *ListDeployRequestsRequest) ([]*DeployRequest, error)
-	RequestDeploy(context.Context, *DatabaseBranchRequestDeployRequest) (*DeployRequest, error)
 }
 
 type databaseBranchesService struct {
@@ -235,59 +211,10 @@ func (d *databaseBranchesService) GetStatus(ctx context.Context, statusReq *GetD
 	return status, nil
 }
 
-func (d *databaseBranchesService) ListDeployRequests(ctx context.Context, listReq *ListDeployRequestsRequest) ([]*DeployRequest, error) {
-	path := branchDeployRequestsAPIPath(listReq.Organization, listReq.Database, listReq.Branch)
-	req, err := d.client.newRequest(http.MethodGet, path, nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "error creating http request")
-	}
-
-	res, err := d.client.Do(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-
-	deployRequestsResponse := &deployRequestsResponse{}
-	err = json.NewDecoder(res.Body).Decode(deployRequestsResponse)
-	if err != nil {
-		return nil, err
-	}
-
-	return deployRequestsResponse.DeployRequests, nil
-}
-
-// RequestDeploy requests a deploy for a specific database branch.
-func (d *databaseBranchesService) RequestDeploy(ctx context.Context, deployReq *DatabaseBranchRequestDeployRequest) (*DeployRequest, error) {
-	path := branchDeployRequestsAPIPath(deployReq.Organization, deployReq.Database, deployReq.Branch)
-	req, err := d.client.newRequest(http.MethodPost, path, deployReq)
-	if err != nil {
-		return nil, err
-	}
-
-	res, err := d.client.Do(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-
-	dr := &DeployRequest{}
-	err = json.NewDecoder(res.Body).Decode(dr)
-	if err != nil {
-		return nil, err
-	}
-
-	return dr, nil
-}
-
 func databaseBranchesAPIPath(org, db string) string {
 	return fmt.Sprintf("%s/%s/branches", databasesAPIPath(org), db)
 }
 
 func databaseBranchAPIPath(org, db, branch string) string {
 	return fmt.Sprintf("%s/%s", databaseBranchesAPIPath(org, db), branch)
-}
-
-func branchDeployRequestsAPIPath(org, db, branch string) string {
-	return fmt.Sprintf("%s/deploy-requests", databaseBranchAPIPath(org, db, branch))
 }
