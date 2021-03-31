@@ -16,6 +16,9 @@ import (
 )
 
 func SwitchCmd(cfg *config.Config) *cobra.Command {
+	var flags struct {
+		filepath string
+	}
 	cmd := &cobra.Command{
 		Use:   "switch <organization>",
 		Short: "Switch the currently active organization",
@@ -76,19 +79,58 @@ func SwitchCmd(cfg *config.Config) *cobra.Command {
 				return cmd.Usage()
 			}
 
-			globalCfg := &config.GlobalConfig{
-				Organization: organization,
+			filePath, _ := config.ProjectConfigPath()
+			if _, err := os.Stat(filePath); err != nil {
+				// clear the filePath if the file doesn't exist. We only switch
+				// if the user explicilty is using a project specific file
+				// configuration.
+				filePath = ""
 			}
 
-			err = globalCfg.WriteDefault()
+			// if the user defined it explicitly, use it
+			if flags.filepath != "" {
+				filePath = flags.filepath
+			}
+
+			// fallback to the default global configuration path if nothing is
+			// set.
+			if filePath == "" {
+				filePath, err = config.DefaultConfigPath()
+				if err != nil {
+					return err
+				}
+			}
+
+			// check if a file already exists, we don't want to accidently
+			// overwrite other values of the file config
+			fileCfg, err := config.NewFileConfig(filePath)
+			if os.IsNotExist(err) {
+				// create a new file
+				fileCfg = &config.FileConfig{
+					Organization: organization,
+				}
+			} else {
+				fileCfg.Organization = organization
+				// TODO(fatih): check whether the branch/database exists for
+				// the given organization and warn the user. The
+				// branch/database combination will NOT be empty for a project
+				// configuratin residing inside a Git repository.
+			}
+
+			err = fileCfg.Write(filePath)
 			if err != nil {
 				return err
 			}
 
-			fmt.Printf("Successfully switched to organization %s\n", cmdutil.Bold(organization))
+			fmt.Printf("Successfully switched to organization %s (using file: %s)\n",
+				cmdutil.Bold(organization), filePath,
+			)
 			return nil
 		},
 	}
+
+	cmd.PersistentFlags().StringVar(&flags.filepath, "save-config", "",
+		"Path to store the organization. By default the configuration is deducted automatically based on where pscale is executed.")
 
 	return cmd
 }
