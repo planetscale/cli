@@ -96,7 +96,10 @@ func LoginCmd(cfg *config.Config) *cobra.Command {
 
 func writeDefaultOrganization(ctx context.Context, accessToken, authURL string) error {
 	// After successfully logging in, attempt to set the org by default.
-	client, err := planetscale.NewClient(planetscale.WithAccessToken(accessToken), planetscale.WithBaseURL(authURL))
+	client, err := planetscale.NewClient(
+		planetscale.WithAccessToken(accessToken),
+		planetscale.WithBaseURL(authURL),
+	)
 	if err != nil {
 		return err
 	}
@@ -108,7 +111,7 @@ func writeDefaultOrganization(ctx context.Context, accessToken, authURL string) 
 
 	if len(orgs) > 0 {
 		defaultOrg := orgs[0].Name
-		writableConfig := &config.GlobalConfig{
+		writableConfig := &config.FileConfig{
 			Organization: defaultOrg,
 		}
 
@@ -121,11 +124,15 @@ func writeDefaultOrganization(ctx context.Context, accessToken, authURL string) 
 	return nil
 }
 
-// TODO(iheanyi): Double-check the file permissions in this function.
 func writeAccessToken(ctx context.Context, accessToken string) error {
-	_, err := os.Stat(config.ConfigDir())
+	configDir, err := config.ConfigDir()
+	if err != nil {
+		return err
+	}
+
+	_, err = os.Stat(configDir)
 	if os.IsNotExist(err) {
-		err := os.MkdirAll(config.ConfigDir(), 0771)
+		err := os.MkdirAll(configDir, 0771)
 		if err != nil {
 			return errors.Wrap(err, "error creating config directory")
 		}
@@ -133,8 +140,13 @@ func writeAccessToken(ctx context.Context, accessToken string) error {
 		return err
 	}
 
+	tokenPath, err := config.AccessTokenPath()
+	if err != nil {
+		return err
+	}
+
 	tokenBytes := []byte(accessToken)
-	err = ioutil.WriteFile(config.AccessTokenPath(), tokenBytes, 0666)
+	err = ioutil.WriteFile(tokenPath, tokenBytes, 0666)
 	if err != nil {
 		return errors.Wrap(err, "error writing token")
 	}
