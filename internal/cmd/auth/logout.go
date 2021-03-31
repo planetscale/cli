@@ -20,11 +20,9 @@ func LogoutCmd(cfg *config.Config) *cobra.Command {
 	var apiURL string
 
 	cmd := &cobra.Command{
-		Use:     "logout",
-		Args:    cobra.ExactArgs(0),
-		Short:   "Log out of the PlanetScale API",
-		Long:    "TODO",
-		Example: "TODO",
+		Use:   "logout",
+		Args:  cobra.NoArgs,
+		Short: "Log out of the PlanetScale API",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if cfg.AccessToken == "" {
 				fmt.Println("Already logged out. Exiting...")
@@ -66,22 +64,31 @@ func LogoutCmd(cfg *config.Config) *cobra.Command {
 }
 
 func deleteAccessToken() error {
-	_, err := os.Stat(config.AccessTokenPath())
+	tokenPath, err := config.AccessTokenPath()
 	if err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
 		return err
 	}
 
-	err = os.Remove(config.AccessTokenPath())
+	err = os.Remove(tokenPath)
 	if err != nil {
+		if os.IsNotExist(err) {
+			fmt.Println("yooo tokenpath")
+		}
+		fmt.Printf("err = %+v\n", err)
 		return errors.Wrap(err, "error removing access token file")
 	}
 
-	err = os.Remove(config.DefaultGlobalConfigPath())
+	configFile, err := config.DefaultConfigPath()
 	if err != nil {
-		return errors.Wrap(err, "error removing config file")
+		return err
+	}
+
+	err = os.Remove(configFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			fmt.Println("yooo configFile")
+		}
+		return errors.Wrap(err, "error removing default config file")
 	}
 
 	return nil

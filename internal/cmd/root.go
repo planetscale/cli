@@ -48,9 +48,6 @@ var rootCmd = &cobra.Command{
 	Short:            "A CLI for PlanetScale",
 	Long:             `pscale is a CLI library for communicating with PlanetScale's API.`,
 	TraverseChildren: true,
-	// Uncomment the following line if your bare application
-	// has an action associated with it:
-	//	Run: func(cmd *cobra.Command, args []string) { },
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -58,23 +55,19 @@ var rootCmd = &cobra.Command{
 func Execute(ver, commit, buildDate string) error {
 	cobra.OnInitialize(initConfig)
 
-	// Here you will define your flags and configuration settings.
-	// Cobra supports persistent flags, which, if defined here,
-	// will be global for your application.
-
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.config/planetscale/config.yaml)")
-
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config",
+		"", "Config file (default is $HOME/.config/planetscale/pscale.yml)")
 	rootCmd.SilenceUsage = true
-	// Cobra also supports local flags, which will only run
-	// when this action is called directly.
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 
 	v := version.Format(ver, commit, buildDate)
 	rootCmd.SetVersionTemplate(v)
 	rootCmd.Version = v
 	rootCmd.Flags().Bool("version", false, "Show pscale version")
 
-	cfg := config.New()
+	cfg, err := config.New()
+	if err != nil {
+		return err
+	}
 
 	rootCmd.PersistentFlags().StringVar(&cfg.BaseURL,
 		"api-url", ps.DefaultBaseURL, "The base URL for the PlanetScale API.")
@@ -130,20 +123,23 @@ func initConfig() {
 		// Use config file from the flag.
 		viper.SetConfigFile(cfgFile)
 	} else {
+		defaultConfigDir, err := config.ConfigDir()
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
 		// Order of preference for configuration files:
-		// (1) $PWD/.planetscale
-		// (2) $HOME/config/planetscale
-		viper.AddConfigPath(".planetscale")
-		viper.AddConfigPath(config.ConfigDir())
-		viper.SetConfigName("config")
-		viper.SetConfigType("yaml")
+		// (1) $HOME/.config/planetscale
+		viper.AddConfigPath(defaultConfigDir)
+		viper.SetConfigName("pscale")
+		viper.SetConfigType("yml")
 	}
 
 	viper.SetEnvPrefix("planetscale")
 	viper.AutomaticEnv() // read in environment variables that match
 
 	// If a config file is found, read it in.
-
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 			// Only handle errors when it's something unrelated to the config file not
@@ -155,9 +151,9 @@ func initConfig() {
 
 	// Check for a project-local configuration file to merge in if the user
 	// has not specified a config file
-	if rootDir, err := config.GetRootGitRepoDir(); err == nil && cfgFile == "" {
+	if rootDir, err := config.RootGitRepoDir(); err == nil && cfgFile == "" {
 		viper.AddConfigPath(rootDir)
-		viper.SetConfigName(config.GetProjectConfigFile())
+		viper.SetConfigName(config.ProjectConfigFile())
 		viper.MergeInConfig() // nolint:errcheck
 	}
 

@@ -30,7 +30,8 @@ func SwitchCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
-			fmt.Printf("Finding branch %s on database %s\n", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(cfg.Database))
+			fmt.Printf("Finding branch %s on database %s\n",
+				cmdutil.BoldBlue(branch), cmdutil.BoldBlue(cfg.Database))
 
 			_, err = client.DatabaseBranches.Get(ctx, &planetscale.GetDatabaseBranchRequest{
 				Organization: cfg.Organization,
@@ -66,12 +67,13 @@ func SwitchCmd(cfg *config.Config) *cobra.Command {
 				end()
 			}
 
-			cfg := config.WritableProjectConfig{
-				Database: cfg.Database,
-				Branch:   branch,
+			cfg := config.FileConfig{
+				Organization: cfg.Organization,
+				Database:     cfg.Database,
+				Branch:       branch,
 			}
 
-			if err := cfg.WriteDefault(); err != nil {
+			if err := cfg.WriteProject(); err != nil {
 				return errors.Wrap(err, "error writing project configuration file")
 			}
 
@@ -81,10 +83,14 @@ func SwitchCmd(cfg *config.Config) *cobra.Command {
 		},
 	}
 
-	cmd.PersistentFlags().StringVar(&cfg.Organization, "org", cfg.Organization, "The organization for the current user")
-	cmd.PersistentFlags().StringVar(&cfg.Database, "database", cfg.Database, "The database this project is using")
-	cmd.Flags().StringVar(&parentBranch, "parent-branch", "main", "parent branch to inherit from if a new branch is being created")
-	cmd.Flags().BoolVar(&autoCreate, "create", false, "if enabled, will automatically create the branch if it does not exist")
+	cmd.PersistentFlags().StringVar(&cfg.Organization, "org", cfg.Organization,
+		"The organization for the current user")
+	cmd.PersistentFlags().StringVar(&cfg.Database, "database", cfg.Database,
+		"The database this project is using")
+	cmd.Flags().StringVar(&parentBranch, "parent-branch", "main",
+		"parent branch to inherit from if a new branch is being created")
+	cmd.Flags().BoolVar(&autoCreate, "create", false,
+		"if enabled, will automatically create the branch if it does not exist")
 
 	cmd.MarkPersistentFlagRequired("database") // nolint:errcheck
 	return cmd
