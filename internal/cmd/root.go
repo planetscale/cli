@@ -102,9 +102,14 @@ func Execute(ver, commit, buildDate string) error {
 	// We don't want to show the default value
 	rootCmd.PersistentFlags().Lookup("api-token").DefValue = ""
 
+	loginCmd := auth.LoginCmd(cfg)
+	loginCmd.Hidden = true
+	logoutCmd := auth.LogoutCmd(cfg)
+	logoutCmd.Hidden = true
+
+	rootCmd.AddCommand(loginCmd)
+	rootCmd.AddCommand(logoutCmd)
 	rootCmd.AddCommand(auth.AuthCmd(cfg))
-	rootCmd.AddCommand(auth.LoginCmd(cfg))
-	rootCmd.AddCommand(auth.LogoutCmd(cfg))
 	rootCmd.AddCommand(backup.BackupCmd(cfg))
 	rootCmd.AddCommand(branch.BranchCmd(cfg))
 	rootCmd.AddCommand(connect.ConnectCmd(cfg))
