@@ -103,6 +103,8 @@ func Execute(ver, commit, buildDate string) error {
 	rootCmd.PersistentFlags().Lookup("api-token").DefValue = ""
 
 	rootCmd.AddCommand(auth.AuthCmd(cfg))
+	rootCmd.AddCommand(auth.LoginCmd(cfg))
+	rootCmd.AddCommand(auth.LogoutCmd(cfg))
 	rootCmd.AddCommand(backup.BackupCmd(cfg))
 	rootCmd.AddCommand(branch.BranchCmd(cfg))
 	rootCmd.AddCommand(connect.ConnectCmd(cfg))
