@@ -47,7 +47,7 @@ func ShowCmd(cfg *config.Config) *cobra.Command {
 				return errors.New("config file exists, but organization is not set")
 			}
 
-			fmt.Printf("%s (from file: %s)", cmdutil.Bold(cfg.Organization), configFile)
+			fmt.Printf("%s (from file: %s)\n", cmdutil.Bold(cfg.Organization), configFile)
 
 			return nil
 		},
