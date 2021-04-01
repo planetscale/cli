@@ -72,6 +72,9 @@ func DeleteCmd(cfg *config.Config) *cobra.Command {
 				Backup:       backup,
 			})
 			if err != nil {
+				if cmdutil.IsNotFoundError(err) {
+					return fmt.Errorf("%s does not exist in branch %s of %s\n", cmdutil.BoldBlue(backup), cmdutil.BoldBlue(branch), cmdutil.BoldBlue(database))
+				}
 				return err
 			}
 

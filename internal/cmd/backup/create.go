@@ -37,6 +37,9 @@ func CreateCmd(cfg *config.Config) *cobra.Command {
 			defer end()
 			backup, err := client.Backups.Create(ctx, createReq)
 			if err != nil {
+				if cmdutil.IsNotFoundError(err) {
+					return fmt.Errorf("%s does not exist in %s", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(database))
+				}
 				return err
 			}
 
