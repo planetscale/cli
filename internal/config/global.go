@@ -24,13 +24,13 @@ func NewFileConfig(path string) (*FileConfig, error) {
 		return nil, err
 	}
 
-	var cfg *FileConfig
+	var cfg FileConfig
 	err = yaml.Unmarshal(out, &cfg)
 	if err != nil {
 		return nil, fmt.Errorf("can't unmarshal file %q: %s", path, err)
 	}
 
-	return cfg, nil
+	return &cfg, nil
 }
 
 // DefaultConfig returns the file config from the default config path.
