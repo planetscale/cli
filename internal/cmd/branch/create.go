@@ -63,6 +63,9 @@ func CreateCmd(cfg *config.Config) *cobra.Command {
 			defer end()
 			dbBranch, err := client.DatabaseBranches.Create(ctx, createReq)
 			if err != nil {
+				if cmdutil.IsNotFoundError(err) {
+					return fmt.Errorf("%s does not exist in %s\n", cmdutil.BoldBlue(source), cmdutil.BoldBlue(cfg.Organization))
+				}
 				return err
 			}
 
