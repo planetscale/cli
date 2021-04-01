@@ -17,8 +17,15 @@ type Backup struct {
 	CompletedAt int64  `header:"completed_at,timestamp(ms|utc|human)" json:"completed_at"`
 }
 
-// Returns a struct that prints out the various fields of a branch model.
-func NewBackupPrinter(backup *ps.Backup) *Backup {
+func NewBackupPrinter(backup *ps.Backup) *ObjectPrinter {
+	return &ObjectPrinter{
+		Source:  backup,
+		Printer: newBackupPrinter(backup),
+	}
+}
+
+// newBackupPrinter Returns a struct that prints out the various fields of a branch model.
+func newBackupPrinter(backup *ps.Backup) *Backup {
 	return &Backup{
 		Name:        backup.Name,
 		State:       backup.State,
@@ -31,10 +38,17 @@ func NewBackupPrinter(backup *ps.Backup) *Backup {
 	}
 }
 
-func NewBackupSlicePrinter(backups []*ps.Backup) []*Backup {
+func NewBackupSlicePrinter(backups []*ps.Backup) *ObjectPrinter {
+	return &ObjectPrinter{
+		Source:  backups,
+		Printer: newBackupSlicePrinter(backups),
+	}
+}
+
+func newBackupSlicePrinter(backups []*ps.Backup) []*Backup {
 	bs := make([]*Backup, 0, len(backups))
 	for _, backup := range backups {
-		bs = append(bs, NewBackupPrinter(backup))
+		bs = append(bs, newBackupPrinter(backup))
 	}
 	return bs
 }

@@ -21,7 +21,14 @@ type DeployRequest struct {
 	ClosedAt  *int64 `header:"closed_at,timestamp(ms|utc|human),-" json:"closed_at"`
 }
 
-func NewDeployRequestPrinter(dr *planetscale.DeployRequest) *DeployRequest {
+func NewDeployRequestPrinter(dr *planetscale.DeployRequest) *ObjectPrinter {
+	return &ObjectPrinter{
+		Source:  dr,
+		Printer: newDeployRequestPrinter(dr),
+	}
+}
+
+func newDeployRequestPrinter(dr *planetscale.DeployRequest) *DeployRequest {
 	return &DeployRequest{
 		ID:                  dr.ID,
 		Branch:              dr.Branch,
@@ -37,11 +44,18 @@ func NewDeployRequestPrinter(dr *planetscale.DeployRequest) *DeployRequest {
 	}
 }
 
-func NewDeployRequestSlicePrinter(deployRequests []*planetscale.DeployRequest) []*DeployRequest {
+func NewDeployRequestSlicePrinter(deployRequests []*planetscale.DeployRequest) *ObjectPrinter {
+	return &ObjectPrinter{
+		Source:  deployRequests,
+		Printer: newDeployRequestSlicePrinter(deployRequests),
+	}
+}
+
+func newDeployRequestSlicePrinter(deployRequests []*planetscale.DeployRequest) []*DeployRequest {
 	requests := make([]*DeployRequest, 0, len(deployRequests))
 
 	for _, dr := range deployRequests {
-		requests = append(requests, NewDeployRequestPrinter(dr))
+		requests = append(requests, newDeployRequestPrinter(dr))
 	}
 
 	return requests

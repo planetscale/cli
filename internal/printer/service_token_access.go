@@ -10,9 +10,16 @@ type ServiceTokenAccess struct {
 	Accesses []string `header:"accesses" json:"accesses"`
 }
 
-// NewServiceTokenPrinter returns a struct that prints out the various fields
+func NewServiceTokenAccessPrinter(st []*planetscale.ServiceTokenAccess) *ObjectPrinter {
+	return &ObjectPrinter{
+		Source:  st,
+		Printer: newServiceTokenAccessPrinter(st),
+	}
+}
+
+// newServiceTokenPrinter returns a struct that prints out the various fields
 // of a schema snapshot model.
-func NewServiceTokenAccessPrinter(st []*planetscale.ServiceTokenAccess) []*ServiceTokenAccess {
+func newServiceTokenAccessPrinter(st []*planetscale.ServiceTokenAccess) []*ServiceTokenAccess {
 	data := map[string]*ServiceTokenAccess{}
 	for _, v := range st {
 		if db, ok := data[v.Resource.Name]; ok {

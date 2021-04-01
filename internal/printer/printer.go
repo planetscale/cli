@@ -9,13 +9,20 @@ import (
 	"github.com/lensesio/tableprinter"
 )
 
+// ObjectPrinter is responsible for encapsulating the source object and also
+// a special printer for outputting it in a tabular format.
+type ObjectPrinter struct {
+	Source  interface{}
+	Printer interface{}
+}
+
 // PrintOutput prints the output as JSON or in a table format.
-func PrintOutput(isJSON bool, obj interface{}) error {
+func PrintOutput(isJSON bool, obj *ObjectPrinter) error {
 	if isJSON {
-		return PrintJSON(obj)
+		return PrintJSON(obj.Source)
 	}
 
-	tableprinter.Print(os.Stdout, obj)
+	tableprinter.Print(os.Stdout, obj.Printer)
 	return nil
 }
 

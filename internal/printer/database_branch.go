@@ -15,9 +15,16 @@ type DatabaseBranch struct {
 	Notes        string `header:"notes" json:"notes"`
 }
 
+func NewDatabaseBranchPrinter(db *ps.DatabaseBranch) *ObjectPrinter {
+	return &ObjectPrinter{
+		Source:  db,
+		Printer: newDatabaseBranchPrinter(db),
+	}
+}
+
 // NewDatabaseBranchPrinter returns a struct that prints out the various fields of a
 // database model.
-func NewDatabaseBranchPrinter(db *ps.DatabaseBranch) *DatabaseBranch {
+func newDatabaseBranchPrinter(db *ps.DatabaseBranch) *DatabaseBranch {
 	return &DatabaseBranch{
 		Name:         db.Name,
 		Notes:        db.Notes,
@@ -28,11 +35,18 @@ func NewDatabaseBranchPrinter(db *ps.DatabaseBranch) *DatabaseBranch {
 	}
 }
 
-func NewDatabaseBranchSlicePrinter(branches []*ps.DatabaseBranch) []*DatabaseBranch {
+func NewDatabaseBranchSlicePrinter(branches []*ps.DatabaseBranch) *ObjectPrinter {
+	return &ObjectPrinter{
+		Source:  branches,
+		Printer: newDatabaseBranchSlicePrinter(branches),
+	}
+}
+
+func newDatabaseBranchSlicePrinter(branches []*ps.DatabaseBranch) []*DatabaseBranch {
 	bs := make([]*DatabaseBranch, 0, len(branches))
 
 	for _, db := range branches {
-		bs = append(bs, NewDatabaseBranchPrinter(db))
+		bs = append(bs, newDatabaseBranchPrinter(db))
 	}
 
 	return bs

@@ -14,9 +14,9 @@ type Database struct {
 	Notes     string `header:"notes" json:"notes"`
 }
 
-// NewDatabasePrinter returns a struct that prints out the various fields of a
+// newDatabasePrinter returns a struct that prints out the various fields of a
 // database model.
-func NewDatabasePrinter(db *ps.Database) *Database {
+func newDatabasePrinter(db *ps.Database) *Database {
 	return &Database{
 		Name:      db.Name,
 		Notes:     db.Notes,
@@ -25,12 +25,26 @@ func NewDatabasePrinter(db *ps.Database) *Database {
 	}
 }
 
-// NewDatabaseSlicePrinter returns a slice of printable databases.
-func NewDatabaseSlicePrinter(databases []*ps.Database) []*Database {
+func NewDatabasePrinter(db *ps.Database) *ObjectPrinter {
+	return &ObjectPrinter{
+		Source:  db,
+		Printer: newDatabasePrinter(db),
+	}
+}
+
+func NewDatabaseSlicePrinter(dbs []*ps.Database) *ObjectPrinter {
+	return &ObjectPrinter{
+		Source:  dbs,
+		Printer: newDatabaseSlicePrinter(dbs),
+	}
+}
+
+// newDatabaseSlicePrinter returns a slice of printable databases.
+func newDatabaseSlicePrinter(databases []*ps.Database) []*Database {
 	dbs := make([]*Database, 0, len(databases))
 
 	for _, db := range databases {
-		dbs = append(dbs, NewDatabasePrinter(db))
+		dbs = append(dbs, newDatabasePrinter(db))
 	}
 
 	return dbs
