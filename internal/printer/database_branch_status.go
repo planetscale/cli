@@ -10,7 +10,14 @@ type DatabaseBranchStatus struct {
 	Password    string `header:"password" json:"password"`
 }
 
-func NewDatabaseBranchStatusPrinter(status *ps.DatabaseBranchStatus) *DatabaseBranchStatus {
+func NewDatabaseBranchStatusPrinter(status *ps.DatabaseBranchStatus) *ObjectPrinter {
+	return &ObjectPrinter{
+		Source:  status,
+		Printer: newDatabaseBranchStatusPrinter(status),
+	}
+}
+
+func newDatabaseBranchStatusPrinter(status *ps.DatabaseBranchStatus) *DatabaseBranchStatus {
 	var ready = "ready"
 	if !status.Ready {
 		ready = "not ready"

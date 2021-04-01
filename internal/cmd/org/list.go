@@ -36,7 +36,10 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
-			err = printer.PrintOutput(cfg.OutputJSON, newOrganizationSlicePrinter(orgs))
+			err = printer.PrintOutput(cfg.OutputJSON, &printer.ObjectPrinter{
+				Source:  orgs,
+				Printer: newOrganizationSlicePrinter(orgs),
+			})
 			if err != nil {
 				return err
 			}
