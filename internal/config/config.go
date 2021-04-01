@@ -104,10 +104,10 @@ func AccessTokenPath() (string, error) {
 // repository.
 func ProjectConfigPath() (string, error) {
 	basePath, err := RootGitRepoDir()
-	if err != nil {
-		return "", err
+	if err == nil {
+		return path.Join(basePath, projectConfigName), nil
 	}
-	return path.Join(basePath, projectConfigName), nil
+	return path.Join("", projectConfigName), nil
 }
 
 func RootGitRepoDir() (string, error) {
