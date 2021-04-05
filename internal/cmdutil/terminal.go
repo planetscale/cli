@@ -40,18 +40,12 @@ func PrintProgress(message string) func() {
 
 // BoldBlue returns a string formatted with blue and bold.
 func BoldBlue(msg string) string {
-	if !IsTTY {
-		return msg
-	}
 	// the 'color' package already handles IsTTY gracefully
 	return color.New(color.FgBlue).Add(color.Bold).Sprint(msg)
 }
 
 // Bold returns a string formatted with bold.
 func Bold(msg string) string {
-	if !IsTTY {
-		return msg
-	}
 	// the 'color' package already handles IsTTY gracefully
 	return color.New(color.Bold).Sprint(msg)
 }
