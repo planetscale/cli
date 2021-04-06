@@ -2,7 +2,6 @@ package planetscale
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -106,16 +105,9 @@ func (d *databaseBranchesService) Create(ctx context.Context, createReq *CreateD
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating request for branch database")
 	}
-	res, err := d.client.Do(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
 
 	dbBranch := &DatabaseBranch{}
-	err = json.NewDecoder(res.Body).Decode(&dbBranch)
-
-	if err != nil {
+	if err := d.client.do(ctx, req, &dbBranch); err != nil {
 		return nil, err
 	}
 
@@ -130,16 +122,8 @@ func (d *databaseBranchesService) Get(ctx context.Context, getReq *GetDatabaseBr
 		return nil, errors.Wrap(err, "error creating http request")
 	}
 
-	res, err := d.client.Do(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-
 	dbBranch := &DatabaseBranch{}
-	err = json.NewDecoder(res.Body).Decode(&dbBranch)
-
-	if err != nil {
+	if err := d.client.do(ctx, req, &dbBranch); err != nil {
 		return nil, err
 	}
 
@@ -154,16 +138,8 @@ func (d *databaseBranchesService) List(ctx context.Context, listReq *ListDatabas
 		return nil, errors.Wrap(err, "error creating http request")
 	}
 
-	res, err := d.client.Do(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-
 	dbBranches := &databaseBranchesResponse{}
-	err = json.NewDecoder(res.Body).Decode(&dbBranches)
-
-	if err != nil {
+	if err := d.client.do(ctx, req, &dbBranches); err != nil {
 		return nil, err
 	}
 
@@ -178,13 +154,8 @@ func (d *databaseBranchesService) Delete(ctx context.Context, deleteReq *DeleteD
 		return errors.Wrap(err, "error creating request for delete branch")
 	}
 
-	res, err := d.client.Do(ctx, req)
-	if err != nil {
-		return err
-	}
-	defer res.Body.Close()
-
-	return nil
+	err = d.client.do(ctx, req, nil)
+	return err
 }
 
 // Status returns the status of a specific database branch
@@ -195,16 +166,8 @@ func (d *databaseBranchesService) GetStatus(ctx context.Context, statusReq *GetD
 		return nil, errors.Wrap(err, "error creating request for branch status")
 	}
 
-	res, err := d.client.Do(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-
 	status := &DatabaseBranchStatus{}
-	err = json.NewDecoder(res.Body).Decode(&status)
-
-	if err != nil {
+	if err := d.client.do(ctx, req, &status); err != nil {
 		return nil, err
 	}
 

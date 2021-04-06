@@ -2,7 +2,6 @@ package planetscale
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -55,20 +54,12 @@ func (o *organizationsService) Get(ctx context.Context, getReq *GetOrganizationR
 		return nil, errors.Wrap(err, "error creating request for get organization")
 	}
 
-	res, err := o.client.Do(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-
-	organization := &Organization{}
-	err = json.NewDecoder(res.Body).Decode(&organization)
-
-	if err != nil {
+	org := &Organization{}
+	if err := o.client.do(ctx, req, &org); err != nil {
 		return nil, err
 	}
 
-	return organization, nil
+	return org, nil
 }
 
 // List returns all the organizations for a user.
@@ -78,16 +69,8 @@ func (o *organizationsService) List(ctx context.Context) ([]*Organization, error
 		return nil, errors.Wrap(err, "error creating request for list organization")
 	}
 
-	res, err := o.client.Do(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-
 	orgResponse := &organizationsResponse{}
-	err = json.NewDecoder(res.Body).Decode(&orgResponse)
-
-	if err != nil {
+	if err := o.client.do(ctx, req, &orgResponse); err != nil {
 		return nil, err
 	}
 

@@ -2,7 +2,6 @@ package planetscale
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -154,15 +153,8 @@ func (d *deployRequestsService) Get(ctx context.Context, getReq *GetDeployReques
 		return nil, errors.Wrap(err, "error creating http request")
 	}
 
-	res, err := d.client.Do(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-
 	dr := &DeployRequest{}
-	err = json.NewDecoder(res.Body).Decode(dr)
-	if err != nil {
+	if err := d.client.do(ctx, req, &dr); err != nil {
 		return nil, err
 	}
 
@@ -184,15 +176,8 @@ func (d *deployRequestsService) CloseDeploy(ctx context.Context, closeReq *Close
 		return nil, errors.Wrap(err, "error creating http request")
 	}
 
-	res, err := d.client.Do(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-
 	dr := &DeployRequest{}
-	err = json.NewDecoder(res.Body).Decode(dr)
-	if err != nil {
+	if err := d.client.do(ctx, req, &dr); err != nil {
 		return nil, err
 	}
 
@@ -207,15 +192,8 @@ func (d *deployRequestsService) Deploy(ctx context.Context, deployReq *PerformDe
 		return nil, errors.Wrap(err, "error creating http request")
 	}
 
-	res, err := d.client.Do(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-
 	dr := &DeployRequest{}
-	err = json.NewDecoder(res.Body).Decode(dr)
-	if err != nil {
+	if err := d.client.do(ctx, req, &dr); err != nil {
 		return nil, err
 	}
 
@@ -233,18 +211,10 @@ func (d *deployRequestsService) Create(ctx context.Context, createReq *CreateDep
 		return nil, err
 	}
 
-	res, err := d.client.Do(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-
 	dr := &DeployRequest{}
-	err = json.NewDecoder(res.Body).Decode(dr)
-	if err != nil {
+	if err := d.client.do(ctx, req, &dr); err != nil {
 		return nil, err
 	}
-
 	return dr, nil
 }
 
@@ -256,15 +226,8 @@ func (d *deployRequestsService) CancelDeploy(ctx context.Context, deployReq *Can
 		return nil, errors.Wrap(err, "error creating http request")
 	}
 
-	res, err := d.client.Do(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-
 	dr := &DeployRequest{}
-	err = json.NewDecoder(res.Body).Decode(dr)
-	if err != nil {
+	if err := d.client.do(ctx, req, &dr); err != nil {
 		return nil, err
 	}
 
@@ -299,15 +262,8 @@ func (d *deployRequestsService) Diff(ctx context.Context, diffReq *DiffRequest) 
 		return nil, errors.Wrap(err, "error creating http request")
 	}
 
-	res, err := d.client.Do(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-
 	diffs := &diffResponse{}
-	err = json.NewDecoder(res.Body).Decode(&diffs)
-	if err != nil {
+	if err := d.client.do(ctx, req, &diffs); err != nil {
 		return nil, err
 	}
 
@@ -320,20 +276,12 @@ func (d *deployRequestsService) List(ctx context.Context, listReq *ListDeployReq
 		return nil, errors.Wrap(err, "error creating http request")
 	}
 
-	res, err := d.client.Do(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-
-	deployRequests := &deployRequestsResponse{}
-	err = json.NewDecoder(res.Body).Decode(&deployRequests)
-
-	if err != nil {
+	drReq := &deployRequestsResponse{}
+	if err := d.client.do(ctx, req, &drReq); err != nil {
 		return nil, err
 	}
 
-	return deployRequests.DeployRequests, nil
+	return drReq.DeployRequests, nil
 }
 
 func (d *deployRequestsService) CreateReview(ctx context.Context, reviewReq *ReviewDeployRequestRequest) (*DeployRequestReview, error) {
@@ -356,15 +304,8 @@ func (d *deployRequestsService) CreateReview(ctx context.Context, reviewReq *Rev
 		return nil, errors.Wrap(err, "error creating http request")
 	}
 
-	res, err := d.client.Do(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-
 	drr := &DeployRequestReview{}
-	err = json.NewDecoder(res.Body).Decode(drr)
-	if err != nil {
+	if err := d.client.do(ctx, req, &drr); err != nil {
 		return nil, err
 	}
 

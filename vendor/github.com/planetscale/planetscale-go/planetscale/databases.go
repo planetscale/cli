@@ -2,7 +2,6 @@ package planetscale
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -76,15 +75,8 @@ func (ds *databasesService) List(ctx context.Context, listReq *ListDatabasesRequ
 		return nil, errors.Wrap(err, "error creating http request")
 	}
 
-	res, err := ds.client.Do(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-
 	dbResponse := databasesResponse{}
-	err = json.NewDecoder(res.Body).Decode(&dbResponse)
-
+	err = ds.client.do(ctx, req, &dbResponse)
 	if err != nil {
 		return nil, err
 	}
@@ -98,15 +90,8 @@ func (ds *databasesService) Create(ctx context.Context, createReq *CreateDatabas
 		return nil, errors.Wrap(err, "error creating request for create database")
 	}
 
-	res, err := ds.client.Do(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-
 	db := &Database{}
-	err = json.NewDecoder(res.Body).Decode(db)
-
+	err = ds.client.do(ctx, req, &db)
 	if err != nil {
 		return nil, err
 	}
@@ -121,15 +106,8 @@ func (ds *databasesService) Get(ctx context.Context, getReq *GetDatabaseRequest)
 		return nil, errors.Wrap(err, "error creating request for get database")
 	}
 
-	res, err := ds.client.Do(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-
 	db := &Database{}
-	err = json.NewDecoder(res.Body).Decode(&db)
-
+	err = ds.client.do(ctx, req, &db)
 	if err != nil {
 		return nil, err
 	}
@@ -144,13 +122,8 @@ func (ds *databasesService) Delete(ctx context.Context, deleteReq *DeleteDatabas
 		return errors.Wrap(err, "error creating request for delete database")
 	}
 
-	res, err := ds.client.Do(ctx, req)
-	if err != nil {
-		return err
-	}
-	defer res.Body.Close()
-
-	return nil
+	err = ds.client.do(ctx, req, nil)
+	return err
 }
 
 func databasesAPIPath(org string) string {
