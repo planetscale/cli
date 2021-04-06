@@ -16,10 +16,9 @@ import (
 
 func ShowCmd(cfg *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "show <database>",
-		Aliases: []string{"get"},
-		Short:   "Retrieve information about a database",
-		Args:    cmdutil.RequiredArgs("database"),
+		Use:   "show <database>",
+		Short: "Retrieve information about a database",
+		Args:  cmdutil.RequiredArgs("database"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 			name := args[0]

@@ -13,9 +13,8 @@ import (
 
 func ShowCmd(cfg *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "show-access <name>",
-		Short:   "fetch a service token and it's accesses",
-		Aliases: []string{"get-access"},
+		Use:   "show-access <name>",
+		Short: "fetch a service token and it's accesses",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 			client, err := cfg.NewClientFromConfig()
