@@ -48,7 +48,14 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 				Organization: cfg.Organization,
 			})
 			if err != nil {
-				return errors.Wrap(err, "error listing databases")
+				switch cmdutil.ErrCode(err) {
+				case planetscale.ErrNotFound:
+					return fmt.Errorf("%s does not exist\n", cmdutil.BoldBlue(cfg.Organization))
+				case planetscale.ErrResponseMalformed:
+					return cmdutil.MalformedError(err)
+				default:
+					return errors.Wrap(err, "error listing databases")
+				}
 			}
 
 			end()

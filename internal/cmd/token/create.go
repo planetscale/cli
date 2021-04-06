@@ -31,7 +31,14 @@ func CreateCmd(cfg *config.Config) *cobra.Command {
 
 			token, err := client.ServiceTokens.Create(ctx, req)
 			if err != nil {
-				return err
+				switch cmdutil.ErrCode(err) {
+				case planetscale.ErrNotFound:
+					return fmt.Errorf("organization %s does not exist\n", cmdutil.BoldBlue(cfg.Organization))
+				case planetscale.ErrResponseMalformed:
+					return cmdutil.MalformedError(err)
+				default:
+					return err
+				}
 			}
 
 			end()

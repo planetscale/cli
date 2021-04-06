@@ -50,7 +50,15 @@ func ShowCmd(cfg *config.Config) *cobra.Command {
 				Number:       n,
 			})
 			if err != nil {
-				return err
+				switch cmdutil.ErrCode(err) {
+				case planetscale.ErrNotFound:
+					return fmt.Errorf("%s/%s does not exist in %s\n",
+						cmdutil.BoldBlue(database), cmdutil.BoldBlue(number), cmdutil.BoldBlue(cfg.Organization))
+				case planetscale.ErrResponseMalformed:
+					return cmdutil.MalformedError(err)
+				default:
+					return err
+				}
 			}
 
 			err = printer.PrintOutput(cfg.OutputJSON, printer.NewDeployRequestPrinter(dr))

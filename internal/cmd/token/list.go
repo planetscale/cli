@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/pkg/errors"
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/config"
 	"github.com/planetscale/cli/internal/printer"
@@ -31,7 +32,14 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 
 			tokens, err := client.ServiceTokens.List(ctx, req)
 			if err != nil {
-				return err
+				switch cmdutil.ErrCode(err) {
+				case planetscale.ErrNotFound:
+					return fmt.Errorf("organization %s does not exist\n", cmdutil.BoldBlue(cfg.Organization))
+				case planetscale.ErrResponseMalformed:
+					return cmdutil.MalformedError(err)
+				default:
+					return errors.Wrap(err, "error listing service tokens")
+				}
 			}
 
 			end()

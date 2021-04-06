@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/pkg/errors"
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/config"
 	"github.com/planetscale/cli/internal/printer"
@@ -36,7 +37,15 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 				Branch:       branch,
 			})
 			if err != nil {
-				return err
+				switch cmdutil.ErrCode(err) {
+				case planetscale.ErrNotFound:
+					return fmt.Errorf("%s does not exist in %s\n",
+						cmdutil.BoldBlue(branch), cmdutil.BoldBlue(database))
+				case planetscale.ErrResponseMalformed:
+					return cmdutil.MalformedError(err)
+				default:
+					return errors.Wrap(err, "error listing schema snapshots")
+				}
 			}
 			end()
 

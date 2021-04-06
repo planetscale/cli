@@ -19,6 +19,7 @@ import (
 	"github.com/planetscale/sql-proxy/proxy"
 	"github.com/planetscale/sql-proxy/sigutil"
 
+	"github.com/planetscale/planetscale-go/planetscale"
 	ps "github.com/planetscale/planetscale-go/planetscale"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -114,7 +115,15 @@ second argument:
 				Branch:       branch,
 			})
 			if err != nil {
-				return err
+				switch cmdutil.ErrCode(err) {
+				case planetscale.ErrNotFound:
+					return fmt.Errorf("%s does not exist in %s",
+						cmdutil.BoldBlue(branch), cmdutil.BoldBlue(database))
+				case planetscale.ErrResponseMalformed:
+					return cmdutil.MalformedError(err)
+				default:
+					return err
+				}
 			}
 
 			if status.Credentials.User == "" {

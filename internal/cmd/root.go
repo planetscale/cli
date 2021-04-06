@@ -40,6 +40,10 @@ import (
 	"github.com/spf13/viper"
 )
 
+const (
+	MalformedWarning = "Unexpected API response received, the PlanetScale API might be down. Please contact support with the following output"
+)
+
 var cfgFile string
 
 // rootCmd represents the base command when called without any subcommands

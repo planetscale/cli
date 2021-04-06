@@ -49,10 +49,14 @@ func GetCmd(cfg *config.Config) *cobra.Command {
 				Database:     name,
 			})
 			if err != nil {
-				if cmdutil.IsNotFoundError(err) {
+				switch cmdutil.ErrCode(err) {
+				case planetscale.ErrNotFound:
 					return fmt.Errorf("%s does not exist in %s\n", cmdutil.BoldBlue(name), cmdutil.BoldBlue(cfg.Organization))
+				case planetscale.ErrResponseMalformed:
+					return cmdutil.MalformedError(err)
+				default:
+					return err
 				}
-				return err
 			}
 
 			end()

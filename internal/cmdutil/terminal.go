@@ -8,7 +8,6 @@ import (
 	"github.com/briandowns/spinner"
 	"github.com/fatih/color"
 	"github.com/mattn/go-isatty"
-	"github.com/planetscale/planetscale-go/planetscale"
 )
 
 var IsTTY = isatty.IsTerminal(os.Stdout.Fd()) || isatty.IsCygwinTerminal(os.Stdout.Fd())
@@ -48,14 +47,4 @@ func BoldBlue(msg string) string {
 func Bold(msg string) string {
 	// the 'color' package already handles IsTTY gracefully
 	return color.New(color.Bold).Sprint(msg)
-}
-
-func IsNotFoundError(err error) bool {
-	if pErr, ok := err.(*planetscale.Error); ok {
-		if pErr.Code == planetscale.ErrNotFound {
-			return true
-		}
-	}
-
-	return false
 }

@@ -4,8 +4,10 @@ import (
 	"context"
 	"time"
 
+	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/config"
 	"github.com/planetscale/cli/internal/printer"
+	"github.com/planetscale/planetscale-go/planetscale"
 	ps "github.com/planetscale/planetscale-go/planetscale"
 
 	"github.com/spf13/cobra"
@@ -33,7 +35,12 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 
 			orgs, err := client.Organizations.List(ctx)
 			if err != nil {
-				return err
+				switch cmdutil.ErrCode(err) {
+				case planetscale.ErrResponseMalformed:
+					return cmdutil.MalformedError(err)
+				default:
+					return err
+				}
 			}
 
 			err = printer.PrintOutput(cfg.OutputJSON, &printer.ObjectPrinter{

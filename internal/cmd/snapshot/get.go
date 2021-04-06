@@ -34,7 +34,14 @@ func GetCmd(cfg *config.Config) *cobra.Command {
 				ID: id,
 			})
 			if err != nil {
-				return err
+				switch cmdutil.ErrCode(err) {
+				case planetscale.ErrNotFound:
+					return fmt.Errorf("snapshot id %q does not exist", cmdutil.BoldBlue(id))
+				case planetscale.ErrResponseMalformed:
+					return cmdutil.MalformedError(err)
+				default:
+					return err
+				}
 			}
 			end()
 
