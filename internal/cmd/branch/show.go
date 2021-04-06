@@ -14,11 +14,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func GetCmd(cfg *config.Config) *cobra.Command {
+func ShowCmd(cfg *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "get <source-database> <branch>",
-		Short: "Get a specific branch of a database",
-		Args:  cmdutil.RequiredArgs("source-database", "branch"),
+		Use:     "show <source-database> <branch>",
+		Short:   "Show a specific branch of a database",
+		Aliases: []string{"get"},
+		Args:    cmdutil.RequiredArgs("source-database", "branch"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 			source := args[0]

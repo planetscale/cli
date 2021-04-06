@@ -14,11 +14,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func GetCmd(cfg *config.Config) *cobra.Command {
+func ShowCmd(cfg *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "get <database> <branch> <backup>",
-		Short: "Get a specific backup of a branch",
-		Args:  cmdutil.RequiredArgs("database", "branch", "backup"),
+		Use:     "show <database> <branch> <backup>",
+		Short:   "Show a specific backup of a branch",
+		Aliases: []string{"get"},
+		Args:    cmdutil.RequiredArgs("database", "branch", "backup"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 			database := args[0]

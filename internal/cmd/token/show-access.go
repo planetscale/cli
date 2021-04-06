@@ -11,10 +11,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func GetCmd(cfg *config.Config) *cobra.Command {
+func ShowCmd(cfg *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "get-access <name>",
-		Short: "fetch a service token and it's accesses",
+		Use:     "show-access <name>",
+		Short:   "fetch a service token and it's accesses",
+		Aliases: []string{"get-access"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 			client, err := cfg.NewClientFromConfig()

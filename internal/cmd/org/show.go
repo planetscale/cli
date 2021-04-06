@@ -13,9 +13,10 @@ import (
 
 func ShowCmd(cfg *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "show",
-		Short: "Display the currently active organization",
-		Args:  cobra.NoArgs,
+		Use:     "show",
+		Short:   "Display the currently active organization",
+		Aliases: []string{"get"},
+		Args:    cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			configFile, err := config.ProjectConfigPath()
 			if err != nil {
