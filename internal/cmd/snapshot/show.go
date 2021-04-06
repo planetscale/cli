@@ -12,11 +12,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// GetCmd makes a command for fetching a single snapshot by its ID.
-func GetCmd(cfg *config.Config) *cobra.Command {
+// ShowCmd makes a command for fetching a single snapshot by its ID.
+func ShowCmd(cfg *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "get <snapshot-id>",
-		Short: "Get a specific schema snapshot",
+		Use:   "show <snapshot-id>",
+		Short: "Show a specific schema snapshot",
 		Args:  cmdutil.RequiredArgs("snapshot-id"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()

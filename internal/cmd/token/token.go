@@ -18,7 +18,7 @@ func TokenCmd(cfg *config.Config) *cobra.Command {
 
 	cmd.AddCommand(CreateCmd(cfg))
 	cmd.AddCommand(ListCmd(cfg))
-	cmd.AddCommand(GetCmd(cfg))
+	cmd.AddCommand(ShowCmd(cfg))
 	cmd.AddCommand(AddAccessCmd(cfg))
 	cmd.AddCommand(DeleteAccessCmd(cfg))
 	cmd.AddCommand(DeleteCmd(cfg))

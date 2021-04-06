@@ -14,9 +14,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func GetCmd(cfg *config.Config) *cobra.Command {
+func ShowCmd(cfg *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "get <database>",
+		Use:   "show <database>",
 		Short: "Retrieve information about a database",
 		Args:  cmdutil.RequiredArgs("database"),
 		RunE: func(cmd *cobra.Command, args []string) error {
