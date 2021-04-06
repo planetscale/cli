@@ -8,7 +8,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -88,19 +87,13 @@ func (c *certificatesService) Create(ctx context.Context, r *CreateCertificateRe
 		return nil, fmt.Errorf("error creating request for create certificates: %s", err)
 	}
 
-	res, err := c.client.Do(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-
 	var cr struct {
 		Certificate      string `json:"certificate"`
 		CertificateChain string `json:"certificate_chain"`
 		RemoteAddr       string `json:"remote_addr"`
 	}
 
-	err = json.NewDecoder(res.Body).Decode(&cr)
+	err = c.client.do(ctx, req, &cr)
 	if err != nil {
 		return nil, err
 	}

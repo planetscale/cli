@@ -2,10 +2,11 @@ package planetscale
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 )
+
+var _ ServiceTokenService = &serviceTokenService{}
 
 // ServiceTokenService is an interface for communicating with the PlanetScale
 // Service Token API.
@@ -28,14 +29,8 @@ func (s *serviceTokenService) Create(ctx context.Context, createReq *CreateServi
 		return nil, err
 	}
 
-	res, err := s.client.Do(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-
 	st := &ServiceToken{}
-	if err := json.NewDecoder(res.Body).Decode(st); err != nil {
+	if err := s.client.do(ctx, req, &st); err != nil {
 		return nil, err
 	}
 
@@ -48,17 +43,11 @@ func (s *serviceTokenService) List(ctx context.Context, listReq *ListServiceToke
 		return nil, err
 	}
 
-	res, err := s.client.Do(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-
-	defer res.Body.Close()
-
 	tokenListResponse := serviceTokensResponse{}
-	if err := json.NewDecoder(res.Body).Decode(&tokenListResponse); err != nil {
+	if err := s.client.do(ctx, req, &tokenListResponse); err != nil {
 		return nil, err
 	}
+
 	return tokenListResponse.ServiceTokens, nil
 }
 
@@ -68,12 +57,8 @@ func (s *serviceTokenService) Delete(ctx context.Context, delReq *DeleteServiceT
 		return err
 	}
 
-	res, err := s.client.Do(ctx, req)
-	if err != nil {
-		return err
-	}
-	defer res.Body.Close()
-	return nil
+	err = s.client.do(ctx, req, nil)
+	return err
 }
 
 func (s *serviceTokenService) GetAccess(ctx context.Context, accessReq *GetServiceTokenAccessRequest) ([]*ServiceTokenAccess, error) {
@@ -82,15 +67,8 @@ func (s *serviceTokenService) GetAccess(ctx context.Context, accessReq *GetServi
 		return nil, err
 	}
 
-	res, err := s.client.Do(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-
-	defer res.Body.Close()
-
 	tokenAccess := serviceTokenAccessResponse{}
-	if err := json.NewDecoder(res.Body).Decode(&tokenAccess); err != nil {
+	if err := s.client.do(ctx, req, &tokenAccess); err != nil {
 		return nil, err
 	}
 	return tokenAccess.ServiceTokenAccesses, nil
@@ -102,15 +80,8 @@ func (s *serviceTokenService) AddAccess(ctx context.Context, addReq *AddServiceT
 		return nil, err
 	}
 
-	res, err := s.client.Do(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-
-	defer res.Body.Close()
-
 	tokenAccess := serviceTokenAccessResponse{}
-	if err := json.NewDecoder(res.Body).Decode(&tokenAccess); err != nil {
+	if err := s.client.do(ctx, req, &tokenAccess); err != nil {
 		return nil, err
 	}
 	return tokenAccess.ServiceTokenAccesses, nil
@@ -122,16 +93,9 @@ func (s *serviceTokenService) DeleteAccess(ctx context.Context, delReq *DeleteSe
 		return err
 	}
 
-	res, err := s.client.Do(ctx, req)
-	if err != nil {
-		return err
-	}
-
-	defer res.Body.Close()
-	return nil
+	err = s.client.do(ctx, req, nil)
+	return err
 }
-
-var _ ServiceTokenService = &serviceTokenService{}
 
 type CreateServiceTokenRequest struct {
 	Organization string `json:"-"`

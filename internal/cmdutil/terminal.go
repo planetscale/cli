@@ -50,10 +50,11 @@ func Bold(msg string) string {
 	return color.New(color.Bold).Sprint(msg)
 }
 
-func IsNotFoundError(ogErr error) bool {
-	err, ok := ogErr.(*planetscale.ErrorResponse)
-	if ok {
-		return err.Code == "not_found"
+func IsNotFoundError(err error) bool {
+	if pErr, ok := err.(*planetscale.Error); ok {
+		if pErr.Code == planetscale.ErrNotFound {
+			return true
+		}
 	}
 
 	return false
