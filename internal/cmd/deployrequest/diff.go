@@ -53,7 +53,15 @@ func DiffCmd(cfg *config.Config) *cobra.Command {
 				Number:       n,
 			})
 			if err != nil {
-				return err
+				switch cmdutil.ErrCode(err) {
+				case planetscale.ErrNotFound:
+					return fmt.Errorf("%s/%s does not exist in %s\n",
+						cmdutil.BoldBlue(database), cmdutil.BoldBlue(number), cmdutil.BoldBlue(cfg.Organization))
+				case planetscale.ErrResponseMalformed:
+					return cmdutil.MalformedError(err)
+				default:
+					return err
+				}
 			}
 
 			for _, df := range diffs {
@@ -62,9 +70,9 @@ func DiffCmd(cfg *config.Config) *cobra.Command {
 				for scanner.Scan() {
 					txt := scanner.Text()
 					if strings.HasPrefix(txt, "+") {
-						color.New(color.FgGreen).Add(color.Bold).Println(txt)
+						color.New(color.FgGreen).Add(color.Bold).Println(txt) //nolint: errcheck
 					} else if strings.HasPrefix(txt, "-") {
-						color.New(color.FgRed).Add(color.Bold).Println(txt)
+						color.New(color.FgRed).Add(color.Bold).Println(txt) //nolint: errcheck
 					} else {
 						fmt.Println(txt)
 					}

@@ -7,6 +7,7 @@ import (
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/config"
 	"github.com/planetscale/cli/internal/printer"
+	"github.com/planetscale/planetscale-go/planetscale"
 	ps "github.com/planetscale/planetscale-go/planetscale"
 
 	"github.com/spf13/cobra"
@@ -37,10 +38,14 @@ func CreateCmd(cfg *config.Config) *cobra.Command {
 			defer end()
 			backup, err := client.Backups.Create(ctx, createReq)
 			if err != nil {
-				if cmdutil.IsNotFoundError(err) {
+				switch cmdutil.ErrCode(err) {
+				case planetscale.ErrNotFound:
 					return fmt.Errorf("%s does not exist in %s", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(database))
+				case planetscale.ErrResponseMalformed:
+					return cmdutil.MalformedError(err)
+				default:
+					return err
 				}
-				return err
 			}
 
 			end()

@@ -26,8 +26,10 @@ func GetCmd(cfg *config.Config) *cobra.Command {
 				return cmd.Usage()
 			}
 
+			name := args[0]
+
 			req := &planetscale.GetServiceTokenAccessRequest{
-				ID:           args[0],
+				ID:           name,
 				Organization: cfg.Organization,
 			}
 
@@ -36,7 +38,15 @@ func GetCmd(cfg *config.Config) *cobra.Command {
 
 			accesses, err := client.ServiceTokens.GetAccess(ctx, req)
 			if err != nil {
-				return err
+				switch cmdutil.ErrCode(err) {
+				case planetscale.ErrNotFound:
+					return fmt.Errorf("%s does not exist in %s\n",
+						cmdutil.BoldBlue(name), cmdutil.BoldBlue(cfg.Organization))
+				case planetscale.ErrResponseMalformed:
+					return cmdutil.MalformedError(err)
+				default:
+					return err
+				}
 			}
 
 			end()

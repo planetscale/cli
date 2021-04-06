@@ -36,7 +36,14 @@ func DeleteCmd(cfg *config.Config) *cobra.Command {
 			defer end()
 
 			if err := client.ServiceTokens.Delete(ctx, req); err != nil {
-				return err
+				switch cmdutil.ErrCode(err) {
+				case planetscale.ErrNotFound:
+					return fmt.Errorf("token does not exist in %s\n", cmdutil.BoldBlue(cfg.Organization))
+				case planetscale.ErrResponseMalformed:
+					return cmdutil.MalformedError(err)
+				default:
+					return err
+				}
 			}
 
 			end()

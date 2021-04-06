@@ -53,10 +53,14 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 				Branch:       branch,
 			})
 			if err != nil {
-				if cmdutil.IsNotFoundError(err) {
+				switch cmdutil.ErrCode(err) {
+				case planetscale.ErrNotFound:
 					return fmt.Errorf("%s does not exist in %s\n", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(database))
+				case planetscale.ErrResponseMalformed:
+					return cmdutil.MalformedError(err)
+				default:
+					return errors.Wrap(err, "error listing backups")
 				}
-				return errors.Wrap(err, "error listing backups")
 			}
 			end()
 

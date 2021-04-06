@@ -37,10 +37,15 @@ func StatusCmd(cfg *config.Config) *cobra.Command {
 				Branch:       branch,
 			})
 			if err != nil {
-				if cmdutil.IsNotFoundError(err) {
+				switch cmdutil.ErrCode(err) {
+				case planetscale.ErrNotFound:
 					return fmt.Errorf("%s does not exist in %s", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(source))
+				case planetscale.ErrResponseMalformed:
+					return cmdutil.MalformedError(err)
+				default:
+					return err
 				}
-				return err
+
 			}
 
 			end()

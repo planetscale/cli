@@ -52,7 +52,15 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 				Database:     database,
 			})
 			if err != nil {
-				return errors.Wrap(err, "error listing deploy requests")
+				switch cmdutil.ErrCode(err) {
+				case planetscale.ErrNotFound:
+					return fmt.Errorf("%s does not exist in %s\n",
+						cmdutil.BoldBlue(database), cmdutil.BoldBlue(cfg.Organization))
+				case planetscale.ErrResponseMalformed:
+					return cmdutil.MalformedError(err)
+				default:
+					return errors.Wrap(err, "error listing deploy requests")
+				}
 			}
 			end()
 

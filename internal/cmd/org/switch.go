@@ -42,7 +42,14 @@ func SwitchCmd(cfg *config.Config) *cobra.Command {
 					Organization: orgName,
 				})
 				if err != nil {
-					return err
+					switch cmdutil.ErrCode(err) {
+					case planetscale.ErrNotFound:
+						return fmt.Errorf("%s does not exist\n", cmdutil.BoldBlue(orgName))
+					case planetscale.ErrResponseMalformed:
+						return cmdutil.MalformedError(err)
+					default:
+						return err
+					}
 				}
 				end()
 				organization = org.Name
@@ -52,7 +59,12 @@ func SwitchCmd(cfg *config.Config) *cobra.Command {
 				defer end()
 				orgs, err := client.Organizations.List(ctx)
 				if err != nil {
-					return err
+					switch cmdutil.ErrCode(err) {
+					case planetscale.ErrResponseMalformed:
+						return cmdutil.MalformedError(err)
+					default:
+						return err
+					}
 				}
 				end()
 
