@@ -34,7 +34,8 @@ func RequestDeployCmd(cfg *config.Config) *cobra.Command {
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
-					return fmt.Errorf("snapshot id %q does not exist", cmdutil.BoldBlue(id))
+					return fmt.Errorf("snapshot id %s does not exist (organization: %s)",
+						cmdutil.BoldBlue(id), cmdutil.BoldBlue(cfg.Organization))
 				case planetscale.ErrResponseMalformed:
 					return cmdutil.MalformedError(err)
 				default:

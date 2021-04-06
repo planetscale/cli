@@ -55,7 +55,7 @@ func DiffCmd(cfg *config.Config) *cobra.Command {
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
-					return fmt.Errorf("%s/%s does not exist in %s\n",
+					return fmt.Errorf("deploy rquest '%s/%s' does not exist in organization %s\n",
 						cmdutil.BoldBlue(database), cmdutil.BoldBlue(number), cmdutil.BoldBlue(cfg.Organization))
 				case planetscale.ErrResponseMalformed:
 					return cmdutil.MalformedError(err)
