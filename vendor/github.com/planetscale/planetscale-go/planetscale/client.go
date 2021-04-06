@@ -165,11 +165,6 @@ func (c *Client) handleResponse(ctx context.Context, res *http.Response, v inter
 	}
 
 	if res.StatusCode >= 400 {
-		out, err := ioutil.ReadAll(res.Body)
-		if err != nil {
-			return err
-		}
-
 		// errorResponse represents an error response from the API
 		type errorResponse struct {
 			Code    string `json:"code"`
@@ -185,6 +180,7 @@ func (c *Client) handleResponse(ctx context.Context, res *http.Response, v inter
 					Code: ErrResponseMalformed,
 					Meta: map[string]string{
 						"body": string(out),
+						"err":  err.Error(),
 					},
 				}
 			}
@@ -203,6 +199,7 @@ func (c *Client) handleResponse(ctx context.Context, res *http.Response, v inter
 				Code: ErrInternal,
 				Meta: map[string]string{
 					"body": string(out),
+					"err":  err.Error(),
 				},
 			}
 		}
