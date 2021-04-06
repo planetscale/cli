@@ -106,7 +106,12 @@ func writeDefaultOrganization(ctx context.Context, accessToken, authURL string) 
 
 	orgs, err := client.Organizations.List(ctx)
 	if err != nil {
-		return err
+		switch cmdutil.ErrCode(err) {
+		case planetscale.ErrResponseMalformed:
+			return cmdutil.MalformedError(err)
+		default:
+			return errors.Wrap(err, "error listing organizations")
+		}
 	}
 
 	if len(orgs) > 0 {

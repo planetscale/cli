@@ -44,7 +44,7 @@ func SwitchCmd(cfg *config.Config) *cobra.Command {
 				if err != nil {
 					switch cmdutil.ErrCode(err) {
 					case planetscale.ErrNotFound:
-						return fmt.Errorf("%s does not exist\n", cmdutil.BoldBlue(orgName))
+						return fmt.Errorf("organization %s does not exist\n", cmdutil.BoldBlue(orgName))
 					case planetscale.ErrResponseMalformed:
 						return cmdutil.MalformedError(err)
 					default:
