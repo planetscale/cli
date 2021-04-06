@@ -2,7 +2,6 @@ package planetscale
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -82,17 +81,11 @@ func (s *schemaSnapshotsService) Create(ctx context.Context, createReq *CreateSc
 		return nil, errors.Wrap(err, "error creating http request")
 	}
 
-	res, err := s.client.Do(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-
 	ss := &SchemaSnapshot{}
-	err = json.NewDecoder(res.Body).Decode(ss)
-	if err != nil {
+	if err := s.client.do(ctx, req, &ss); err != nil {
 		return nil, err
 	}
+
 	return ss, nil
 }
 
@@ -103,19 +96,12 @@ func (s *schemaSnapshotsService) List(ctx context.Context, listReq *ListSchemaSn
 		return nil, errors.Wrap(err, "error creating http request")
 	}
 
-	res, err := s.client.Do(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-
-	schemaSnapshotsResponse := schemaSnapshotsResponse{}
-	err = json.NewDecoder(res.Body).Decode(&schemaSnapshotsResponse)
-	if err != nil {
+	ssr := schemaSnapshotsResponse{}
+	if err := s.client.do(ctx, req, &ssr); err != nil {
 		return nil, err
 	}
 
-	return schemaSnapshotsResponse.SchemaSnapshots, nil
+	return ssr.SchemaSnapshots, nil
 }
 
 // Get returns a single schema snapshot.
@@ -125,15 +111,8 @@ func (s *schemaSnapshotsService) Get(ctx context.Context, getReq *GetSchemaSnaps
 		return nil, errors.Wrap(err, "error creating http request")
 	}
 
-	res, err := s.client.Do(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-
 	ss := &SchemaSnapshot{}
-	err = json.NewDecoder(res.Body).Decode(ss)
-	if err != nil {
+	if err := s.client.do(ctx, req, &ss); err != nil {
 		return nil, err
 	}
 
@@ -147,15 +126,8 @@ func (s *schemaSnapshotsService) RequestDeploy(ctx context.Context, deployReq *S
 		return nil, err
 	}
 
-	res, err := s.client.Do(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-
 	dr := &DeployRequest{}
-	err = json.NewDecoder(res.Body).Decode(dr)
-	if err != nil {
+	if err := s.client.do(ctx, req, &dr); err != nil {
 		return nil, err
 	}
 

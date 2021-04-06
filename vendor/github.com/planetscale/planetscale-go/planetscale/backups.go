@@ -2,7 +2,6 @@ package planetscale
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -79,16 +78,9 @@ func (d *backupsService) Create(ctx context.Context, createReq *CreateBackupRequ
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating http request")
 	}
-	res, err := d.client.Do(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
 
 	backup := &Backup{}
-	err = json.NewDecoder(res.Body).Decode(&backup)
-
-	if err != nil {
+	if err := d.client.do(ctx, req, &backup); err != nil {
 		return nil, err
 	}
 
@@ -103,16 +95,8 @@ func (d *backupsService) Get(ctx context.Context, getReq *GetBackupRequest) (*Ba
 		return nil, errors.Wrap(err, "error creating http request")
 	}
 
-	res, err := d.client.Do(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-
 	backup := &Backup{}
-	err = json.NewDecoder(res.Body).Decode(&backup)
-
-	if err != nil {
+	if err := d.client.do(ctx, req, &backup); err != nil {
 		return nil, err
 	}
 
@@ -126,16 +110,8 @@ func (d *backupsService) List(ctx context.Context, listReq *ListBackupsRequest) 
 		return nil, errors.Wrap(err, "error creating http request")
 	}
 
-	res, err := d.client.Do(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-
 	backups := &backupsResponse{}
-	err = json.NewDecoder(res.Body).Decode(&backups)
-
-	if err != nil {
+	if err := d.client.do(ctx, req, &backups); err != nil {
 		return nil, err
 	}
 
@@ -150,13 +126,8 @@ func (d *backupsService) Delete(ctx context.Context, deleteReq *DeleteBackupRequ
 		return errors.Wrap(err, "error creating http request")
 	}
 
-	res, err := d.client.Do(ctx, req)
-	if err != nil {
-		return err
-	}
-	defer res.Body.Close()
-
-	return nil
+	err = d.client.do(ctx, req, nil)
+	return err
 }
 
 func backupsAPIPath(org, db, branch string) string {
