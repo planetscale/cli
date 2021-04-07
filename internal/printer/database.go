@@ -14,17 +14,6 @@ type Database struct {
 	Notes     string `header:"notes" json:"notes"`
 }
 
-// newDatabasePrinter returns a struct that prints out the various fields of a
-// database model.
-func newDatabasePrinter(db *ps.Database) *Database {
-	return &Database{
-		Name:      db.Name,
-		Notes:     db.Notes,
-		CreatedAt: db.CreatedAt.UTC().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond)),
-		UpdatedAt: db.UpdatedAt.UTC().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond)),
-	}
-}
-
 func NewDatabasePrinter(db *ps.Database) *ObjectPrinter {
 	return &ObjectPrinter{
 		Source:  db,
@@ -48,4 +37,15 @@ func newDatabaseSlicePrinter(databases []*ps.Database) []*Database {
 	}
 
 	return dbs
+}
+
+// newDatabasePrinter returns a struct that prints out the various fields of a
+// database model.
+func newDatabasePrinter(db *ps.Database) *Database {
+	return &Database{
+		Name:      db.Name,
+		Notes:     db.Notes,
+		CreatedAt: db.CreatedAt.UTC().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond)),
+		UpdatedAt: db.UpdatedAt.UTC().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond)),
+	}
 }

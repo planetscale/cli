@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/planetscale/cli/internal/cmdutil"
-	"github.com/planetscale/cli/internal/config"
 	"github.com/planetscale/cli/internal/printer"
 
 	"github.com/planetscale/planetscale-go/planetscale"
@@ -14,7 +13,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func ShowCmd(cfg *config.Config) *cobra.Command {
+func ShowCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "show <database>",
 		Short: "Retrieve information about a database",
@@ -30,14 +29,14 @@ func ShowCmd(cfg *config.Config) *cobra.Command {
 
 			if web {
 				fmt.Println("🌐  Redirecting you to your database in your web browser.")
-				err := browser.OpenURL(fmt.Sprintf("%s/%s/%s", cmdutil.ApplicationURL, cfg.Organization, name))
+				err := browser.OpenURL(fmt.Sprintf("%s/%s/%s", cmdutil.ApplicationURL, ch.Config.Organization, name))
 				if err != nil {
 					return err
 				}
 				return nil
 			}
 
-			client, err := cfg.NewClientFromConfig()
+			client, err := ch.Client()
 			if err != nil {
 				return err
 			}
@@ -45,14 +44,14 @@ func ShowCmd(cfg *config.Config) *cobra.Command {
 			end := cmdutil.PrintProgress(fmt.Sprintf("Fetching database %s...", cmdutil.BoldBlue(name)))
 			defer end()
 			database, err := client.Databases.Get(ctx, &planetscale.GetDatabaseRequest{
-				Organization: cfg.Organization,
+				Organization: ch.Config.Organization,
 				Database:     name,
 			})
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
 					return fmt.Errorf("database %s does not exist in organization %s\n",
-						cmdutil.BoldBlue(name), cmdutil.BoldBlue(cfg.Organization))
+						cmdutil.BoldBlue(name), cmdutil.BoldBlue(ch.Config.Organization))
 				case planetscale.ErrResponseMalformed:
 					return cmdutil.MalformedError(err)
 				default:
@@ -61,7 +60,7 @@ func ShowCmd(cfg *config.Config) *cobra.Command {
 			}
 
 			end()
-			err = printer.PrintOutput(cfg.OutputJSON, printer.NewDatabasePrinter(database))
+			err = printer.PrintOutput(ch.Config.OutputJSON, printer.NewDatabasePrinter(database))
 			if err != nil {
 				return err
 			}

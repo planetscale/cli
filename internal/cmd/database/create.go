@@ -6,7 +6,6 @@ import (
 	"net/url"
 
 	"github.com/planetscale/cli/internal/cmdutil"
-	"github.com/planetscale/cli/internal/config"
 	"github.com/planetscale/cli/internal/printer"
 
 	"github.com/planetscale/planetscale-go/planetscale"
@@ -17,7 +16,7 @@ import (
 )
 
 // CreateCmd is the command for creating a database.
-func CreateCmd(cfg *config.Config) *cobra.Command {
+func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	createReq := &ps.CreateDatabaseRequest{}
 
 	cmd := &cobra.Command{
@@ -31,19 +30,19 @@ func CreateCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
-			createReq.Organization = cfg.Organization
+			createReq.Organization = ch.Config.Organization
 			createReq.Name = args[0]
 
 			if web {
 				fmt.Println("🌐  Redirecting you to create a database in your web browser.")
-				err := browser.OpenURL(fmt.Sprintf("%s/%s?name=%s&notes=%s&showDialog=true", cmdutil.ApplicationURL, cfg.Organization, url.QueryEscape(createReq.Name), url.QueryEscape(createReq.Notes)))
+				err := browser.OpenURL(fmt.Sprintf("%s/%s?name=%s&notes=%s&showDialog=true", cmdutil.ApplicationURL, ch.Config.Organization, url.QueryEscape(createReq.Name), url.QueryEscape(createReq.Notes)))
 				if err != nil {
 					return err
 				}
 				return nil
 			}
 
-			client, err := cfg.NewClientFromConfig()
+			client, err := ch.Client()
 			if err != nil {
 				return err
 			}
@@ -54,7 +53,7 @@ func CreateCmd(cfg *config.Config) *cobra.Command {
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
-					return fmt.Errorf("organization %s does not exist\n", cmdutil.BoldBlue(cfg.Organization))
+					return fmt.Errorf("organization %s does not exist\n", cmdutil.BoldBlue(ch.Config.Organization))
 				case planetscale.ErrResponseMalformed:
 					return cmdutil.MalformedError(err)
 				default:
@@ -63,7 +62,7 @@ func CreateCmd(cfg *config.Config) *cobra.Command {
 			}
 
 			end()
-			if cfg.OutputJSON {
+			if ch.Config.OutputJSON {
 				err := printer.PrintJSON(database)
 				if err != nil {
 					return err

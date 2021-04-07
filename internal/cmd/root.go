@@ -31,7 +31,9 @@ import (
 	"github.com/planetscale/cli/internal/cmd/snapshot"
 	"github.com/planetscale/cli/internal/cmd/token"
 	"github.com/planetscale/cli/internal/cmd/version"
+	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/config"
+	"github.com/planetscale/cli/internal/printer"
 
 	ps "github.com/planetscale/planetscale-go/planetscale"
 
@@ -95,6 +97,21 @@ func Execute(ver, commit, buildDate string) error {
 		return err
 	}
 
+	var format printer.Format
+	rootCmd.PersistentFlags().Var(printer.NewFormatValue(printer.Human, &format), "format",
+		"Show output in a specific format. Possible values: [human, json, csv]")
+	if err := viper.BindPFlag("format", rootCmd.PersistentFlags().Lookup("format")); err != nil {
+		return err
+	}
+
+	helper := &cmdutil.Helper{
+		Printer: printer.NewPrinter(&format),
+		Config:  cfg,
+		Client: func() (*ps.Client, error) {
+			return cfg.NewClientFromConfig()
+		},
+	}
+
 	// service token flags. they are hidden for now.
 	rootCmd.PersistentFlags().StringVar(&cfg.ServiceTokenName,
 		"service-token-name", "", "The Service Token name for authenticating.")
@@ -117,7 +134,7 @@ func Execute(ver, commit, buildDate string) error {
 	rootCmd.AddCommand(backup.BackupCmd(cfg))
 	rootCmd.AddCommand(branch.BranchCmd(cfg))
 	rootCmd.AddCommand(connect.ConnectCmd(cfg))
-	rootCmd.AddCommand(database.DatabaseCmd(cfg))
+	rootCmd.AddCommand(database.DatabaseCmd(helper))
 	rootCmd.AddCommand(deployrequest.DeployRequestCmd(cfg))
 	rootCmd.AddCommand(org.OrgCmd(cfg))
 	rootCmd.AddCommand(shell.ShellCmd(cfg))

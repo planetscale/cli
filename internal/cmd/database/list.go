@@ -5,8 +5,6 @@ import (
 	"fmt"
 
 	"github.com/planetscale/cli/internal/cmdutil"
-	"github.com/planetscale/cli/internal/config"
-	"github.com/planetscale/cli/internal/printer"
 
 	"github.com/planetscale/planetscale-go/planetscale"
 
@@ -16,7 +14,7 @@ import (
 )
 
 // ListCmd is the command for listing all databases for an authenticated user.
-func ListCmd(cfg *config.Config) *cobra.Command {
+func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "list",
 		Short:   "List databases",
@@ -29,28 +27,28 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 			}
 
 			if web {
-				fmt.Println("🌐  Redirecting you to your databases list in your web browser.")
-				err := browser.OpenURL(fmt.Sprintf("%s/%s", cmdutil.ApplicationURL, cfg.Organization))
+				ch.Printer.Println("🌐  Redirecting you to your databases list in your web browser.")
+				err := browser.OpenURL(fmt.Sprintf("%s/%s", cmdutil.ApplicationURL, ch.Config.Organization))
 				if err != nil {
 					return err
 				}
 				return nil
 			}
 
-			client, err := cfg.NewClientFromConfig()
+			client, err := ch.Client()
 			if err != nil {
 				return err
 			}
 
-			end := cmdutil.PrintProgress("Fetching databases...")
+			end := ch.Printer.ProgressPrintf("Fetching databases...")
 			defer end()
 			databases, err := client.Databases.List(ctx, &planetscale.ListDatabasesRequest{
-				Organization: cfg.Organization,
+				Organization: ch.Config.Organization,
 			})
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
-					return fmt.Errorf("organization %s does not exist\n", cmdutil.BoldBlue(cfg.Organization))
+					return fmt.Errorf("organization %s does not exist\n", cmdutil.BoldBlue(ch.Config.Organization))
 				case planetscale.ErrResponseMalformed:
 					return cmdutil.MalformedError(err)
 				default:
@@ -60,12 +58,12 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 
 			end()
 
-			if len(databases) == 0 && !cfg.OutputJSON {
-				fmt.Println("No databases have been created yet.")
+			if len(databases) == 0 && !ch.Config.OutputJSON {
+				ch.Printer.Println("No databases have been created yet.")
 				return nil
 			}
 
-			err = printer.PrintOutput(cfg.OutputJSON, printer.NewDatabaseSlicePrinter(databases))
+			err = ch.Printer.PrintResource(toDatabases(databases))
 			if err != nil {
 				return err
 			}

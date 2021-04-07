@@ -7,7 +7,6 @@ import (
 	"os"
 
 	"github.com/planetscale/cli/internal/cmdutil"
-	"github.com/planetscale/cli/internal/config"
 
 	"github.com/planetscale/planetscale-go/planetscale"
 
@@ -18,7 +17,7 @@ import (
 
 // DeleteCmd is the Cobra command for deleting a database for an authenticated
 // user.
-func DeleteCmd(cfg *config.Config) *cobra.Command {
+func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 	var force bool
 
 	cmd := &cobra.Command{
@@ -30,7 +29,7 @@ func DeleteCmd(cfg *config.Config) *cobra.Command {
 			ctx := context.Background()
 			name := args[0]
 
-			client, err := cfg.NewClientFromConfig()
+			client, err := ch.Client()
 			if err != nil {
 				return err
 			}
@@ -64,14 +63,14 @@ func DeleteCmd(cfg *config.Config) *cobra.Command {
 			defer end()
 
 			err = client.Databases.Delete(ctx, &planetscale.DeleteDatabaseRequest{
-				Organization: cfg.Organization,
+				Organization: ch.Config.Organization,
 				Database:     name,
 			})
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
 					return fmt.Errorf("database %s does not exist in organization %s\n",
-						cmdutil.BoldBlue(name), cmdutil.BoldBlue(cfg.Organization))
+						cmdutil.BoldBlue(name), cmdutil.BoldBlue(ch.Config.Organization))
 				case planetscale.ErrResponseMalformed:
 					return cmdutil.MalformedError(err)
 				default:
