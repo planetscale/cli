@@ -6,7 +6,6 @@ import (
 	"strconv"
 
 	"github.com/planetscale/cli/internal/cmdutil"
-	"github.com/planetscale/cli/internal/config"
 	"github.com/planetscale/cli/internal/printer"
 	"github.com/planetscale/planetscale-go/planetscale"
 
@@ -14,7 +13,7 @@ import (
 )
 
 // DeployCmd is the command for deploying deploy requests.
-func DeployCmd(cfg *config.Config) *cobra.Command {
+func DeployCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "deploy <database> <number>",
 		Short: "Deploy a specific deploy request by its number",
@@ -24,7 +23,7 @@ func DeployCmd(cfg *config.Config) *cobra.Command {
 			database := args[0]
 			number := args[1]
 
-			client, err := cfg.NewClientFromConfig()
+			client, err := ch.Config.NewClientFromConfig()
 			if err != nil {
 				return err
 			}
@@ -35,7 +34,7 @@ func DeployCmd(cfg *config.Config) *cobra.Command {
 			}
 
 			dr, err := client.DeployRequests.Deploy(ctx, &planetscale.PerformDeployRequest{
-				Organization: cfg.Organization,
+				Organization: ch.Config.Organization,
 				Database:     database,
 				Number:       n,
 			})
@@ -43,7 +42,7 @@ func DeployCmd(cfg *config.Config) *cobra.Command {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
 					return fmt.Errorf("deploy request '%s/%s' does not exist in organization %s\n",
-						cmdutil.BoldBlue(database), cmdutil.BoldBlue(number), cmdutil.BoldBlue(cfg.Organization))
+						cmdutil.BoldBlue(database), cmdutil.BoldBlue(number), cmdutil.BoldBlue(ch.Config.Organization))
 				case planetscale.ErrResponseMalformed:
 					return cmdutil.MalformedError(err)
 				default:
@@ -51,16 +50,13 @@ func DeployCmd(cfg *config.Config) *cobra.Command {
 				}
 			}
 
-			if cfg.OutputJSON {
-				err := printer.PrintJSON(dr)
-				if err != nil {
-					return err
-				}
-			} else {
-				fmt.Printf("Successfully deployed %s from %s to %s!\n", dr.ID, dr.Branch, dr.IntoBranch)
+			if ch.Printer.Format() == printer.Human {
+				ch.Printer.Printf("Successfully deployed %s from %s to %s!\n",
+					dr.ID, dr.Branch, dr.IntoBranch)
+				return nil
 			}
 
-			return nil
+			return ch.Printer.PrintResource(toDeployRequest(dr))
 		},
 	}
 

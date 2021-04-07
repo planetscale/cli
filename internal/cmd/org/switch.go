@@ -15,7 +15,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func SwitchCmd(cfg *config.Config) *cobra.Command {
+func SwitchCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
 		filepath string
 	}
@@ -27,7 +27,7 @@ func SwitchCmd(cfg *config.Config) *cobra.Command {
 
 			organization := ""
 
-			client, err := cfg.NewClientFromConfig()
+			client, err := ch.Config.NewClientFromConfig()
 			if err != nil {
 				return err
 			}
@@ -36,7 +36,7 @@ func SwitchCmd(cfg *config.Config) *cobra.Command {
 			if len(args) == 1 {
 				orgName := args[0]
 
-				end := cmdutil.PrintProgress(fmt.Sprintf("Fetching organization %s...", cmdutil.Bold(orgName)))
+				end := ch.Printer.PrintProgress(fmt.Sprintf("Fetching organization %s...", cmdutil.Bold(orgName)))
 				defer end()
 				org, err := client.Organizations.Get(ctx, &planetscale.GetOrganizationRequest{
 					Organization: orgName,
@@ -55,7 +55,7 @@ func SwitchCmd(cfg *config.Config) *cobra.Command {
 				organization = org.Name
 			} else if len(args) == 0 && cmdutil.IsTTY {
 				// Get organization names to show the user
-				end := cmdutil.PrintProgress("Fetching organizations...")
+				end := ch.Printer.PrintProgress("Fetching organizations...")
 				defer end()
 				orgs, err := client.Organizations.List(ctx)
 				if err != nil {
@@ -134,9 +134,10 @@ func SwitchCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
-			fmt.Printf("Successfully switched to organization %s (using file: %s)\n",
+			ch.Printer.Printf("Successfully switched to organization %s (using file: %s)\n",
 				cmdutil.Bold(organization), filePath,
 			)
+
 			return nil
 		},
 	}

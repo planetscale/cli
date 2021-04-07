@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/planetscale/cli/internal/cmdutil"
-	"github.com/planetscale/cli/internal/config"
 	"github.com/planetscale/cli/internal/printer"
 	"github.com/planetscale/planetscale-go/planetscale"
 
@@ -15,7 +14,7 @@ import (
 )
 
 // ListCmd encapsulates the command for listing backups for a branch.
-func ListCmd(cfg *config.Config) *cobra.Command {
+func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "list <database> <branch>",
 		Short:   "List all backups of a branch",
@@ -33,22 +32,22 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 
 			if web {
 				fmt.Println("🌐  Redirecting you to your backups in your web browser.")
-				err := browser.OpenURL(fmt.Sprintf("%s/%s/%s/%s/backups", cmdutil.ApplicationURL, cfg.Organization, database, branch))
+				err := browser.OpenURL(fmt.Sprintf("%s/%s/%s/%s/backups", cmdutil.ApplicationURL, ch.Config.Organization, database, branch))
 				if err != nil {
 					return err
 				}
 				return nil
 			}
 
-			client, err := cfg.NewClientFromConfig()
+			client, err := ch.Config.NewClientFromConfig()
 			if err != nil {
 				return err
 			}
 
-			end := cmdutil.PrintProgress(fmt.Sprintf("Fetching backups for %s", cmdutil.BoldBlue(branch)))
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Fetching backups for %s", cmdutil.BoldBlue(branch)))
 			defer end()
 			backups, err := client.Backups.List(ctx, &planetscale.ListBackupsRequest{
-				Organization: cfg.Organization,
+				Organization: ch.Config.Organization,
 				Database:     database,
 				Branch:       branch,
 			})
@@ -56,7 +55,7 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
 					return fmt.Errorf("branch %s does not exist in database %s (organization: %s)\n",
-						cmdutil.BoldBlue(branch), cmdutil.BoldBlue(database), cmdutil.BoldBlue(cfg.Organization))
+						cmdutil.BoldBlue(branch), cmdutil.BoldBlue(database), cmdutil.BoldBlue(ch.Config.Organization))
 				case planetscale.ErrResponseMalformed:
 					return cmdutil.MalformedError(err)
 				default:
@@ -65,17 +64,12 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 			}
 			end()
 
-			if len(backups) == 0 && !cfg.OutputJSON {
-				fmt.Printf("No backups exist in %s.\n", cmdutil.BoldBlue(branch))
+			if len(backups) == 0 && ch.Printer.Format() == printer.Human {
+				ch.Printer.Printf("No backups exist in %s.\n", cmdutil.BoldBlue(branch))
 				return nil
 			}
 
-			err = printer.PrintOutput(cfg.OutputJSON, printer.NewBackupSlicePrinter(backups))
-			if err != nil {
-				return err
-			}
-
-			return nil
+			return ch.Printer.PrintResource(backups)
 		},
 	}
 

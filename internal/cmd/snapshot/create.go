@@ -5,14 +5,13 @@ import (
 	"fmt"
 
 	"github.com/planetscale/cli/internal/cmdutil"
-	"github.com/planetscale/cli/internal/config"
 	"github.com/planetscale/cli/internal/printer"
 
 	"github.com/planetscale/planetscale-go/planetscale"
 	"github.com/spf13/cobra"
 )
 
-func CreateCmd(cfg *config.Config) *cobra.Command {
+func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create <database> <branch>",
 		Short: "Create a new schema snapshot for a database branch",
@@ -21,16 +20,16 @@ func CreateCmd(cfg *config.Config) *cobra.Command {
 			ctx := context.Background()
 			database, branch := args[0], args[1]
 
-			client, err := cfg.NewClientFromConfig()
+			client, err := ch.Config.NewClientFromConfig()
 			if err != nil {
 				return err
 			}
 
-			end := cmdutil.PrintProgress(fmt.Sprintf("Creating schema snapshot for %s in %s...", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(database)))
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Creating schema snapshot for %s in %s...", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(database)))
 			defer end()
 
 			snapshot, err := client.SchemaSnapshots.Create(ctx, &planetscale.CreateSchemaSnapshotRequest{
-				Organization: cfg.Organization,
+				Organization: ch.Config.Organization,
 				Database:     database,
 				Branch:       branch,
 			})
@@ -38,7 +37,7 @@ func CreateCmd(cfg *config.Config) *cobra.Command {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
 					return fmt.Errorf("branch %s does not exist in database %s (organization: %s)",
-						cmdutil.BoldBlue(branch), cmdutil.BoldBlue(database), cmdutil.BoldBlue(cfg.Organization))
+						cmdutil.BoldBlue(branch), cmdutil.BoldBlue(database), cmdutil.BoldBlue(ch.Config.Organization))
 				case planetscale.ErrResponseMalformed:
 					return cmdutil.MalformedError(err)
 				default:
@@ -47,12 +46,13 @@ func CreateCmd(cfg *config.Config) *cobra.Command {
 			}
 			end()
 
-			err = printer.PrintOutput(cfg.OutputJSON, printer.NewSchemaSnapshotPrinter(snapshot))
-			if err != nil {
-				return err
+			if ch.Printer.Format() == printer.Human {
+				ch.Printer.Printf("Schema snapshot %s was successfully created!\n",
+					cmdutil.BoldBlue(snapshot.Name))
+				return nil
 			}
 
-			return nil
+			return ch.Printer.PrintResource(toSchemaSnapshot(snapshot))
 		},
 	}
 

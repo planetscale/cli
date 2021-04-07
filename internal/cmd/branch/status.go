@@ -5,8 +5,6 @@ import (
 	"fmt"
 
 	"github.com/planetscale/cli/internal/cmdutil"
-	"github.com/planetscale/cli/internal/config"
-	"github.com/planetscale/cli/internal/printer"
 
 	"github.com/planetscale/planetscale-go/planetscale"
 
@@ -14,7 +12,7 @@ import (
 )
 
 // StatusCmd gets the status of a database branch using the PlanetScale API.
-func StatusCmd(cfg *config.Config) *cobra.Command {
+func StatusCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "status <database> <branch>",
 		Short: "Check the status of a branch of a database",
@@ -24,15 +22,15 @@ func StatusCmd(cfg *config.Config) *cobra.Command {
 			source := args[0]
 			branch := args[1]
 
-			client, err := cfg.NewClientFromConfig()
+			client, err := ch.Config.NewClientFromConfig()
 			if err != nil {
 				return err
 			}
 
-			end := cmdutil.PrintProgress(fmt.Sprintf("Getting status for branch %s in %s...", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(source)))
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Getting status for branch %s in %s...", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(source)))
 			defer end()
 			status, err := client.DatabaseBranches.GetStatus(ctx, &planetscale.GetDatabaseBranchStatusRequest{
-				Organization: cfg.Organization,
+				Organization: ch.Config.Organization,
 				Database:     source,
 				Branch:       branch,
 			})
@@ -40,7 +38,7 @@ func StatusCmd(cfg *config.Config) *cobra.Command {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
 					return fmt.Errorf("branch %s does not exist in database %s (organization: %s)",
-						cmdutil.BoldBlue(branch), cmdutil.BoldBlue(source), cmdutil.BoldBlue(cfg.Organization))
+						cmdutil.BoldBlue(branch), cmdutil.BoldBlue(source), cmdutil.BoldBlue(ch.Config.Organization))
 				case planetscale.ErrResponseMalformed:
 					return cmdutil.MalformedError(err)
 				default:
@@ -50,12 +48,8 @@ func StatusCmd(cfg *config.Config) *cobra.Command {
 			}
 
 			end()
-			err = printer.PrintOutput(cfg.OutputJSON, printer.NewDatabaseBranchStatusPrinter(status))
-			if err != nil {
-				return err
-			}
 
-			return nil
+			return ch.Printer.PrintResource(toDatabaseBranchStatus(status))
 		},
 	}
 

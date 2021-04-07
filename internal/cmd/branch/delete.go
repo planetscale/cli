@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"github.com/planetscale/cli/internal/cmdutil"
-	"github.com/planetscale/cli/internal/config"
+	"github.com/planetscale/cli/internal/printer"
 
 	"github.com/planetscale/planetscale-go/planetscale"
 
@@ -16,7 +16,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func DeleteCmd(cfg *config.Config) *cobra.Command {
+func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 	var force bool
 
 	cmd := &cobra.Command{
@@ -29,18 +29,23 @@ func DeleteCmd(cfg *config.Config) *cobra.Command {
 			source := args[0]
 			branch := args[1]
 
-			client, err := cfg.NewClientFromConfig()
+			client, err := ch.Config.NewClientFromConfig()
 			if err != nil {
 				return err
 			}
 
 			if !force {
+				if ch.Printer.Format() != printer.Human {
+					return fmt.Errorf("Cannot delete branch with the output format %q (run with -force to override)", ch.Printer.Format())
+				}
+
 				confirmationName := fmt.Sprintf("%s/%s", source, branch)
 				if !cmdutil.IsTTY {
 					return fmt.Errorf("Cannot confirm deletion of branch %q (run with -force to override)", confirmationName)
 				}
 
-				confirmationMessage := fmt.Sprintf("%s %s %s", cmdutil.Bold("Please type"), cmdutil.BoldBlue(confirmationName), cmdutil.Bold("to confirm:"))
+				confirmationMessage := fmt.Sprintf("%s %s %s", cmdutil.Bold("Please type"),
+					cmdutil.BoldBlue(confirmationName), cmdutil.Bold("to confirm:"))
 
 				prompt := &survey.Input{
 					Message: confirmationMessage,
@@ -62,10 +67,10 @@ func DeleteCmd(cfg *config.Config) *cobra.Command {
 				}
 			}
 
-			end := cmdutil.PrintProgress(fmt.Sprintf("Deleting branch %s from %s", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(source)))
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Deleting branch %s from %s", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(source)))
 			defer end()
 			err = client.DatabaseBranches.Delete(ctx, &planetscale.DeleteDatabaseBranchRequest{
-				Organization: cfg.Organization,
+				Organization: ch.Config.Organization,
 				Database:     source,
 				Branch:       branch,
 			})
@@ -73,7 +78,7 @@ func DeleteCmd(cfg *config.Config) *cobra.Command {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
 					return fmt.Errorf("source database %s does not exist in organization %s\n",
-						cmdutil.BoldBlue(source), cmdutil.BoldBlue(cfg.Organization))
+						cmdutil.BoldBlue(source), cmdutil.BoldBlue(ch.Config.Organization))
 				case planetscale.ErrResponseMalformed:
 					return cmdutil.MalformedError(err)
 				default:
@@ -82,12 +87,16 @@ func DeleteCmd(cfg *config.Config) *cobra.Command {
 			}
 
 			end()
-			fmt.Printf("Branch %s was successfully deleted from %s!\n", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(source))
 
-			return nil
+			if ch.Printer.Format() == printer.Human {
+				ch.Printer.Printf("Branch %s was successfully deleted from %s!\n", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(source))
+				return nil
+			}
+
+			return ch.Printer.PrintResource(map[string]string{"result": "branch deleted", "branch": branch})
 		},
 	}
 
-	cmd.Flags().BoolVarP(&force, "force", "f", false, "Delete a branch without confirmation")
+	cmd.Flags().BoolVar(&force, "force", false, "Delete a branch without confirmation")
 	return cmd
 }

@@ -6,13 +6,11 @@ import (
 	"strings"
 
 	"github.com/planetscale/cli/internal/cmdutil"
-	"github.com/planetscale/cli/internal/config"
-	"github.com/planetscale/cli/internal/printer"
 	"github.com/planetscale/planetscale-go/planetscale"
 	"github.com/spf13/cobra"
 )
 
-func AddAccessCmd(cfg *config.Config) *cobra.Command {
+func AddAccessCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "add-access <token> <access> <access> ...",
 		Short: "add access to a service token in the organization",
@@ -25,7 +23,7 @@ For example, to give a service token the ability to create, read and delete bran
 For a complete list of the access permissions that can be granted to a token, see: TODO.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
-			client, err := cfg.NewClientFromConfig()
+			client, err := ch.Config.NewClientFromConfig()
 			if err != nil {
 				return err
 			}
@@ -38,12 +36,12 @@ For a complete list of the access permissions that can be granted to a token, se
 
 			req := &planetscale.AddServiceTokenAccessRequest{
 				ID:           token,
-				Database:     cfg.Database,
-				Organization: cfg.Organization,
+				Database:     ch.Config.Database,
+				Organization: ch.Config.Organization,
 				Accesses:     perms,
 			}
 
-			end := cmdutil.PrintProgress(fmt.Sprintf("Adding access %s to database %s", cmdutil.BoldBlue(strings.Join(perms, ", ")), cmdutil.BoldBlue(cfg.Database)))
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Adding access %s to database %s", cmdutil.BoldBlue(strings.Join(perms, ", ")), cmdutil.BoldBlue(ch.Config.Database)))
 			defer end()
 
 			access, err := client.ServiceTokens.AddAccess(ctx, req)
@@ -51,7 +49,7 @@ For a complete list of the access permissions that can be granted to a token, se
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
 					return fmt.Errorf("database %s does not exist in organization %s\n",
-						cmdutil.BoldBlue(cfg.Database), cmdutil.BoldBlue(cfg.Organization))
+						cmdutil.BoldBlue(ch.Config.Database), cmdutil.BoldBlue(ch.Config.Organization))
 				case planetscale.ErrResponseMalformed:
 					return cmdutil.MalformedError(err)
 				default:
@@ -61,16 +59,11 @@ For a complete list of the access permissions that can be granted to a token, se
 
 			end()
 
-			err = printer.PrintOutput(cfg.OutputJSON, printer.NewServiceTokenAccessPrinter(access))
-			if err != nil {
-				return err
-			}
-
-			return nil
+			return ch.Printer.PrintResource(toServiceTokenAccesses(access))
 		},
 	}
 
-	cmd.PersistentFlags().StringVar(&cfg.Database, "database", cfg.Database, "The database this project is using")
+	cmd.PersistentFlags().StringVar(&ch.Config.Database, "database", ch.Config.Database, "The database this project is using")
 	cmd.MarkPersistentFlagRequired("database") // nolint:errcheck
 
 	return cmd

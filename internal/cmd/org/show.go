@@ -2,16 +2,16 @@ package org
 
 import (
 	"errors"
-	"fmt"
 	"os"
 
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/config"
+	"github.com/planetscale/cli/internal/printer"
 
 	"github.com/spf13/cobra"
 )
 
-func ShowCmd(cfg *config.Config) *cobra.Command {
+func ShowCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "show",
 		Short: "Display the currently active organization",
@@ -47,9 +47,13 @@ func ShowCmd(cfg *config.Config) *cobra.Command {
 				return errors.New("config file exists, but organization is not set")
 			}
 
-			fmt.Printf("%s (from file: %s)\n", cmdutil.Bold(cfg.Organization), configFile)
+			if ch.Printer.Format() == printer.Human {
+				ch.Printer.Printf("%s (from file: %s)\n", cmdutil.Bold(cfg.Organization), configFile)
+				return nil
+			}
 
-			return nil
+			// TODO(fatih): check this out
+			return ch.Printer.PrintResource(map[string]string{"org": cfg.Organization})
 		},
 	}
 

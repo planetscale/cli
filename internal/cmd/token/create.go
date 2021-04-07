@@ -5,35 +5,33 @@ import (
 	"fmt"
 
 	"github.com/planetscale/cli/internal/cmdutil"
-	"github.com/planetscale/cli/internal/config"
-	"github.com/planetscale/cli/internal/printer"
 	"github.com/planetscale/planetscale-go/planetscale"
 	"github.com/spf13/cobra"
 )
 
-func CreateCmd(cfg *config.Config) *cobra.Command {
+func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create",
 		Short: "create a service token for the organization",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
-			client, err := cfg.NewClientFromConfig()
+			client, err := ch.Config.NewClientFromConfig()
 			if err != nil {
 				return err
 			}
 
 			req := &planetscale.CreateServiceTokenRequest{
-				Organization: cfg.Organization,
+				Organization: ch.Config.Organization,
 			}
 
-			end := cmdutil.PrintProgress(fmt.Sprintf("Creating service token in org %s", cmdutil.BoldBlue(cfg.Organization)))
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Creating service token in org %s", cmdutil.BoldBlue(ch.Config.Organization)))
 			defer end()
 
 			token, err := client.ServiceTokens.Create(ctx, req)
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
-					return fmt.Errorf("organization %s does not exist\n", cmdutil.BoldBlue(cfg.Organization))
+					return fmt.Errorf("organization %s does not exist\n", cmdutil.BoldBlue(ch.Config.Organization))
 				case planetscale.ErrResponseMalformed:
 					return cmdutil.MalformedError(err)
 				default:
@@ -43,12 +41,7 @@ func CreateCmd(cfg *config.Config) *cobra.Command {
 
 			end()
 
-			err = printer.PrintOutput(cfg.OutputJSON, printer.NewServiceTokenPrinter(token))
-			if err != nil {
-				return err
-			}
-
-			return nil
+			return ch.Printer.PrintResource(toServiceToken(token))
 		},
 	}
 

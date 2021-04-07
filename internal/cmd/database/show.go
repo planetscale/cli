@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/planetscale/cli/internal/cmdutil"
-	"github.com/planetscale/cli/internal/printer"
 
 	"github.com/planetscale/planetscale-go/planetscale"
 
@@ -28,7 +27,7 @@ func ShowCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			if web {
-				fmt.Println("🌐  Redirecting you to your database in your web browser.")
+				ch.Printer.Println("🌐  Redirecting you to your database in your web browser.")
 				err := browser.OpenURL(fmt.Sprintf("%s/%s/%s", cmdutil.ApplicationURL, ch.Config.Organization, name))
 				if err != nil {
 					return err
@@ -41,8 +40,9 @@ func ShowCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
-			end := cmdutil.PrintProgress(fmt.Sprintf("Fetching database %s...", cmdutil.BoldBlue(name)))
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Fetching database %s...", cmdutil.BoldBlue(name)))
 			defer end()
+
 			database, err := client.Databases.Get(ctx, &planetscale.GetDatabaseRequest{
 				Organization: ch.Config.Organization,
 				Database:     name,
@@ -58,13 +58,9 @@ func ShowCmd(ch *cmdutil.Helper) *cobra.Command {
 					return err
 				}
 			}
-
 			end()
-			err = printer.PrintOutput(ch.Config.OutputJSON, printer.NewDatabasePrinter(database))
-			if err != nil {
-				return err
-			}
-			return nil
+
+			return ch.Printer.PrintResource(toDatabase(database))
 		},
 	}
 

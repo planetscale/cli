@@ -2,10 +2,8 @@ package database
 
 import (
 	"encoding/json"
-	"strings"
 	"time"
 
-	"github.com/lensesio/tableprinter"
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/spf13/cobra"
 
@@ -13,20 +11,21 @@ import (
 )
 
 // DatabaseCmd encapsulates the commands for creating a database
-func DatabaseCmd(c *cmdutil.Helper) *cobra.Command {
+func DatabaseCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "database <command>",
 		Short:   "Create, read, destroy, and update databases",
 		Aliases: []string{"db"},
 	}
 
-	cmd.PersistentFlags().StringVar(&c.Config.Organization, "org", c.Config.Organization, "The organization for the current user")
+	cmd.PersistentFlags().StringVar(&ch.Config.Organization, "org", ch.Config.Organization,
+		"The organization for the current user")
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
 
-	cmd.AddCommand(CreateCmd(c))
-	cmd.AddCommand(ListCmd(c))
-	cmd.AddCommand(DeleteCmd(c))
-	cmd.AddCommand(ShowCmd(c))
+	cmd.AddCommand(CreateCmd(ch))
+	cmd.AddCommand(ListCmd(ch))
+	cmd.AddCommand(DeleteCmd(ch))
+	cmd.AddCommand(ShowCmd(ch))
 
 	return cmd
 }
@@ -69,16 +68,4 @@ func toDatabases(databases []*ps.Database) Databases {
 
 func (d *Database) MarshalJSON() ([]byte, error) {
 	return json.MarshalIndent(d.orig, "", "  ")
-}
-
-func (d *Database) String() string {
-	var b strings.Builder
-	tableprinter.Print(&b, d)
-	return b.String()
-}
-
-func (d Databases) String() string {
-	var b strings.Builder
-	tableprinter.Print(&b, d)
-	return b.String()
 }

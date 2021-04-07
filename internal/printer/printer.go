@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/briandowns/spinner"
@@ -92,6 +93,11 @@ func (p *Printer) Println(i ...interface{}) {
 	fmt.Fprintln(p.out(), i...)
 }
 
+// Print is a convenience method to Print to the defined output.
+func (p *Printer) Print(i ...interface{}) {
+	fmt.Fprint(p.out(), i...)
+}
+
 // out defines the output to write human readable text. If format is not set to
 // human, out returns ioutil.Discard, which means that any output will be
 // discarded
@@ -106,7 +112,7 @@ func (p *Printer) out() io.Writer {
 // PrintProgress starts a spinner with the relevant message. The returned
 // function needs to be called in a defer or when it's decided to stop the
 // spinner
-func (p *Printer) ProgressPrintf(message string) func() {
+func (p *Printer) PrintProgress(message string) func() {
 	if !IsTTY {
 		fmt.Fprintln(p.out(), message)
 		return func() {}
@@ -123,6 +129,9 @@ func (p *Printer) ProgressPrintf(message string) func() {
 	}
 }
 
+// Format returns the format that was set for this printer
+func (p *Printer) Format() Format { return *p.format }
+
 // PrintResource prints the given resource in the format it was specified.
 func (p *Printer) PrintResource(v interface{}) error {
 	if p.format == nil {
@@ -131,13 +140,9 @@ func (p *Printer) PrintResource(v interface{}) error {
 
 	switch *p.format {
 	case Human:
-		s, ok := v.(fmt.Stringer)
-		if !ok {
-			return fmt.Errorf("error writing resource '%T' in human readable format.\n"+
-				"Does not implement the fmt.Stringer interface", v)
-		}
-
-		fmt.Println(s)
+		var b strings.Builder
+		tableprinter.Print(&b, v)
+		fmt.Println(b.String())
 		return nil
 	case JSON:
 		out, err := json.MarshalIndent(v, "", "  ")
@@ -160,47 +165,19 @@ func (p *Printer) PrintResource(v interface{}) error {
 	return fmt.Errorf("unknown printer.Format: %T", *p.format)
 }
 
-// ObjectPrinter is responsible for encapsulating the source object and also
-// a special printer for outputting it in a tabular format.
-type ObjectPrinter struct {
-	Source  interface{}
-	Printer interface{}
-}
-
-// PrintOutput prints the output as JSON or in a table format.
-func PrintOutput(isJSON bool, obj *ObjectPrinter) error {
-	if isJSON {
-		return PrintJSON(obj.Source)
-	}
-
-	tableprinter.Print(os.Stdout, obj.Printer)
-	return nil
-}
-
-// PrintJSON pretty prints the object as JSON.
-func PrintJSON(obj interface{}) error {
-	output, err := json.MarshalIndent(obj, "", "  ")
-	if err != nil {
-		return err
-	}
-
-	fmt.Print(string(output))
-
-	return nil
-}
-
-func getMilliseconds(timestamp time.Time) int64 {
-	numSeconds := timestamp.UTC().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond))
+func GetMilliseconds(timestamp time.Time) int64 {
+	numSeconds := timestamp.UTC().UnixNano() /
+		(int64(time.Millisecond) / int64(time.Nanosecond))
 
 	return numSeconds
 }
 
-func getMillisecondsIfExists(timestamp *time.Time) *int64 {
+func GetMillisecondsIfExists(timestamp *time.Time) *int64 {
 	if timestamp == nil {
 		return nil
 	}
 
-	numSeconds := getMilliseconds(*timestamp)
+	numSeconds := GetMilliseconds(*timestamp)
 
 	return &numSeconds
 }

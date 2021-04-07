@@ -21,7 +21,7 @@ import (
 )
 
 // LoginCmd is the command for logging into a PlanetScale account.
-func LoginCmd(cfg *config.Config) *cobra.Command {
+func LoginCmd(ch *cmdutil.Helper) *cobra.Command {
 	var clientID string
 	var clientSecret string
 	var authURL string
@@ -34,6 +34,7 @@ func LoginCmd(cfg *config.Config) *cobra.Command {
 			if !cmdutil.IsTTY {
 				return errors.New("The 'login' command requires an interactive shell")
 			}
+
 			authenticator, err := auth.New(cleanhttp.DefaultClient(), clientID, clientSecret, auth.SetBaseURL(authURL))
 			if err != nil {
 				return err
@@ -45,7 +46,7 @@ func LoginCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
-			fmt.Println("Press Enter to authenticate via your browser...")
+			ch.Printer.Println("Press Enter to authenticate via your browser...")
 
 			_ = waitForEnter(cmd.InOrStdin())
 			openCmd := cmdutil.OpenBrowser(runtime.GOOS, deviceVerification.VerificationCompleteURL)
@@ -61,7 +62,7 @@ func LoginCmd(cfg *config.Config) *cobra.Command {
 
 			fmt.Printf("\nIf something goes wrong, copy and paste this URL into your browser: %s\n\n", cmdutil.Bold(deviceVerification.VerificationCompleteURL))
 
-			end := cmdutil.PrintProgress("Waiting for confirmation...")
+			end := ch.Printer.PrintProgress("Waiting for confirmation...")
 			defer end()
 			accessToken, err := authenticator.GetAccessTokenForDevice(ctx, deviceVerification)
 			if err != nil {
@@ -76,7 +77,7 @@ func LoginCmd(cfg *config.Config) *cobra.Command {
 			// We explicitly stop here so we can replace the spinner with our success
 			// message.
 			end()
-			fmt.Println("Successfully logged in!")
+			ch.Printer.Println("Successfully logged in!")
 
 			err = writeDefaultOrganization(ctx, accessToken, authURL)
 			if err != nil {

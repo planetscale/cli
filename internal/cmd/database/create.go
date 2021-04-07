@@ -34,7 +34,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			createReq.Name = args[0]
 
 			if web {
-				fmt.Println("🌐  Redirecting you to create a database in your web browser.")
+				ch.Printer.Println("🌐  Redirecting you to create a database in your web browser.")
 				err := browser.OpenURL(fmt.Sprintf("%s/%s?name=%s&notes=%s&showDialog=true", cmdutil.ApplicationURL, ch.Config.Organization, url.QueryEscape(createReq.Name), url.QueryEscape(createReq.Notes)))
 				if err != nil {
 					return err
@@ -47,7 +47,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
-			end := cmdutil.PrintProgress("Creating database...")
+			end := ch.Printer.PrintProgress("Creating database...")
 			defer end()
 			database, err := client.Databases.Create(ctx, createReq)
 			if err != nil {
@@ -62,16 +62,13 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			end()
-			if ch.Config.OutputJSON {
-				err := printer.PrintJSON(database)
-				if err != nil {
-					return err
-				}
-			} else {
-				fmt.Printf("Database %s was successfully created!\n", cmdutil.BoldBlue(database.Name))
+
+			if ch.Printer.Format() == printer.Human {
+				ch.Printer.Printf("Database %s was successfully created!\n", cmdutil.BoldBlue(database.Name))
+				return nil
 			}
 
-			return nil
+			return ch.Printer.PrintResource(toDatabase(database))
 		},
 	}
 

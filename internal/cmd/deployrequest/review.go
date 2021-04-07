@@ -7,7 +7,7 @@ import (
 	"strconv"
 
 	"github.com/planetscale/cli/internal/cmdutil"
-	"github.com/planetscale/cli/internal/config"
+	"github.com/planetscale/cli/internal/printer"
 	"github.com/planetscale/planetscale-go/planetscale"
 
 	"github.com/spf13/cobra"
@@ -15,7 +15,7 @@ import (
 
 // ReviewCmd is the command for reviewing (approve, comment, etc.) a deploy
 // request.
-func ReviewCmd(cfg *config.Config) *cobra.Command {
+func ReviewCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
 		approve bool
 		comment string
@@ -39,7 +39,7 @@ func ReviewCmd(cfg *config.Config) *cobra.Command {
 				return fmt.Errorf("The argument <number> is invalid: %s", err)
 			}
 
-			client, err := cfg.NewClientFromConfig()
+			client, err := ch.Config.NewClientFromConfig()
 			if err != nil {
 				return err
 			}
@@ -49,8 +49,8 @@ func ReviewCmd(cfg *config.Config) *cobra.Command {
 				action = planetscale.ReviewApprove
 			}
 
-			_, err = client.DeployRequests.CreateReview(ctx, &planetscale.ReviewDeployRequestRequest{
-				Organization: cfg.Organization,
+			drr, err := client.DeployRequests.CreateReview(ctx, &planetscale.ReviewDeployRequestRequest{
+				Organization: ch.Config.Organization,
 				Database:     database,
 				Number:       n,
 				ReviewAction: action,
@@ -60,7 +60,7 @@ func ReviewCmd(cfg *config.Config) *cobra.Command {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
 					return fmt.Errorf("deploy request '%s/%s' does not exist in organization %s\n",
-						cmdutil.BoldBlue(database), cmdutil.BoldBlue(number), cmdutil.BoldBlue(cfg.Organization))
+						cmdutil.BoldBlue(database), cmdutil.BoldBlue(number), cmdutil.BoldBlue(ch.Config.Organization))
 				case planetscale.ErrResponseMalformed:
 					return cmdutil.MalformedError(err)
 				default:
@@ -68,12 +68,16 @@ func ReviewCmd(cfg *config.Config) *cobra.Command {
 				}
 			}
 
+			if ch.Printer.Format() != printer.Human {
+				return ch.Printer.PrintResource(drr)
+			}
+
 			switch action {
 			case planetscale.ReviewApprove:
-				fmt.Printf("Deploy request %s/%s is approved.\n",
+				ch.Printer.Printf("Deploy request %s/%s is approved.\n",
 					cmdutil.BoldBlue(database), cmdutil.BoldBlue(number))
 			case planetscale.ReviewComment:
-				fmt.Printf("A comment is added to the deploy request %s/%s.\n",
+				ch.Printer.Printf("A comment is added to the deploy request %s/%s.\n",
 					cmdutil.BoldBlue(database), cmdutil.BoldBlue(number))
 			}
 

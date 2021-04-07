@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/planetscale/cli/internal/cmdutil"
-	"github.com/planetscale/cli/internal/config"
 	"github.com/planetscale/cli/internal/printer"
 	"github.com/planetscale/planetscale-go/planetscale"
 	ps "github.com/planetscale/planetscale-go/planetscale"
@@ -13,7 +12,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func CreateCmd(cfg *config.Config) *cobra.Command {
+func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	createReq := &ps.CreateBackupRequest{}
 	cmd := &cobra.Command{
 		Use:     "create <database> <branch> [options]",
@@ -27,21 +26,22 @@ func CreateCmd(cfg *config.Config) *cobra.Command {
 
 			createReq.Database = database
 			createReq.Branch = branch
-			createReq.Organization = cfg.Organization
+			createReq.Organization = ch.Config.Organization
 
-			client, err := cfg.NewClientFromConfig()
+			client, err := ch.Config.NewClientFromConfig()
 			if err != nil {
 				return err
 			}
 
-			end := cmdutil.PrintProgress(fmt.Sprintf("Creating backup of %s...", cmdutil.BoldBlue(branch)))
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Creating backup of %s...", cmdutil.BoldBlue(branch)))
 			defer end()
-			backup, err := client.Backups.Create(ctx, createReq)
+
+			bkp, err := client.Backups.Create(ctx, createReq)
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
 					return fmt.Errorf("branch %s does not exist in database %s (organization: %s)",
-						cmdutil.BoldBlue(branch), cmdutil.BoldBlue(database), cmdutil.BoldBlue(cfg.Organization))
+						cmdutil.BoldBlue(branch), cmdutil.BoldBlue(database), cmdutil.BoldBlue(ch.Config.Organization))
 				case planetscale.ErrResponseMalformed:
 
 					return cmdutil.MalformedError(err)
@@ -51,16 +51,13 @@ func CreateCmd(cfg *config.Config) *cobra.Command {
 			}
 
 			end()
-			if cfg.OutputJSON {
-				err := printer.PrintJSON(backup)
-				if err != nil {
-					return err
-				}
-			} else {
-				fmt.Printf("Backup %s was successfully created!\n", cmdutil.BoldBlue(backup.Name))
+
+			if ch.Printer.Format() == printer.Human {
+				ch.Printer.Printf("Backup %s was successfully created!\n", cmdutil.BoldBlue(bkp.Name))
+				return nil
 			}
 
-			return nil
+			return ch.Printer.PrintResource(bkp)
 		},
 	}
 

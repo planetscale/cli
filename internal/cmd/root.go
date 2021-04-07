@@ -92,19 +92,14 @@ func Execute(ver, commit, buildDate string) error {
 		return err
 	}
 
-	rootCmd.PersistentFlags().BoolVar(&cfg.OutputJSON, "json", false, "Show output as JSON")
-	if err := viper.BindPFlag("json", rootCmd.PersistentFlags().Lookup("json")); err != nil {
-		return err
-	}
-
 	var format printer.Format
-	rootCmd.PersistentFlags().Var(printer.NewFormatValue(printer.Human, &format), "format",
+	rootCmd.PersistentFlags().VarP(printer.NewFormatValue(printer.Human, &format), "format", "f",
 		"Show output in a specific format. Possible values: [human, json, csv]")
 	if err := viper.BindPFlag("format", rootCmd.PersistentFlags().Lookup("format")); err != nil {
 		return err
 	}
 
-	helper := &cmdutil.Helper{
+	ch := &cmdutil.Helper{
 		Printer: printer.NewPrinter(&format),
 		Config:  cfg,
 		Client: func() (*ps.Client, error) {
@@ -123,24 +118,24 @@ func Execute(ver, commit, buildDate string) error {
 	// We don't want to show the default value
 	rootCmd.PersistentFlags().Lookup("api-token").DefValue = ""
 
-	loginCmd := auth.LoginCmd(cfg)
+	loginCmd := auth.LoginCmd(ch)
 	loginCmd.Hidden = true
-	logoutCmd := auth.LogoutCmd(cfg)
+	logoutCmd := auth.LogoutCmd(ch)
 	logoutCmd.Hidden = true
 
 	rootCmd.AddCommand(loginCmd)
 	rootCmd.AddCommand(logoutCmd)
-	rootCmd.AddCommand(auth.AuthCmd(cfg))
-	rootCmd.AddCommand(backup.BackupCmd(cfg))
-	rootCmd.AddCommand(branch.BranchCmd(cfg))
-	rootCmd.AddCommand(connect.ConnectCmd(cfg))
-	rootCmd.AddCommand(database.DatabaseCmd(helper))
-	rootCmd.AddCommand(deployrequest.DeployRequestCmd(cfg))
-	rootCmd.AddCommand(org.OrgCmd(cfg))
-	rootCmd.AddCommand(shell.ShellCmd(cfg))
-	rootCmd.AddCommand(snapshot.SnapshotCmd(cfg))
-	rootCmd.AddCommand(token.TokenCmd(cfg))
-	rootCmd.AddCommand(version.VersionCmd(cfg, ver, commit, buildDate))
+	rootCmd.AddCommand(auth.AuthCmd(ch))
+	rootCmd.AddCommand(backup.BackupCmd(ch))
+	rootCmd.AddCommand(branch.BranchCmd(ch))
+	rootCmd.AddCommand(connect.ConnectCmd(ch))
+	rootCmd.AddCommand(database.DatabaseCmd(ch))
+	rootCmd.AddCommand(deployrequest.DeployRequestCmd(ch))
+	rootCmd.AddCommand(org.OrgCmd(ch))
+	rootCmd.AddCommand(shell.ShellCmd(ch))
+	rootCmd.AddCommand(snapshot.SnapshotCmd(ch))
+	rootCmd.AddCommand(token.TokenCmd(ch))
+	rootCmd.AddCommand(version.VersionCmd(ch, ver, commit, buildDate))
 
 	return rootCmd.Execute()
 }

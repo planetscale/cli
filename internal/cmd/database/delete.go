@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/planetscale/cli/internal/cmdutil"
+	"github.com/planetscale/cli/internal/printer"
 
 	"github.com/planetscale/planetscale-go/planetscale"
 
@@ -35,6 +36,10 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			if !force {
+				if ch.Printer.Format() != printer.Human {
+					return fmt.Errorf("Cannot delete database with the output format %q (run with -force to override)", ch.Printer.Format())
+				}
+
 				if !cmdutil.IsTTY {
 					return fmt.Errorf("Cannot confirm deletion of database %q (run with -force to override)", name)
 				}
@@ -59,7 +64,7 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 				}
 			}
 
-			end := cmdutil.PrintProgress(fmt.Sprintf("Deleting database %s...", cmdutil.BoldBlue(name)))
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Deleting database %s...", cmdutil.BoldBlue(name)))
 			defer end()
 
 			err = client.Databases.Delete(ctx, &planetscale.DeleteDatabaseRequest{
@@ -79,12 +84,21 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			end()
-			fmt.Printf("Database %s was successfully deleted!\n", cmdutil.BoldBlue(name))
 
-			return nil
+			if ch.Printer.Format() == printer.Human {
+				ch.Printer.Printf("Database %s was successfully deleted!\n", cmdutil.BoldBlue(name))
+				return nil
+			}
+
+			return ch.Printer.PrintResource(
+				map[string]string{
+					"result":   "database deleted",
+					"database": name,
+				},
+			)
 		},
 	}
 
-	cmd.Flags().BoolVarP(&force, "force", "f", false, "Delete a databse without confirmation")
+	cmd.Flags().BoolVar(&force, "force", false, "Delete a databse without confirmation")
 	return cmd
 }

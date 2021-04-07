@@ -2,13 +2,10 @@ package org
 
 import (
 	"context"
-	"time"
 
 	"github.com/planetscale/cli/internal/cmdutil"
-	"github.com/planetscale/cli/internal/config"
 	"github.com/planetscale/cli/internal/printer"
 	"github.com/planetscale/planetscale-go/planetscale"
-	ps "github.com/planetscale/planetscale-go/planetscale"
 
 	"github.com/spf13/cobra"
 )
@@ -20,7 +17,7 @@ type organization struct {
 	UpdatedAt int64  `header:"updated_at,timestamp(ms|utc|human)" json:"updated_at"`
 }
 
-func ListCmd(cfg *config.Config) *cobra.Command {
+func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "list",
 		Short:   "List the currently active organizations",
@@ -28,7 +25,7 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 		Aliases: []string{"ls"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
-			client, err := cfg.NewClientFromConfig()
+			client, err := ch.Config.NewClientFromConfig()
 			if err != nil {
 				return err
 			}
@@ -43,36 +40,14 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 				}
 			}
 
-			err = printer.PrintOutput(cfg.OutputJSON, &printer.ObjectPrinter{
-				Source:  orgs,
-				Printer: newOrganizationSlicePrinter(orgs),
-			})
-			if err != nil {
-				return err
+			if len(orgs) == 0 && ch.Printer.Format() == printer.Human {
+				ch.Printer.Printf("No organizations exist\n")
+				return nil
 			}
 
-			return nil
+			return ch.Printer.PrintResource(toOrgs(orgs))
 		},
 	}
 
 	return cmd
-}
-
-// newOrganizationSlicePrinter returns a slice of printable orgs.
-func newOrganizationSlicePrinter(organizations []*ps.Organization) []*organization {
-	orgs := make([]*organization, 0, len(organizations))
-
-	for _, org := range organizations {
-		orgs = append(orgs, newOrgPrinter(org))
-	}
-
-	return orgs
-}
-
-func newOrgPrinter(org *ps.Organization) *organization {
-	return &organization{
-		Name:      org.Name,
-		CreatedAt: org.CreatedAt.UTC().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond)),
-		UpdatedAt: org.UpdatedAt.UTC().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond)),
-	}
 }

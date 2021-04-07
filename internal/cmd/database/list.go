@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/planetscale/cli/internal/cmdutil"
+	"github.com/planetscale/cli/internal/printer"
 
 	"github.com/planetscale/planetscale-go/planetscale"
 
@@ -40,7 +41,7 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
-			end := ch.Printer.ProgressPrintf("Fetching databases...")
+			end := ch.Printer.PrintProgress("Fetching databases...")
 			defer end()
 			databases, err := client.Databases.List(ctx, &planetscale.ListDatabasesRequest{
 				Organization: ch.Config.Organization,
@@ -58,17 +59,12 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			end()
 
-			if len(databases) == 0 && !ch.Config.OutputJSON {
+			if len(databases) == 0 && ch.Printer.Format() == printer.Human {
 				ch.Printer.Println("No databases have been created yet.")
 				return nil
 			}
 
-			err = ch.Printer.PrintResource(toDatabases(databases))
-			if err != nil {
-				return err
-			}
-
-			return nil
+			return ch.Printer.PrintResource(toDatabases(databases))
 		},
 		TraverseChildren: true,
 	}

@@ -7,14 +7,13 @@ import (
 
 	"github.com/pkg/browser"
 	"github.com/planetscale/cli/internal/cmdutil"
-	"github.com/planetscale/cli/internal/config"
 	"github.com/planetscale/cli/internal/printer"
 	"github.com/planetscale/planetscale-go/planetscale"
 	ps "github.com/planetscale/planetscale-go/planetscale"
 	"github.com/spf13/cobra"
 )
 
-func CreateCmd(cfg *config.Config) *cobra.Command {
+func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	createReq := &ps.CreateDatabaseBranchRequest{
 		Branch: new(ps.DatabaseBranch),
 	}
@@ -36,7 +35,7 @@ func CreateCmd(cfg *config.Config) *cobra.Command {
 
 			createReq.Database = source
 			createReq.Branch.Name = branch
-			createReq.Organization = cfg.Organization
+			createReq.Organization = ch.Config.Organization
 
 			web, err := cmd.Flags().GetBool("web")
 			if err != nil {
@@ -44,10 +43,10 @@ func CreateCmd(cfg *config.Config) *cobra.Command {
 			}
 
 			if web {
-				fmt.Println("🌐  Redirecting you to branch a database in your web browser.")
+				ch.Printer.Println("🌐  Redirecting you to branch a database in your web browser.")
 				err := browser.OpenURL(fmt.Sprintf(
 					"%s/%s/%s/branches?name=%s&notes=%s&showDialog=true",
-					cmdutil.ApplicationURL, cfg.Organization, source, url.QueryEscape(createReq.Branch.Name), url.QueryEscape(createReq.Branch.Notes),
+					cmdutil.ApplicationURL, ch.Config.Organization, source, url.QueryEscape(createReq.Branch.Name), url.QueryEscape(createReq.Branch.Notes),
 				))
 				if err != nil {
 					return err
@@ -55,19 +54,19 @@ func CreateCmd(cfg *config.Config) *cobra.Command {
 				return nil
 			}
 
-			client, err := cfg.NewClientFromConfig()
+			client, err := ch.Config.NewClientFromConfig()
 			if err != nil {
 				return err
 			}
 
-			end := cmdutil.PrintProgress(fmt.Sprintf("Creating branch from %s...", cmdutil.BoldBlue(source)))
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Creating branch from %s...", cmdutil.BoldBlue(source)))
 			defer end()
 			dbBranch, err := client.DatabaseBranches.Create(ctx, createReq)
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
 					return fmt.Errorf("source database %s does not exist in organization %s\n",
-						cmdutil.BoldBlue(source), cmdutil.BoldBlue(cfg.Organization))
+						cmdutil.BoldBlue(source), cmdutil.BoldBlue(ch.Config.Organization))
 				case planetscale.ErrResponseMalformed:
 					return cmdutil.MalformedError(err)
 				default:
@@ -76,16 +75,13 @@ func CreateCmd(cfg *config.Config) *cobra.Command {
 			}
 
 			end()
-			if cfg.OutputJSON {
-				err := printer.PrintJSON(dbBranch)
-				if err != nil {
-					return err
-				}
-			} else {
-				fmt.Printf("Branch %s was successfully created!\n", cmdutil.BoldBlue(dbBranch.Name))
+
+			if ch.Printer.Format() == printer.Human {
+				ch.Printer.Printf("Branch %s was successfully created!\n", cmdutil.BoldBlue(dbBranch.Name))
+				return nil
 			}
 
-			return nil
+			return ch.Printer.PrintResource(toDatabaseBranch(dbBranch))
 		},
 	}
 

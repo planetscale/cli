@@ -32,8 +32,6 @@ type Config struct {
 	// Project Configuration
 	Database string
 	Branch   string
-
-	OutputJSON bool
 }
 
 func New() (*Config, error) {
