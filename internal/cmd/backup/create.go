@@ -57,7 +57,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 				return nil
 			}
 
-			return ch.Printer.PrintResource(bkp)
+			return ch.Printer.PrintResource(toBackup(bkp))
 		},
 	}
 

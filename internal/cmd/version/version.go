@@ -17,7 +17,6 @@ func VersionCmd(ch *cmdutil.Helper, ver, commit, buildDate string) *cobra.Comman
 		// need to be displayed.
 		Hidden: true, //
 		RunE: func(cmd *cobra.Command, args []string) error {
-
 			if ch.Printer.Format() == printer.Human {
 				ch.Printer.Print(Format(ver, commit, buildDate))
 				return nil
@@ -28,8 +27,6 @@ func VersionCmd(ch *cmdutil.Helper, ver, commit, buildDate string) *cobra.Comman
 				"commit":     commit,
 				"build_date": buildDate,
 			}
-
-			return ch.Printer.PrintResource(map[string]string{})
 			return ch.Printer.PrintResource(v)
 		},
 	}

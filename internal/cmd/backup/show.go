@@ -65,7 +65,7 @@ func ShowCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			end()
 
-			return ch.Printer.PrintResource(bkp)
+			return ch.Printer.PrintResource(toBackup(bkp))
 		},
 	}
 

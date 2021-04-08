@@ -69,7 +69,7 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 				return nil
 			}
 
-			return ch.Printer.PrintResource(backups)
+			return ch.Printer.PrintResource(toBackups(backups))
 		},
 	}
 
