@@ -19,27 +19,16 @@ import (
 
 var IsTTY = isatty.IsTerminal(os.Stdout.Fd()) || isatty.IsCygwinTerminal(os.Stdout.Fd())
 
-func Emoji(emoji string) string {
-	if IsTTY {
-		return emoji
-	}
-	return ""
-}
-
-// BoldBlue returns a string formatted with blue and bold.
-func BoldBlue(msg string) string {
-	// the 'color' package already handles IsTTY gracefully
-	return color.New(color.FgBlue).Add(color.Bold).Sprint(msg)
-}
-
-// Bold returns a string formatted with bold.
-func Bold(msg string) string {
-	// the 'color' package already handles IsTTY gracefully
-	return color.New(color.Bold).Sprint(msg)
-}
-
 // Format defines the option output format of a resource.
 type Format int
+
+const (
+	// Human prints it in human readable format. This can be either a table or
+	// a single line, depending on the resource implementation.
+	Human Format = iota
+	JSON
+	CSV
+)
 
 // NewFormatValue is used to define a flag that can be used to define a custom
 // flag via the flagset.Var() method.
@@ -83,14 +72,6 @@ func (f *Format) Type() string {
 	return "string"
 }
 
-const (
-	// Human prints it in human readable format. This can be either a table or
-	// a single line, depending on the resource implementation.
-	Human Format = iota
-	JSON
-	CSV
-)
-
 // Printer is used to print information to the defined output.
 type Printer struct {
 	format *Format
@@ -126,7 +107,7 @@ func (p *Printer) out() io.Writer {
 		return os.Stdout
 	}
 
-	return ioutil.Discard // /dev/null
+	return ioutil.Discard // /dev/nullj
 }
 
 // PrintProgress starts a spinner with the relevant message. The returned
@@ -200,4 +181,23 @@ func GetMillisecondsIfExists(timestamp *time.Time) *int64 {
 	numSeconds := GetMilliseconds(*timestamp)
 
 	return &numSeconds
+}
+
+func Emoji(emoji string) string {
+	if IsTTY {
+		return emoji
+	}
+	return ""
+}
+
+// BoldBlue returns a string formatted with blue and bold.
+func BoldBlue(msg string) string {
+	// the 'color' package already handles IsTTY gracefully
+	return color.New(color.FgBlue).Add(color.Bold).Sprint(msg)
+}
+
+// Bold returns a string formatted with bold.
+func Bold(msg string) string {
+	// the 'color' package already handles IsTTY gracefully
+	return color.New(color.Bold).Sprint(msg)
 }
