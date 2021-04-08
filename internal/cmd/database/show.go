@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/planetscale/cli/internal/cmdutil"
+	"github.com/planetscale/cli/internal/printer"
 
 	"github.com/planetscale/planetscale-go/planetscale"
 
@@ -40,7 +41,7 @@ func ShowCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
-			end := ch.Printer.PrintProgress(fmt.Sprintf("Fetching database %s...", cmdutil.BoldBlue(name)))
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Fetching database %s...", printer.BoldBlue(name)))
 			defer end()
 
 			database, err := client.Databases.Get(ctx, &planetscale.GetDatabaseRequest{
@@ -51,7 +52,7 @@ func ShowCmd(ch *cmdutil.Helper) *cobra.Command {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
 					return fmt.Errorf("database %s does not exist in organization %s\n",
-						cmdutil.BoldBlue(name), cmdutil.BoldBlue(ch.Config.Organization))
+						printer.BoldBlue(name), printer.BoldBlue(ch.Config.Organization))
 				case planetscale.ErrResponseMalformed:
 					return cmdutil.MalformedError(err)
 				default:

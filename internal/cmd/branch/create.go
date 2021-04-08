@@ -59,14 +59,14 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
-			end := ch.Printer.PrintProgress(fmt.Sprintf("Creating branch from %s...", cmdutil.BoldBlue(source)))
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Creating branch from %s...", printer.BoldBlue(source)))
 			defer end()
 			dbBranch, err := client.DatabaseBranches.Create(ctx, createReq)
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
 					return fmt.Errorf("source database %s does not exist in organization %s\n",
-						cmdutil.BoldBlue(source), cmdutil.BoldBlue(ch.Config.Organization))
+						printer.BoldBlue(source), printer.BoldBlue(ch.Config.Organization))
 				case planetscale.ErrResponseMalformed:
 					return cmdutil.MalformedError(err)
 				default:
@@ -77,7 +77,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			end()
 
 			if ch.Printer.Format() == printer.Human {
-				ch.Printer.Printf("Branch %s was successfully created!\n", cmdutil.BoldBlue(dbBranch.Name))
+				ch.Printer.Printf("Branch %s was successfully created!\n", printer.BoldBlue(dbBranch.Name))
 				return nil
 			}
 

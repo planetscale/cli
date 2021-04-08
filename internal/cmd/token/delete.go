@@ -32,14 +32,14 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 				Organization: ch.Config.Organization,
 			}
 
-			end := ch.Printer.PrintProgress(fmt.Sprintf("Deleting Token %s", cmdutil.BoldBlue(token)))
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Deleting Token %s", printer.BoldBlue(token)))
 			defer end()
 
 			if err := client.ServiceTokens.Delete(ctx, req); err != nil {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
 					return fmt.Errorf("token does not exist in organization %s\n",
-						cmdutil.BoldBlue(ch.Config.Organization))
+						printer.BoldBlue(ch.Config.Organization))
 				case planetscale.ErrResponseMalformed:
 					return cmdutil.MalformedError(err)
 				default:

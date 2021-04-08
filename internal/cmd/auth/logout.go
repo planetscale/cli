@@ -7,6 +7,7 @@ import (
 	"github.com/planetscale/cli/internal/auth"
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/config"
+	"github.com/planetscale/cli/internal/printer"
 
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/pkg/errors"
@@ -28,7 +29,7 @@ func LogoutCmd(ch *cmdutil.Helper) *cobra.Command {
 				return nil
 			}
 
-			if cmdutil.IsTTY {
+			if printer.IsTTY {
 				ch.Printer.Println("Press Enter to log out of the PlanetScale API.")
 				_ = waitForEnter(cmd.InOrStdin())
 			}

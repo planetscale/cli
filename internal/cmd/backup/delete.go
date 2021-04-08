@@ -41,11 +41,11 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 				}
 
 				confirmationName := fmt.Sprintf("%s/%s/%s", database, branch, backup)
-				if !cmdutil.IsTTY {
+				if !printer.IsTTY {
 					return fmt.Errorf("Cannot confirm deletion of backup %q (run with -force to override)", confirmationName)
 				}
 
-				confirmationMessage := fmt.Sprintf("%s %s %s", cmdutil.Bold("Please type"), cmdutil.BoldBlue(confirmationName), cmdutil.Bold("to confirm:"))
+				confirmationMessage := fmt.Sprintf("%s %s %s", printer.Bold("Please type"), printer.BoldBlue(confirmationName), printer.Bold("to confirm:"))
 
 				prompt := &survey.Input{
 					Message: confirmationMessage,
@@ -67,7 +67,7 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 				}
 			}
 
-			end := ch.Printer.PrintProgress(fmt.Sprintf("Deleting backup %s from %s", cmdutil.BoldBlue(backup), cmdutil.BoldBlue(branch)))
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Deleting backup %s from %s", printer.BoldBlue(backup), printer.BoldBlue(branch)))
 			defer end()
 
 			err = client.Backups.Delete(ctx, &planetscale.DeleteBackupRequest{
@@ -80,7 +80,7 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
 					return fmt.Errorf("backup %s does not exist in branch %s of %s (organization: %s)\n",
-						cmdutil.BoldBlue(backup), cmdutil.BoldBlue(branch), cmdutil.BoldBlue(database), cmdutil.BoldBlue(ch.Config.Organization))
+						printer.BoldBlue(backup), printer.BoldBlue(branch), printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
 				case planetscale.ErrResponseMalformed:
 					return cmdutil.MalformedError(err)
 				default:
@@ -92,7 +92,7 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			if ch.Printer.Format() == printer.Human {
 				ch.Printer.Printf("Backup %s was successfully deleted from %s!\n",
-					cmdutil.BoldBlue(backup), cmdutil.BoldBlue(branch))
+					printer.BoldBlue(backup), printer.BoldBlue(branch))
 				return nil
 			}
 

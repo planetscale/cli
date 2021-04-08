@@ -27,7 +27,7 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
-			end := ch.Printer.PrintProgress(fmt.Sprintf("Fetching schema snapshots for %s in %s...", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(database)))
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Fetching schema snapshots for %s in %s...", printer.BoldBlue(branch), printer.BoldBlue(database)))
 			defer end()
 
 			snapshots, err := client.SchemaSnapshots.List(ctx, &planetscale.ListSchemaSnapshotsRequest{
@@ -39,7 +39,7 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
 					return fmt.Errorf("branch %s does not exist in database %s (organization: %s)",
-						cmdutil.BoldBlue(branch), cmdutil.BoldBlue(database), cmdutil.BoldBlue(ch.Config.Organization))
+						printer.BoldBlue(branch), printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
 				case planetscale.ErrResponseMalformed:
 					return cmdutil.MalformedError(err)
 				default:
@@ -50,7 +50,7 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			if len(snapshots) == 0 && ch.Printer.Format() == printer.Human {
 				ch.Printer.Printf("No schema snapshots exist for %s in %s.\n",
-					cmdutil.BoldBlue(branch), cmdutil.BoldBlue(database))
+					printer.BoldBlue(branch), printer.BoldBlue(database))
 				return nil
 			}
 

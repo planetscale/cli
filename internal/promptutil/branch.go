@@ -10,6 +10,7 @@ import (
 	ps "github.com/planetscale/planetscale-go/planetscale"
 
 	"github.com/planetscale/cli/internal/cmdutil"
+	"github.com/planetscale/cli/internal/printer"
 )
 
 // GetBranch returns the database branch. If there is only one branch, it
@@ -38,7 +39,7 @@ func GetBranch(ctx context.Context, client *ps.Client, org, db string) (string, 
 		return branches[0].Name, nil
 	}
 
-	if cmdutil.IsTTY {
+	if printer.IsTTY {
 		branchNames := make([]string, 0, len(branches)-1)
 		for _, b := range branches {
 			branchNames = append(branchNames, b.Name)

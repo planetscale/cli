@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/planetscale/cli/internal/cmdutil"
+	"github.com/planetscale/cli/internal/printer"
 
 	"github.com/planetscale/planetscale-go/planetscale"
 
@@ -42,7 +43,7 @@ func ShowCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
-			end := ch.Printer.PrintProgress(fmt.Sprintf("Fetching backup %s for %s", cmdutil.BoldBlue(backup), cmdutil.BoldBlue(branch)))
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Fetching backup %s for %s", printer.BoldBlue(backup), printer.BoldBlue(branch)))
 			defer end()
 			bkp, err := client.Backups.Get(ctx, &planetscale.GetBackupRequest{
 				Organization: ch.Config.Organization,
@@ -54,7 +55,7 @@ func ShowCmd(ch *cmdutil.Helper) *cobra.Command {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
 					return fmt.Errorf("backup %s does not exist in branch %s of %s (organization: %s)\n",
-						cmdutil.BoldBlue(backup), cmdutil.BoldBlue(branch), cmdutil.BoldBlue(database), cmdutil.BoldBlue(ch.Config.Organization))
+						printer.BoldBlue(backup), printer.BoldBlue(branch), printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
 				case planetscale.ErrResponseMalformed:
 					return cmdutil.MalformedError(err)
 				default:

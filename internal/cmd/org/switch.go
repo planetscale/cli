@@ -7,6 +7,7 @@ import (
 
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/config"
+	"github.com/planetscale/cli/internal/printer"
 
 	"github.com/planetscale/planetscale-go/planetscale"
 
@@ -36,7 +37,7 @@ func SwitchCmd(ch *cmdutil.Helper) *cobra.Command {
 			if len(args) == 1 {
 				orgName := args[0]
 
-				end := ch.Printer.PrintProgress(fmt.Sprintf("Fetching organization %s...", cmdutil.Bold(orgName)))
+				end := ch.Printer.PrintProgress(fmt.Sprintf("Fetching organization %s...", printer.Bold(orgName)))
 				defer end()
 				org, err := client.Organizations.Get(ctx, &planetscale.GetOrganizationRequest{
 					Organization: orgName,
@@ -44,7 +45,7 @@ func SwitchCmd(ch *cmdutil.Helper) *cobra.Command {
 				if err != nil {
 					switch cmdutil.ErrCode(err) {
 					case planetscale.ErrNotFound:
-						return fmt.Errorf("organization %s does not exist\n", cmdutil.BoldBlue(orgName))
+						return fmt.Errorf("organization %s does not exist\n", printer.BoldBlue(orgName))
 					case planetscale.ErrResponseMalformed:
 						return cmdutil.MalformedError(err)
 					default:
@@ -53,7 +54,7 @@ func SwitchCmd(ch *cmdutil.Helper) *cobra.Command {
 				}
 				end()
 				organization = org.Name
-			} else if len(args) == 0 && cmdutil.IsTTY {
+			} else if len(args) == 0 && printer.IsTTY {
 				// Get organization names to show the user
 				end := ch.Printer.PrintProgress("Fetching organizations...")
 				defer end()
@@ -135,7 +136,7 @@ func SwitchCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			ch.Printer.Printf("Successfully switched to organization %s (using file: %s)\n",
-				cmdutil.Bold(organization), filePath,
+				printer.Bold(organization), filePath,
 			)
 
 			return nil

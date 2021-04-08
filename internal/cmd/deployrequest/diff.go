@@ -55,7 +55,7 @@ func DiffCmd(ch *cmdutil.Helper) *cobra.Command {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
 					return fmt.Errorf("deploy rquest '%s/%s' does not exist in organization %s\n",
-						cmdutil.BoldBlue(database), cmdutil.BoldBlue(number), cmdutil.BoldBlue(ch.Config.Organization))
+						printer.BoldBlue(database), printer.BoldBlue(number), printer.BoldBlue(ch.Config.Organization))
 				case planetscale.ErrResponseMalformed:
 					return cmdutil.MalformedError(err)
 				default:
@@ -69,7 +69,7 @@ func DiffCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			// human readable output
 			for _, df := range diffs {
-				ch.Printer.Println("--", cmdutil.BoldBlue(df.Name), "--")
+				ch.Printer.Println("--", printer.BoldBlue(df.Name), "--")
 				scanner := bufio.NewScanner(strings.NewReader(strings.TrimSpace(df.Raw)))
 				for scanner.Scan() {
 					txt := scanner.Text()

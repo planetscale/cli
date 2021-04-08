@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/planetscale/cli/internal/cmdutil"
+	"github.com/planetscale/cli/internal/printer"
 	"github.com/planetscale/planetscale-go/planetscale"
 	"github.com/spf13/cobra"
 )
@@ -41,7 +42,7 @@ For a complete list of the access permissions that can be granted to a token, se
 				Accesses:     perms,
 			}
 
-			end := ch.Printer.PrintProgress(fmt.Sprintf("Adding access %s to database %s", cmdutil.BoldBlue(strings.Join(perms, ", ")), cmdutil.BoldBlue(ch.Config.Database)))
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Adding access %s to database %s", printer.BoldBlue(strings.Join(perms, ", ")), printer.BoldBlue(ch.Config.Database)))
 			defer end()
 
 			access, err := client.ServiceTokens.AddAccess(ctx, req)
@@ -49,7 +50,7 @@ For a complete list of the access permissions that can be granted to a token, se
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
 					return fmt.Errorf("database %s does not exist in organization %s\n",
-						cmdutil.BoldBlue(ch.Config.Database), cmdutil.BoldBlue(ch.Config.Organization))
+						printer.BoldBlue(ch.Config.Database), printer.BoldBlue(ch.Config.Organization))
 				case planetscale.ErrResponseMalformed:
 					return cmdutil.MalformedError(err)
 				default:

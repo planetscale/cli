@@ -48,7 +48,7 @@ func ShowCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			if ch.Printer.Format() == printer.Human {
-				ch.Printer.Printf("%s (from file: %s)\n", cmdutil.Bold(cfg.Organization), configFile)
+				ch.Printer.Printf("%s (from file: %s)\n", printer.Bold(cfg.Organization), configFile)
 				return nil
 			}
 

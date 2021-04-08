@@ -11,12 +11,32 @@ import (
 	"time"
 
 	"github.com/briandowns/spinner"
+	"github.com/fatih/color"
 	"github.com/gocarina/gocsv"
 	"github.com/lensesio/tableprinter"
 	"github.com/mattn/go-isatty"
 )
 
 var IsTTY = isatty.IsTerminal(os.Stdout.Fd()) || isatty.IsCygwinTerminal(os.Stdout.Fd())
+
+func Emoji(emoji string) string {
+	if IsTTY {
+		return emoji
+	}
+	return ""
+}
+
+// BoldBlue returns a string formatted with blue and bold.
+func BoldBlue(msg string) string {
+	// the 'color' package already handles IsTTY gracefully
+	return color.New(color.FgBlue).Add(color.Bold).Sprint(msg)
+}
+
+// Bold returns a string formatted with bold.
+func Bold(msg string) string {
+	// the 'color' package already handles IsTTY gracefully
+	return color.New(color.Bold).Sprint(msg)
+}
 
 // Format defines the option output format of a resource.
 type Format int

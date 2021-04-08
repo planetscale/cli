@@ -25,7 +25,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
-			end := ch.Printer.PrintProgress(fmt.Sprintf("Creating schema snapshot for %s in %s...", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(database)))
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Creating schema snapshot for %s in %s...", printer.BoldBlue(branch), printer.BoldBlue(database)))
 			defer end()
 
 			snapshot, err := client.SchemaSnapshots.Create(ctx, &planetscale.CreateSchemaSnapshotRequest{
@@ -37,7 +37,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
 					return fmt.Errorf("branch %s does not exist in database %s (organization: %s)",
-						cmdutil.BoldBlue(branch), cmdutil.BoldBlue(database), cmdutil.BoldBlue(ch.Config.Organization))
+						printer.BoldBlue(branch), printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
 				case planetscale.ErrResponseMalformed:
 					return cmdutil.MalformedError(err)
 				default:
@@ -48,7 +48,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			if ch.Printer.Format() == printer.Human {
 				ch.Printer.Printf("Schema snapshot %s was successfully created!\n",
-					cmdutil.BoldBlue(snapshot.Name))
+					printer.BoldBlue(snapshot.Name))
 				return nil
 			}
 

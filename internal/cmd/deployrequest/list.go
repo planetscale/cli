@@ -43,7 +43,7 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
-			end := ch.Printer.PrintProgress(fmt.Sprintf("Fetching deploy requests for %s", cmdutil.BoldBlue(database)))
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Fetching deploy requests for %s", printer.BoldBlue(database)))
 			defer end()
 
 			deployRequests, err := client.DeployRequests.List(ctx, &planetscale.ListDeployRequestsRequest{
@@ -54,7 +54,7 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
 					return fmt.Errorf("database %s does not exist in organization %s\n",
-						cmdutil.BoldBlue(database), cmdutil.BoldBlue(ch.Config.Organization))
+						printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
 				case planetscale.ErrResponseMalformed:
 					return cmdutil.MalformedError(err)
 				default:
@@ -64,7 +64,7 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 			end()
 
 			if len(deployRequests) == 0 && ch.Printer.Format() == printer.Human {
-				ch.Printer.Printf("No deploy requests exist for %s.\n", cmdutil.BoldBlue(database))
+				ch.Printer.Printf("No deploy requests exist for %s.\n", printer.BoldBlue(database))
 				return nil
 			}
 

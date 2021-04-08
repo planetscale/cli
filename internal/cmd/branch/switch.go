@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/config"
+	"github.com/planetscale/cli/internal/printer"
 	"github.com/planetscale/planetscale-go/planetscale"
 	ps "github.com/planetscale/planetscale-go/planetscale"
 	"github.com/spf13/cobra"
@@ -31,7 +32,7 @@ func SwitchCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			ch.Printer.Printf("Finding branch %s on database %s\n",
-				cmdutil.BoldBlue(branch), cmdutil.BoldBlue(ch.Config.Database))
+				printer.BoldBlue(branch), printer.BoldBlue(ch.Config.Database))
 
 			_, err = client.DatabaseBranches.Get(ctx, &planetscale.GetDatabaseBranchRequest{
 				Organization: ch.Config.Organization,
@@ -47,7 +48,7 @@ func SwitchCmd(ch *cmdutil.Helper) *cobra.Command {
 					return errors.New("branch does not exist in specified database. Use --create to automatically create during switch")
 				}
 
-				end := ch.Printer.PrintProgress(fmt.Sprintf("Branch does not exist, creating %s branch from %s...", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(parentBranch)))
+				end := ch.Printer.PrintProgress(fmt.Sprintf("Branch does not exist, creating %s branch from %s...", printer.BoldBlue(branch), printer.BoldBlue(parentBranch)))
 				defer end()
 
 				createReq := &ps.CreateDatabaseBranchRequest{
@@ -77,7 +78,7 @@ func SwitchCmd(ch *cmdutil.Helper) *cobra.Command {
 				return errors.Wrap(err, "error writing project configuration file")
 			}
 
-			ch.Printer.Printf("Successfully switched to branch %s on database %s", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(parentBranch))
+			ch.Printer.Printf("Successfully switched to branch %s on database %s", printer.BoldBlue(branch), printer.BoldBlue(parentBranch))
 
 			return nil
 		},

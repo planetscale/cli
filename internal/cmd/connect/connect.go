@@ -47,7 +47,7 @@ argument:
 			ctx := context.Background()
 			database := args[0]
 
-			if !cmdutil.IsTTY || ch.Printer.Format() != printer.Human {
+			if !printer.IsTTY || ch.Printer.Format() != printer.Human {
 				return errors.New("pscale connect only works in interactive mode")
 			}
 
@@ -126,9 +126,9 @@ func runProxy(proxyOpts proxy.Options, database, branch string) error {
 		}
 
 		fmt.Printf("Secure connection to databases %s and branch %s is established!.\n\nLocal address to connect your application: %s (press ctrl-c to quit)",
-			cmdutil.BoldBlue(database),
-			cmdutil.BoldBlue(branch),
-			cmdutil.BoldBlue(addr.String()),
+			printer.BoldBlue(database),
+			printer.BoldBlue(branch),
+			printer.BoldBlue(addr.String()),
 		)
 	}()
 

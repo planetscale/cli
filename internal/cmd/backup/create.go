@@ -33,7 +33,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
-			end := ch.Printer.PrintProgress(fmt.Sprintf("Creating backup of %s...", cmdutil.BoldBlue(branch)))
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Creating backup of %s...", printer.BoldBlue(branch)))
 			defer end()
 
 			bkp, err := client.Backups.Create(ctx, createReq)
@@ -41,7 +41,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
 					return fmt.Errorf("branch %s does not exist in database %s (organization: %s)",
-						cmdutil.BoldBlue(branch), cmdutil.BoldBlue(database), cmdutil.BoldBlue(ch.Config.Organization))
+						printer.BoldBlue(branch), printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
 				case planetscale.ErrResponseMalformed:
 
 					return cmdutil.MalformedError(err)
@@ -53,7 +53,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			end()
 
 			if ch.Printer.Format() == printer.Human {
-				ch.Printer.Printf("Backup %s was successfully created!\n", cmdutil.BoldBlue(bkp.Name))
+				ch.Printer.Printf("Backup %s was successfully created!\n", printer.BoldBlue(bkp.Name))
 				return nil
 			}
 

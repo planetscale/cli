@@ -12,6 +12,7 @@ import (
 	"github.com/planetscale/cli/internal/auth"
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/config"
+	"github.com/planetscale/cli/internal/printer"
 	"github.com/planetscale/planetscale-go/planetscale"
 
 	"github.com/fatih/color"
@@ -31,7 +32,7 @@ func LoginCmd(ch *cmdutil.Helper) *cobra.Command {
 		Args:  cobra.ExactArgs(0),
 		Short: "Authenticate with PlanetScale",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if !cmdutil.IsTTY {
+			if !printer.IsTTY {
 				return errors.New("The 'login' command requires an interactive shell")
 			}
 
@@ -60,7 +61,7 @@ func LoginCmd(ch *cmdutil.Helper) *cobra.Command {
 			boldGreen := bold.Add(color.FgGreen)
 			boldGreen.Println(deviceVerification.UserCode)
 
-			fmt.Printf("\nIf something goes wrong, copy and paste this URL into your browser: %s\n\n", cmdutil.Bold(deviceVerification.VerificationCompleteURL))
+			fmt.Printf("\nIf something goes wrong, copy and paste this URL into your browser: %s\n\n", printer.Bold(deviceVerification.VerificationCompleteURL))
 
 			end := ch.Printer.PrintProgress("Waiting for confirmation...")
 			defer end()

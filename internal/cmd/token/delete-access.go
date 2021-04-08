@@ -35,14 +35,14 @@ func DeleteAccessCmd(ch *cmdutil.Helper) *cobra.Command {
 				Accesses:     perms,
 			}
 
-			end := ch.Printer.PrintProgress(fmt.Sprintf("Removing access %s on database %s", cmdutil.BoldBlue(strings.Join(perms, ", ")), cmdutil.BoldBlue(ch.Config.Database)))
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Removing access %s on database %s", printer.BoldBlue(strings.Join(perms, ", ")), printer.BoldBlue(ch.Config.Database)))
 			defer end()
 
 			if err := client.ServiceTokens.DeleteAccess(ctx, req); err != nil {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
 					return fmt.Errorf("database %s or token does not exist in organization %s\n",
-						cmdutil.BoldBlue(ch.Config.Database), cmdutil.BoldBlue(ch.Config.Organization))
+						printer.BoldBlue(ch.Config.Database), printer.BoldBlue(ch.Config.Organization))
 				case planetscale.ErrResponseMalformed:
 					return cmdutil.MalformedError(err)
 				default:
@@ -54,7 +54,7 @@ func DeleteAccessCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			if ch.Printer.Format() == printer.Human {
 				ch.Printer.Printf("Accesses %v were successfully deleted!\n",
-					cmdutil.BoldBlue(strings.Join(perms, ",")))
+					printer.BoldBlue(strings.Join(perms, ",")))
 				return nil
 			}
 

@@ -8,6 +8,7 @@ import (
 
 	"github.com/lensesio/tableprinter"
 	"github.com/planetscale/cli/internal/cmdutil"
+	"github.com/planetscale/cli/internal/printer"
 	"github.com/spf13/cobra"
 
 	ps "github.com/planetscale/planetscale-go/planetscale"
@@ -52,7 +53,7 @@ func (b *Backup) MarshalJSON() ([]byte, error) {
 }
 
 func (b *Backup) String() string {
-	return fmt.Sprintf("Backup %s was successfully created!\n", cmdutil.BoldBlue(b.Name))
+	return fmt.Sprintf("Backup %s was successfully created!\n", printer.BoldBlue(b.Name))
 }
 
 func (b Backups) String() string {

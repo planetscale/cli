@@ -5,6 +5,8 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/planetscale/cli/internal/printer"
+
 	"github.com/cli/safeexec"
 )
 
@@ -12,7 +14,7 @@ const ApplicationURL = "https://app.planetscale.com"
 
 // OpenBrowser opens a web browser at the specified url.
 func OpenBrowser(goos, url string) *exec.Cmd {
-	if !IsTTY {
+	if !printer.IsTTY {
 		panic("OpenBrowser called without a TTY")
 	}
 	exe := "open"

@@ -31,7 +31,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
-			end := ch.Printer.PrintProgress(fmt.Sprintf("Request deploying of %s branch in %s...", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(database)))
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Request deploying of %s branch in %s...", printer.BoldBlue(branch), printer.BoldBlue(database)))
 			defer end()
 
 			dr, err := client.DeployRequests.Create(ctx, &planetscale.CreateDeployRequestRequest{
@@ -44,7 +44,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
 					return fmt.Errorf("database %s does not exist in %s\n",
-						cmdutil.BoldBlue(database), cmdutil.BoldBlue(ch.Config.Organization))
+						printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
 				case planetscale.ErrResponseMalformed:
 					return cmdutil.MalformedError(err)
 				default:
@@ -55,9 +55,9 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			if ch.Printer.Format() == printer.Human {
 				ch.Printer.Printf("Successfully requested deploy %s of %s into %s!\n",
-					cmdutil.BoldBlue(dr.ID),
-					cmdutil.BoldBlue(dr.Branch),
-					cmdutil.BoldBlue(dr.IntoBranch))
+					printer.BoldBlue(dr.ID),
+					printer.BoldBlue(dr.Branch),
+					printer.BoldBlue(dr.IntoBranch))
 				return nil
 			}
 

@@ -44,7 +44,7 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
-			end := ch.Printer.PrintProgress(fmt.Sprintf("Fetching backups for %s", cmdutil.BoldBlue(branch)))
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Fetching backups for %s", printer.BoldBlue(branch)))
 			defer end()
 			backups, err := client.Backups.List(ctx, &planetscale.ListBackupsRequest{
 				Organization: ch.Config.Organization,
@@ -55,7 +55,7 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
 					return fmt.Errorf("branch %s does not exist in database %s (organization: %s)\n",
-						cmdutil.BoldBlue(branch), cmdutil.BoldBlue(database), cmdutil.BoldBlue(ch.Config.Organization))
+						printer.BoldBlue(branch), printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
 				case planetscale.ErrResponseMalformed:
 					return cmdutil.MalformedError(err)
 				default:
@@ -65,7 +65,7 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 			end()
 
 			if len(backups) == 0 && ch.Printer.Format() == printer.Human {
-				ch.Printer.Printf("No backups exist in %s.\n", cmdutil.BoldBlue(branch))
+				ch.Printer.Printf("No backups exist in %s.\n", printer.BoldBlue(branch))
 				return nil
 			}
 

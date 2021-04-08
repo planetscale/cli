@@ -40,12 +40,12 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 				}
 
 				confirmationName := fmt.Sprintf("%s/%s", source, branch)
-				if !cmdutil.IsTTY {
+				if !printer.IsTTY {
 					return fmt.Errorf("Cannot confirm deletion of branch %q (run with -force to override)", confirmationName)
 				}
 
-				confirmationMessage := fmt.Sprintf("%s %s %s", cmdutil.Bold("Please type"),
-					cmdutil.BoldBlue(confirmationName), cmdutil.Bold("to confirm:"))
+				confirmationMessage := fmt.Sprintf("%s %s %s", printer.Bold("Please type"),
+					printer.BoldBlue(confirmationName), printer.Bold("to confirm:"))
 
 				prompt := &survey.Input{
 					Message: confirmationMessage,
@@ -67,7 +67,7 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 				}
 			}
 
-			end := ch.Printer.PrintProgress(fmt.Sprintf("Deleting branch %s from %s", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(source)))
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Deleting branch %s from %s", printer.BoldBlue(branch), printer.BoldBlue(source)))
 			defer end()
 			err = client.DatabaseBranches.Delete(ctx, &planetscale.DeleteDatabaseBranchRequest{
 				Organization: ch.Config.Organization,
@@ -78,7 +78,7 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
 					return fmt.Errorf("source database %s does not exist in organization %s\n",
-						cmdutil.BoldBlue(source), cmdutil.BoldBlue(ch.Config.Organization))
+						printer.BoldBlue(source), printer.BoldBlue(ch.Config.Organization))
 				case planetscale.ErrResponseMalformed:
 					return cmdutil.MalformedError(err)
 				default:
@@ -89,7 +89,7 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 			end()
 
 			if ch.Printer.Format() == printer.Human {
-				ch.Printer.Printf("Branch %s was successfully deleted from %s!\n", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(source))
+				ch.Printer.Printf("Branch %s was successfully deleted from %s!\n", printer.BoldBlue(branch), printer.BoldBlue(source))
 				return nil
 			}
 

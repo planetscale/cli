@@ -54,7 +54,7 @@ second argument:
 			ctx := context.Background()
 			database := args[0]
 
-			if !cmdutil.IsTTY || ch.Printer.Format() != printer.Human {
+			if !printer.IsTTY || ch.Printer.Format() != printer.Human {
 				return errors.New("pscale shell only works in interactive mode")
 			}
 
@@ -122,7 +122,7 @@ second argument:
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
 					return fmt.Errorf("branch %s does not exist in database %s (organization: %s)",
-						cmdutil.BoldBlue(branch), cmdutil.BoldBlue(database), cmdutil.BoldBlue(ch.Config.Organization))
+						printer.BoldBlue(branch), printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
 				case planetscale.ErrResponseMalformed:
 					return cmdutil.MalformedError(err)
 				default:

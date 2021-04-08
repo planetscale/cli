@@ -6,6 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/planetscale/cli/internal/cmdutil"
+	"github.com/planetscale/cli/internal/printer"
 	"github.com/planetscale/planetscale-go/planetscale"
 	"github.com/spf13/cobra"
 )
@@ -25,14 +26,14 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 				Organization: ch.Config.Organization,
 			}
 
-			end := ch.Printer.PrintProgress(fmt.Sprintf("Creating service token in org %s", cmdutil.BoldBlue(ch.Config.Organization)))
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Creating service token in org %s", printer.BoldBlue(ch.Config.Organization)))
 			defer end()
 
 			tokens, err := client.ServiceTokens.List(ctx, req)
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
-					return fmt.Errorf("organization %s does not exist\n", cmdutil.BoldBlue(ch.Config.Organization))
+					return fmt.Errorf("organization %s does not exist\n", printer.BoldBlue(ch.Config.Organization))
 				case planetscale.ErrResponseMalformed:
 					return cmdutil.MalformedError(err)
 				default:

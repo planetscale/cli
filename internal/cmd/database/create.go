@@ -53,7 +53,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
-					return fmt.Errorf("organization %s does not exist\n", cmdutil.BoldBlue(ch.Config.Organization))
+					return fmt.Errorf("organization %s does not exist\n", printer.BoldBlue(ch.Config.Organization))
 				case planetscale.ErrResponseMalformed:
 					return cmdutil.MalformedError(err)
 				default:
@@ -64,7 +64,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			end()
 
 			if ch.Printer.Format() == printer.Human {
-				ch.Printer.Printf("Database %s was successfully created!\n", cmdutil.BoldBlue(database.Name))
+				ch.Printer.Printf("Database %s was successfully created!\n", printer.BoldBlue(database.Name))
 				return nil
 			}
 

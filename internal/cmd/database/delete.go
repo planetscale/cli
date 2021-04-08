@@ -40,10 +40,10 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 					return fmt.Errorf("Cannot delete database with the output format %q (run with -force to override)", ch.Printer.Format())
 				}
 
-				if !cmdutil.IsTTY {
+				if !printer.IsTTY {
 					return fmt.Errorf("Cannot confirm deletion of database %q (run with -force to override)", name)
 				}
-				confirmationMessage := fmt.Sprintf("%s %s %s", cmdutil.Bold("Please type"), cmdutil.BoldBlue(name), cmdutil.Bold("to confirm:"))
+				confirmationMessage := fmt.Sprintf("%s %s %s", printer.Bold("Please type"), printer.BoldBlue(name), printer.Bold("to confirm:"))
 
 				prompt := &survey.Input{
 					Message: confirmationMessage,
@@ -64,7 +64,7 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 				}
 			}
 
-			end := ch.Printer.PrintProgress(fmt.Sprintf("Deleting database %s...", cmdutil.BoldBlue(name)))
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Deleting database %s...", printer.BoldBlue(name)))
 			defer end()
 
 			err = client.Databases.Delete(ctx, &planetscale.DeleteDatabaseRequest{
@@ -75,7 +75,7 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
 					return fmt.Errorf("database %s does not exist in organization %s\n",
-						cmdutil.BoldBlue(name), cmdutil.BoldBlue(ch.Config.Organization))
+						printer.BoldBlue(name), printer.BoldBlue(ch.Config.Organization))
 				case planetscale.ErrResponseMalformed:
 					return cmdutil.MalformedError(err)
 				default:
@@ -86,7 +86,7 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 			end()
 
 			if ch.Printer.Format() == printer.Human {
-				ch.Printer.Printf("Database %s was successfully deleted!\n", cmdutil.BoldBlue(name))
+				ch.Printer.Printf("Database %s was successfully deleted!\n", printer.BoldBlue(name))
 				return nil
 			}
 
