@@ -151,14 +151,14 @@ func (p *Printer) PrintResource(v interface{}) error {
 			return err
 		}
 
-		fmt.Print(string(out))
+		fmt.Println(string(out))
 		return nil
 	case CSV:
 		out, err := gocsv.MarshalString(v)
 		if err != nil {
 			return err
 		}
-		fmt.Print(out)
+		fmt.Println(out)
 
 		return nil
 	}
