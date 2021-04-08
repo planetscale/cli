@@ -12,7 +12,7 @@ import (
 	"syscall"
 
 	"github.com/planetscale/cli/internal/cmdutil"
-	"github.com/planetscale/cli/internal/config"
+	"github.com/planetscale/cli/internal/printer"
 	"github.com/planetscale/cli/internal/promptutil"
 	"github.com/planetscale/cli/internal/proxyutil"
 
@@ -25,7 +25,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func ShellCmd(cfg *config.Config) *cobra.Command {
+func ShellCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
 		localAddr  string
 		remoteAddr string
@@ -54,12 +54,16 @@ second argument:
 			ctx := context.Background()
 			database := args[0]
 
+			if !printer.IsTTY || ch.Printer.Format() != printer.Human {
+				return errors.New("pscale shell only works in interactive mode")
+			}
+
 			_, err := exec.LookPath("mysql")
 			if err != nil {
 				return fmt.Errorf("couldn't find the 'mysql' CLI")
 			}
 
-			client, err := cfg.NewClientFromConfig()
+			client, err := ch.Config.NewClientFromConfig()
 			if err != nil {
 				return err
 			}
@@ -70,7 +74,7 @@ second argument:
 			}
 
 			if branch == "" {
-				branch, err = promptutil.GetBranch(ctx, client, cfg.Organization, database)
+				branch, err = promptutil.GetBranch(ctx, client, ch.Config.Organization, database)
 				if err != nil {
 					return err
 				}
@@ -86,7 +90,7 @@ second argument:
 				CertSource: proxyutil.NewRemoteCertSource(client),
 				LocalAddr:  localAddr,
 				RemoteAddr: flags.remoteAddr,
-				Instance:   fmt.Sprintf("%s/%s/%s", cfg.Organization, database, branch),
+				Instance:   fmt.Sprintf("%s/%s/%s", ch.Config.Organization, database, branch),
 			}
 
 			if !flags.debug {
@@ -105,12 +109,12 @@ second argument:
 			go func() {
 				err := p.Run(ctx)
 				if err != nil {
-					fmt.Println("proxy error: ", err)
+					ch.Printer.Println("proxy error: ", err)
 				}
 			}()
 
 			status, err := client.DatabaseBranches.GetStatus(ctx, &ps.GetDatabaseBranchStatusRequest{
-				Organization: cfg.Organization,
+				Organization: ch.Config.Organization,
 				Database:     database,
 				Branch:       branch,
 			})
@@ -118,7 +122,7 @@ second argument:
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
 					return fmt.Errorf("branch %s does not exist in database %s (organization: %s)",
-						cmdutil.BoldBlue(branch), cmdutil.BoldBlue(database), cmdutil.BoldBlue(cfg.Organization))
+						printer.BoldBlue(branch), printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
 				case planetscale.ErrResponseMalformed:
 					return cmdutil.MalformedError(err)
 				default:
@@ -161,7 +165,7 @@ second argument:
 		},
 	}
 
-	cmd.PersistentFlags().StringVar(&cfg.Organization, "org", cfg.Organization, "The organization for the current user")
+	cmd.PersistentFlags().StringVar(&ch.Config.Organization, "org", ch.Config.Organization, "The organization for the current user")
 	cmd.PersistentFlags().StringVar(&flags.localAddr, "local-addr",
 		"", "Local address to bind and listen for connections. By default the proxy binds to 127.0.0.1 with a random port.")
 	cmd.PersistentFlags().StringVar(&flags.remoteAddr, "remote-addr", "",

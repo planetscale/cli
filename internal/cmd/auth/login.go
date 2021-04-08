@@ -12,6 +12,7 @@ import (
 	"github.com/planetscale/cli/internal/auth"
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/config"
+	"github.com/planetscale/cli/internal/printer"
 	"github.com/planetscale/planetscale-go/planetscale"
 
 	"github.com/fatih/color"
@@ -21,7 +22,7 @@ import (
 )
 
 // LoginCmd is the command for logging into a PlanetScale account.
-func LoginCmd(cfg *config.Config) *cobra.Command {
+func LoginCmd(ch *cmdutil.Helper) *cobra.Command {
 	var clientID string
 	var clientSecret string
 	var authURL string
@@ -31,9 +32,10 @@ func LoginCmd(cfg *config.Config) *cobra.Command {
 		Args:  cobra.ExactArgs(0),
 		Short: "Authenticate with PlanetScale",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if !cmdutil.IsTTY {
+			if !printer.IsTTY {
 				return errors.New("The 'login' command requires an interactive shell")
 			}
+
 			authenticator, err := auth.New(cleanhttp.DefaultClient(), clientID, clientSecret, auth.SetBaseURL(authURL))
 			if err != nil {
 				return err
@@ -45,7 +47,7 @@ func LoginCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
-			fmt.Println("Press Enter to authenticate via your browser...")
+			ch.Printer.Println("Press Enter to authenticate via your browser...")
 
 			_ = waitForEnter(cmd.InOrStdin())
 			openCmd := cmdutil.OpenBrowser(runtime.GOOS, deviceVerification.VerificationCompleteURL)
@@ -59,9 +61,9 @@ func LoginCmd(cfg *config.Config) *cobra.Command {
 			boldGreen := bold.Add(color.FgGreen)
 			boldGreen.Println(deviceVerification.UserCode)
 
-			fmt.Printf("\nIf something goes wrong, copy and paste this URL into your browser: %s\n\n", cmdutil.Bold(deviceVerification.VerificationCompleteURL))
+			fmt.Printf("\nIf something goes wrong, copy and paste this URL into your browser: %s\n\n", printer.Bold(deviceVerification.VerificationCompleteURL))
 
-			end := cmdutil.PrintProgress("Waiting for confirmation...")
+			end := ch.Printer.PrintProgress("Waiting for confirmation...")
 			defer end()
 			accessToken, err := authenticator.GetAccessTokenForDevice(ctx, deviceVerification)
 			if err != nil {
@@ -76,7 +78,7 @@ func LoginCmd(cfg *config.Config) *cobra.Command {
 			// We explicitly stop here so we can replace the spinner with our success
 			// message.
 			end()
-			fmt.Println("Successfully logged in!")
+			ch.Printer.Println("Successfully logged in!")
 
 			err = writeDefaultOrganization(ctx, accessToken, authURL)
 			if err != nil {

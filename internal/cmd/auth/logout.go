@@ -2,19 +2,19 @@ package auth
 
 import (
 	"context"
-	"fmt"
 	"os"
 
 	"github.com/planetscale/cli/internal/auth"
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/config"
+	"github.com/planetscale/cli/internal/printer"
 
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
-func LogoutCmd(cfg *config.Config) *cobra.Command {
+func LogoutCmd(ch *cmdutil.Helper) *cobra.Command {
 	var clientID string
 	var clientSecret string
 	var apiURL string
@@ -24,13 +24,13 @@ func LogoutCmd(cfg *config.Config) *cobra.Command {
 		Args:  cobra.NoArgs,
 		Short: "Log out of the PlanetScale API",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if cfg.AccessToken == "" {
-				fmt.Println("Already logged out. Exiting...")
+			if ch.Config.AccessToken == "" {
+				ch.Printer.Println("Already logged out. Exiting...")
 				return nil
 			}
 
-			if cmdutil.IsTTY {
-				fmt.Println("Press Enter to log out of the PlanetScale API.")
+			if printer.IsTTY {
+				ch.Printer.Println("Press Enter to log out of the PlanetScale API.")
 				_ = waitForEnter(cmd.InOrStdin())
 			}
 
@@ -40,9 +40,9 @@ func LogoutCmd(cfg *config.Config) *cobra.Command {
 			}
 			ctx := context.Background()
 
-			end := cmdutil.PrintProgress("Logging out...")
+			end := ch.Printer.PrintProgress("Logging out...")
 			defer end()
-			err = authenticator.RevokeToken(ctx, cfg.AccessToken)
+			err = authenticator.RevokeToken(ctx, ch.Config.AccessToken)
 			if err != nil {
 				return err
 			}
@@ -51,7 +51,7 @@ func LogoutCmd(cfg *config.Config) *cobra.Command {
 				return err
 			}
 			end()
-			fmt.Println("Successfully logged out.")
+			ch.Printer.Println("Successfully logged out.")
 
 			return nil
 		},
@@ -71,11 +71,9 @@ func deleteAccessToken() error {
 
 	err = os.Remove(tokenPath)
 	if err != nil {
-		if os.IsNotExist(err) {
-			fmt.Println("yooo tokenpath")
+		if !os.IsNotExist(err) {
+			return errors.Wrap(err, "error removing access token file")
 		}
-		fmt.Printf("err = %+v\n", err)
-		return errors.Wrap(err, "error removing access token file")
 	}
 
 	configFile, err := config.DefaultConfigPath()
@@ -85,10 +83,9 @@ func deleteAccessToken() error {
 
 	err = os.Remove(configFile)
 	if err != nil {
-		if os.IsNotExist(err) {
-			fmt.Println("yooo configFile")
+		if !os.IsNotExist(err) {
+			return errors.Wrap(err, "error removing default config file")
 		}
-		return errors.Wrap(err, "error removing default config file")
 	}
 
 	return nil

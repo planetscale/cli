@@ -4,20 +4,30 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/planetscale/cli/internal/config"
-
+	"github.com/planetscale/cli/internal/cmdutil"
+	"github.com/planetscale/cli/internal/printer"
 	"github.com/spf13/cobra"
 )
 
 // VersionCmd encapsulates the commands for showing a version
-func VersionCmd(cfg *config.Config, ver, commit, buildDate string) *cobra.Command {
+func VersionCmd(ch *cmdutil.Helper, ver, commit, buildDate string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use: "version <command>",
 		// we can also show the version via `--version`, hence this doesn't
 		// need to be displayed.
 		Hidden: true, //
-		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Print(Format(ver, commit, buildDate))
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if ch.Printer.Format() == printer.Human {
+				ch.Printer.Print(Format(ver, commit, buildDate))
+				return nil
+			}
+
+			v := map[string]string{
+				"version":    ver,
+				"commit":     commit,
+				"build_date": buildDate,
+			}
+			return ch.Printer.PrintResource(v)
 		},
 	}
 

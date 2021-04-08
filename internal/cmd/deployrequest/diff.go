@@ -4,21 +4,20 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 
 	"github.com/fatih/color"
 	"github.com/pkg/browser"
 	"github.com/planetscale/cli/internal/cmdutil"
-	"github.com/planetscale/cli/internal/config"
+	"github.com/planetscale/cli/internal/printer"
 	"github.com/planetscale/planetscale-go/planetscale"
 
 	"github.com/spf13/cobra"
 )
 
 // DiffCmd is the command for showing the diff of a deploy request.
-func DiffCmd(cfg *config.Config) *cobra.Command {
+func DiffCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
 		web bool
 	}
@@ -33,11 +32,11 @@ func DiffCmd(cfg *config.Config) *cobra.Command {
 			number := args[1]
 
 			if flags.web {
-				fmt.Println("🌐  Redirecting you to your deploy request diff in your web browser.")
-				return browser.OpenURL(fmt.Sprintf("%s/%s/%s/deploy-requests/%s/diff", cmdutil.ApplicationURL, cfg.Organization, database, number))
+				ch.Printer.Println("🌐  Redirecting you to your deploy request diff in your web browser.")
+				return browser.OpenURL(fmt.Sprintf("%s/%s/%s/deploy-requests/%s/diff", cmdutil.ApplicationURL, ch.Config.Organization, database, number))
 			}
 
-			client, err := cfg.NewClientFromConfig()
+			client, err := ch.Config.NewClientFromConfig()
 			if err != nil {
 				return err
 			}
@@ -48,7 +47,7 @@ func DiffCmd(cfg *config.Config) *cobra.Command {
 			}
 
 			diffs, err := client.DeployRequests.Diff(ctx, &planetscale.DiffRequest{
-				Organization: cfg.Organization,
+				Organization: ch.Config.Organization,
 				Database:     database,
 				Number:       n,
 			})
@@ -56,7 +55,7 @@ func DiffCmd(cfg *config.Config) *cobra.Command {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
 					return fmt.Errorf("deploy rquest '%s/%s' does not exist in organization %s\n",
-						cmdutil.BoldBlue(database), cmdutil.BoldBlue(number), cmdutil.BoldBlue(cfg.Organization))
+						printer.BoldBlue(database), printer.BoldBlue(number), printer.BoldBlue(ch.Config.Organization))
 				case planetscale.ErrResponseMalformed:
 					return cmdutil.MalformedError(err)
 				default:
@@ -64,23 +63,29 @@ func DiffCmd(cfg *config.Config) *cobra.Command {
 				}
 			}
 
+			if ch.Printer.Format() != printer.Human {
+				return ch.Printer.PrintResource(diffs)
+			}
+
+			// human readable output
 			for _, df := range diffs {
-				fmt.Println("--", cmdutil.BoldBlue(df.Name), "--")
+				ch.Printer.Println("--", printer.BoldBlue(df.Name), "--")
 				scanner := bufio.NewScanner(strings.NewReader(strings.TrimSpace(df.Raw)))
 				for scanner.Scan() {
 					txt := scanner.Text()
 					if strings.HasPrefix(txt, "+") {
-						color.New(color.FgGreen).Add(color.Bold).Println(txt) //nolint: errcheck
+						ch.Printer.Println(color.New(color.FgGreen).Add(color.Bold).Sprint(txt)) //nolint: errcheck
 					} else if strings.HasPrefix(txt, "-") {
-						color.New(color.FgRed).Add(color.Bold).Println(txt) //nolint: errcheck
+						ch.Printer.Println(color.New(color.FgRed).Add(color.Bold).Sprint(txt)) //nolint: errcheck
 					} else {
-						fmt.Println(txt)
+						ch.Printer.Println(txt)
 					}
 				}
 				if err := scanner.Err(); err != nil {
-					fmt.Fprintln(os.Stderr, "reading diff Raw:", err)
+					return fmt.Errorf("reading diff raw: %s", err)
 				}
 			}
+
 			return nil
 		},
 	}

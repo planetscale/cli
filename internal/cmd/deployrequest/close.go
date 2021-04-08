@@ -6,14 +6,14 @@ import (
 	"strconv"
 
 	"github.com/planetscale/cli/internal/cmdutil"
-	"github.com/planetscale/cli/internal/config"
+	"github.com/planetscale/cli/internal/printer"
 	"github.com/planetscale/planetscale-go/planetscale"
 
 	"github.com/spf13/cobra"
 )
 
 // CloseCmd is the command for closing deploy requests.
-func CloseCmd(cfg *config.Config) *cobra.Command {
+func CloseCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "close <database> <number>",
 		Short: "Close deploy requests",
@@ -23,7 +23,7 @@ func CloseCmd(cfg *config.Config) *cobra.Command {
 			database := args[0]
 			number := args[1]
 
-			client, err := cfg.NewClientFromConfig()
+			client, err := ch.Config.NewClientFromConfig()
 			if err != nil {
 				return err
 			}
@@ -33,8 +33,8 @@ func CloseCmd(cfg *config.Config) *cobra.Command {
 				return fmt.Errorf("The argument <number> is invalid: %s", err)
 			}
 
-			_, err = client.DeployRequests.CloseDeploy(ctx, &planetscale.CloseDeployRequestRequest{
-				Organization: cfg.Organization,
+			dr, err := client.DeployRequests.CloseDeploy(ctx, &planetscale.CloseDeployRequestRequest{
+				Organization: ch.Config.Organization,
 				Database:     database,
 				Number:       n,
 			})
@@ -42,7 +42,7 @@ func CloseCmd(cfg *config.Config) *cobra.Command {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
 					return fmt.Errorf("deploy request '%s/%s' does not exist in organization %s\n",
-						cmdutil.BoldBlue(database), cmdutil.BoldBlue(number), cmdutil.BoldBlue(cfg.Organization))
+						printer.BoldBlue(database), printer.BoldBlue(number), printer.BoldBlue(ch.Config.Organization))
 				case planetscale.ErrResponseMalformed:
 					return cmdutil.MalformedError(err)
 				default:
@@ -50,9 +50,13 @@ func CloseCmd(cfg *config.Config) *cobra.Command {
 				}
 			}
 
-			fmt.Printf("Deploy request %s/%s was successfully closed!\n",
-				cmdutil.BoldBlue(database), cmdutil.BoldBlue(number))
-			return nil
+			if ch.Printer.Format() == printer.Human {
+				ch.Printer.Printf("Deploy request %s/%s was successfully closed!\n",
+					printer.BoldBlue(database), printer.BoldBlue(number))
+				return nil
+			}
+
+			return ch.Printer.PrintResource(toDeployRequest(dr))
 		},
 	}
 

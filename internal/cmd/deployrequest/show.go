@@ -7,7 +7,6 @@ import (
 
 	"github.com/pkg/browser"
 	"github.com/planetscale/cli/internal/cmdutil"
-	"github.com/planetscale/cli/internal/config"
 	"github.com/planetscale/cli/internal/printer"
 	"github.com/planetscale/planetscale-go/planetscale"
 
@@ -15,7 +14,7 @@ import (
 )
 
 // ShowCmd is the command to show a deploy request.
-func ShowCmd(cfg *config.Config) *cobra.Command {
+func ShowCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
 		web bool
 	}
@@ -30,11 +29,11 @@ func ShowCmd(cfg *config.Config) *cobra.Command {
 			number := args[1]
 
 			if flags.web {
-				fmt.Println("🌐  Redirecting you to your deploy request in your web browser.")
-				return browser.OpenURL(fmt.Sprintf("%s/%s/%s/deploy-requests/%s", cmdutil.ApplicationURL, cfg.Organization, database, number))
+				ch.Printer.Println("🌐  Redirecting you to your deploy request in your web browser.")
+				return browser.OpenURL(fmt.Sprintf("%s/%s/%s/deploy-requests/%s", cmdutil.ApplicationURL, ch.Config.Organization, database, number))
 			}
 
-			client, err := cfg.NewClientFromConfig()
+			client, err := ch.Config.NewClientFromConfig()
 			if err != nil {
 				return err
 			}
@@ -45,7 +44,7 @@ func ShowCmd(cfg *config.Config) *cobra.Command {
 			}
 
 			dr, err := client.DeployRequests.Get(ctx, &planetscale.GetDeployRequestRequest{
-				Organization: cfg.Organization,
+				Organization: ch.Config.Organization,
 				Database:     database,
 				Number:       n,
 			})
@@ -53,7 +52,7 @@ func ShowCmd(cfg *config.Config) *cobra.Command {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
 					return fmt.Errorf("deploy request '%s/%s' does not exist in organization %s\n",
-						cmdutil.BoldBlue(database), cmdutil.BoldBlue(number), cmdutil.BoldBlue(cfg.Organization))
+						printer.BoldBlue(database), printer.BoldBlue(number), printer.BoldBlue(ch.Config.Organization))
 				case planetscale.ErrResponseMalformed:
 					return cmdutil.MalformedError(err)
 				default:
@@ -61,12 +60,7 @@ func ShowCmd(cfg *config.Config) *cobra.Command {
 				}
 			}
 
-			err = printer.PrintOutput(cfg.OutputJSON, printer.NewDeployRequestPrinter(dr))
-			if err != nil {
-				return err
-			}
-
-			return nil
+			return ch.Printer.PrintResource(toDeployRequest(dr))
 		},
 	}
 

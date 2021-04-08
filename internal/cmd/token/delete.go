@@ -5,18 +5,18 @@ import (
 	"fmt"
 
 	"github.com/planetscale/cli/internal/cmdutil"
-	"github.com/planetscale/cli/internal/config"
+	"github.com/planetscale/cli/internal/printer"
 	"github.com/planetscale/planetscale-go/planetscale"
 	"github.com/spf13/cobra"
 )
 
-func DeleteCmd(cfg *config.Config) *cobra.Command {
+func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete <token>",
 		Short: "delete an entire service token in an organization",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
-			client, err := cfg.NewClientFromConfig()
+			client, err := ch.Config.NewClientFromConfig()
 			if err != nil {
 				return err
 			}
@@ -29,17 +29,17 @@ func DeleteCmd(cfg *config.Config) *cobra.Command {
 
 			req := &planetscale.DeleteServiceTokenRequest{
 				ID:           token,
-				Organization: cfg.Organization,
+				Organization: ch.Config.Organization,
 			}
 
-			end := cmdutil.PrintProgress(fmt.Sprintf("Deleting Token %s", cmdutil.BoldBlue(token)))
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Deleting Token %s", printer.BoldBlue(token)))
 			defer end()
 
 			if err := client.ServiceTokens.Delete(ctx, req); err != nil {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
 					return fmt.Errorf("token does not exist in organization %s\n",
-						cmdutil.BoldBlue(cfg.Organization))
+						printer.BoldBlue(ch.Config.Organization))
 				case planetscale.ErrResponseMalformed:
 					return cmdutil.MalformedError(err)
 				default:
@@ -49,7 +49,16 @@ func DeleteCmd(cfg *config.Config) *cobra.Command {
 
 			end()
 
-			return nil
+			if ch.Printer.Format() == printer.Human {
+				ch.Printer.Println("Token was successfully deleted!")
+				return nil
+			}
+
+			return ch.Printer.PrintResource(
+				map[string]string{
+					"result": "token deleted",
+				},
+			)
 		},
 	}
 

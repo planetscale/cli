@@ -6,18 +6,18 @@ import (
 	"strings"
 
 	"github.com/planetscale/cli/internal/cmdutil"
-	"github.com/planetscale/cli/internal/config"
+	"github.com/planetscale/cli/internal/printer"
 	"github.com/planetscale/planetscale-go/planetscale"
 	"github.com/spf13/cobra"
 )
 
-func DeleteAccessCmd(cfg *config.Config) *cobra.Command {
+func DeleteAccessCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete-access <token> <access> <access> ...",
 		Short: "delete access granted to a service token in the organization",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
-			client, err := cfg.NewClientFromConfig()
+			client, err := ch.Config.NewClientFromConfig()
 			if err != nil {
 				return err
 			}
@@ -30,19 +30,19 @@ func DeleteAccessCmd(cfg *config.Config) *cobra.Command {
 
 			req := &planetscale.DeleteServiceTokenAccessRequest{
 				ID:           token,
-				Database:     cfg.Database,
-				Organization: cfg.Organization,
+				Database:     ch.Config.Database,
+				Organization: ch.Config.Organization,
 				Accesses:     perms,
 			}
 
-			end := cmdutil.PrintProgress(fmt.Sprintf("Removing access %s on database %s", cmdutil.BoldBlue(strings.Join(perms, ", ")), cmdutil.BoldBlue(cfg.Database)))
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Removing access %s on database %s", printer.BoldBlue(strings.Join(perms, ", ")), printer.BoldBlue(ch.Config.Database)))
 			defer end()
 
 			if err := client.ServiceTokens.DeleteAccess(ctx, req); err != nil {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
 					return fmt.Errorf("database %s or token does not exist in organization %s\n",
-						cmdutil.BoldBlue(cfg.Database), cmdutil.BoldBlue(cfg.Organization))
+						printer.BoldBlue(ch.Config.Database), printer.BoldBlue(ch.Config.Organization))
 				case planetscale.ErrResponseMalformed:
 					return cmdutil.MalformedError(err)
 				default:
@@ -52,11 +52,22 @@ func DeleteAccessCmd(cfg *config.Config) *cobra.Command {
 
 			end()
 
-			return nil
+			if ch.Printer.Format() == printer.Human {
+				ch.Printer.Printf("Accesses %v were successfully deleted!\n",
+					printer.BoldBlue(strings.Join(perms, ",")))
+				return nil
+			}
+
+			return ch.Printer.PrintResource(
+				map[string]string{
+					"result": "accesses deleted",
+					"perms":  strings.Join(perms, ","),
+				},
+			)
 		},
 	}
 
-	cmd.PersistentFlags().StringVar(&cfg.Database, "database", cfg.Database, "The database this project is using")
+	cmd.PersistentFlags().StringVar(&ch.Config.Database, "database", ch.Config.Database, "The database this project is using")
 	cmd.MarkPersistentFlagRequired("database") // nolint:errcheck
 
 	return cmd

@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/planetscale/cli/internal/cmdutil"
-	"github.com/planetscale/cli/internal/config"
 	"github.com/planetscale/cli/internal/printer"
 	"github.com/planetscale/planetscale-go/planetscale"
 
@@ -15,7 +14,7 @@ import (
 )
 
 // ListCmd is the command for listing deploy requests.
-func ListCmd(cfg *config.Config) *cobra.Command {
+func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "list <database>",
 		Short:   "List all deploy requests for a database",
@@ -31,31 +30,31 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 			}
 
 			if web {
-				fmt.Println("🌐  Redirecting you to your deploy-requests list in your web browser.")
-				err := browser.OpenURL(fmt.Sprintf("%s/%s", cmdutil.ApplicationURL, cfg.Organization))
+				ch.Printer.Println("🌐  Redirecting you to your deploy-requests list in your web browser.")
+				err := browser.OpenURL(fmt.Sprintf("%s/%s", cmdutil.ApplicationURL, ch.Config.Organization))
 				if err != nil {
 					return err
 				}
 				return nil
 			}
 
-			client, err := cfg.NewClientFromConfig()
+			client, err := ch.Config.NewClientFromConfig()
 			if err != nil {
 				return err
 			}
 
-			end := cmdutil.PrintProgress(fmt.Sprintf("Fetching deploy requests for %s", cmdutil.BoldBlue(database)))
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Fetching deploy requests for %s", printer.BoldBlue(database)))
 			defer end()
 
 			deployRequests, err := client.DeployRequests.List(ctx, &planetscale.ListDeployRequestsRequest{
-				Organization: cfg.Organization,
+				Organization: ch.Config.Organization,
 				Database:     database,
 			})
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
 					return fmt.Errorf("database %s does not exist in organization %s\n",
-						cmdutil.BoldBlue(database), cmdutil.BoldBlue(cfg.Organization))
+						printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
 				case planetscale.ErrResponseMalformed:
 					return cmdutil.MalformedError(err)
 				default:
@@ -64,17 +63,12 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 			}
 			end()
 
-			if len(deployRequests) == 0 && !cfg.OutputJSON {
-				fmt.Printf("No deploy requests exist for %s.\n", cmdutil.BoldBlue(database))
+			if len(deployRequests) == 0 && ch.Printer.Format() == printer.Human {
+				ch.Printer.Printf("No deploy requests exist for %s.\n", printer.BoldBlue(database))
 				return nil
 			}
 
-			err = printer.PrintOutput(cfg.OutputJSON, printer.NewDeployRequestSlicePrinter(deployRequests))
-			if err != nil {
-				return err
-			}
-
-			return nil
+			return ch.Printer.PrintResource(toDeployRequests(deployRequests))
 		},
 		TraverseChildren: true,
 	}

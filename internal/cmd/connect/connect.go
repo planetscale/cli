@@ -9,7 +9,7 @@ import (
 	"syscall"
 
 	"github.com/planetscale/cli/internal/cmdutil"
-	"github.com/planetscale/cli/internal/config"
+	"github.com/planetscale/cli/internal/printer"
 	"github.com/planetscale/cli/internal/promptutil"
 	"github.com/planetscale/cli/internal/proxyutil"
 
@@ -19,7 +19,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func ConnectCmd(cfg *config.Config) *cobra.Command {
+func ConnectCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
 		localAddr  string
 		remoteAddr string
@@ -47,7 +47,11 @@ argument:
 			ctx := context.Background()
 			database := args[0]
 
-			client, err := cfg.NewClientFromConfig()
+			if !printer.IsTTY || ch.Printer.Format() != printer.Human {
+				return errors.New("pscale connect only works in interactive mode")
+			}
+
+			client, err := ch.Config.NewClientFromConfig()
 			if err != nil {
 				return err
 			}
@@ -58,7 +62,7 @@ argument:
 			}
 
 			if branch == "" {
-				branch, err = promptutil.GetBranch(ctx, client, cfg.Organization, database)
+				branch, err = promptutil.GetBranch(ctx, client, ch.Config.Organization, database)
 				if err != nil {
 					return err
 				}
@@ -73,7 +77,7 @@ argument:
 				CertSource: proxyutil.NewRemoteCertSource(client),
 				LocalAddr:  localAddr,
 				RemoteAddr: flags.remoteAddr,
-				Instance:   fmt.Sprintf("%s/%s/%s", cfg.Organization, database, branch),
+				Instance:   fmt.Sprintf("%s/%s/%s", ch.Config.Organization, database, branch),
 			}
 
 			if !flags.debug {
@@ -83,7 +87,7 @@ argument:
 			err = runProxy(proxyOpts, database, branch)
 			if err != nil {
 				if isAddrInUse(err) {
-					fmt.Println("Tried address 127.0.0.1:3306, but it's already in use. Picking up a random port ...")
+					ch.Printer.Println("Tried address 127.0.0.1:3306, but it's already in use. Picking up a random port ...")
 					proxyOpts.LocalAddr = "127.0.0.1:0"
 					return runProxy(proxyOpts, database, branch)
 				}
@@ -94,7 +98,7 @@ argument:
 		},
 	}
 
-	cmd.PersistentFlags().StringVar(&cfg.Organization, "org", cfg.Organization, "The organization for the current user")
+	cmd.PersistentFlags().StringVar(&ch.Config.Organization, "org", ch.Config.Organization, "The organization for the current user")
 	cmd.PersistentFlags().StringVar(&flags.localAddr, "local-addr", "",
 		"Local address to bind and listen for connections")
 	cmd.PersistentFlags().StringVar(&flags.remoteAddr, "remote-addr", "",
@@ -117,14 +121,14 @@ func runProxy(proxyOpts proxy.Options, database, branch string) error {
 		// invoked
 		addr, err := p.LocalAddr()
 		if err != nil {
-			fmt.Printf("failed getting local addr: %s\n", err)
+			fmt.Fprintf(os.Stderr, "failed getting local addr: %s\n", err)
 			return
 		}
 
 		fmt.Printf("Secure connection to databases %s and branch %s is established!.\n\nLocal address to connect your application: %s (press ctrl-c to quit)",
-			cmdutil.BoldBlue(database),
-			cmdutil.BoldBlue(branch),
-			cmdutil.BoldBlue(addr.String()),
+			printer.BoldBlue(database),
+			printer.BoldBlue(branch),
+			printer.BoldBlue(addr.String()),
 		)
 	}()
 

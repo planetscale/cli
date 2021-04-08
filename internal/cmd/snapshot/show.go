@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/planetscale/cli/internal/cmdutil"
-	"github.com/planetscale/cli/internal/config"
 	"github.com/planetscale/cli/internal/printer"
 
 	"github.com/planetscale/planetscale-go/planetscale"
@@ -13,7 +12,7 @@ import (
 )
 
 // ShowCmd makes a command for fetching a single snapshot by its ID.
-func ShowCmd(cfg *config.Config) *cobra.Command {
+func ShowCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "show <snapshot-id>",
 		Short: "Show a specific schema snapshot",
@@ -22,12 +21,12 @@ func ShowCmd(cfg *config.Config) *cobra.Command {
 			ctx := context.Background()
 			id := args[0]
 
-			client, err := cfg.NewClientFromConfig()
+			client, err := ch.Config.NewClientFromConfig()
 			if err != nil {
 				return err
 			}
 
-			end := cmdutil.PrintProgress(fmt.Sprintf("Fetching schema snapshot %s", cmdutil.BoldBlue(id)))
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Fetching schema snapshot %s", printer.BoldBlue(id)))
 			defer end()
 
 			snapshot, err := client.SchemaSnapshots.Get(ctx, &planetscale.GetSchemaSnapshotRequest{
@@ -36,7 +35,7 @@ func ShowCmd(cfg *config.Config) *cobra.Command {
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
-					return fmt.Errorf("snapshot id %s does not exist (organization: %s)", cmdutil.BoldBlue(id), cmdutil.BoldBlue(cfg.Organization))
+					return fmt.Errorf("snapshot id %s does not exist (organization: %s)", printer.BoldBlue(id), printer.BoldBlue(ch.Config.Organization))
 				case planetscale.ErrResponseMalformed:
 					return cmdutil.MalformedError(err)
 				default:
@@ -45,12 +44,7 @@ func ShowCmd(cfg *config.Config) *cobra.Command {
 			}
 			end()
 
-			err = printer.PrintOutput(cfg.OutputJSON, printer.NewSchemaSnapshotPrinter(snapshot))
-			if err != nil {
-				return err
-			}
-
-			return nil
+			return ch.Printer.PrintResource(toSchemaSnapshot(snapshot))
 		},
 	}
 

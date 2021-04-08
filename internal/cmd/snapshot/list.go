@@ -6,14 +6,13 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/planetscale/cli/internal/cmdutil"
-	"github.com/planetscale/cli/internal/config"
 	"github.com/planetscale/cli/internal/printer"
 	"github.com/planetscale/planetscale-go/planetscale"
 	"github.com/spf13/cobra"
 )
 
 // ListCmd makes a command for listing all snapshots for a database branch.
-func ListCmd(cfg *config.Config) *cobra.Command {
+func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "list <database> <branch>",
 		Short:   "List all of the schema snapshots for a database branch",
@@ -23,16 +22,16 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 			ctx := context.Background()
 			database, branch := args[0], args[1]
 
-			client, err := cfg.NewClientFromConfig()
+			client, err := ch.Config.NewClientFromConfig()
 			if err != nil {
 				return err
 			}
 
-			end := cmdutil.PrintProgress(fmt.Sprintf("Fetching schema snapshots for %s in %s...", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(database)))
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Fetching schema snapshots for %s in %s...", printer.BoldBlue(branch), printer.BoldBlue(database)))
 			defer end()
 
 			snapshots, err := client.SchemaSnapshots.List(ctx, &planetscale.ListSchemaSnapshotsRequest{
-				Organization: cfg.Organization,
+				Organization: ch.Config.Organization,
 				Database:     database,
 				Branch:       branch,
 			})
@@ -40,7 +39,7 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
 					return fmt.Errorf("branch %s does not exist in database %s (organization: %s)",
-						cmdutil.BoldBlue(branch), cmdutil.BoldBlue(database), cmdutil.BoldBlue(cfg.Organization))
+						printer.BoldBlue(branch), printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
 				case planetscale.ErrResponseMalformed:
 					return cmdutil.MalformedError(err)
 				default:
@@ -49,17 +48,13 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 			}
 			end()
 
-			if len(snapshots) == 0 && !cfg.OutputJSON {
-				fmt.Printf("No schema snapshots exist for %s in %s.\n", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(database))
+			if len(snapshots) == 0 && ch.Printer.Format() == printer.Human {
+				ch.Printer.Printf("No schema snapshots exist for %s in %s.\n",
+					printer.BoldBlue(branch), printer.BoldBlue(database))
 				return nil
 			}
 
-			err = printer.PrintOutput(cfg.OutputJSON, printer.NewSchemaSnapshotSlicePrinter(snapshots))
-			if err != nil {
-				return err
-			}
-
-			return nil
+			return ch.Printer.PrintResource(toSchemaSnapshots(snapshots))
 		},
 	}
 

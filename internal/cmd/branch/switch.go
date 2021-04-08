@@ -8,12 +8,13 @@ import (
 	"github.com/pkg/errors"
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/config"
+	"github.com/planetscale/cli/internal/printer"
 	"github.com/planetscale/planetscale-go/planetscale"
 	ps "github.com/planetscale/planetscale-go/planetscale"
 	"github.com/spf13/cobra"
 )
 
-func SwitchCmd(cfg *config.Config) *cobra.Command {
+func SwitchCmd(ch *cmdutil.Helper) *cobra.Command {
 	var parentBranch string
 	var autoCreate bool
 
@@ -25,17 +26,17 @@ func SwitchCmd(cfg *config.Config) *cobra.Command {
 			ctx := context.Background()
 			branch := args[0]
 
-			client, err := cfg.NewClientFromConfig()
+			client, err := ch.Config.NewClientFromConfig()
 			if err != nil {
 				return err
 			}
 
-			fmt.Printf("Finding branch %s on database %s\n",
-				cmdutil.BoldBlue(branch), cmdutil.BoldBlue(cfg.Database))
+			ch.Printer.Printf("Finding branch %s on database %s\n",
+				printer.BoldBlue(branch), printer.BoldBlue(ch.Config.Database))
 
 			_, err = client.DatabaseBranches.Get(ctx, &planetscale.GetDatabaseBranchRequest{
-				Organization: cfg.Organization,
-				Database:     cfg.Database,
+				Organization: ch.Config.Organization,
+				Database:     ch.Config.Database,
 				Branch:       branch,
 			})
 			if err != nil && !errorIsNotFound(err) {
@@ -47,12 +48,12 @@ func SwitchCmd(cfg *config.Config) *cobra.Command {
 					return errors.New("branch does not exist in specified database. Use --create to automatically create during switch")
 				}
 
-				end := cmdutil.PrintProgress(fmt.Sprintf("Branch does not exist, creating %s branch from %s...", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(parentBranch)))
+				end := ch.Printer.PrintProgress(fmt.Sprintf("Branch does not exist, creating %s branch from %s...", printer.BoldBlue(branch), printer.BoldBlue(parentBranch)))
 				defer end()
 
 				createReq := &ps.CreateDatabaseBranchRequest{
-					Organization: cfg.Organization,
-					Database:     cfg.Database,
+					Organization: ch.Config.Organization,
+					Database:     ch.Config.Database,
 					Branch: &ps.DatabaseBranch{
 						Name:         branch,
 						ParentBranch: parentBranch,
@@ -68,8 +69,8 @@ func SwitchCmd(cfg *config.Config) *cobra.Command {
 			}
 
 			cfg := config.FileConfig{
-				Organization: cfg.Organization,
-				Database:     cfg.Database,
+				Organization: ch.Config.Organization,
+				Database:     ch.Config.Database,
 				Branch:       branch,
 			}
 
@@ -77,15 +78,15 @@ func SwitchCmd(cfg *config.Config) *cobra.Command {
 				return errors.Wrap(err, "error writing project configuration file")
 			}
 
-			fmt.Printf("Successfully switched to branch %s on database %s", cmdutil.BoldBlue(branch), cmdutil.BoldBlue(parentBranch))
+			ch.Printer.Printf("Successfully switched to branch %s on database %s", printer.BoldBlue(branch), printer.BoldBlue(parentBranch))
 
 			return nil
 		},
 	}
 
-	cmd.PersistentFlags().StringVar(&cfg.Organization, "org", cfg.Organization,
+	cmd.PersistentFlags().StringVar(&ch.Config.Organization, "org", ch.Config.Organization,
 		"The organization for the current user")
-	cmd.PersistentFlags().StringVar(&cfg.Database, "database", cfg.Database,
+	cmd.PersistentFlags().StringVar(&ch.Config.Database, "database", ch.Config.Database,
 		"The database this project is using")
 	cmd.Flags().StringVar(&parentBranch, "parent-branch", "main",
 		"parent branch to inherit from if a new branch is being created")

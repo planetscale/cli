@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/planetscale/cli/internal/cmdutil"
-	"github.com/planetscale/cli/internal/config"
 	"github.com/planetscale/cli/internal/printer"
 	"github.com/planetscale/planetscale-go/planetscale"
 
@@ -15,7 +14,7 @@ import (
 )
 
 // ListCmd encapsulates the command for listing branches for a database.
-func ListCmd(cfg *config.Config) *cobra.Command {
+func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "list <database>",
 		Short:   "List all branches of a database",
@@ -31,30 +30,31 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 			}
 
 			if web {
-				fmt.Println("🌐  Redirecting you to your branches in your web browser.")
-				err := browser.OpenURL(fmt.Sprintf("%s/%s/%s/branches", cmdutil.ApplicationURL, cfg.Organization, database))
+				ch.Printer.Println("🌐  Redirecting you to your branches in your web browser.")
+				err := browser.OpenURL(fmt.Sprintf("%s/%s/%s/branches", cmdutil.ApplicationURL, ch.Config.Organization, database))
 				if err != nil {
 					return err
 				}
 				return nil
 			}
 
-			client, err := cfg.NewClientFromConfig()
+			client, err := ch.Config.NewClientFromConfig()
 			if err != nil {
 				return err
 			}
 
-			end := cmdutil.PrintProgress(fmt.Sprintf("Fetching branches for %s", cmdutil.BoldBlue(database)))
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Fetching branches for %s", printer.BoldBlue(database)))
 			defer end()
+
 			branches, err := client.DatabaseBranches.List(ctx, &planetscale.ListDatabaseBranchesRequest{
-				Organization: cfg.Organization,
+				Organization: ch.Config.Organization,
 				Database:     database,
 			})
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
 					return fmt.Errorf("database %s does not exist in organization %s\n",
-						cmdutil.BoldBlue(database), cmdutil.BoldBlue(cfg.Organization))
+						printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
 				case planetscale.ErrResponseMalformed:
 					return cmdutil.MalformedError(err)
 				default:
@@ -63,17 +63,12 @@ func ListCmd(cfg *config.Config) *cobra.Command {
 			}
 			end()
 
-			if len(branches) == 0 && !cfg.OutputJSON {
-				fmt.Printf("No branches exist in %s.\n", cmdutil.BoldBlue(database))
+			if len(branches) == 0 && ch.Printer.Format() == printer.Human {
+				ch.Printer.Printf("No branches exist in %s.\n", printer.BoldBlue(database))
 				return nil
 			}
 
-			err = printer.PrintOutput(cfg.OutputJSON, printer.NewDatabaseBranchSlicePrinter(branches))
-			if err != nil {
-				return err
-			}
-
-			return nil
+			return ch.Printer.PrintResource(toDatabaseBranches(branches))
 		},
 	}
 

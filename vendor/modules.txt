@@ -22,6 +22,9 @@ github.com/dustin/go-humanize
 github.com/fatih/color
 # github.com/fsnotify/fsnotify v1.4.7
 github.com/fsnotify/fsnotify
+# github.com/gocarina/gocsv v0.0.0-20210326111627-0340a0229e98
+## explicit
+github.com/gocarina/gocsv
 # github.com/golang/protobuf v1.4.3
 github.com/golang/protobuf/proto
 # github.com/hashicorp/go-cleanhttp v0.5.2
