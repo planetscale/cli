@@ -30,7 +30,7 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 			ctx := context.Background()
 			name := args[0]
 
-			client, err := ch.Client()
+			client, err := ch.Config.NewClientFromConfig()
 			if err != nil {
 				return err
 			}

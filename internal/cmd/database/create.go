@@ -42,7 +42,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 				return nil
 			}
 
-			client, err := ch.Client()
+			client, err := ch.Config.NewClientFromConfig()
 			if err != nil {
 				return err
 			}
