@@ -13,9 +13,10 @@ import (
 // DatabaseCmd encapsulates the commands for creating a database
 func DatabaseCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "database <command>",
-		Short:   "Create, read, destroy, and update databases",
-		Aliases: []string{"db"},
+		Use:               "database <command>",
+		Short:             "Create, read, destroy, and update databases",
+		Aliases:           []string{"db"},
+		PersistentPreRunE: cmdutil.CheckAuthentication(ch.Config),
 	}
 
 	cmd.PersistentFlags().StringVar(&ch.Config.Organization, "org", ch.Config.Organization,

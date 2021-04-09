@@ -12,8 +12,9 @@ import (
 // BranchCmd handles the branching of a database.
 func BranchCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "branch <command>",
-		Short: "Create, delete, and manage branches",
+		Use:               "branch <command>",
+		Short:             "Create, delete, and manage branches",
+		PersistentPreRunE: cmdutil.CheckAuthentication(ch.Config),
 	}
 
 	cmd.PersistentFlags().StringVar(&ch.Config.Organization, "org", ch.Config.Organization,

@@ -44,6 +44,7 @@ choose one. To connect to a specific branch, pass the branch as a second
 argument:
 
   pscale connect mydatabase mybranch`,
+		PersistentPreRunE: cmdutil.CheckAuthentication(ch.Config),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 			database := args[0]
