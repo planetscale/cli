@@ -74,6 +74,9 @@ func (f *Format) Type() string {
 
 // Printer is used to print information to the defined output.
 type Printer struct {
+	humanOut    io.Writer
+	resourceOut io.Writer
+
 	format *Format
 }
 
@@ -103,6 +106,10 @@ func (p *Printer) Print(i ...interface{}) {
 // human, out returns ioutil.Discard, which means that any output will be
 // discarded
 func (p *Printer) out() io.Writer {
+	if p.humanOut != nil {
+		return p.humanOut
+	}
+
 	if *p.format == Human {
 		return os.Stdout
 	}
@@ -133,33 +140,45 @@ func (p *Printer) PrintProgress(message string) func() {
 // Format returns the format that was set for this printer
 func (p *Printer) Format() Format { return *p.format }
 
+func (p *Printer) SetHumanOutput(out io.Writer) {
+	p.humanOut = out
+}
+
+func (p *Printer) SetResourceOutput(out io.Writer) {
+	p.resourceOut = out
+}
+
 // PrintResource prints the given resource in the format it was specified.
 func (p *Printer) PrintResource(v interface{}) error {
 	if p.format == nil {
 		return errors.New("printer.Format is not set")
 	}
 
+	var out io.Writer = os.Stdout
+	if p.resourceOut != nil {
+		out = p.resourceOut
+	}
+
 	switch *p.format {
 	case Human:
 		var b strings.Builder
 		tableprinter.Print(&b, v)
-		fmt.Println(b.String())
+		fmt.Fprintln(out, b.String())
 		return nil
 	case JSON:
-		out, err := json.MarshalIndent(v, "", "  ")
+		buf, err := json.MarshalIndent(v, "", "  ")
 		if err != nil {
 			return err
 		}
 
-		fmt.Println(string(out))
+		fmt.Fprintln(out, string(buf))
 		return nil
 	case CSV:
-		out, err := gocsv.MarshalString(v)
+		buf, err := gocsv.MarshalString(v)
 		if err != nil {
 			return err
 		}
-		fmt.Println(out)
-
+		fmt.Fprintln(out, buf)
 		return nil
 	}
 
