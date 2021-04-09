@@ -1,0 +1,13 @@
+[![GoDoc](https://godoc.org/github.com/frankban/quicktest?status.svg)](https://godoc.org/github.com/frankban/quicktest)
+[![Build Status](https://travis-ci.com/frankban/quicktest.svg?branch=master)](https://travis-ci.com/frankban/quicktest)
+
+[//]: # (Generated with: godocdown -template=.godocdown.template -o README.md)
+
+# quicktest
+
+`go get github.com/frankban/quicktest`
+
+{{ .EmitSynopsis }}
+
+For a complete API reference, see the
+[package documentation](https://godoc.org/github.com/frankban/quicktest).

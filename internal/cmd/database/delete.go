@@ -30,16 +30,12 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 			ctx := context.Background()
 			name := args[0]
 
-			client, err := ch.Config.NewClientFromConfig()
+			client, err := ch.Client()
 			if err != nil {
 				return err
 			}
 
 			if !force {
-				if ch.Printer.Format() != printer.Human {
-					return fmt.Errorf("Cannot delete database with the output format %q (run with -force to override)", ch.Printer.Format())
-				}
-
 				if !printer.IsTTY {
 					return fmt.Errorf("Cannot confirm deletion of database %q (run with -force to override)", name)
 				}
