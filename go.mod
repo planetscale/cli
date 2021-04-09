@@ -9,6 +9,7 @@ require (
 	github.com/cli/safeexec v1.0.0
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/fatih/color v1.10.0
+	github.com/frankban/quicktest v1.11.3
 	github.com/gocarina/gocsv v0.0.0-20210326111627-0340a0229e98
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/kataras/tablewriter v0.0.0-20180708051242-e063d29b7c23 // indirect
