@@ -140,10 +140,12 @@ func (p *Printer) PrintProgress(message string) func() {
 // Format returns the format that was set for this printer
 func (p *Printer) Format() Format { return *p.format }
 
+// SetHumanOutput sets the output for human readable messages.
 func (p *Printer) SetHumanOutput(out io.Writer) {
 	p.humanOut = out
 }
 
+// SetResourceOutput sets the output for pringing resources via PrintResource.
 func (p *Printer) SetResourceOutput(out io.Writer) {
 	p.resourceOut = out
 }
