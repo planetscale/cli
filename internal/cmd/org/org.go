@@ -10,8 +10,9 @@ import (
 
 func OrgCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "org <command>",
-		Short: "Modify and manage organization options",
+		Use:               "org <command>",
+		Short:             "Modify and manage organization options",
+		PersistentPreRunE: cmdutil.CheckAuthentication(ch.Config),
 	}
 
 	cmd.AddCommand(SwitchCmd(ch))

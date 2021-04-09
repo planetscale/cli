@@ -11,9 +11,10 @@ import (
 // Requests.
 func DeployRequestCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "deploy-request <command>",
-		Short:   "Create, approve, diff, and manage deploy requests",
-		Aliases: []string{"dr"},
+		Use:               "deploy-request <command>",
+		Short:             "Create, approve, diff, and manage deploy requests",
+		Aliases:           []string{"dr"},
+		PersistentPreRunE: cmdutil.CheckAuthentication(ch.Config),
 	}
 
 	cmd.PersistentFlags().StringVar(&ch.Config.Organization, "org", ch.Config.Organization, "The organization for the current user")

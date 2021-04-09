@@ -11,8 +11,9 @@ import (
 // TokenCmd encapsulates the command for running snapshots.
 func TokenCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "service-token <action>",
-		Short: "Create, get, and list service tokens",
+		Use:               "service-token <action>",
+		Short:             "Create, get, and list service tokens",
+		PersistentPreRunE: cmdutil.CheckAuthentication(ch.Config),
 	}
 
 	cmd.PersistentFlags().StringVar(&ch.Config.Organization, "org", ch.Config.Organization, "The organization for the current user")

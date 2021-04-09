@@ -50,6 +50,7 @@ choose one. To open a shell instance to a specific branch, pass the branch as a
 second argument:
 
   pscale shell mydatabase mybranch`,
+		PersistentPreRunE: cmdutil.CheckAuthentication(ch.Config),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 			database := args[0]

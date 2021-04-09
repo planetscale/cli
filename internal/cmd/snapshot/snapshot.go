@@ -12,8 +12,9 @@ import (
 // SnapshotCmd encapsulates the command for running snapshots.
 func SnapshotCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "snapshot <action>",
-		Short: "Create, get, and list schema snapshots",
+		Use:               "snapshot <action>",
+		Short:             "Create, get, and list schema snapshots",
+		PersistentPreRunE: cmdutil.CheckAuthentication(ch.Config),
 	}
 
 	cmd.PersistentFlags().StringVar(&ch.Config.Organization, "org", ch.Config.Organization, "The organization for the current user")

@@ -16,10 +16,10 @@ import (
 
 // BackupCmd handles branch backups.
 func BackupCmd(ch *cmdutil.Helper) *cobra.Command {
-
 	cmd := &cobra.Command{
-		Use:   "backup <command>",
-		Short: "Create, read, destroy, and update branch backups",
+		Use:               "backup <command>",
+		Short:             "Create, read, destroy, and update branch backups",
+		PersistentPreRunE: cmdutil.CheckAuthentication(ch.Config),
 	}
 
 	cmd.PersistentFlags().StringVar(&ch.Config.Organization, "org", ch.Config.Organization, "The organization for the current user")
