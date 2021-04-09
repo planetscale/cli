@@ -36,7 +36,7 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 				return nil
 			}
 
-			client, err := ch.Config.NewClientFromConfig()
+			client, err := ch.Client()
 			if err != nil {
 				return err
 			}

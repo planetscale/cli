@@ -102,6 +102,9 @@ func Execute(ver, commit, buildDate string) error {
 	ch := &cmdutil.Helper{
 		Printer: printer.NewPrinter(&format),
 		Config:  cfg,
+		Client: func() (*ps.Client, error) {
+			return cfg.NewClientFromConfig()
+		},
 	}
 
 	// service token flags. they are hidden for now.
