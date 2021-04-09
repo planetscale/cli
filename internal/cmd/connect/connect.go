@@ -12,6 +12,7 @@ import (
 	"github.com/planetscale/cli/internal/printer"
 	"github.com/planetscale/cli/internal/promptutil"
 	"github.com/planetscale/cli/internal/proxyutil"
+	"github.com/planetscale/planetscale-go/planetscale"
 
 	"github.com/planetscale/sql-proxy/proxy"
 	"github.com/planetscale/sql-proxy/sigutil"
@@ -64,6 +65,24 @@ argument:
 			if branch == "" {
 				branch, err = promptutil.GetBranch(ctx, client, ch.Config.Organization, database)
 				if err != nil {
+					return err
+				}
+			}
+
+			// check whether database and branch exist
+			_, err = client.DatabaseBranches.Get(ctx, &planetscale.GetDatabaseBranchRequest{
+				Organization: ch.Config.Organization,
+				Database:     database,
+				Branch:       branch,
+			})
+			if err != nil {
+				switch cmdutil.ErrCode(err) {
+				case planetscale.ErrNotFound:
+					return fmt.Errorf("database %s and branch %s does not exist in organization %s\n",
+						printer.BoldBlue(database), printer.BoldBlue(branch), printer.BoldBlue(ch.Config.Organization))
+				case planetscale.ErrResponseMalformed:
+					return cmdutil.MalformedError(err)
+				default:
 					return err
 				}
 			}

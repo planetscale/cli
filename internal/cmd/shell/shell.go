@@ -80,6 +80,24 @@ second argument:
 				}
 			}
 
+			// check whether database and branch exist
+			_, err = client.DatabaseBranches.Get(ctx, &planetscale.GetDatabaseBranchRequest{
+				Organization: ch.Config.Organization,
+				Database:     database,
+				Branch:       branch,
+			})
+			if err != nil {
+				switch cmdutil.ErrCode(err) {
+				case planetscale.ErrNotFound:
+					return fmt.Errorf("database %s and branch %s does not exist in organization %s\n",
+						printer.BoldBlue(database), printer.BoldBlue(branch), printer.BoldBlue(ch.Config.Organization))
+				case planetscale.ErrResponseMalformed:
+					return cmdutil.MalformedError(err)
+				default:
+					return err
+				}
+			}
+
 			const localProxyAddr = "127.0.0.1"
 			localAddr := localProxyAddr + ":0"
 			if flags.localAddr != "" {
