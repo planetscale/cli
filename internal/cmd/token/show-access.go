@@ -32,7 +32,7 @@ func ShowCmd(ch *cmdutil.Helper) *cobra.Command {
 				Organization: ch.Config.Organization,
 			}
 
-			end := ch.Printer.PrintProgress(fmt.Sprintf("Creating service token in org %s", printer.BoldBlue(ch.Config.Organization)))
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Fetching service token from org %s", printer.BoldBlue(ch.Config.Organization)))
 			defer end()
 
 			accesses, err := client.ServiceTokens.GetAccess(ctx, req)
