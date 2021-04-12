@@ -199,7 +199,6 @@ func (c *Client) handleResponse(ctx context.Context, res *http.Response, v inter
 				Code: ErrInternal,
 				Meta: map[string]string{
 					"body": string(out),
-					"err":  err.Error(),
 				},
 			}
 		}
