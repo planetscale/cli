@@ -64,6 +64,7 @@ func Execute(ver, commit, buildDate string) error {
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config",
 		"", "Config file (default is $HOME/.config/planetscale/pscale.yml)")
 	rootCmd.SilenceUsage = true
+	rootCmd.SilenceErrors = true
 
 	v := version.Format(ver, commit, buildDate)
 	rootCmd.SetVersionTemplate(v)
@@ -137,7 +138,17 @@ func Execute(ver, commit, buildDate string) error {
 	rootCmd.AddCommand(token.TokenCmd(ch))
 	rootCmd.AddCommand(version.VersionCmd(ch, ver, commit, buildDate))
 
-	return rootCmd.Execute()
+	err = rootCmd.Execute()
+	if err != nil {
+		switch format {
+		case printer.JSON:
+			return fmt.Errorf(`{"error": "%s"}`, err)
+		default:
+			return fmt.Errorf("Error: %s", err)
+		}
+	}
+
+	return nil
 }
 
 // initConfig reads in config file and ENV variables if set.
