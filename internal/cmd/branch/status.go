@@ -23,7 +23,7 @@ func StatusCmd(ch *cmdutil.Helper) *cobra.Command {
 			source := args[0]
 			branch := args[1]
 
-			client, err := ch.Config.NewClientFromConfig()
+			client, err := ch.Client()
 			if err != nil {
 				return err
 			}
