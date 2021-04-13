@@ -39,7 +39,7 @@ func ReviewCmd(ch *cmdutil.Helper) *cobra.Command {
 				return fmt.Errorf("The argument <number> is invalid: %s", err)
 			}
 
-			client, err := ch.Config.NewClientFromConfig()
+			client, err := ch.Client()
 			if err != nil {
 				return err
 			}
