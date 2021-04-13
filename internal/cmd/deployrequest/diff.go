@@ -36,7 +36,7 @@ func DiffCmd(ch *cmdutil.Helper) *cobra.Command {
 				return browser.OpenURL(fmt.Sprintf("%s/%s/%s/deploy-requests/%s/diff", cmdutil.ApplicationURL, ch.Config.Organization, database, number))
 			}
 
-			client, err := ch.Config.NewClientFromConfig()
+			client, err := ch.Client()
 			if err != nil {
 				return err
 			}
