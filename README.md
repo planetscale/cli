@@ -7,6 +7,11 @@
 ```
 brew install planetscale/tap/pscale
 ```
+To upgrade to the latest version:
+
+```
+brew upgrade pscale
+```
 
 **deb/rpm**:
 
