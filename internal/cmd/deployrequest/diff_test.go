@@ -1,8 +1,9 @@
-package branch
+package deployrequest
 
 import (
 	"bytes"
 	"context"
+	"strconv"
 	"testing"
 
 	"github.com/planetscale/cli/internal/cmdutil"
@@ -14,7 +15,7 @@ import (
 	ps "github.com/planetscale/planetscale-go/planetscale"
 )
 
-func TestBranch_StatusCmd(t *testing.T) {
+func TestDeployRequest_DiffCmd(t *testing.T) {
 	c := qt.New(t)
 
 	var buf bytes.Buffer
@@ -24,15 +25,18 @@ func TestBranch_StatusCmd(t *testing.T) {
 
 	org := "planetscale"
 	db := "planetscale"
-	branch := "development"
+	var number uint64 = 10
 
-	res := &ps.DatabaseBranchStatus{Ready: true}
+	res := []*ps.Diff{
+		{Name: "foo"},
+		{Name: "bar"},
+	}
 
-	svc := &mock.DatabaseBranchesService{
-		GetStatusFn: func(ctx context.Context, req *ps.GetDatabaseBranchStatusRequest) (*ps.DatabaseBranchStatus, error) {
-			c.Assert(req.Branch, qt.Equals, branch)
-			c.Assert(req.Database, qt.Equals, db)
+	svc := &mock.DeployRequestsService{
+		DiffFn: func(ctx context.Context, req *ps.DiffRequest) ([]*ps.Diff, error) {
 			c.Assert(req.Organization, qt.Equals, org)
+			c.Assert(req.Database, qt.Equals, db)
+			c.Assert(req.Number, qt.Equals, number)
 
 			return res, nil
 		},
@@ -45,17 +49,18 @@ func TestBranch_StatusCmd(t *testing.T) {
 		},
 		Client: func() (*ps.Client, error) {
 			return &ps.Client{
-				DatabaseBranches: svc,
+				DeployRequests: svc,
 			}, nil
 
 		},
 	}
 
-	cmd := StatusCmd(ch)
-	cmd.SetArgs([]string{db, branch})
+	cmd := DiffCmd(ch)
+	cmd.SetArgs([]string{db, strconv.FormatUint(number, 10)})
 	err := cmd.Execute()
 
 	c.Assert(err, qt.IsNil)
-	c.Assert(svc.GetStatusFnInvoked, qt.IsTrue)
+	c.Assert(svc.DiffFnInvoked, qt.IsTrue)
+
 	c.Assert(buf.String(), qt.JSONEquals, res)
 }

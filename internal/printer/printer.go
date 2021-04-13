@@ -188,6 +188,10 @@ func (p *Printer) PrintResource(v interface{}) error {
 }
 
 func GetMilliseconds(timestamp time.Time) int64 {
+	if timestamp.IsZero() {
+		return 0
+	}
+
 	numSeconds := timestamp.UTC().UnixNano() /
 		(int64(time.Millisecond) / int64(time.Nanosecond))
 

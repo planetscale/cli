@@ -1,8 +1,9 @@
-package branch
+package deployrequest
 
 import (
 	"bytes"
 	"context"
+	"strconv"
 	"testing"
 
 	"github.com/planetscale/cli/internal/cmdutil"
@@ -14,7 +15,7 @@ import (
 	ps "github.com/planetscale/planetscale-go/planetscale"
 )
 
-func TestBranch_StatusCmd(t *testing.T) {
+func TestDeployRequest_CloseCmd(t *testing.T) {
 	c := qt.New(t)
 
 	var buf bytes.Buffer
@@ -24,17 +25,15 @@ func TestBranch_StatusCmd(t *testing.T) {
 
 	org := "planetscale"
 	db := "planetscale"
-	branch := "development"
+	var number uint64 = 10
 
-	res := &ps.DatabaseBranchStatus{Ready: true}
-
-	svc := &mock.DatabaseBranchesService{
-		GetStatusFn: func(ctx context.Context, req *ps.GetDatabaseBranchStatusRequest) (*ps.DatabaseBranchStatus, error) {
-			c.Assert(req.Branch, qt.Equals, branch)
+	svc := &mock.DeployRequestsService{
+		CloseFn: func(ctx context.Context, req *ps.CloseDeployRequestRequest) (*ps.DeployRequest, error) {
+			c.Assert(req.Number, qt.Equals, number)
 			c.Assert(req.Database, qt.Equals, db)
 			c.Assert(req.Organization, qt.Equals, org)
 
-			return res, nil
+			return &ps.DeployRequest{Number: number}, nil
 		},
 	}
 
@@ -45,17 +44,19 @@ func TestBranch_StatusCmd(t *testing.T) {
 		},
 		Client: func() (*ps.Client, error) {
 			return &ps.Client{
-				DatabaseBranches: svc,
+				DeployRequests: svc,
 			}, nil
 
 		},
 	}
 
-	cmd := StatusCmd(ch)
-	cmd.SetArgs([]string{db, branch})
+	cmd := CloseCmd(ch)
+	cmd.SetArgs([]string{db, strconv.FormatUint(number, 10)})
 	err := cmd.Execute()
 
 	c.Assert(err, qt.IsNil)
-	c.Assert(svc.GetStatusFnInvoked, qt.IsTrue)
+	c.Assert(svc.CloseFnInvoked, qt.IsTrue)
+
+	res := &DeployRequest{Number: number}
 	c.Assert(buf.String(), qt.JSONEquals, res)
 }

@@ -23,7 +23,7 @@ func DeployCmd(ch *cmdutil.Helper) *cobra.Command {
 			database := args[0]
 			number := args[1]
 
-			client, err := ch.Config.NewClientFromConfig()
+			client, err := ch.Client()
 			if err != nil {
 				return err
 			}
