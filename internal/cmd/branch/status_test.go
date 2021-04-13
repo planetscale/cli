@@ -56,6 +56,6 @@ func TestBranch_StatusCmd(t *testing.T) {
 	err := cmd.Execute()
 
 	c.Assert(err, qt.IsNil)
-	c.Assert(svc.GetStatusInvoked, qt.IsTrue)
+	c.Assert(svc.GetStatusFnInvoked, qt.IsTrue)
 	c.Assert(buf.String(), qt.JSONEquals, res)
 }
