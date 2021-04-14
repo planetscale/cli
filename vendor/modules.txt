@@ -90,10 +90,10 @@ github.com/pkg/browser
 # github.com/pkg/errors v0.9.1
 ## explicit
 github.com/pkg/errors
-# github.com/planetscale/planetscale-go v0.17.0
+# github.com/planetscale/planetscale-go v0.18.0
 ## explicit
 github.com/planetscale/planetscale-go/planetscale
-# github.com/planetscale/sql-proxy v0.2.0
+# github.com/planetscale/sql-proxy v0.3.1
 ## explicit
 github.com/planetscale/sql-proxy/proxy
 github.com/planetscale/sql-proxy/sigutil

@@ -22,10 +22,17 @@ const (
 
 // Cert represents the client certificate key pair in the root certiciate
 // authority that the client uses to verify server certificates.
+
 type Cert struct {
 	ClientCert tls.Certificate
 	CACert     *x509.Certificate
 	RemoteAddr string
+	Ports      RemotePorts
+}
+
+type RemotePorts struct {
+	Proxy int
+	MySQL int
 }
 
 // CertSource is used
@@ -264,7 +271,7 @@ func (c *Client) handleConn(ctx context.Context, conn net.Conn, instance string)
 		remoteAddr = c.remoteAddr
 	}
 
-	c.log.Info("conneting to remote server", zap.String("remote_addr", remoteAddr))
+	c.log.Info("connecting to remote server", zap.String("remote_addr", remoteAddr))
 
 	var d net.Dialer
 	remoteConn, err := d.DialContext(ctx, "tcp", remoteAddr)
@@ -330,8 +337,11 @@ func (c *Client) clientCerts(ctx context.Context, instance string) (*tls.Config,
 	rootCertPool := x509.NewCertPool()
 	rootCertPool.AddCert(cert.CACert)
 
+	serverName := fmt.Sprintf("%s.%s.%s.%s", s[2], s[1], s[0], cert.RemoteAddr)
+	fullAddr := fmt.Sprintf("%s:%d", serverName, cert.Ports.Proxy)
+
 	cfg := &tls.Config{
-		ServerName:   instance,
+		ServerName:   serverName,
 		Certificates: []tls.Certificate{cert.ClientCert},
 		RootCAs:      rootCertPool,
 		// Set InsecureSkipVerify to skip the default validation we are
@@ -359,8 +369,8 @@ func (c *Client) clientCerts(ctx context.Context, instance string) (*tls.Config,
 	}
 
 	c.log.Info("adding tls.Config to the cache", zap.String("instance", instance))
-	c.configCache.Add(instance, cfg, cert.RemoteAddr)
-	return cfg, cert.RemoteAddr, nil
+	c.configCache.Add(instance, cfg, fullAddr)
+	return cfg, fullAddr, nil
 }
 
 // Shutdown waits up to a given amount of time for all active connections to
