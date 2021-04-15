@@ -28,7 +28,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			createReq.Branch = branch
 			createReq.Organization = ch.Config.Organization
 
-			client, err := ch.Config.NewClientFromConfig()
+			client, err := ch.Client()
 			if err != nil {
 				return err
 			}
