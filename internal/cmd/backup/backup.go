@@ -2,13 +2,11 @@ package backup
 
 import (
 	"encoding/json"
-	"fmt"
 	"strings"
 	"time"
 
 	"github.com/lensesio/tableprinter"
 	"github.com/planetscale/cli/internal/cmdutil"
-	"github.com/planetscale/cli/internal/printer"
 	"github.com/spf13/cobra"
 
 	ps "github.com/planetscale/planetscale-go/planetscale"
@@ -50,10 +48,6 @@ type Backup struct {
 
 func (b *Backup) MarshalJSON() ([]byte, error) {
 	return json.MarshalIndent(b.orig, "", "  ")
-}
-
-func (b *Backup) String() string {
-	return fmt.Sprintf("Backup %s was successfully created!\n", printer.BoldBlue(b.Name))
 }
 
 func (b Backups) String() string {
