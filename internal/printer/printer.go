@@ -176,6 +176,14 @@ func (p *Printer) PrintResource(v interface{}) error {
 		fmt.Fprintln(out, string(buf))
 		return nil
 	case CSV:
+		type csvvaluer interface {
+			MarshalCSVValue() interface{}
+		}
+
+		if c, ok := v.(csvvaluer); ok {
+			v = c.MarshalCSVValue()
+		}
+
 		buf, err := gocsv.MarshalString(v)
 		if err != nil {
 			return err

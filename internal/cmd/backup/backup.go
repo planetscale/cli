@@ -50,6 +50,10 @@ func (b *Backup) MarshalJSON() ([]byte, error) {
 	return json.MarshalIndent(b.orig, "", "  ")
 }
 
+func (b *Backup) MarshalCSVValue() interface{} {
+	return []*Backup{b}
+}
+
 func (b Backups) String() string {
 	var buf strings.Builder
 	tableprinter.Print(&buf, b)

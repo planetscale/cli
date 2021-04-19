@@ -44,7 +44,7 @@ func ShowCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 			end()
 
-			return ch.Printer.PrintResource(toSchemaSnapshots([]*planetscale.SchemaSnapshot{snapshot}))
+			return ch.Printer.PrintResource(toSchemaSnapshot(snapshot))
 		},
 	}
 

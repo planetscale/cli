@@ -27,9 +27,7 @@ func TestBackup_ShowCmd(t *testing.T) {
 	branch := "development"
 	backup := "mybackup"
 
-	res := []*ps.Backup{
-		{Name: "foo"},
-	}
+	res := &ps.Backup{Name: "foo"}
 
 	svc := &mock.BackupsService{
 		GetFn: func(ctx context.Context, req *ps.GetBackupRequest) (*ps.Backup, error) {
@@ -38,7 +36,7 @@ func TestBackup_ShowCmd(t *testing.T) {
 			c.Assert(req.Branch, qt.Equals, branch)
 			c.Assert(req.Backup, qt.Equals, backup)
 
-			return res[0], nil
+			return res, nil
 		},
 	}
 

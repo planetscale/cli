@@ -57,6 +57,6 @@ func TestDeployRequest_ShowCmd(t *testing.T) {
 	c.Assert(err, qt.IsNil)
 	c.Assert(svc.GetFnInvoked, qt.IsTrue)
 
-	res := []*DeployRequest{{Number: number}}
+	res := &DeployRequest{Number: number}
 	c.Assert(buf.String(), qt.JSONEquals, res)
 }

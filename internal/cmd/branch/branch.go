@@ -46,6 +46,10 @@ func (d *DatabaseBranch) MarshalJSON() ([]byte, error) {
 	return json.MarshalIndent(d.orig, "", "  ")
 }
 
+func (d *DatabaseBranch) MarshalCSVValue() interface{} {
+	return []*DatabaseBranch{d}
+}
+
 // toDatabaseBranch returns a struct that prints out the various fields of a
 // database model.
 func toDatabaseBranch(db *ps.DatabaseBranch) *DatabaseBranch {

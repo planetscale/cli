@@ -26,9 +26,7 @@ func TestBranch_ShowCmd(t *testing.T) {
 	db := "planetscale"
 	branch := "development"
 
-	res := []*ps.DatabaseBranch{
-		{Name: branch},
-	}
+	res := &ps.DatabaseBranch{Name: branch}
 
 	svc := &mock.DatabaseBranchesService{
 		GetFn: func(ctx context.Context, req *ps.GetDatabaseBranchRequest) (*ps.DatabaseBranch, error) {
@@ -36,7 +34,7 @@ func TestBranch_ShowCmd(t *testing.T) {
 			c.Assert(req.Database, qt.Equals, db)
 			c.Assert(req.Organization, qt.Equals, org)
 
-			return res[0], nil
+			return res, nil
 		},
 	}
 
