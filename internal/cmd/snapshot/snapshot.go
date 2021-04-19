@@ -39,6 +39,10 @@ func (s *SchemaSnapshot) MarshalJSON() ([]byte, error) {
 	return json.MarshalIndent(s.orig, "", "  ")
 }
 
+func (s *SchemaSnapshot) MarshalCSVValue() interface{} {
+	return []*SchemaSnapshot{s}
+}
+
 // toSchemaSnapshot returns a struct that prints out the various fields
 // of a schema snapshot model.
 func toSchemaSnapshot(ss *ps.SchemaSnapshot) *SchemaSnapshot {

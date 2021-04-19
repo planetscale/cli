@@ -70,3 +70,7 @@ func toDatabases(databases []*ps.Database) Databases {
 func (d *Database) MarshalJSON() ([]byte, error) {
 	return json.MarshalIndent(d.orig, "", "  ")
 }
+
+func (d *Database) MarshalCSVValue() interface{} {
+	return []*Database{d}
+}

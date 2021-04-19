@@ -50,6 +50,10 @@ type DeployRequest struct {
 	ClosedAt  *int64 `header:"closed_at,timestamp(ms|utc|human),-" json:"closed_at"`
 }
 
+func (d *DeployRequest) MarshalCSVValue() interface{} {
+	return []*DeployRequest{d}
+}
+
 func toDeployRequest(dr *planetscale.DeployRequest) *DeployRequest {
 	return &DeployRequest{
 		ID:                  dr.ID,

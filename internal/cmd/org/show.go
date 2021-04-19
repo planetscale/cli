@@ -52,7 +52,14 @@ func ShowCmd(ch *cmdutil.Helper) *cobra.Command {
 				return nil
 			}
 
-			// TODO(fatih): check this out
+			if ch.Printer.Format() == printer.CSV {
+				var res = []struct {
+					Org string `json:"org"`
+				}{{Org: cfg.Organization}}
+
+				return ch.Printer.PrintResource(res)
+			}
+
 			return ch.Printer.PrintResource(map[string]string{"org": cfg.Organization})
 		},
 	}
