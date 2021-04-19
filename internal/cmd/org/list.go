@@ -10,13 +10,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// organization returns a table-serializable database model.
-type organization struct {
-	Name      string `header:"name" json:"name"`
-	CreatedAt int64  `header:"created_at,timestamp(ms|utc|human)" json:"created_at"`
-	UpdatedAt int64  `header:"updated_at,timestamp(ms|utc|human)" json:"updated_at"`
-}
-
 func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "list",

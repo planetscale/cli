@@ -8,6 +8,7 @@ import (
 	"github.com/planetscale/cli/internal/printer"
 
 	"github.com/planetscale/planetscale-go/planetscale"
+	ps "github.com/planetscale/planetscale-go/planetscale"
 
 	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
@@ -61,7 +62,7 @@ func ShowCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 			end()
 
-			return ch.Printer.PrintResource(toDatabase(database))
+			return ch.Printer.PrintResource(toDatabases([]*ps.Database{database}))
 		},
 	}
 

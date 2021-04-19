@@ -25,14 +25,16 @@ func TestDatabase_ShowCmd(t *testing.T) {
 	org := "planetscale"
 	db := "planetscale"
 
-	res := &ps.Database{Name: "foo"}
+	res := []*ps.Database{
+		{Name: "foo"},
+	}
 
 	svc := &mock.DatabaseService{
 		GetFn: func(ctx context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
 			c.Assert(req.Organization, qt.Equals, org)
 			c.Assert(req.Database, qt.Equals, db)
 
-			return res, nil
+			return res[0], nil
 		},
 	}
 

@@ -60,7 +60,7 @@ func ShowCmd(ch *cmdutil.Helper) *cobra.Command {
 				}
 			}
 
-			return ch.Printer.PrintResource(toDeployRequest(dr))
+			return ch.Printer.PrintResource(toDeployRequests([]*planetscale.DeployRequest{dr}))
 		},
 	}
 

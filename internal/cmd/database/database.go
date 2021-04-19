@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/gocarina/gocsv"
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/spf13/cobra"
 
@@ -69,4 +70,8 @@ func toDatabases(databases []*ps.Database) Databases {
 
 func (d *Database) MarshalJSON() ([]byte, error) {
 	return json.MarshalIndent(d.orig, "", "  ")
+}
+
+func (d *Database) MarshalCSV() (string, error) {
+	return gocsv.MarshalString([]*Database{d})
 }

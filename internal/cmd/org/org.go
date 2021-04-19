@@ -22,6 +22,13 @@ func OrgCmd(ch *cmdutil.Helper) *cobra.Command {
 	return cmd
 }
 
+// organization returns a table-serializable database model.
+type organization struct {
+	Name      string `header:"name" json:"name"`
+	CreatedAt int64  `header:"created_at,timestamp(ms|utc|human)" json:"created_at"`
+	UpdatedAt int64  `header:"updated_at,timestamp(ms|utc|human)" json:"updated_at"`
+}
+
 // toOrgs returns a slice of printable orgs.
 func toOrgs(organizations []*ps.Organization) []*organization {
 	orgs := make([]*organization, 0, len(organizations))
