@@ -153,7 +153,7 @@ func writeAccessToken(ctx context.Context, accessToken string) error {
 	}
 
 	tokenBytes := []byte(accessToken)
-	err = ioutil.WriteFile(tokenPath, tokenBytes, 0600)
+	err = ioutil.WriteFile(tokenPath, tokenBytes, config.TokenFileMode)
 	if err != nil {
 		return errors.Wrap(err, "error writing token")
 	}
