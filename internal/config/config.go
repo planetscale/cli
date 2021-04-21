@@ -18,6 +18,7 @@ const (
 	defaultConfigPath = "~/.config/planetscale"
 	projectConfigName = ".pscale.yml"
 	configName        = "pscale.yml"
+	TokenFileMode     = 0600
 )
 
 // Config is dynamically sourced from various files and environment variables.
@@ -41,12 +42,18 @@ func New() (*Config, error) {
 		return nil, err
 	}
 
-	_, err = os.Stat(tokenPath)
+	stat, err := os.Stat(tokenPath)
 	if err != nil {
 		if !os.IsNotExist(err) {
 			log.Fatal(err)
 		}
 	} else {
+		if stat.Mode()&^TokenFileMode != 0 {
+			err = os.Chmod(tokenPath, TokenFileMode)
+			if err != nil {
+				log.Printf("Unable to change %v file mode to 0%o: %v", tokenPath, TokenFileMode, err)
+			}
+		}
 		accessToken, err = ioutil.ReadFile(tokenPath)
 		if err != nil {
 			log.Fatal(err)
