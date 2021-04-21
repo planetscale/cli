@@ -3,12 +3,15 @@ package cmdutil
 import (
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/planetscale/cli/internal/config"
 	"github.com/planetscale/cli/internal/printer"
 	ps "github.com/planetscale/planetscale-go/planetscale"
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 // Helper is passed to every single command and is used by individual
@@ -54,4 +57,27 @@ func CheckAuthentication(cfg *config.Config) func(cmd *cobra.Command, args []str
 
 		return errors.New("not authenticated yet. Please run 'pscale auth login'")
 	}
+}
+
+// NewZapLogger returns a logger to be used with the sql-proxy. By default it
+// only outputs error leveled messages, unless debug is true.
+func NewZapLogger(debug bool) *zap.Logger {
+	encoderCfg := zapcore.EncoderConfig{
+		MessageKey:     "msg",
+		LevelKey:       "level",
+		NameKey:        "logger",
+		TimeKey:        "T",
+		EncodeLevel:    zapcore.LowercaseColorLevelEncoder,
+		EncodeTime:     zapcore.RFC3339TimeEncoder,
+		EncodeDuration: zapcore.StringDurationEncoder,
+	}
+
+	level := zap.ErrorLevel
+	if debug {
+		level = zap.DebugLevel
+	}
+
+	logger := zap.New(zapcore.NewCore(zapcore.NewConsoleEncoder(encoderCfg), os.Stdout, level))
+
+	return logger
 }

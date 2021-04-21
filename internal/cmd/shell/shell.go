@@ -22,7 +22,6 @@ import (
 	"github.com/planetscale/planetscale-go/planetscale"
 	ps "github.com/planetscale/planetscale-go/planetscale"
 	"github.com/spf13/cobra"
-	"go.uber.org/zap"
 )
 
 func ShellCmd(ch *cmdutil.Helper) *cobra.Command {
@@ -110,10 +109,7 @@ second argument:
 				LocalAddr:  localAddr,
 				RemoteAddr: flags.remoteAddr,
 				Instance:   fmt.Sprintf("%s/%s/%s", ch.Config.Organization, database, branch),
-			}
-
-			if !flags.debug {
-				proxyOpts.Logger = zap.NewNop()
+				Logger:     cmdutil.NewZapLogger(flags.debug),
 			}
 
 			p, err := proxy.NewClient(proxyOpts)
