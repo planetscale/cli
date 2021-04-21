@@ -17,7 +17,6 @@ import (
 	"github.com/planetscale/sql-proxy/proxy"
 	"github.com/planetscale/sql-proxy/sigutil"
 	"github.com/spf13/cobra"
-	"go.uber.org/zap"
 )
 
 func ConnectCmd(ch *cmdutil.Helper) *cobra.Command {
@@ -98,10 +97,7 @@ argument:
 				LocalAddr:  localAddr,
 				RemoteAddr: flags.remoteAddr,
 				Instance:   fmt.Sprintf("%s/%s/%s", ch.Config.Organization, database, branch),
-			}
-
-			if !flags.debug {
-				proxyOpts.Logger = zap.NewNop()
+				Logger:     cmdutil.NewZapLogger(flags.debug),
 			}
 
 			err = runProxy(proxyOpts, database, branch)
