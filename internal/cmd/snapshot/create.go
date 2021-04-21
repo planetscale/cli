@@ -48,7 +48,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			if ch.Printer.Format() == printer.Human {
 				ch.Printer.Printf("Schema snapshot %s was successfully created!\n",
-					printer.BoldBlue(snapshot.Name))
+					printer.BoldBlue(snapshot.ID))
 				return nil
 			}
 
