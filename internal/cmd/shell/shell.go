@@ -173,8 +173,9 @@ second argument:
 				"-P", port,
 			}
 
+			styledBranch := formatMySQLBranch(database, branch)
 			m := &mysql{}
-			err = m.Run(ctx, mysqlArgs...)
+			err = m.Run(ctx, styledBranch, mysqlArgs...)
 			return err
 
 		},
@@ -189,6 +190,16 @@ second argument:
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
 
 	return cmd
+}
+
+func formatMySQLBranch(database, branch string) string {
+	branchStyled := printer.BoldBlue(branch)
+	if branch == "main" {
+		branchStyled = printer.BoldRed(branch)
+	}
+
+	return printer.Bold(fmt.Sprintf("%s/%s> ", database, branchStyled))
+
 }
 
 // createLoginFile creates a temporary file to store the username and password, so we don't have to
@@ -212,11 +223,14 @@ type mysql struct {
 }
 
 // Run runs the `mysql` client with the given arguments.
-func (m *mysql) Run(ctx context.Context, args ...string) error {
+func (m *mysql) Run(ctx context.Context, styledBranch string, args ...string) error {
 	c := exec.CommandContext(ctx, "mysql", args...)
 	if m.Dir != "" {
 		c.Dir = m.Dir
 	}
+
+	c.Env = append(os.Environ(),
+		fmt.Sprintf("MYSQL_PS1=%s", styledBranch))
 
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr
