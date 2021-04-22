@@ -173,6 +173,13 @@ second argument:
 				"-P", port,
 			}
 
+			branchStyled := printer.BoldBlue(branch)
+			if branch == "main" {
+				branchStyled = printer.BoldRed(branch)
+			}
+			os.Setenv("MYSQL_PS1", printer.Bold(fmt.Sprintf("%s/%s> ", database, branchStyled)))
+			defer os.Unsetenv("MYSQL_PS1")
+
 			m := &mysql{}
 			err = m.Run(ctx, mysqlArgs...)
 			return err
