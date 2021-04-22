@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"syscall"
 
+	"github.com/mitchellh/go-homedir"
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
 	"github.com/planetscale/cli/internal/promptutil"
@@ -173,8 +174,12 @@ second argument:
 				"-P", port,
 			}
 
+			historyFile, err := createHistoryFile(ch.Config.Organization, database, branch)
+			if err != nil {
+				return err
+			}
 			m := &mysql{}
-			err = m.Run(ctx, mysqlArgs...)
+			err = m.Run(ctx, historyFile, mysqlArgs...)
 			return err
 
 		},
@@ -189,6 +194,27 @@ second argument:
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
 
 	return cmd
+}
+
+func createHistoryFile(org, db, branch string) (string, error) {
+	dir, err := homedir.Dir()
+	if err != nil {
+		return "", err
+	}
+
+	historyDir := fmt.Sprintf("%s/.pscale/history", dir)
+
+	_, err = os.Stat(historyDir)
+	if os.IsNotExist(err) {
+		err := os.MkdirAll(historyDir, 0771)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	historyFile := fmt.Sprintf("%s/%s.%s.%s", historyDir, org, db, branch)
+
+	return historyFile, nil
 }
 
 // createLoginFile creates a temporary file to store the username and password, so we don't have to
@@ -212,7 +238,10 @@ type mysql struct {
 }
 
 // Run runs the `mysql` client with the given arguments.
-func (m *mysql) Run(ctx context.Context, args ...string) error {
+func (m *mysql) Run(ctx context.Context, historyFile string, args ...string) error {
+	os.Setenv("MYSQL_HISTFILE", historyFile)
+	defer os.Unsetenv("MYSQL_HISTFILE")
+
 	c := exec.CommandContext(ctx, "mysql", args...)
 	if m.Dir != "" {
 		c.Dir = m.Dir
