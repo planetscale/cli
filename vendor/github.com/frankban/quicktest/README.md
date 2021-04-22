@@ -315,4 +315,4 @@ The c.Patch, c.Setenv, c.Unsetenv and c.Mkdir helpers use t.Cleanup for cleaning
 up resources when available, and fall back to Defer otherwise.
 
 For a complete API reference, see the
-[package documentation](https://godoc.org/github.com/frankban/quicktest).
+[package documentation](https://pkg.go.dev/github.com/frankban/quicktest).
