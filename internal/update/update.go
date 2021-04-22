@@ -72,7 +72,7 @@ func CheckVersion(buildVersion string) error {
 	if isUnderHomebrew() {
 		fmt.Fprintf(os.Stderr, "To upgrade, run: %s\n", "brew update && brew upgrade pscale")
 	}
-	fmt.Fprintf(os.Stderr, "%s\n\n", color.YellowString(updateInfo.ReleaseInfo.URL))
+	fmt.Fprintf(os.Stderr, "%s\n", color.YellowString(updateInfo.ReleaseInfo.URL))
 	return nil
 }
 
