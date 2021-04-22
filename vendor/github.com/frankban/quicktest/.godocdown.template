@@ -10,4 +10,4 @@
 {{ .EmitSynopsis }}
 
 For a complete API reference, see the
-[package documentation](https://godoc.org/github.com/frankban/quicktest).
+[package documentation](https://pkg.go.dev/github.com/frankban/quicktest).
