@@ -101,12 +101,19 @@ func Execute(ver, commit, buildDate string) error {
 		return err
 	}
 
+	var debug bool
+	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "Enable debug mode")
+	if err := viper.BindPFlag("debug", rootCmd.PersistentFlags().Lookup("debug")); err != nil {
+		return err
+	}
+
 	ch := &cmdutil.Helper{
 		Printer: printer.NewPrinter(&format),
 		Config:  cfg,
 		Client: func() (*ps.Client, error) {
 			return cfg.NewClientFromConfig()
 		},
+		Debug: debug,
 	}
 
 	// service token flags. they are hidden for now.
@@ -150,10 +157,8 @@ func Execute(ver, commit, buildDate string) error {
 	}
 
 	if format == printer.Human {
-		err = update.CheckVersion(ver)
-		// TODO(fatih): should we silence the error? It should probably only
-		// be shown if some `--debug` flag is set.
-		if err != nil {
+		err := update.CheckVersion(ver)
+		if err != nil && debug {
 			return err
 		}
 	}

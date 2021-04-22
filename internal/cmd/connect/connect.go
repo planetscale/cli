@@ -23,7 +23,6 @@ func ConnectCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
 		localAddr  string
 		remoteAddr string
-		debug      bool
 	}
 
 	cmd := &cobra.Command{
@@ -97,7 +96,7 @@ argument:
 				LocalAddr:  localAddr,
 				RemoteAddr: flags.remoteAddr,
 				Instance:   fmt.Sprintf("%s/%s/%s", ch.Config.Organization, database, branch),
-				Logger:     cmdutil.NewZapLogger(flags.debug),
+				Logger:     cmdutil.NewZapLogger(ch.Debug),
 			}
 
 			err = runProxy(proxyOpts, database, branch)
@@ -119,7 +118,6 @@ argument:
 		"Local address to bind and listen for connections")
 	cmd.PersistentFlags().StringVar(&flags.remoteAddr, "remote-addr", "",
 		"PlanetScale Database remote network address. By default the remote address is populated automatically from the PlanetScale API.")
-	cmd.PersistentFlags().BoolVar(&flags.debug, "debug", false, "enable debug mode")
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
 
 	return cmd

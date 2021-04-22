@@ -19,7 +19,7 @@ func VersionCmd(ch *cmdutil.Helper, ver, commit, buildDate string) *cobra.Comman
 		Hidden: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if ch.Printer.Format() == printer.Human {
-				ch.Printer.Print(Format(ver, commit, buildDate))
+				ch.Printer.Println(Format(ver, commit, buildDate))
 				return nil
 			}
 

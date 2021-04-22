@@ -28,7 +28,6 @@ func ShellCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
 		localAddr  string
 		remoteAddr string
-		debug      bool
 	}
 
 	cmd := &cobra.Command{
@@ -109,7 +108,7 @@ second argument:
 				LocalAddr:  localAddr,
 				RemoteAddr: flags.remoteAddr,
 				Instance:   fmt.Sprintf("%s/%s/%s", ch.Config.Organization, database, branch),
-				Logger:     cmdutil.NewZapLogger(flags.debug),
+				Logger:     cmdutil.NewZapLogger(ch.Debug),
 			}
 
 			p, err := proxy.NewClient(proxyOpts)
@@ -185,7 +184,6 @@ second argument:
 		"", "Local address to bind and listen for connections. By default the proxy binds to 127.0.0.1 with a random port.")
 	cmd.PersistentFlags().StringVar(&flags.remoteAddr, "remote-addr", "",
 		"PlanetScale Database remote network address. By default the remote address is populated automatically from the PlanetScale API.")
-	cmd.PersistentFlags().BoolVar(&flags.debug, "debug", false, "enable debug mode")
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
 
 	return cmd

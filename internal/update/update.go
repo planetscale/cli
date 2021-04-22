@@ -88,7 +88,7 @@ func checkVersion(buildVersion, path string, latestVersionFn func(addr string) (
 	if stateEntry != nil && time.Since(stateEntry.CheckedForUpdateAt).Hours() < 24 {
 		return &UpdateInfo{
 			Update: false,
-			Reason: "Latest version was already checked before 24 hours",
+			Reason: "Latest version was already checked",
 		}, nil
 	}
 
