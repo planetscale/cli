@@ -36,7 +36,7 @@ func TestLatestVersion(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(tt.statusCode)
-				json.NewEncoder(w).Encode(tt.resp)
+				_ = json.NewEncoder(w).Encode(tt.resp)
 			}))
 			defer ts.Close()
 
