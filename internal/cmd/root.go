@@ -34,6 +34,7 @@ import (
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/config"
 	"github.com/planetscale/cli/internal/printer"
+	"github.com/planetscale/cli/internal/update"
 
 	ps "github.com/planetscale/planetscale-go/planetscale"
 
@@ -145,6 +146,15 @@ func Execute(ver, commit, buildDate string) error {
 			return fmt.Errorf(`{"error": "%s"}`, err)
 		default:
 			return fmt.Errorf("Error: %s", err)
+		}
+	}
+
+	if format == printer.Human {
+		err = update.CheckVersion(ver)
+		// TODO(fatih): should we silence the error? It should probably only
+		// be shown if some `--debug` flag is set.
+		if err != nil {
+			return err
 		}
 	}
 

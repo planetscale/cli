@@ -6,6 +6,7 @@ import (
 
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
+
 	"github.com/spf13/cobra"
 )
 
@@ -15,7 +16,7 @@ func VersionCmd(ch *cmdutil.Helper, ver, commit, buildDate string) *cobra.Comman
 		Use: "version <command>",
 		// we can also show the version via `--version`, hence this doesn't
 		// need to be displayed.
-		Hidden: true, //
+		Hidden: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if ch.Printer.Format() == printer.Human {
 				ch.Printer.Print(Format(ver, commit, buildDate))
