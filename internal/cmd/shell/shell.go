@@ -239,13 +239,14 @@ type mysql struct {
 
 // Run runs the `mysql` client with the given arguments.
 func (m *mysql) Run(ctx context.Context, historyFile string, args ...string) error {
-	os.Setenv("MYSQL_HISTFILE", historyFile)
-	defer os.Unsetenv("MYSQL_HISTFILE")
-
 	c := exec.CommandContext(ctx, "mysql", args...)
 	if m.Dir != "" {
 		c.Dir = m.Dir
 	}
+
+	c.Env = append(os.Environ(),
+		fmt.Sprintf("MYSQL_HISTFILE=%s", historyFile),
+	)
 
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr
