@@ -213,8 +213,8 @@ func historyFilePath(org, db, branch string) (string, error) {
 		}
 	}
 
-	historyFilename := fmt.Sprintf("%s.%s.%s", org, db, branch)
-	historyFile := filepath.Join(historyDir, historyFilename)
+	historyFilename := filepath.Join(fmt.Sprintf("%s.%s.%s", org, db, branch))
+	historyFile := fmt.Sprintf("%s/%s", historyDir, historyFilename)
 
 	return historyFile, nil
 }
