@@ -229,6 +229,11 @@ func BoldBlue(msg string) string {
 	return color.New(color.FgBlue).Add(color.Bold).Sprint(msg)
 }
 
+// BoldRed returns a string formatted with red and bold.
+func BoldRed(msg string) string {
+	return color.New(color.FgRed).Add(color.Bold).Sprint(msg)
+}
+
 // Bold returns a string formatted with bold.
 func Bold(msg string) string {
 	// the 'color' package already handles IsTTY gracefully
