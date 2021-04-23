@@ -52,8 +52,18 @@ jobs:
       # only release on tags
       if: success() && startsWith(github.ref, 'refs/tags/')
       with:
-        version: v0.156.1
+        version: v0.164.0
         args: release --rm-dist
+      env:
+        GITHUB_TOKEN: ${{ secrets.PLANETSCALE_ACTIONS_BOT_TOKEN }}
+
+    - name: Run GoReleaser (planetscale/alpha repository)
+      uses: goreleaser/goreleaser-action@v2
+      # only release on tags
+      if: success() && startsWith(github.ref, 'refs/tags/')
+      with:
+        version: v0.164.0
+        args: release --rm-dist --config .goreleaser-alpha.yml
       env:
         GITHUB_TOKEN: ${{ secrets.PLANETSCALE_ACTIONS_BOT_TOKEN }}
 
