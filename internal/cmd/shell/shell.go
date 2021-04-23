@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"syscall"
 
 	"github.com/mitchellh/go-homedir"
@@ -174,7 +175,7 @@ second argument:
 				"-P", port,
 			}
 
-			historyFile, err := createHistoryFile(ch.Config.Organization, database, branch)
+			historyFile, err := historyFilePath(ch.Config.Organization, database, branch)
 			if err != nil {
 				return err
 			}
@@ -196,7 +197,7 @@ second argument:
 	return cmd
 }
 
-func createHistoryFile(org, db, branch string) (string, error) {
+func historyFilePath(org, db, branch string) (string, error) {
 	dir, err := homedir.Dir()
 	if err != nil {
 		return "", err
@@ -212,7 +213,7 @@ func createHistoryFile(org, db, branch string) (string, error) {
 		}
 	}
 
-	historyFile := fmt.Sprintf("%s/%s.%s.%s", historyDir, org, db, branch)
+	historyFile := filepath.Join(historyDir, org, db, branch)
 
 	return historyFile, nil
 }
