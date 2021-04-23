@@ -203,7 +203,7 @@ func historyFilePath(org, db, branch string) (string, error) {
 		return "", err
 	}
 
-	historyDir := fmt.Sprintf("%s/.pscale/history", dir)
+	historyDir := filepath.Join(dir, ".pscale", "history")
 
 	_, err = os.Stat(historyDir)
 	if os.IsNotExist(err) {
@@ -213,8 +213,8 @@ func historyFilePath(org, db, branch string) (string, error) {
 		}
 	}
 
-	historyFilename := filepath.Join(fmt.Sprintf("%s.%s.%s", org, db, branch))
-	historyFile := fmt.Sprintf("%s/%s", historyDir, historyFilename)
+	historyFilename := fmt.Sprintf("%s.%s.%s", org, db, branch)
+	historyFile := filepath.Join(historyDir, historyFilename)
 
 	return historyFile, nil
 }
