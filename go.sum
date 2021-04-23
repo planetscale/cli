@@ -32,8 +32,8 @@ cloud.google.com/go/storage v1.6.0/go.mod h1:N7U0C8pVQ/+NIKOBQyamJIeKQKkZ+mxpohl
 cloud.google.com/go/storage v1.8.0/go.mod h1:Wv1Oy7z6Yz3DshWRJFhqM/UCfaWIRTdp0RXyy7KQOVs=
 cloud.google.com/go/storage v1.10.0/go.mod h1:FLPqc6j+Ki4BU591ie1oL6qBQGu2Bl/tZ9ullr3+Kg0=
 dmitri.shuralyov.com/gpu/mtl v0.0.0-20190408044501-666a987793e9/go.mod h1:H6x//7gZCb22OMCxBHrMx7a5I7Hp++hsVxbQ4BYO7hU=
-github.com/AlecAivazis/survey/v2 v2.2.9 h1:LWvJtUswz/W9/zVVXELrmlvdwWcKE60ZAw0FWV9vssk=
-github.com/AlecAivazis/survey/v2 v2.2.9/go.mod h1:9DYvHgXtiXm6nCn+jXnOXLKbH+Yo9u8fAS/SduGdoPk=
+github.com/AlecAivazis/survey/v2 v2.2.12 h1:5a07y93zA6SZ09gOa9wLVLznF5zTJMQ+pJ3cZK4IuO8=
+github.com/AlecAivazis/survey/v2 v2.2.12/go.mod h1:6d4saEvBsfSHXeN1a5OA5m2+HJ2LuVokllnC77pAIKI=
 github.com/BurntSushi/toml v0.3.1 h1:WXkYYl6Yr3qBf1K79EBnL4mak0OimBfB0XUf9Vl28OQ=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
@@ -170,6 +170,8 @@ github.com/hashicorp/go-sockaddr v1.0.0/go.mod h1:7Xibr9yA9JjQq1JpNB2Vw7kxv8xerX
 github.com/hashicorp/go-syslog v1.0.0/go.mod h1:qPfqrKkXGihmCqbJM2mZgkZGvKG1dFdvsLplgctolz4=
 github.com/hashicorp/go-uuid v1.0.0/go.mod h1:6SBZvOh/SIDV7/2o3Jml5SYk/TvGqwFJ/bN7x4byOro=
 github.com/hashicorp/go-uuid v1.0.1/go.mod h1:6SBZvOh/SIDV7/2o3Jml5SYk/TvGqwFJ/bN7x4byOro=
+github.com/hashicorp/go-version v1.3.0 h1:McDWVJIU/y+u1BRV06dPaLfLCaT7fUTJLp5r04x7iNw=
+github.com/hashicorp/go-version v1.3.0/go.mod h1:fltr4n8CU8Ke44wwGCBoEymUuxUHl09ZGVZPK5anwXA=
 github.com/hashicorp/go.net v0.0.1/go.mod h1:hjKkEWcCURg++eb33jQU7oqQcI9XDCnUzHA0oac0k90=
 github.com/hashicorp/golang-lru v0.5.0/go.mod h1:/m3WP610KZHVQ1SGc6re/UDhFvYD7pJ4Ao+sR/qLZy8=
 github.com/hashicorp/golang-lru v0.5.1/go.mod h1:/m3WP610KZHVQ1SGc6re/UDhFvYD7pJ4Ao+sR/qLZy8=
@@ -248,8 +250,9 @@ github.com/pkg/errors v0.8.0/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINE
 github.com/pkg/errors v0.8.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
-github.com/planetscale/planetscale-go v0.18.0 h1:x1T+hmiCjy0UGEvwsV85itwaHriU9tNbWd3a9KZnnE0=
 github.com/planetscale/planetscale-go v0.18.0/go.mod h1:R+07GStW2oGSfeTwWoplnimSEFzxIzEofOHgPFxArg0=
+github.com/planetscale/planetscale-go v0.19.0 h1:9B27YSgyCZ0qTtK0lEIVaCJlNKcbhfQEohFT1s4lTNQ=
+github.com/planetscale/planetscale-go v0.19.0/go.mod h1:xfd0cycxtqVg1r77hkE/UcMftGVF/M8+s41J7ZYX99g=
 github.com/planetscale/sql-proxy v0.3.2 h1:S0X8nvyk8Mr7I/t0LjpH4e2XNoBB+azK934dK4EvYWU=
 github.com/planetscale/sql-proxy v0.3.2/go.mod h1:kM7r4GMseGJ1UP1F96PEPPCvEYM3Npqp0WDvtmYTZtk=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=

@@ -40,12 +40,10 @@ type SchemaSnapshot struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-// SchemaSnapshotRequestDeployRequest is a request for requesting a deploy of a schema
+// SchemaSnapshotDiffRequest is a request for getting the diff for a schema
 // snapshot.
-type SchemaSnapshotRequestDeployRequest struct {
-	SchemaSnapshotID string `json:"-"`
-	IntoBranch       string `json:"into_branch,omitempty"`
-	Notes            string `json:"notes"`
+type DiffSchemaSnapshotRequest struct {
+	SchemaSchemaSnapshotID string `json:"-"`
 }
 
 // SchemaSnapshotsService is an interface for	communicating with the PlanetScale
@@ -54,7 +52,7 @@ type SchemaSnapshotsService interface {
 	Create(context.Context, *CreateSchemaSnapshotRequest) (*SchemaSnapshot, error)
 	List(context.Context, *ListSchemaSnapshotsRequest) ([]*SchemaSnapshot, error)
 	Get(context.Context, *GetSchemaSnapshotRequest) (*SchemaSnapshot, error)
-	RequestDeploy(context.Context, *SchemaSnapshotRequestDeployRequest) (*DeployRequest, error)
+	Diff(context.Context, *DiffSchemaSnapshotRequest) ([]*Diff, error)
 }
 
 type schemaSnapshotsService struct {
@@ -119,19 +117,19 @@ func (s *schemaSnapshotsService) Get(ctx context.Context, getReq *GetSchemaSnaps
 	return ss, nil
 }
 
-// RequestDeploy requests a deploy of a schema snapshot.
-func (s *schemaSnapshotsService) RequestDeploy(ctx context.Context, deployReq *SchemaSnapshotRequestDeployRequest) (*DeployRequest, error) {
-	req, err := s.client.newRequest(http.MethodPost, fmt.Sprintf("%s/deploy-requests", schemaSnapshotAPIPath(deployReq.SchemaSnapshotID)), deployReq)
+func (s *schemaSnapshotsService) Diff(ctx context.Context, diffReq *DiffSchemaSnapshotRequest) ([]*Diff, error) {
+	path := fmt.Sprintf("%s/diff", schemaSnapshotAPIPath(diffReq.SchemaSchemaSnapshotID))
+	req, err := s.client.newRequest(http.MethodGet, path, nil)
 	if err != nil {
+		return nil, errors.Wrap(err, "error creating http request")
+	}
+
+	diffs := &diffResponse{}
+	if err := s.client.do(ctx, req, &diffs); err != nil {
 		return nil, err
 	}
 
-	dr := &DeployRequest{}
-	if err := s.client.do(ctx, req, &dr); err != nil {
-		return nil, err
-	}
-
-	return dr, nil
+	return diffs.Diffs, nil
 }
 
 func schemaSnapshotsAPIPath(org, database, branch string) string {

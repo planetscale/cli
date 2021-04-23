@@ -17,6 +17,7 @@ package cmd
 
 import (
 	"fmt"
+	"io/fs"
 	"log"
 	"os"
 
@@ -34,6 +35,7 @@ import (
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/config"
 	"github.com/planetscale/cli/internal/printer"
+	"github.com/planetscale/cli/internal/update"
 
 	ps "github.com/planetscale/planetscale-go/planetscale"
 
@@ -100,12 +102,20 @@ func Execute(ver, commit, buildDate string) error {
 		return err
 	}
 
+	var debug bool
+	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "Enable debug mode")
+	if err := viper.BindPFlag("debug", rootCmd.PersistentFlags().Lookup("debug")); err != nil {
+		return err
+	}
+
 	ch := &cmdutil.Helper{
-		Printer: printer.NewPrinter(&format),
-		Config:  cfg,
+		Printer:  printer.NewPrinter(&format),
+		Config:   cfg,
+		ConfigFS: config.NewConfigFS(osFS{}),
 		Client: func() (*ps.Client, error) {
 			return cfg.NewClientFromConfig()
 		},
+		Debug: debug,
 	}
 
 	// service token flags. they are hidden for now.
@@ -145,6 +155,13 @@ func Execute(ver, commit, buildDate string) error {
 			return fmt.Errorf(`{"error": "%s"}`, err)
 		default:
 			return fmt.Errorf("Error: %s", err)
+		}
+	}
+
+	if format == printer.Human {
+		err := update.CheckVersion(ver)
+		if err != nil && debug {
+			return err
 		}
 	}
 
@@ -219,4 +236,11 @@ func presetRequiredFlags(cmd *cobra.Command) {
 			}
 		}
 	})
+}
+
+// https://github.com/golang/go/issues/44286
+type osFS struct{}
+
+func (c osFS) Open(name string) (fs.File, error) {
+	return os.Open(name)
 }

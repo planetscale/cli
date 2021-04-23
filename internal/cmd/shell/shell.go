@@ -30,7 +30,6 @@ func ShellCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
 		localAddr  string
 		remoteAddr string
-		debug      bool
 	}
 
 	cmd := &cobra.Command{
@@ -111,7 +110,7 @@ second argument:
 				LocalAddr:  localAddr,
 				RemoteAddr: flags.remoteAddr,
 				Instance:   fmt.Sprintf("%s/%s/%s", ch.Config.Organization, database, branch),
-				Logger:     cmdutil.NewZapLogger(flags.debug),
+				Logger:     cmdutil.NewZapLogger(ch.Debug),
 			}
 
 			p, err := proxy.NewClient(proxyOpts)
@@ -179,8 +178,10 @@ second argument:
 			if err != nil {
 				return err
 			}
+
+			styledBranch := formatMySQLBranch(database, branch)
 			m := &mysql{}
-			err = m.Run(ctx, historyFile, mysqlArgs...)
+			err = m.Run(ctx, historyFile, styledBranch, mysqlArgs...)
 			return err
 
 		},
@@ -191,7 +192,6 @@ second argument:
 		"", "Local address to bind and listen for connections. By default the proxy binds to 127.0.0.1 with a random port.")
 	cmd.PersistentFlags().StringVar(&flags.remoteAddr, "remote-addr", "",
 		"PlanetScale Database remote network address. By default the remote address is populated automatically from the PlanetScale API.")
-	cmd.PersistentFlags().BoolVar(&flags.debug, "debug", false, "enable debug mode")
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
 
 	return cmd
@@ -219,6 +219,15 @@ func historyFilePath(org, db, branch string) (string, error) {
 	return historyFile, nil
 }
 
+func formatMySQLBranch(database, branch string) string {
+	branchStyled := printer.BoldBlue(branch)
+	if branch == "main" {
+		branchStyled = printer.BoldRed(branch)
+	}
+
+	return printer.Bold(fmt.Sprintf("%s/%s> ", database, branchStyled))
+}
+
 // createLoginFile creates a temporary file to store the username and password, so we don't have to
 // pass them as `mysql` command-line arguments.
 func createLoginFile(username, password string) (string, error) {
@@ -240,13 +249,14 @@ type mysql struct {
 }
 
 // Run runs the `mysql` client with the given arguments.
-func (m *mysql) Run(ctx context.Context, historyFile string, args ...string) error {
+func (m *mysql) Run(ctx context.Context, historyFile string, styledBranch string, args ...string) error {
 	c := exec.CommandContext(ctx, "mysql", args...)
 	if m.Dir != "" {
 		c.Dir = m.Dir
 	}
 
 	c.Env = append(os.Environ(),
+		fmt.Sprintf("MYSQL_PS1=%s", styledBranch),
 		fmt.Sprintf("MYSQL_HISTFILE=%s", historyFile),
 	)
 
