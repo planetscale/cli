@@ -3,11 +3,22 @@ package config
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"io/ioutil"
 	"path"
 
 	"gopkg.in/yaml.v2"
 )
+
+type ConfigFS struct {
+	fsys fs.FS
+}
+
+func NewConfigFS(fsys fs.FS) *ConfigFS {
+	return &ConfigFS{
+		fsys: fsys,
+	}
+}
 
 // FileConfig defines a pscale configuration from a file.
 type FileConfig struct {
@@ -18,8 +29,8 @@ type FileConfig struct {
 
 // NewFileConfig reads the file config from the designated path and returns a
 // new FileConfig.
-func NewFileConfig(path string) (*FileConfig, error) {
-	out, err := ioutil.ReadFile(path)
+func (c *ConfigFS) NewFileConfig(path string) (*FileConfig, error) {
+	out, err := fs.ReadFile(c.fsys, path)
 	if err != nil {
 		return nil, err
 	}
@@ -34,21 +45,21 @@ func NewFileConfig(path string) (*FileConfig, error) {
 }
 
 // DefaultConfig returns the file config from the default config path.
-func DefaultConfig() (*FileConfig, error) {
+func (c *ConfigFS) DefaultConfig() (*FileConfig, error) {
 	configFile, err := DefaultConfigPath()
 	if err != nil {
 		return nil, err
 	}
-	return NewFileConfig(configFile)
+	return c.NewFileConfig(configFile)
 }
 
 // ProjectConfig returns the file config from the git project
-func ProjectConfig() (*FileConfig, error) {
+func (c *ConfigFS) ProjectConfig() (*FileConfig, error) {
 	configFile, err := ProjectConfigPath()
 	if err != nil {
 		return nil, err
 	}
-	return NewFileConfig(configFile)
+	return c.NewFileConfig(configFile)
 }
 
 // Write persists the file config at the designated path.

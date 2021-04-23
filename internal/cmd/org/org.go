@@ -1,9 +1,8 @@
 package org
 
 import (
-	"time"
-
 	"github.com/planetscale/cli/internal/cmdutil"
+	"github.com/planetscale/cli/internal/printer"
 	ps "github.com/planetscale/planetscale-go/planetscale"
 	"github.com/spf13/cobra"
 )
@@ -43,7 +42,7 @@ func toOrgs(organizations []*ps.Organization) []*organization {
 func toOrg(org *ps.Organization) *organization {
 	return &organization{
 		Name:      org.Name,
-		CreatedAt: org.CreatedAt.UTC().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond)),
-		UpdatedAt: org.UpdatedAt.UTC().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond)),
+		CreatedAt: printer.GetMilliseconds(org.CreatedAt),
+		UpdatedAt: printer.GetMilliseconds(org.UpdatedAt),
 	}
 }

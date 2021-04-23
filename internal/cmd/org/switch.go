@@ -28,7 +28,7 @@ func SwitchCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			organization := ""
 
-			client, err := ch.Config.NewClientFromConfig()
+			client, err := ch.Client()
 			if err != nil {
 				return err
 			}
@@ -116,7 +116,7 @@ func SwitchCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			// check if a file already exists, we don't want to accidently
 			// overwrite other values of the file config
-			fileCfg, err := config.NewFileConfig(filePath)
+			fileCfg, err := ch.ConfigFS.NewFileConfig(filePath)
 			if os.IsNotExist(err) {
 				// create a new file
 				fileCfg = &config.FileConfig{
