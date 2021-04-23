@@ -23,6 +23,7 @@ func SnapshotCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.AddCommand(CreateCmd(ch))
 	cmd.AddCommand(ListCmd(ch))
 	cmd.AddCommand(ShowCmd(ch))
+	cmd.AddCommand(DiffCmd(ch))
 	return cmd
 }
 
