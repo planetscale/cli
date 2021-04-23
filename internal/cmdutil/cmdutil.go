@@ -25,6 +25,9 @@ type Helper struct {
 
 	// Printer is used to print output of a command to stdout.
 	Printer *printer.Printer
+
+	// Debug defines the debug mode
+	Debug bool
 }
 
 // RequiredArgs returns a short and actionable error message if the given
