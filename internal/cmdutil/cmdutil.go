@@ -20,6 +20,8 @@ type Helper struct {
 	// Config contains globally sourced configuration
 	Config *config.Config
 
+	ConfigFS *config.ConfigFS
+
 	// Client returns the PlanetScale API client
 	Client func() (*ps.Client, error)
 

@@ -17,19 +17,19 @@ func ShowCmd(ch *cmdutil.Helper) *cobra.Command {
 		Short: "Display the currently active organization",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			configFile, err := config.ProjectConfigPath()
+			configPath, err := config.ProjectConfigPath()
 			if err != nil {
 				return err
 			}
 
-			cfg, err := config.NewFileConfig(configFile)
+			cfg, err := ch.ConfigFS.NewFileConfig(configPath)
 			if os.IsNotExist(err) {
-				configFile, err = config.DefaultConfigPath()
+				configPath, err = config.DefaultConfigPath()
 				if err != nil {
 					return err
 				}
 
-				cfg, err = config.NewFileConfig(configFile)
+				cfg, err = ch.ConfigFS.NewFileConfig(configPath)
 				if os.IsNotExist(err) {
 					return errors.New("not authenticated, please authenticate with: \"pscale auth login\"")
 				}
@@ -48,7 +48,7 @@ func ShowCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			if ch.Printer.Format() == printer.Human {
-				ch.Printer.Printf("%s (from file: %s)\n", printer.Bold(cfg.Organization), configFile)
+				ch.Printer.Printf("%s (from file: %s)\n", printer.Bold(cfg.Organization), configPath)
 				return nil
 			}
 
