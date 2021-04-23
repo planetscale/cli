@@ -17,6 +17,7 @@ package cmd
 
 import (
 	"fmt"
+	"io/fs"
 	"log"
 	"os"
 
@@ -108,8 +109,9 @@ func Execute(ver, commit, buildDate string) error {
 	}
 
 	ch := &cmdutil.Helper{
-		Printer: printer.NewPrinter(&format),
-		Config:  cfg,
+		Printer:  printer.NewPrinter(&format),
+		Config:   cfg,
+		ConfigFS: config.NewConfigFS(osFS{}),
 		Client: func() (*ps.Client, error) {
 			return cfg.NewClientFromConfig()
 		},
@@ -234,4 +236,11 @@ func presetRequiredFlags(cmd *cobra.Command) {
 			}
 		}
 	})
+}
+
+// https://github.com/golang/go/issues/44286
+type osFS struct{}
+
+func (c osFS) Open(name string) (fs.File, error) {
+	return os.Open(name)
 }
