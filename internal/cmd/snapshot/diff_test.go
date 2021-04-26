@@ -32,7 +32,7 @@ func TestSnapshot_DiffCmd(t *testing.T) {
 
 	svc := &mock.SchemaSnapshotsService{
 		DiffFn: func(ctx context.Context, req *ps.DiffSchemaSnapshotRequest) ([]*ps.Diff, error) {
-			c.Assert(req.SchemaSchemaSnapshotID, qt.Equals, id)
+			c.Assert(req.ID, qt.Equals, id)
 			return res, nil
 		},
 	}
