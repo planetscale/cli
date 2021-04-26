@@ -20,7 +20,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			ctx := context.Background()
 			database, branch := args[0], args[1]
 
-			client, err := ch.Config.NewClientFromConfig()
+			client, err := ch.Client()
 			if err != nil {
 				return err
 			}

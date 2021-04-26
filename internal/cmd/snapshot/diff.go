@@ -24,7 +24,7 @@ func DiffCmd(ch *cmdutil.Helper) *cobra.Command {
 			ctx := context.Background()
 			id := args[0]
 
-			client, err := ch.Config.NewClientFromConfig()
+			client, err := ch.Client()
 			if err != nil {
 				return err
 			}
