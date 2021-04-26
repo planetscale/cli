@@ -9,8 +9,10 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"syscall"
 
+	"github.com/mitchellh/go-homedir"
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
 	"github.com/planetscale/cli/internal/promptutil"
@@ -172,9 +174,14 @@ second argument:
 				"-P", port,
 			}
 
+			historyFile, err := historyFilePath(ch.Config.Organization, database, branch)
+			if err != nil {
+				return err
+			}
+
 			styledBranch := formatMySQLBranch(database, branch)
 			m := &mysql{}
-			err = m.Run(ctx, styledBranch, mysqlArgs...)
+			err = m.Run(ctx, historyFile, styledBranch, mysqlArgs...)
 			return err
 
 		},
@@ -190,6 +197,28 @@ second argument:
 	return cmd
 }
 
+func historyFilePath(org, db, branch string) (string, error) {
+	dir, err := homedir.Dir()
+	if err != nil {
+		return "", err
+	}
+
+	historyDir := filepath.Join(dir, ".pscale", "history")
+
+	_, err = os.Stat(historyDir)
+	if os.IsNotExist(err) {
+		err := os.MkdirAll(historyDir, 0771)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	historyFilename := fmt.Sprintf("%s.%s.%s", org, db, branch)
+	historyFile := filepath.Join(historyDir, historyFilename)
+
+	return historyFile, nil
+}
+
 func formatMySQLBranch(database, branch string) string {
 	branchStyled := printer.BoldBlue(branch)
 	if branch == "main" {
@@ -197,7 +226,6 @@ func formatMySQLBranch(database, branch string) string {
 	}
 
 	return printer.Bold(fmt.Sprintf("%s/%s> ", database, branchStyled))
-
 }
 
 // createLoginFile creates a temporary file to store the username and password, so we don't have to
@@ -221,14 +249,16 @@ type mysql struct {
 }
 
 // Run runs the `mysql` client with the given arguments.
-func (m *mysql) Run(ctx context.Context, styledBranch string, args ...string) error {
+func (m *mysql) Run(ctx context.Context, historyFile string, styledBranch string, args ...string) error {
 	c := exec.CommandContext(ctx, "mysql", args...)
 	if m.Dir != "" {
 		c.Dir = m.Dir
 	}
 
 	c.Env = append(os.Environ(),
-		fmt.Sprintf("MYSQL_PS1=%s", styledBranch))
+		fmt.Sprintf("MYSQL_PS1=%s", styledBranch),
+		fmt.Sprintf("MYSQL_HISTFILE=%s", historyFile),
+	)
 
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr

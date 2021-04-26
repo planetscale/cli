@@ -17,7 +17,7 @@ func DeleteAccessCmd(ch *cmdutil.Helper) *cobra.Command {
 		Short: "delete access granted to a service token in the organization",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
-			client, err := ch.Config.NewClientFromConfig()
+			client, err := ch.Client()
 			if err != nil {
 				return err
 			}
