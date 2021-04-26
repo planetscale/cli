@@ -16,7 +16,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 		Short: "create a service token for the organization",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
-			client, err := ch.Config.NewClientFromConfig()
+			client, err := ch.Client()
 			if err != nil {
 				return err
 			}

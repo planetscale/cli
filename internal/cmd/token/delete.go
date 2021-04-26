@@ -16,7 +16,7 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 		Short: "delete an entire service token in an organization",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
-			client, err := ch.Config.NewClientFromConfig()
+			client, err := ch.Client()
 			if err != nil {
 				return err
 			}
