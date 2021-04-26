@@ -85,7 +85,7 @@ type DatabaseBranchesService interface {
 	Delete(context.Context, *DeleteDatabaseBranchRequest) error
 	GetStatus(context.Context, *GetDatabaseBranchStatusRequest) (*DatabaseBranchStatus, error)
 	Diff(context.Context, *DiffBranchRequest) ([]*Diff, error)
-	Schema(context.Context, *BranchSchemaRequest) (*Diff, error)
+	Schema(context.Context, *BranchSchemaRequest) ([]*Diff, error)
 }
 
 type databaseBranchesService struct {
@@ -128,19 +128,24 @@ func (d *databaseBranchesService) Diff(ctx context.Context, diffReq *DiffBranchR
 	return diffs.Diffs, nil
 }
 
-func (d *databaseBranchesService) Schema(ctx context.Context, schemaReq *BranchSchemaRequest) (*Diff, error) {
+// schemaResponse returns the schemas
+type schemaResponse struct {
+	Schemas []*Diff `json:"data"`
+}
+
+func (d *databaseBranchesService) Schema(ctx context.Context, schemaReq *BranchSchemaRequest) ([]*Diff, error) {
 	path := fmt.Sprintf("%s/schema", databaseBranchAPIPath(schemaReq.Organization, schemaReq.Database, schemaReq.Branch))
 	req, err := d.client.newRequest(http.MethodGet, path, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating http request")
 	}
 
-	schema := &Diff{}
-	if err := d.client.do(ctx, req, &schema); err != nil {
+	schemas := &schemaResponse{}
+	if err := d.client.do(ctx, req, &schemas); err != nil {
 		return nil, err
 	}
 
-	return schema, nil
+	return schemas.Schemas, nil
 }
 
 // Create creates a new branch for an organization's database.
