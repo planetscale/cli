@@ -17,7 +17,7 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 		Short: "list service tokens for the organization",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
-			client, err := ch.Config.NewClientFromConfig()
+			client, err := ch.Client()
 			if err != nil {
 				return err
 			}

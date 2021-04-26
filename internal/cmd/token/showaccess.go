@@ -10,13 +10,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func ShowCmd(ch *cmdutil.Helper) *cobra.Command {
+func ShowAccessCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "show-access <name>",
 		Short: "fetch a service token and it's accesses",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
-			client, err := ch.Config.NewClientFromConfig()
+			client, err := ch.Client()
 			if err != nil {
 				return err
 			}

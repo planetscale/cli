@@ -21,7 +21,7 @@ func TokenCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	cmd.AddCommand(CreateCmd(ch))
 	cmd.AddCommand(ListCmd(ch))
-	cmd.AddCommand(ShowCmd(ch))
+	cmd.AddCommand(ShowAccessCmd(ch))
 	cmd.AddCommand(AddAccessCmd(ch))
 	cmd.AddCommand(DeleteAccessCmd(ch))
 	cmd.AddCommand(DeleteCmd(ch))

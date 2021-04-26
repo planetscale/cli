@@ -24,7 +24,7 @@ For example, to give a service token the ability to create, read and delete bran
 For a complete list of the access permissions that can be granted to a token, see: TODO.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
-			client, err := ch.Config.NewClientFromConfig()
+			client, err := ch.Client()
 			if err != nil {
 				return err
 			}
