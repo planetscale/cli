@@ -54,7 +54,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			end()
 
 			if ch.Printer.Format() == printer.Human {
-				ch.Printer.Printf("Successfully requested deploy %s of %s into %s!\n",
+				ch.Printer.Printf("Successfully requested deploy %s of %s into %s.\n",
 					printer.BoldBlue(dr.ID),
 					printer.BoldBlue(dr.Branch),
 					printer.BoldBlue(dr.IntoBranch))

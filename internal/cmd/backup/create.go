@@ -53,7 +53,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			end()
 
 			if ch.Printer.Format() == printer.Human {
-				ch.Printer.Printf("Backup %s was successfully created!\n", printer.BoldBlue(bkp.Name))
+				ch.Printer.Printf("Backup %s was successfully created.\n", printer.BoldBlue(bkp.Name))
 				return nil
 			}
 
