@@ -14,7 +14,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// DiffCmd is the command for showing the diff of a deploy request.
+// DiffCmd is the command for showing the diff of a branch.
 func DiffCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
 		web bool
@@ -22,7 +22,7 @@ func DiffCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "diff <database> <branch>",
-		Short: "Show the diff of a deploy request",
+		Short: "Show the diff of a branch",
 		Args:  cmdutil.RequiredArgs("database", "branch"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
