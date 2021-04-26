@@ -33,7 +33,7 @@ func DiffCmd(ch *cmdutil.Helper) *cobra.Command {
 			defer end()
 
 			diffs, err := client.SchemaSnapshots.Diff(ctx, &planetscale.DiffSchemaSnapshotRequest{
-				SchemaSchemaSnapshotID: id,
+				ID: id,
 			})
 			if err != nil {
 				switch cmdutil.ErrCode(err) {

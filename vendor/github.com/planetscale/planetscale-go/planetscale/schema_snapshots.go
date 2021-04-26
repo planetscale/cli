@@ -43,7 +43,7 @@ type SchemaSnapshot struct {
 // SchemaSnapshotDiffRequest is a request for getting the diff for a schema
 // snapshot.
 type DiffSchemaSnapshotRequest struct {
-	SchemaSchemaSnapshotID string `json:"-"`
+	ID string `json:"-"`
 }
 
 // SchemaSnapshotsService is an interface for	communicating with the PlanetScale
@@ -118,7 +118,7 @@ func (s *schemaSnapshotsService) Get(ctx context.Context, getReq *GetSchemaSnaps
 }
 
 func (s *schemaSnapshotsService) Diff(ctx context.Context, diffReq *DiffSchemaSnapshotRequest) ([]*Diff, error) {
-	path := fmt.Sprintf("%s/diff", schemaSnapshotAPIPath(diffReq.SchemaSchemaSnapshotID))
+	path := fmt.Sprintf("%s/diff", schemaSnapshotAPIPath(diffReq.ID))
 	req, err := s.client.newRequest(http.MethodGet, path, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating http request")
