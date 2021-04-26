@@ -91,7 +91,7 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 			end()
 
 			if ch.Printer.Format() == printer.Human {
-				ch.Printer.Printf("Backup %s was successfully deleted from %s!\n",
+				ch.Printer.Printf("Backup %s was successfully deleted from %s.\n",
 					printer.BoldBlue(backup), printer.BoldBlue(branch))
 				return nil
 			}

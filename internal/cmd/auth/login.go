@@ -78,7 +78,7 @@ func LoginCmd(ch *cmdutil.Helper) *cobra.Command {
 			// We explicitly stop here so we can replace the spinner with our success
 			// message.
 			end()
-			ch.Printer.Println("Successfully logged in!")
+			ch.Printer.Println("Successfully logged in.")
 
 			err = writeDefaultOrganization(ctx, accessToken, authURL)
 			if err != nil {
