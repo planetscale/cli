@@ -21,6 +21,12 @@ type DatabaseBranchesService struct {
 
 	GetStatusFn        func(context.Context, *ps.GetDatabaseBranchStatusRequest) (*ps.DatabaseBranchStatus, error)
 	GetStatusFnInvoked bool
+
+	DiffBranchFn        func(context.Context, *ps.DiffBranchRequest) ([]*ps.Diff, error)
+	DiffBranchFnInvoked bool
+
+	BranchSchemaFn        func(context.Context, *ps.BranchSchemaRequest) ([]*ps.Diff, error)
+	BranchSchemaFnInvoked bool
 }
 
 func (d *DatabaseBranchesService) Create(ctx context.Context, req *ps.CreateDatabaseBranchRequest) (*ps.DatabaseBranch, error) {
@@ -46,4 +52,14 @@ func (d *DatabaseBranchesService) Delete(ctx context.Context, req *ps.DeleteData
 func (d *DatabaseBranchesService) GetStatus(ctx context.Context, req *ps.GetDatabaseBranchStatusRequest) (*ps.DatabaseBranchStatus, error) {
 	d.GetStatusFnInvoked = true
 	return d.GetStatusFn(ctx, req)
+}
+
+func (d *DatabaseBranchesService) Diff(ctx context.Context, req *ps.DiffBranchRequest) ([]*ps.Diff, error) {
+	d.DiffBranchFnInvoked = true
+	return d.DiffBranchFn(ctx, req)
+}
+
+func (d *DatabaseBranchesService) Schema(ctx context.Context, req *ps.BranchSchemaRequest) ([]*ps.Diff, error) {
+	d.BranchSchemaFnInvoked = true
+	return d.BranchSchemaFn(ctx, req)
 }
