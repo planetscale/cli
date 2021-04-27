@@ -26,7 +26,7 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 				Organization: ch.Config.Organization,
 			}
 
-			end := ch.Printer.PrintProgress(fmt.Sprintf("Creating service token in org %s", printer.BoldBlue(ch.Config.Organization)))
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Fetching service tokens from org %s", printer.BoldBlue(ch.Config.Organization)))
 			defer end()
 
 			tokens, err := client.ServiceTokens.List(ctx, req)
