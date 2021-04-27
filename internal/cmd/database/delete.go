@@ -82,7 +82,7 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 			end()
 
 			if ch.Printer.Format() == printer.Human {
-				ch.Printer.Printf("Database %s was successfully deleted!\n", printer.BoldBlue(name))
+				ch.Printer.Printf("Database %s was successfully deleted.\n", printer.BoldBlue(name))
 				return nil
 			}
 

@@ -53,7 +53,7 @@ func DeleteAccessCmd(ch *cmdutil.Helper) *cobra.Command {
 			end()
 
 			if ch.Printer.Format() == printer.Human {
-				ch.Printer.Printf("Accesses %v were successfully deleted!\n",
+				ch.Printer.Printf("Accesses %v were successfully deleted.\n",
 					printer.BoldBlue(strings.Join(perms, ",")))
 				return nil
 			}

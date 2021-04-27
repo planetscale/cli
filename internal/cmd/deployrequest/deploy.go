@@ -51,7 +51,7 @@ func DeployCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			if ch.Printer.Format() == printer.Human {
-				ch.Printer.Printf("Successfully deployed %s from %s to %s!\n",
+				ch.Printer.Printf("Successfully deployed %s from %s to %s.\n",
 					dr.ID, dr.Branch, dr.IntoBranch)
 				return nil
 			}
