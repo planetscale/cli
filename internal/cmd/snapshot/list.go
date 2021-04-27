@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/pkg/errors"
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
 	"github.com/planetscale/planetscale-go/planetscale"
@@ -40,10 +39,8 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 				case planetscale.ErrNotFound:
 					return fmt.Errorf("branch %s does not exist in database %s (organization: %s)",
 						printer.BoldBlue(branch), printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
-				case planetscale.ErrResponseMalformed:
-					return cmdutil.MalformedError(err)
 				default:
-					return errors.Wrap(err, "error listing schema snapshots")
+					return cmdutil.HandleError(err)
 				}
 			}
 			end()

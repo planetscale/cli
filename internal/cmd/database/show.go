@@ -53,10 +53,8 @@ func ShowCmd(ch *cmdutil.Helper) *cobra.Command {
 				case planetscale.ErrNotFound:
 					return fmt.Errorf("database %s does not exist in organization %s\n",
 						printer.BoldBlue(name), printer.BoldBlue(ch.Config.Organization))
-				case planetscale.ErrResponseMalformed:
-					return cmdutil.MalformedError(err)
 				default:
-					return err
+					return cmdutil.HandleError(err)
 				}
 			}
 			end()

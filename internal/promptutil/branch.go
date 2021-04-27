@@ -5,8 +5,6 @@ import (
 	"fmt"
 
 	"github.com/AlecAivazis/survey/v2"
-	"github.com/pkg/errors"
-	"github.com/planetscale/planetscale-go/planetscale"
 	ps "github.com/planetscale/planetscale-go/planetscale"
 
 	"github.com/planetscale/cli/internal/cmdutil"
@@ -22,12 +20,7 @@ func GetBranch(ctx context.Context, client *ps.Client, org, db string) (string, 
 		Database:     db,
 	})
 	if err != nil {
-		switch cmdutil.ErrCode(err) {
-		case planetscale.ErrResponseMalformed:
-			return "", cmdutil.MalformedError(err)
-		default:
-			return "", errors.Wrap(err, "error listing branches")
-		}
+		return "", cmdutil.HandleError(err)
 	}
 
 	if len(branches) == 0 {

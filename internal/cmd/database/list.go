@@ -10,7 +10,6 @@ import (
 	"github.com/planetscale/planetscale-go/planetscale"
 
 	"github.com/pkg/browser"
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -50,10 +49,8 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
 					return fmt.Errorf("organization %s does not exist\n", printer.BoldBlue(ch.Config.Organization))
-				case planetscale.ErrResponseMalformed:
-					return cmdutil.MalformedError(err)
 				default:
-					return errors.Wrap(err, "error listing databases")
+					return cmdutil.HandleError(err)
 				}
 			}
 

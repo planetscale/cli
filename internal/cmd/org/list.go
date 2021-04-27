@@ -5,7 +5,6 @@ import (
 
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
-	"github.com/planetscale/planetscale-go/planetscale"
 
 	"github.com/spf13/cobra"
 )
@@ -25,12 +24,7 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			orgs, err := client.Organizations.List(ctx)
 			if err != nil {
-				switch cmdutil.ErrCode(err) {
-				case planetscale.ErrResponseMalformed:
-					return cmdutil.MalformedError(err)
-				default:
-					return err
-				}
+				return cmdutil.HandleError(err)
 			}
 
 			if len(orgs) == 0 && ch.Printer.Format() == printer.Human {

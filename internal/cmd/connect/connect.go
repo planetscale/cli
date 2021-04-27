@@ -79,10 +79,8 @@ argument:
 				case planetscale.ErrNotFound:
 					return fmt.Errorf("database %s and branch %s does not exist in organization %s\n",
 						printer.BoldBlue(database), printer.BoldBlue(branch), printer.BoldBlue(ch.Config.Organization))
-				case planetscale.ErrResponseMalformed:
-					return cmdutil.MalformedError(err)
 				default:
-					return err
+					return cmdutil.HandleError(err)
 				}
 			}
 

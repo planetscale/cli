@@ -36,10 +36,8 @@ func ShowCmd(ch *cmdutil.Helper) *cobra.Command {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
 					return fmt.Errorf("snapshot id %s does not exist (organization: %s)", printer.BoldBlue(id), printer.BoldBlue(ch.Config.Organization))
-				case planetscale.ErrResponseMalformed:
-					return cmdutil.MalformedError(err)
 				default:
-					return err
+					return cmdutil.HandleError(err)
 				}
 			}
 			end()
