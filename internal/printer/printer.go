@@ -14,10 +14,9 @@ import (
 	"github.com/fatih/color"
 	"github.com/gocarina/gocsv"
 	"github.com/lensesio/tableprinter"
-	"github.com/mattn/go-isatty"
 )
 
-var IsTTY = isatty.IsTerminal(os.Stdout.Fd()) || isatty.IsCygwinTerminal(os.Stdout.Fd())
+var IsTTY = !color.NoColor
 
 // Format defines the option output format of a resource.
 type Format int
