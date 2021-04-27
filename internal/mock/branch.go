@@ -25,8 +25,8 @@ type DatabaseBranchesService struct {
 	DiffFn        func(context.Context, *ps.DiffBranchRequest) ([]*ps.Diff, error)
 	DiffFnInvoked bool
 
-	BranchSchemaFn        func(context.Context, *ps.BranchSchemaRequest) ([]*ps.Diff, error)
-	BranchSchemaFnInvoked bool
+	SchemaFn        func(context.Context, *ps.BranchSchemaRequest) ([]*ps.Diff, error)
+	SchemaFnInvoked bool
 }
 
 func (d *DatabaseBranchesService) Create(ctx context.Context, req *ps.CreateDatabaseBranchRequest) (*ps.DatabaseBranch, error) {
@@ -60,6 +60,6 @@ func (d *DatabaseBranchesService) Diff(ctx context.Context, req *ps.DiffBranchRe
 }
 
 func (d *DatabaseBranchesService) Schema(ctx context.Context, req *ps.BranchSchemaRequest) ([]*ps.Diff, error) {
-	d.BranchSchemaFnInvoked = true
-	return d.BranchSchemaFn(ctx, req)
+	d.SchemaFnInvoked = true
+	return d.SchemaFn(ctx, req)
 }
