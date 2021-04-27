@@ -43,10 +43,8 @@ func DiffCmd(ch *cmdutil.Helper) *cobra.Command {
 				case planetscale.ErrNotFound:
 					return fmt.Errorf("branch %s does not exist in database %s (organization: %s)\n",
 						printer.BoldBlue(branch), printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
-				case planetscale.ErrResponseMalformed:
-					return cmdutil.MalformedError(err)
 				default:
-					return err
+					return cmdutil.HandleError(err)
 				}
 			}
 

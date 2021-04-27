@@ -51,10 +51,8 @@ For a complete list of the access permissions that can be granted to a token, se
 				case planetscale.ErrNotFound:
 					return fmt.Errorf("database %s does not exist in organization %s\n",
 						printer.BoldBlue(ch.Config.Database), printer.BoldBlue(ch.Config.Organization))
-				case planetscale.ErrResponseMalformed:
-					return cmdutil.MalformedError(err)
 				default:
-					return err
+					return cmdutil.HandleError(err)
 				}
 			}
 

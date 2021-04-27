@@ -39,10 +39,8 @@ func DiffCmd(ch *cmdutil.Helper) *cobra.Command {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
 					return fmt.Errorf("not diff found for snapshot id %s (organization: %s)", printer.BoldBlue(id), printer.BoldBlue(ch.Config.Organization))
-				case planetscale.ErrResponseMalformed:
-					return cmdutil.MalformedError(err)
 				default:
-					return err
+					return cmdutil.HandleError(err)
 				}
 			}
 			end()

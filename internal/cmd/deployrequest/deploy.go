@@ -43,10 +43,8 @@ func DeployCmd(ch *cmdutil.Helper) *cobra.Command {
 				case planetscale.ErrNotFound:
 					return fmt.Errorf("deploy request '%s/%s' does not exist in organization %s\n",
 						printer.BoldBlue(database), printer.BoldBlue(number), printer.BoldBlue(ch.Config.Organization))
-				case planetscale.ErrResponseMalformed:
-					return cmdutil.MalformedError(err)
 				default:
-					return err
+					return cmdutil.HandleError(err)
 				}
 			}
 

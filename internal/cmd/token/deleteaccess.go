@@ -43,10 +43,8 @@ func DeleteAccessCmd(ch *cmdutil.Helper) *cobra.Command {
 				case planetscale.ErrNotFound:
 					return fmt.Errorf("database %s or token does not exist in organization %s\n",
 						printer.BoldBlue(ch.Config.Database), printer.BoldBlue(ch.Config.Organization))
-				case planetscale.ErrResponseMalformed:
-					return cmdutil.MalformedError(err)
 				default:
-					return err
+					return cmdutil.HandleError(err)
 				}
 			}
 

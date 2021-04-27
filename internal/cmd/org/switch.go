@@ -46,10 +46,8 @@ func SwitchCmd(ch *cmdutil.Helper) *cobra.Command {
 					switch cmdutil.ErrCode(err) {
 					case planetscale.ErrNotFound:
 						return fmt.Errorf("organization %s does not exist\n", printer.BoldBlue(orgName))
-					case planetscale.ErrResponseMalformed:
-						return cmdutil.MalformedError(err)
 					default:
-						return err
+						return cmdutil.HandleError(err)
 					}
 				}
 				end()
@@ -60,12 +58,7 @@ func SwitchCmd(ch *cmdutil.Helper) *cobra.Command {
 				defer end()
 				orgs, err := client.Organizations.List(ctx)
 				if err != nil {
-					switch cmdutil.ErrCode(err) {
-					case planetscale.ErrResponseMalformed:
-						return cmdutil.MalformedError(err)
-					default:
-						return err
-					}
+					return cmdutil.HandleError(err)
 				}
 				end()
 
