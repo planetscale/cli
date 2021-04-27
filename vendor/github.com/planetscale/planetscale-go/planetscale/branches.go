@@ -62,6 +62,20 @@ type GetDatabaseBranchStatusRequest struct {
 	Branch       string
 }
 
+// DiffBranchRequest encapsulates a request for getting the diff for a branch.
+type DiffBranchRequest struct {
+	Organization string `json:"-"`
+	Database     string `json:"-"`
+	Branch       string `json:"-"`
+}
+
+// BranchSchemaRequest encapsulates a request for getting a branch's schema.
+type BranchSchemaRequest struct {
+	Organization string `json:"-"`
+	Database     string `json:"-"`
+	Branch       string `json:"-"`
+}
+
 // DatabaseBranchesService is an interface for communicating with the PlanetScale
 // Database Branch API endpoint.
 type DatabaseBranchesService interface {
@@ -70,6 +84,8 @@ type DatabaseBranchesService interface {
 	Get(context.Context, *GetDatabaseBranchRequest) (*DatabaseBranch, error)
 	Delete(context.Context, *DeleteDatabaseBranchRequest) error
 	GetStatus(context.Context, *GetDatabaseBranchStatusRequest) (*DatabaseBranchStatus, error)
+	Diff(context.Context, *DiffBranchRequest) ([]*Diff, error)
+	Schema(context.Context, *BranchSchemaRequest) ([]*Diff, error)
 }
 
 type databaseBranchesService struct {
@@ -95,6 +111,41 @@ func NewDatabaseBranchesService(client *Client) *databaseBranchesService {
 	return &databaseBranchesService{
 		client: client,
 	}
+}
+
+func (d *databaseBranchesService) Diff(ctx context.Context, diffReq *DiffBranchRequest) ([]*Diff, error) {
+	path := fmt.Sprintf("%s/diff", databaseBranchAPIPath(diffReq.Organization, diffReq.Database, diffReq.Branch))
+	req, err := d.client.newRequest(http.MethodGet, path, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "error creating http request")
+	}
+
+	diffs := &diffResponse{}
+	if err := d.client.do(ctx, req, &diffs); err != nil {
+		return nil, err
+	}
+
+	return diffs.Diffs, nil
+}
+
+// schemaResponse returns the schemas
+type schemaResponse struct {
+	Schemas []*Diff `json:"data"`
+}
+
+func (d *databaseBranchesService) Schema(ctx context.Context, schemaReq *BranchSchemaRequest) ([]*Diff, error) {
+	path := fmt.Sprintf("%s/schema", databaseBranchAPIPath(schemaReq.Organization, schemaReq.Database, schemaReq.Branch))
+	req, err := d.client.newRequest(http.MethodGet, path, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "error creating http request")
+	}
+
+	schemas := &schemaResponse{}
+	if err := d.client.do(ctx, req, &schemas); err != nil {
+		return nil, err
+	}
+
+	return schemas.Schemas, nil
 }
 
 // Create creates a new branch for an organization's database.
