@@ -130,7 +130,7 @@ func SignupCmd(ch *cmdutil.Helper) *cobra.Command {
 					errMsg += fmt.Sprintf("%s: %s", printer.BoldRed("password error"), strings.Join(res.Errors.PasswordConfirmation, ","))
 				}
 
-				return fmt.Errorf("error registering user\n\n%v", errMsg)
+				return fmt.Errorf("registering has failed\n\n%v", errMsg)
 			}
 
 			// TODO(fatih): should we do anythying with the response?
