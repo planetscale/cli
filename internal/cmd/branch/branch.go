@@ -27,6 +27,8 @@ func BranchCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.AddCommand(DeleteCmd(ch))
 	cmd.AddCommand(ShowCmd(ch))
 	cmd.AddCommand(SwitchCmd(ch))
+	cmd.AddCommand(DiffCmd(ch))
+	cmd.AddCommand(SchemaCmd(ch))
 
 	return cmd
 }

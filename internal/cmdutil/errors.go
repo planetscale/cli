@@ -23,11 +23,11 @@ func ErrCode(err error) planetscale.ErrorCode {
 
 }
 
-// MalformedError checks whether the given err is an *planetscale.Error and
-// returns a descriptive, human readable error if the error code is of type
-// planetscale.ErrResponseMalformed. If the error doesn't match these
+// HandleError checks whether the given err is an *planetscale.Error and
+// returns a descriptive, human readable error if the error code matches a
+// certain planetscale Error types. If the error doesn't match these
 // requirements, err is returned unmodified.
-func MalformedError(err error) error {
+func HandleError(err error) error {
 	if err == nil {
 		return err
 	}
@@ -37,12 +37,15 @@ func MalformedError(err error) error {
 		return err
 	}
 
-	if perr.Code != planetscale.ErrResponseMalformed {
+	switch perr.Code {
+	case planetscale.ErrResponseMalformed:
+		const malformedWarning = "Unexpected API response received, the PlanetScale API might be down." +
+			" Please contact support with the following output"
+
+		return fmt.Errorf("%s:\n\n%s", malformedWarning, perr.Meta["body"])
+	case planetscale.ErrInternal:
+		return fmt.Errorf("%s with the following output:\n\n%s", perr.Error(), perr.Meta["body"])
+	default:
 		return err
 	}
-
-	const malformedWarning = "Unexpected API response received, the PlanetScale API might be down." +
-		" Please contact support with the following output"
-
-	return fmt.Errorf("%s:\n\n%s", malformedWarning, perr.Meta["body"])
 }

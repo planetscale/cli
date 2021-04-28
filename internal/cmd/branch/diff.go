@@ -1,14 +1,12 @@
-package deployrequest
+package branch
 
 import (
 	"bufio"
 	"context"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/fatih/color"
-	"github.com/pkg/browser"
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
 	"github.com/planetscale/planetscale-go/planetscale"
@@ -16,46 +14,35 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// DiffCmd is the command for showing the diff of a deploy request.
+// DiffCmd is the command for showing the diff of a branch.
 func DiffCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
 		web bool
 	}
 
 	cmd := &cobra.Command{
-		Use:   "diff <database> <number>",
-		Short: "Show the diff of a deploy request",
-		Args:  cmdutil.RequiredArgs("database", "number"),
+		Use:   "diff <database> <branch>",
+		Short: "Show the diff of a branch",
+		Args:  cmdutil.RequiredArgs("database", "branch"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
-			database := args[0]
-			number := args[1]
-
-			if flags.web {
-				ch.Printer.Println("🌐  Redirecting you to your deploy request diff in your web browser.")
-				return browser.OpenURL(fmt.Sprintf("%s/%s/%s/deploy-requests/%s/diff", cmdutil.ApplicationURL, ch.Config.Organization, database, number))
-			}
+			database, branch := args[0], args[1]
 
 			client, err := ch.Client()
 			if err != nil {
 				return err
 			}
 
-			n, err := strconv.ParseUint(number, 10, 64)
-			if err != nil {
-				return fmt.Errorf("The argument <number> is invalid: %s", err)
-			}
-
-			diffs, err := client.DeployRequests.Diff(ctx, &planetscale.DiffRequest{
+			diffs, err := client.DatabaseBranches.Diff(ctx, &planetscale.DiffBranchRequest{
 				Organization: ch.Config.Organization,
 				Database:     database,
-				Number:       n,
+				Branch:       branch,
 			})
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
-					return fmt.Errorf("deploy rquest '%s/%s' does not exist in organization %s\n",
-						printer.BoldBlue(database), printer.BoldBlue(number), printer.BoldBlue(ch.Config.Organization))
+					return fmt.Errorf("branch %s does not exist in database %s (organization: %s)\n",
+						printer.BoldBlue(branch), printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
 				default:
 					return cmdutil.HandleError(err)
 				}

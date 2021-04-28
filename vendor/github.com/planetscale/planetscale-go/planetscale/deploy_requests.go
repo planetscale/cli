@@ -286,8 +286,8 @@ func (d *deployRequestsService) List(ctx context.Context, listReq *ListDeployReq
 
 func (d *deployRequestsService) CreateReview(ctx context.Context, reviewReq *ReviewDeployRequestRequest) (*DeployRequestReview, error) {
 	var reqBody = struct {
-		State string
-		Body  string
+		State string `json:"state"`
+		Body  string `json:"body"`
 	}{
 		State: reviewReq.ReviewAction.String(),
 		Body:  reviewReq.CommentText,

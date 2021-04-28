@@ -1,10 +1,9 @@
-package deployrequest
+package branch
 
 import (
 	"bufio"
 	"context"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/fatih/color"
@@ -12,61 +11,53 @@ import (
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
 	"github.com/planetscale/planetscale-go/planetscale"
-
 	"github.com/spf13/cobra"
 )
 
-// DiffCmd is the command for showing the diff of a deploy request.
-func DiffCmd(ch *cmdutil.Helper) *cobra.Command {
+// SchemaCmd is the command for showing the schema of a branch.
+func SchemaCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
 		web bool
 	}
 
 	cmd := &cobra.Command{
-		Use:   "diff <database> <number>",
-		Short: "Show the diff of a deploy request",
-		Args:  cmdutil.RequiredArgs("database", "number"),
+		Use:   "schema <database> <branch>",
+		Short: "Show the schema of a branch",
+		Args:  cmdutil.RequiredArgs("database", "branch"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
-			database := args[0]
-			number := args[1]
+			database, branch := args[0], args[1]
 
 			if flags.web {
-				ch.Printer.Println("🌐  Redirecting you to your deploy request diff in your web browser.")
-				return browser.OpenURL(fmt.Sprintf("%s/%s/%s/deploy-requests/%s/diff", cmdutil.ApplicationURL, ch.Config.Organization, database, number))
+				ch.Printer.Println("🌐  Redirecting you to your branch schema in your web browser.")
+				return browser.OpenURL(fmt.Sprintf("%s/%s/%s/%s/schema", cmdutil.ApplicationURL, ch.Config.Organization, database, branch))
 			}
-
 			client, err := ch.Client()
 			if err != nil {
 				return err
 			}
 
-			n, err := strconv.ParseUint(number, 10, 64)
-			if err != nil {
-				return fmt.Errorf("The argument <number> is invalid: %s", err)
-			}
-
-			diffs, err := client.DeployRequests.Diff(ctx, &planetscale.DiffRequest{
+			schemas, err := client.DatabaseBranches.Schema(ctx, &planetscale.BranchSchemaRequest{
 				Organization: ch.Config.Organization,
 				Database:     database,
-				Number:       n,
+				Branch:       branch,
 			})
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
-					return fmt.Errorf("deploy rquest '%s/%s' does not exist in organization %s\n",
-						printer.BoldBlue(database), printer.BoldBlue(number), printer.BoldBlue(ch.Config.Organization))
+					return fmt.Errorf("branch %s does not exist in database %s (organization: %s)\n",
+						printer.BoldBlue(branch), printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
 				default:
 					return cmdutil.HandleError(err)
 				}
 			}
 
 			if ch.Printer.Format() != printer.Human {
-				return ch.Printer.PrintResource(diffs)
+				return ch.Printer.PrintResource(schemas)
 			}
 
 			// human readable output
-			for _, df := range diffs {
+			for _, df := range schemas {
 				ch.Printer.Println("--", printer.BoldBlue(df.Name), "--")
 				scanner := bufio.NewScanner(strings.NewReader(strings.TrimSpace(df.Raw)))
 				for scanner.Scan() {
@@ -80,7 +71,7 @@ func DiffCmd(ch *cmdutil.Helper) *cobra.Command {
 					}
 				}
 				if err := scanner.Err(); err != nil {
-					return fmt.Errorf("reading diff raw: %s", err)
+					return fmt.Errorf("reading schema raw: %s", err)
 				}
 			}
 
