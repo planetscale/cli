@@ -50,7 +50,8 @@ func CloseCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			if ch.Printer.Format() == printer.Human {
 				ch.Printer.Printf("Deploy request %s/%s was successfully closed.\n",
-					printer.BoldBlue(database), printer.BoldBlue(number))
+					printer.BoldBlue(database),
+					printer.BoldBlue(dr.Number))
 				return nil
 			}
 
