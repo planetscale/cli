@@ -30,7 +30,7 @@ func ConnectCmd(ch *cmdutil.Helper) *cobra.Command {
 		// we only require database, because we deduct branch automatically
 		Args:  cmdutil.RequiredArgs("database"),
 		Short: "Create a secure connection to the given database and branch",
-		Example: `The connect subcommand establish a secure connection between your host and remote psdb. 
+		Example: `The connect subcommand establish a secure connection between your host and PlanetScale. 
 
 By default, if no branch names are given and there is only one branch, it
 automatically connects to that branch:
