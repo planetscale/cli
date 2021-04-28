@@ -227,18 +227,18 @@ func Number(num interface{}) string {
 }
 
 // BoldBlue returns a string formatted with blue and bold.
-func BoldBlue(msg string) string {
+func BoldBlue(msg interface{}) string {
 	// the 'color' package already handles IsTTY gracefully
 	return color.New(color.FgBlue).Add(color.Bold).Sprint(msg)
 }
 
 // BoldRed returns a string formatted with red and bold.
-func BoldRed(msg string) string {
+func BoldRed(msg interface{}) string {
 	return color.New(color.FgRed).Add(color.Bold).Sprint(msg)
 }
 
 // Bold returns a string formatted with bold.
-func Bold(msg string) string {
+func Bold(msg interface{}) string {
 	// the 'color' package already handles IsTTY gracefully
 	return color.New(color.Bold).Sprint(msg)
 }
