@@ -222,6 +222,10 @@ func Emoji(emoji string) string {
 	return ""
 }
 
+func Number(num interface{}) string {
+	return fmt.Sprintf("#%d", num)
+}
+
 // BoldBlue returns a string formatted with blue and bold.
 func BoldBlue(msg string) string {
 	// the 'color' package already handles IsTTY gracefully
