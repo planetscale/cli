@@ -42,13 +42,13 @@ type DeployRequest struct {
 
 	State string `header:"state" json:"state"`
 
-	Deployment InlineDeployment `header:"inline" json:"deployment"`
+	Deployment inlineDeployment `header:"inline" json:"deployment"`
 	CreatedAt  int64            `header:"created_at,timestamp(ms|utc|human)" json:"created_at"`
 	UpdatedAt  int64            `header:"updated_at,timestamp(ms|utc|human)" json:"updated_at"`
 	ClosedAt   *int64           `header:"closed_at,timestamp(ms|utc|human),-" json:"closed_at"`
 }
 
-type InlineDeployment struct {
+type inlineDeployment struct {
 	State      string `header:"deploy state" json:"state"`
 	Deployable bool   `header:"deployable" json:"deployable"`
 
@@ -61,12 +61,12 @@ func (d *DeployRequest) MarshalCSVValue() interface{} {
 	return []*DeployRequest{d}
 }
 
-func toInlineDeployment(d *planetscale.Deployment) InlineDeployment {
+func toInlineDeployment(d *planetscale.Deployment) inlineDeployment {
 	if d == nil {
-		return InlineDeployment{}
+		return inlineDeployment{}
 	}
 
-	return InlineDeployment{
+	return inlineDeployment{
 		State: d.State,
 
 		Deployable: d.Deployable,
