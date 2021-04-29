@@ -2,6 +2,7 @@ package dumper
 
 import (
 	"io/ioutil"
+	"os"
 	"strings"
 	"testing"
 
@@ -1007,4 +1008,41 @@ func TestDumperInvertMatch(t *testing.T) {
 
 	want_test2 := strings.Contains(string(dat_test2), `(1337)`)
 	c.Assert(want_test2, qt.IsTrue)
+}
+
+func TestWriteFile(t *testing.T) {
+	c := qt.New(t)
+
+	file := "/tmp/xx.txt"
+	defer os.Remove(file)
+
+	{
+		err := writeFile(file, "fake")
+		c.Assert(err, qt.IsNil)
+	}
+
+	{
+		err := writeFile("/xxu01/xx.txt", "fake")
+		c.Assert(err, qt.Not(qt.IsNil))
+	}
+}
+
+func TestEscapeBytes(t *testing.T) {
+	c := qt.New(t)
+
+	tests := []struct {
+		v   []byte
+		exp []byte
+	}{
+		{[]byte("simple"), []byte("simple")},
+		{[]byte(`simplers's "world"`), []byte(`simplers\'s \"world\"`)},
+		{[]byte("\x00'\"\b\n\r"), []byte(`\0\'\"\b\n\r`)},
+		{[]byte("\t\x1A\\"), []byte(`\t\Z\\`)},
+	}
+	for _, tt := range tests {
+		got := escapeBytes(tt.v)
+		want := tt.exp
+
+		c.Assert(want, qt.DeepEquals, got)
+	}
 }
