@@ -21,10 +21,13 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/planetscale/planetscale-go v0.22.1
 	github.com/planetscale/sql-proxy v0.3.2
+	github.com/shopspring/decimal v1.2.0 // indirect
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.7.0
+	github.com/xelabs/go-mysqlstack v0.0.0-20210217114447-6f59da6c3358
 	go.uber.org/zap v1.16.0
+	gopkg.in/ini.v1 v1.51.0
 	gopkg.in/yaml.v2 v2.4.0
 )

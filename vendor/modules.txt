@@ -101,6 +101,9 @@ github.com/planetscale/sql-proxy/proxy
 github.com/planetscale/sql-proxy/sigutil
 # github.com/pmezard/go-difflib v1.0.0
 github.com/pmezard/go-difflib/difflib
+# github.com/shopspring/decimal v1.2.0
+## explicit
+github.com/shopspring/decimal
 # github.com/spf13/afero v1.1.2
 github.com/spf13/afero
 github.com/spf13/afero/mem
@@ -122,6 +125,16 @@ github.com/spf13/viper
 github.com/stretchr/testify/assert
 # github.com/subosito/gotenv v1.2.0
 github.com/subosito/gotenv
+# github.com/xelabs/go-mysqlstack v0.0.0-20210217114447-6f59da6c3358
+## explicit
+github.com/xelabs/go-mysqlstack/driver
+github.com/xelabs/go-mysqlstack/packet
+github.com/xelabs/go-mysqlstack/proto
+github.com/xelabs/go-mysqlstack/sqldb
+github.com/xelabs/go-mysqlstack/sqlparser/depends/common
+github.com/xelabs/go-mysqlstack/sqlparser/depends/query
+github.com/xelabs/go-mysqlstack/sqlparser/depends/sqltypes
+github.com/xelabs/go-mysqlstack/xlog
 # go.uber.org/atomic v1.7.0
 go.uber.org/atomic
 # go.uber.org/multierr v1.6.0
@@ -189,6 +202,7 @@ google.golang.org/protobuf/reflect/protoregistry
 google.golang.org/protobuf/runtime/protoiface
 google.golang.org/protobuf/runtime/protoimpl
 # gopkg.in/ini.v1 v1.51.0
+## explicit
 gopkg.in/ini.v1
 # gopkg.in/yaml.v2 v2.4.0
 ## explicit
