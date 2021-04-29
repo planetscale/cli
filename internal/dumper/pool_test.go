@@ -67,10 +67,10 @@ func TestPool(t *testing.T) {
 					return
 				default:
 					conn := pool.Get()
-					conn.Execute("select 2")
+					err = conn.Execute("select 2")
 					c.Assert(err, qt.IsNil)
 
-					conn.Fetch("select 2")
+					_, err = conn.Fetch("select 2")
 					c.Assert(err, qt.IsNil)
 
 					_, err = conn.StreamFetch("select 1")
