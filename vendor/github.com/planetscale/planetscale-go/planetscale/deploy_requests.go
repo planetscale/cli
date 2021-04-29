@@ -61,6 +61,50 @@ type ListDeployRequestsRequest struct {
 	Database     string
 }
 
+// DeployOperation encapsulates a deploy operation within a deployment from the
+// PlanetScale API.
+type DeployOperation struct {
+	ID                 string    `json:"id"`
+	State              string    `json:"state"`
+	Table              string    `json:"table_name"`
+	Keyspace           string    `json:"keyspace_name"`
+	Operation          string    `json:"operation_name"`
+	ETASeconds         int64     `json:"eta_seconds"`
+	ProgressPercentage uint64    `json:"progress_percentage"`
+	CreatedAt          time.Time `json:"created_at"`
+	UpdatedAt          time.Time `json:"updated_at"`
+}
+
+// QueuedDeployment encapsulates a deployment that is in the queue.
+type QueuedDeployment struct {
+	ID                  string `json:"id"`
+	State               string `json:"state"`
+	DeployRequestNumber uint64 `json:"deploy_request_number"`
+	IntoBranch          string `json:"into_branch"`
+
+	CreatedAt  time.Time  `json:"created_at"`
+	UpdatedAt  time.Time  `json:"updated_at"`
+	StartedAt  *time.Time `json:"started_at"`
+	QueuedAt   *time.Time `json:"queued_at"`
+	FinishedAt *time.Time `json:"finished_at"`
+}
+
+// Deployment encapsulates a deployment for a deploy request.
+type Deployment struct {
+	ID                   string              `json:"id"`
+	State                string              `json:"state"`
+	Deployable           bool                `json:"deployable"`
+	DeployRequestNumber  uint64              `json:"deploy_request_number"`
+	IntoBranch           string              `json:"into_branch"`
+	PrecedingDeployments []*QueuedDeployment `json:"preceding_deployments"`
+
+	CreatedAt  time.Time  `json:"created_at"`
+	UpdatedAt  time.Time  `json:"updated_at"`
+	StartedAt  *time.Time `json:"started_at"`
+	QueuedAt   *time.Time `json:"queued_at"`
+	FinishedAt *time.Time `json:"finished_at"`
+}
+
 // DeployRequest encapsulates the request to deploy a database branch's schema
 // to a production branch
 type DeployRequest struct {
@@ -71,15 +115,13 @@ type DeployRequest struct {
 
 	Number uint64 `json:"number"`
 
-	DeployabilityErrors string `json:"deployability_errors"`
-	DeploymentState     string `json:"deployment_state"`
-
 	State string `json:"state"`
 
-	Ready    bool `json:"ready"`
 	Approved bool `json:"approved"`
 
 	Notes string `json:"notes"`
+
+	Deployment *Deployment `json:"deployment"`
 
 	CreatedAt time.Time  `json:"created_at"`
 	UpdatedAt time.Time  `json:"updated_at"`
