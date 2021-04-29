@@ -39,34 +39,62 @@ type DeployRequest struct {
 	IntoBranch string `header:"into_branch,timestamp(ms|utc|human)" json:"into_branch"`
 
 	Approved bool `header:"approved" json:"approved"`
-	Ready    bool `header:"ready" json:"ready"`
 
-	DeploymentState     string `header:"deployment_state,n/a" json:"deployment_state"`
-	State               string `header:"state" json:"state"`
-	DeployabilityErrors string `header:"errors" json:"deployability_errors"`
+	Deployment *Deployment `header:"inline"`
+	State      string      `header:"state" json:"state"`
 
 	CreatedAt int64  `header:"created_at,timestamp(ms|utc|human)" json:"created_at"`
 	UpdatedAt int64  `header:"updated_at,timestamp(ms|utc|human)" json:"updated_at"`
 	ClosedAt  *int64 `header:"closed_at,timestamp(ms|utc|human),-" json:"closed_at"`
 }
 
+type Deployment struct {
+	ID         string `header:"id" json:"id"`
+	State      string `header:"deployment state" json:"state"`
+	Deployable bool   `header:"deployable" json:"deployable"`
+	IntoBranch string `header:"into branch" json:"into_branch"`
+
+	CreatedAt  int64  `header:"created_at,timestamp(ms|utc|human)" json:"created_at"`
+	UpdatedAt  int64  `header:"updated_at,timestamp(ms|utc|human)" json:"updated_at"`
+	QueuedAt   *int64 `header:"queued_at,timestamp(ms|utc|human),-" json:"queued_at"`
+	StartedAt  *int64 `header:"started_at,timestamp(ms|utc|human),-" json:"started_at"`
+	FinishedAt *int64 `header:"finished_at,timestamp(ms|utc|human),-" json:"finished_at"`
+}
+
 func (d *DeployRequest) MarshalCSVValue() interface{} {
 	return []*DeployRequest{d}
 }
 
+func toDeployment(d *planetscale.Deployment) *Deployment {
+	if d == nil {
+		return &Deployment{}
+	}
+	return &Deployment{
+		ID:    d.ID,
+		State: d.State,
+
+		Deployable: d.Deployable,
+		IntoBranch: d.IntoBranch,
+		FinishedAt: printer.GetMillisecondsIfExists(d.FinishedAt),
+		StartedAt:  printer.GetMillisecondsIfExists(d.StartedAt),
+		QueuedAt:   printer.GetMillisecondsIfExists(d.QueuedAt),
+		CreatedAt:  printer.GetMilliseconds(d.CreatedAt),
+		UpdatedAt:  printer.GetMilliseconds(d.UpdatedAt),
+	}
+}
+
 func toDeployRequest(dr *planetscale.DeployRequest) *DeployRequest {
 	return &DeployRequest{
-		ID:                  dr.ID,
-		Branch:              dr.Branch,
-		IntoBranch:          dr.IntoBranch,
-		Number:              dr.Number,
-		Approved:            dr.Approved,
-		State:               dr.State,
-		DeploymentState:     dr.DeploymentState,
-		DeployabilityErrors: dr.DeployabilityErrors,
-		CreatedAt:           printer.GetMilliseconds(dr.CreatedAt),
-		UpdatedAt:           printer.GetMilliseconds(dr.UpdatedAt),
-		ClosedAt:            printer.GetMillisecondsIfExists(dr.ClosedAt),
+		ID:         dr.ID,
+		Branch:     dr.Branch,
+		IntoBranch: dr.IntoBranch,
+		Number:     dr.Number,
+		Approved:   dr.Approved,
+		State:      dr.State,
+		Deployment: toDeployment(dr.Deployment),
+		CreatedAt:  printer.GetMilliseconds(dr.CreatedAt),
+		UpdatedAt:  printer.GetMilliseconds(dr.UpdatedAt),
+		ClosedAt:   printer.GetMillisecondsIfExists(dr.ClosedAt),
 	}
 }
 
