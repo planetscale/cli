@@ -47,7 +47,10 @@ func NewPool(log *xlog.Log, cap int, address string, user string, password strin
 		}
 		conn := &Connection{ID: i, client: client}
 		if vars != "" {
-			conn.Execute(vars)
+			err := conn.Execute(vars)
+			if err != nil {
+				return nil, err
+			}
 		}
 		conns <- conn
 	}

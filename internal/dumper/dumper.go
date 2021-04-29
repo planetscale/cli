@@ -2,7 +2,6 @@ package dumper
 
 import (
 	"encoding/csv"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -81,6 +80,7 @@ func (d *Dumper) Run() error {
 	}
 	initPool.Put(conn)
 
+	// TODO(fatih): use errgroup
 	var wg sync.WaitGroup
 	for i, database := range databases {
 		pool, err := NewPool(d.log, d.cfg.Threads/len(databases), d.cfg.Address, d.cfg.User, d.cfg.Password, d.cfg.SessionVars, database)
@@ -91,7 +91,11 @@ func (d *Dumper) Run() error {
 		defer pool.Close()
 		for _, table := range tables[i] {
 			conn := initPool.Get()
-			dumpTableSchema(d.log, conn, d.cfg, database, table)
+			err := dumpTableSchema(d.log, conn, d.cfg, database, table)
+			if err != nil {
+				return err
+			}
+
 			initPool.Put(conn)
 
 			conn = pool.Get()
@@ -101,16 +105,25 @@ func (d *Dumper) Run() error {
 					wg.Done()
 					pool.Put(conn)
 				}()
+
 				d.log.Info("dumping.table[%s.%s].datas.thread[%d]...", database, table, conn.ID)
 				if d.cfg.Format == "mysql" {
-					dumpTable(d.log, conn, d.cfg, database, table)
+					err := dumpTable(d.log, conn, d.cfg, database, table)
+					if err != nil {
+						d.log.Error("error dumping table: %s", err)
+					}
 				} else if d.cfg.Format == "tsv" {
-					dumpTableCsv(d.log, conn, d.cfg, database, table, '\t')
+					err := dumpTableCsv(d.log, conn, d.cfg, database, table, '\t')
+					if err != nil {
+						d.log.Error("error dumping table in TSV: %s", err)
+					}
 				} else if d.cfg.Format == "csv" {
-					dumpTableCsv(d.log, conn, d.cfg, database, table, ',')
+					err := dumpTableCsv(d.log, conn, d.cfg, database, table, ',')
+					if err != nil {
+						d.log.Error("error dumping table in CSV: %s", err)
+					}
 				} else {
-					// TODO(fatih): fix it
-					errors.New("Unknown dump format")
+					d.log.Error("error dumping table, unknown dump format: %s", d.cfg.Format)
 				}
 
 				d.log.Info("dumping.table[%s.%s].datas.thread[%d].done...", database, table, conn.ID)
@@ -301,7 +314,6 @@ func dumpTableCsv(log *xlog.Log, conn *Connection, cfg *Config, database, table 
 	var selfields []string
 	var headerfields []string
 
-	fields := make([]string, 0, 16)
 	{
 		cursor, err := conn.StreamFetch(fmt.Sprintf("SELECT * FROM `%s`.`%s` LIMIT 1", database, table))
 		if err != nil {
@@ -315,7 +327,6 @@ func dumpTableCsv(log *xlog.Log, conn *Connection, cfg *Config, database, table 
 				continue
 			}
 
-			fields = append(fields, fmt.Sprintf("`%s`", fld.Name))
 			headerfields = append(headerfields, fld.Name)
 			replacement, ok := cfg.Selects[table][fld.Name]
 			if ok {
@@ -348,11 +359,13 @@ func dumpTableCsv(log *xlog.Log, conn *Connection, cfg *Config, database, table 
 
 	writer := csv.NewWriter(file)
 	writer.Comma = separator
-	writer.Write(headerfields)
+	err = writer.Write(headerfields)
+	if err != nil {
+		return err
+	}
 
 	chunkbytes := 0
-	rows := make([]string, 0, 256)
-	rows = append(rows, strings.Join(headerfields, "\t"))
+
 	inserts := make([]string, 0, 256)
 	for cursor.Next() {
 		row, err := cursor.RowValues()
@@ -378,7 +391,10 @@ func dumpTableCsv(log *xlog.Log, conn *Connection, cfg *Config, database, table 
 				}
 			}
 		}
-		writer.Write(values)
+		err = writer.Write(values)
+		if err != nil {
+			return err
+		}
 		chunkbytes += rowsize
 
 		allRows++
@@ -394,7 +410,11 @@ func dumpTableCsv(log *xlog.Log, conn *Connection, cfg *Config, database, table 
 
 			writer = csv.NewWriter(file)
 			writer.Comma = separator
-			writer.Write(headerfields)
+			err = writer.Write(headerfields)
+			if err != nil {
+				return err
+			}
+
 			log.Info("dumping.table[%s.%s].rows[%v].bytes[%vMB].part[%v].thread[%d]", database, table, allRows, (allBytes / 1024 / 1024), fileNo, conn.ID)
 			inserts = inserts[:0]
 			chunkbytes = 0
