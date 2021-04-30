@@ -1,6 +1,7 @@
 package dumper
 
 import (
+	"context"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -130,7 +131,7 @@ func TestDumper(t *testing.T) {
 	d, err := NewDumper(cfg)
 	c.Assert(err, qt.IsNil)
 
-	err = d.Run()
+	err = d.Run(context.Background())
 	c.Assert(err, qt.IsNil)
 
 	dat, err := ioutil.ReadFile(cfg.Outdir + "/test.t1-05-11.00001.sql")
@@ -291,7 +292,7 @@ func TestDumperAll(t *testing.T) {
 	d, err := NewDumper(cfg)
 	c.Assert(err, qt.IsNil)
 
-	err = d.Run()
+	err = d.Run(context.Background())
 	c.Assert(err, qt.IsNil)
 
 	dat_test1, err_test1 := ioutil.ReadFile(cfg.Outdir + "/test1.t1-05-11.00001.sql")
@@ -459,7 +460,7 @@ func TestDumperMultiple(t *testing.T) {
 	d, err := NewDumper(cfg)
 	c.Assert(err, qt.IsNil)
 
-	err = d.Run()
+	err = d.Run(context.Background())
 	c.Assert(err, qt.IsNil)
 
 	dat_test1, err_test1 := ioutil.ReadFile(cfg.Outdir + "/test1.t1-05-11.00001.sql")
@@ -636,7 +637,7 @@ func TestDumperSimpleRegexp(t *testing.T) {
 	d, err := NewDumper(cfg)
 	c.Assert(err, qt.IsNil)
 
-	err = d.Run()
+	err = d.Run(context.Background())
 	c.Assert(err, qt.IsNil)
 
 	dat_test1, err_test1 := ioutil.ReadFile(cfg.Outdir + "/test1.t1-05-11.00001.sql")
@@ -813,7 +814,7 @@ func TestDumperComplexRegexp(t *testing.T) {
 	d, err := NewDumper(cfg)
 	c.Assert(err, qt.IsNil)
 
-	err = d.Run()
+	err = d.Run(context.Background())
 	c.Assert(err, qt.IsNil)
 
 	dat_test1, err_test1 := ioutil.ReadFile(cfg.Outdir + "/test1.t1-05-11.00001.sql")
@@ -994,7 +995,7 @@ func TestDumperInvertMatch(t *testing.T) {
 	d, err := NewDumper(cfg)
 	c.Assert(err, qt.IsNil)
 
-	err = d.Run()
+	err = d.Run(context.Background())
 	c.Assert(err, qt.IsNil)
 
 	dat_test1, err_test1 := ioutil.ReadFile(cfg.Outdir + "/test1.t1-05-11.00001.sql")

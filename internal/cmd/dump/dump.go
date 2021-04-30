@@ -141,12 +141,15 @@ func run(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []string
 	}
 
 	if flags.tables == "" {
-		ch.Printer.Printf("Starting to dump all tables from database %s to dir %s\n",
+		ch.Printer.Printf("Starting to dump all tables from database %s to folder %s\n",
 			printer.BoldBlue(database), printer.Bold(dir))
 	} else {
-		ch.Printer.Printf("Starting to dump tables '%s' from database %s to dir %s\n",
+		ch.Printer.Printf("Starting to dump tables '%s' from database %s to folder %s\n",
 			printer.BoldRed(flags.tables), printer.BoldBlue(database), printer.BoldBlue(dir))
 	}
+
+	end := ch.Printer.PrintProgress("Dumping tables ...")
+	defer end()
 
 	start := time.Now()
 	err = d.Run(ctx)
@@ -154,51 +157,7 @@ func run(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []string
 		return fmt.Errorf("failed to dump database: %s", err)
 	}
 
+	end()
 	ch.Printer.Printf("Dumping is finished! (elapsed time: %s)\n", time.Since(start))
 	return nil
 }
-
-// [mysql]
-// # The host to connect to
-// host = 127.0.0.1
-// # TCP/IP port to conect to
-// port = 3306
-// # Username with privileges to run the dump
-// user = root
-// # User password
-// password = [REDACTED]
-// # Database to dump
-// database = planetscale
-// # Table(s) to dump ;  comment out to dump all tables in database
-// ;table = corder,product
-// # Directory to dump files to
-// outdir = ./dumper-sql
-// # Split tables into chunks of this output file size. This value is in MB
-// chunksize = 128
-// # Session variables, split by ;
-// # vars= "xx=xx;xx=xx;"
-// # The workload variable here is required for Vitess to use streaming SELECTs
-// #   if we don't use streaming selects, we'll run into row limits.
-// vars=set workload=olap;
-// # Format to dump:
-// #  mysql - MySQL inserts (default)
-// #  tsv   - TSV format
-// #  csv   - CSV format
-// format = mysql
-// # Use this to use regexp to control what databases to export. These are optional
-// [database]
-// # regexp = ^(mysql|sys|information_schema|performance_schema)$
-// # As the used regexp lib does not allow for lookarounds, you may use this to invert the whole regexp
-// # This option should be refactored as soon as a GPLv3 compliant go-pcre lib is found
-// # invert_regexp = on
-// # Use this to restrict exported data. These are optional
-// [where]
-// # sample_table1 = created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-// # sample_table2 = created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-// # Use this to override value returned from tables. These are optional
-// [select]
-// # customer.first_name = CONCAT('Bohu', id)
-// # customer.last_name = 'Last'
-// # Use this to ignore the column to dump.
-// [filter]
-// # table1.column1 = ignore
