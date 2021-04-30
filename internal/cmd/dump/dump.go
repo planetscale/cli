@@ -34,6 +34,7 @@ func DumpCmd(ch *cmdutil.Helper) *cobra.Command {
 		RunE:  func(cmd *cobra.Command, args []string) error { return run(ch, cmd, f, args) },
 	}
 
+	cmd.PersistentFlags().StringVar(&ch.Config.Organization, "org", ch.Config.Organization, "The organization for the current user")
 	cmd.PersistentFlags().StringVar(&f.localAddr, "local-addr",
 		"", "Local address to bind and listen for connections. By default the proxy binds to 127.0.0.1 with a random port.")
 	cmd.PersistentFlags().StringVar(&f.tables, "tables", "", "Comma separated string of tables to dump. By default all tables are dumped.")
@@ -47,7 +48,7 @@ func run(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []string
 	database := args[0]
 	branch := args[1]
 
-	client, err := ch.Config.NewClientFromConfig()
+	client, err := ch.Client()
 	if err != nil {
 		return err
 	}
@@ -57,6 +58,8 @@ func run(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []string
 	if flags.localAddr != "" {
 		localAddr = flags.localAddr
 	}
+	instance := fmt.Sprintf("%s/%s/%s", ch.Config.Organization, database, branch)
+	fmt.Printf("instance = %+v\n", instance)
 
 	proxyOpts := proxy.Options{
 		CertSource: proxyutil.NewRemoteCertSource(client),
@@ -87,6 +90,7 @@ func run(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []string
 		Branch:       branch,
 	})
 	if err != nil {
+		fmt.Printf("err = %+v\n", err)
 		switch cmdutil.ErrCode(err) {
 		case ps.ErrNotFound:
 			return fmt.Errorf("branch %s does not exist in database %s (organization: %s)",
@@ -130,10 +134,10 @@ func run(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []string
 	}
 
 	if flags.tables == "" {
-		ch.Printer.Printf("Starting to dump all tables from database %s to dir %q",
+		ch.Printer.Printf("Starting to dump all tables from database %s to dir %s",
 			printer.BoldBlue(database), printer.Bold(dir))
 	} else {
-		ch.Printer.Printf("Starting to dump tables %q from database %s to dir %q",
+		ch.Printer.Printf("Starting to dump tables %s from database %s to dir %s",
 			printer.BoldRed(flags.tables), printer.BoldBlue(database), printer.BoldBlue(dir))
 	}
 
