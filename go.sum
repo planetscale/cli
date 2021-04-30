@@ -83,7 +83,6 @@ github.com/fatih/color v1.7.0/go.mod h1:Zm6kSWBoL9eyXnKyktHP6abPY2pDugNf5Kwzbycv
 github.com/fatih/color v1.10.0 h1:s36xzo75JdqLaaWoiEHk767eHiwo0598uUxyfiPkDsg=
 github.com/fatih/color v1.10.0/go.mod h1:ELkj/draVOlAH/xkhN6mQ50Qd0MPOk5AAr3maGEBuJM=
 github.com/frankban/quicktest v1.11.3/go.mod h1:wRf/ReqHper53s+kmmSZizM8NamnL3IM0I9ntUbOk+k=
-github.com/frankban/quicktest v1.12.0/go.mod h1:qLE0fzW0VuyUAJgPU19zByoIr0HtCHN/r/VLSOOIySU=
 github.com/frankban/quicktest v1.12.1 h1:P6vQcHwZYgVGIpUzKB5DXzkEeYJppJOStPLuh9aB89c=
 github.com/frankban/quicktest v1.12.1/go.mod h1:qLE0fzW0VuyUAJgPU19zByoIr0HtCHN/r/VLSOOIySU=
 github.com/fsnotify/fsnotify v1.4.7 h1:IXs+QLmnXW2CcXuY+8Mzv/fWEsPGWxqefPtCP5CnV9I=
@@ -252,8 +251,8 @@ github.com/pkg/errors v0.8.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINE
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/planetscale/planetscale-go v0.18.0/go.mod h1:R+07GStW2oGSfeTwWoplnimSEFzxIzEofOHgPFxArg0=
-github.com/planetscale/planetscale-go v0.22.1 h1:jnFVF0BYk2wqEiJYVUxtsjAwflSjGnRAdxcjw4xZbd8=
-github.com/planetscale/planetscale-go v0.22.1/go.mod h1:xfd0cycxtqVg1r77hkE/UcMftGVF/M8+s41J7ZYX99g=
+github.com/planetscale/planetscale-go v0.23.0 h1:Vvlq02DEeAGb/+FCrWnp0GjZ5zd5/z3PkABKjYtQgKo=
+github.com/planetscale/planetscale-go v0.23.0/go.mod h1:6J6w0t3GSeM/Etb5x2Fc7kEbA9M9rW2PY3h1y5Mc8Ew=
 github.com/planetscale/sql-proxy v0.3.2 h1:S0X8nvyk8Mr7I/t0LjpH4e2XNoBB+azK934dK4EvYWU=
 github.com/planetscale/sql-proxy v0.3.2/go.mod h1:kM7r4GMseGJ1UP1F96PEPPCvEYM3Npqp0WDvtmYTZtk=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=

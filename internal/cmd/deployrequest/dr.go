@@ -39,34 +39,55 @@ type DeployRequest struct {
 	IntoBranch string `header:"into_branch,timestamp(ms|utc|human)" json:"into_branch"`
 
 	Approved bool `header:"approved" json:"approved"`
-	Ready    bool `header:"ready" json:"ready"`
 
-	DeploymentState     string `header:"deployment_state,n/a" json:"deployment_state"`
-	State               string `header:"state" json:"state"`
-	DeployabilityErrors string `header:"errors" json:"deployability_errors"`
+	State string `header:"state" json:"state"`
 
-	CreatedAt int64  `header:"created_at,timestamp(ms|utc|human)" json:"created_at"`
-	UpdatedAt int64  `header:"updated_at,timestamp(ms|utc|human)" json:"updated_at"`
-	ClosedAt  *int64 `header:"closed_at,timestamp(ms|utc|human),-" json:"closed_at"`
+	Deployment inlineDeployment `header:"inline" json:"deployment"`
+	CreatedAt  int64            `header:"created_at,timestamp(ms|utc|human)" json:"created_at"`
+	UpdatedAt  int64            `header:"updated_at,timestamp(ms|utc|human)" json:"updated_at"`
+	ClosedAt   *int64           `header:"closed_at,timestamp(ms|utc|human),-" json:"closed_at"`
+}
+
+type inlineDeployment struct {
+	State      string `header:"deploy state" json:"state"`
+	Deployable bool   `header:"deployable" json:"deployable"`
+
+	QueuedAt   *int64 `header:"queued_at,timestamp(ms|utc|human),-" json:"queued_at"`
+	StartedAt  *int64 `header:"started_at,timestamp(ms|utc|human),-" json:"started_at"`
+	FinishedAt *int64 `header:"finished_at,timestamp(ms|utc|human),-" json:"finished_at"`
 }
 
 func (d *DeployRequest) MarshalCSVValue() interface{} {
 	return []*DeployRequest{d}
 }
 
+func toInlineDeployment(d *planetscale.Deployment) inlineDeployment {
+	if d == nil {
+		return inlineDeployment{}
+	}
+
+	return inlineDeployment{
+		State: d.State,
+
+		Deployable: d.Deployable,
+		FinishedAt: printer.GetMillisecondsIfExists(d.FinishedAt),
+		StartedAt:  printer.GetMillisecondsIfExists(d.StartedAt),
+		QueuedAt:   printer.GetMillisecondsIfExists(d.QueuedAt),
+	}
+}
+
 func toDeployRequest(dr *planetscale.DeployRequest) *DeployRequest {
 	return &DeployRequest{
-		ID:                  dr.ID,
-		Branch:              dr.Branch,
-		IntoBranch:          dr.IntoBranch,
-		Number:              dr.Number,
-		Approved:            dr.Approved,
-		State:               dr.State,
-		DeploymentState:     dr.DeploymentState,
-		DeployabilityErrors: dr.DeployabilityErrors,
-		CreatedAt:           printer.GetMilliseconds(dr.CreatedAt),
-		UpdatedAt:           printer.GetMilliseconds(dr.UpdatedAt),
-		ClosedAt:            printer.GetMillisecondsIfExists(dr.ClosedAt),
+		ID:         dr.ID,
+		Branch:     dr.Branch,
+		IntoBranch: dr.IntoBranch,
+		Number:     dr.Number,
+		Approved:   dr.Approved,
+		State:      dr.State,
+		Deployment: toInlineDeployment(dr.Deployment),
+		CreatedAt:  printer.GetMilliseconds(dr.CreatedAt),
+		UpdatedAt:  printer.GetMilliseconds(dr.UpdatedAt),
+		ClosedAt:   printer.GetMillisecondsIfExists(dr.ClosedAt),
 	}
 }
 
