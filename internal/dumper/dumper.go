@@ -50,10 +50,12 @@ type Config struct {
 
 func NewDefaultConfig() *Config {
 	return &Config{
-		Format:     "mysql",
-		Threads:    16,
-		StmtSize:   1000000,
-		IntervalMs: 10 * 1000,
+		Format:        "mysql",
+		Threads:       16,
+		StmtSize:      1000000,
+		IntervalMs:    10 * 1000,
+		ChunksizeInMB: 128,
+		SessionVars:   "set workload=olap;",
 	}
 }
 

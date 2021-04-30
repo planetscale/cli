@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"syscall"
 
 	"github.com/planetscale/cli/internal/cmdutil"
@@ -37,8 +38,10 @@ func DumpCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.PersistentFlags().StringVar(&ch.Config.Organization, "org", ch.Config.Organization, "The organization for the current user")
 	cmd.PersistentFlags().StringVar(&f.localAddr, "local-addr",
 		"", "Local address to bind and listen for connections. By default the proxy binds to 127.0.0.1 with a random port.")
-	cmd.PersistentFlags().StringVar(&f.tables, "tables", "", "Comma separated string of tables to dump. By default all tables are dumped.")
-	cmd.PersistentFlags().StringVar(&f.output, "output", "", "Output director of the dump. By default the dump is stored in the current director.")
+	cmd.PersistentFlags().StringVar(&f.tables, "tables", "",
+		"Comma separated string of tables to dump. By default all tables are dumped.")
+	cmd.PersistentFlags().StringVar(&f.output, "output", "",
+		"Output director of the dump. By default the dump is stored to a folder in the current directory.")
 
 	return cmd
 }
@@ -58,8 +61,6 @@ func run(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []string
 	if flags.localAddr != "" {
 		localAddr = flags.localAddr
 	}
-	instance := fmt.Sprintf("%s/%s/%s", ch.Config.Organization, database, branch)
-	fmt.Printf("instance = %+v\n", instance)
 
 	proxyOpts := proxy.Options{
 		CertSource: proxyutil.NewRemoteCertSource(client),
@@ -90,7 +91,6 @@ func run(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []string
 		Branch:       branch,
 	})
 	if err != nil {
-		fmt.Printf("err = %+v\n", err)
 		switch cmdutil.ErrCode(err) {
 		case ps.ErrNotFound:
 			return fmt.Errorf("branch %s does not exist in database %s (organization: %s)",
@@ -113,8 +113,14 @@ func run(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []string
 	if err != nil {
 		return err
 	}
+	dir = filepath.Join(dir, fmt.Sprintf("pscale_dump_%s_%s", database, branch))
+
 	if flags.output != "" {
 		dir = flags.output
+	}
+	err = os.MkdirAll(dir, 0755)
+	if err != nil {
+		return err
 	}
 
 	dumperCfg := dumper.NewDefaultConfig()
@@ -134,10 +140,10 @@ func run(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []string
 	}
 
 	if flags.tables == "" {
-		ch.Printer.Printf("Starting to dump all tables from database %s to dir %s",
+		ch.Printer.Printf("Starting to dump all tables from database %s to dir %s\n",
 			printer.BoldBlue(database), printer.Bold(dir))
 	} else {
-		ch.Printer.Printf("Starting to dump tables %s from database %s to dir %s",
+		ch.Printer.Printf("Starting to dump tables %s from database %s to dir %s\n",
 			printer.BoldRed(flags.tables), printer.BoldBlue(database), printer.BoldBlue(dir))
 	}
 
