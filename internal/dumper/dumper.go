@@ -85,7 +85,7 @@ func (d *Dumper) Run(ctx context.Context) error {
 	defer initPool.Close()
 
 	// Meta data.
-	err = writeMetaData(d.cfg)
+	err = writeMetaData(d.cfg.Outdir)
 	if err != nil {
 		return err
 	}
@@ -96,7 +96,7 @@ func (d *Dumper) Run(ctx context.Context) error {
 	t := time.Now()
 	if d.cfg.DatabaseRegexp != "" {
 		r := regexp.MustCompile(d.cfg.DatabaseRegexp)
-		databases, err = filterDatabases(d.log, conn, r, d.cfg.DatabaseInvertRegexp)
+		databases, err = d.filterDatabases(conn, r, d.cfg.DatabaseInvertRegexp)
 		if err != nil {
 			return err
 		}
@@ -104,14 +104,14 @@ func (d *Dumper) Run(ctx context.Context) error {
 		if d.cfg.Database != "" {
 			databases = strings.Split(d.cfg.Database, ",")
 		} else {
-			databases, err = allDatabases(d.log, conn)
+			databases, err = d.allDatabases(conn)
 			if err != nil {
 				return err
 			}
 		}
 	}
 	for _, database := range databases {
-		if err := dumpDatabaseSchema(d.log, conn, d.cfg, database); err != nil {
+		if err := d.dumpDatabaseSchema(conn, database); err != nil {
 			return err
 		}
 	}
@@ -121,7 +121,7 @@ func (d *Dumper) Run(ctx context.Context) error {
 		if d.cfg.Table != "" {
 			tables[i] = strings.Split(d.cfg.Table, ",")
 		} else {
-			tables[i], err = allTables(d.log, conn, database)
+			tables[i], err = d.allTables(conn, database)
 			if err != nil {
 				return err
 			}
@@ -140,7 +140,7 @@ func (d *Dumper) Run(ctx context.Context) error {
 		defer pool.Close()
 		for _, table := range tables[i] {
 			conn := initPool.Get()
-			err := dumpTableSchema(d.log, conn, d.cfg, database, table)
+			err := d.dumpTableSchema(conn, database, table)
 			if err != nil {
 				return err
 			}
@@ -157,17 +157,17 @@ func (d *Dumper) Run(ctx context.Context) error {
 
 				d.log.Info("dumping.table[%s.%s].datas.thread[%d]...", database, table, conn.ID)
 				if d.cfg.Format == "mysql" {
-					err := dumpTable(d.log, conn, d.cfg, database, table)
+					err := d.dumpTable(conn, database, table)
 					if err != nil {
 						d.log.Error("error dumping table: %s", err)
 					}
 				} else if d.cfg.Format == "tsv" {
-					err := dumpTableCsv(d.log, conn, d.cfg, database, table, '\t')
+					err := d.dumpTableCsv(conn, database, table, '\t')
 					if err != nil {
 						d.log.Error("error dumping table in TSV: %s", err)
 					}
 				} else if d.cfg.Format == "csv" {
-					err := dumpTableCsv(d.log, conn, d.cfg, database, table, ',')
+					err := d.dumpTableCsv(conn, database, table, ',')
 					if err != nil {
 						d.log.Error("error dumping table in CSV: %s", err)
 					}
@@ -198,24 +198,24 @@ func (d *Dumper) Run(ctx context.Context) error {
 	return nil
 }
 
-func writeMetaData(cfg *Config) error {
-	file := fmt.Sprintf("%s/metadata", cfg.Outdir)
+func writeMetaData(outdir string) error {
+	file := fmt.Sprintf("%s/metadata", outdir)
 	return writeFile(file, "")
 }
 
-func dumpDatabaseSchema(log *xlog.Log, conn *Connection, cfg *Config, database string) error {
+func (d *Dumper) dumpDatabaseSchema(conn *Connection, database string) error {
 	schema := fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s`;", database)
-	file := fmt.Sprintf("%s/%s-schema-create.sql", cfg.Outdir, database)
+	file := fmt.Sprintf("%s/%s-schema-create.sql", d.cfg.Outdir, database)
 	err := writeFile(file, schema)
 	if err != nil {
 		return err
 	}
 
-	log.Info("dumping.database[%s].schema...", database)
+	d.log.Info("dumping.database[%s].schema...", database)
 	return nil
 }
 
-func dumpTableSchema(log *xlog.Log, conn *Connection, cfg *Config, database string, table string) error {
+func (d *Dumper) dumpTableSchema(conn *Connection, database string, table string) error {
 	qr, err := conn.Fetch(fmt.Sprintf("SHOW CREATE TABLE `%s`.`%s`", database, table))
 	if err != nil {
 		return err
@@ -223,18 +223,18 @@ func dumpTableSchema(log *xlog.Log, conn *Connection, cfg *Config, database stri
 
 	schema := qr.Rows[0][1].String() + ";\n"
 
-	file := fmt.Sprintf("%s/%s.%s-schema.sql", cfg.Outdir, database, table)
+	file := fmt.Sprintf("%s/%s.%s-schema.sql", d.cfg.Outdir, database, table)
 	err = writeFile(file, schema)
 	if err != nil {
 		return err
 	}
 
-	log.Info("dumping.table[%s.%s].schema...", database, table)
+	d.log.Info("dumping.table[%s.%s].schema...", database, table)
 	return nil
 }
 
 // Dump a table in "MySQL" (multi-inserts) format
-func dumpTable(log *xlog.Log, conn *Connection, cfg *Config, database string, table string) error {
+func (d *Dumper) dumpTable(conn *Connection, database string, table string) error {
 	var allBytes uint64
 	var allRows uint64
 	var where string
@@ -249,13 +249,13 @@ func dumpTable(log *xlog.Log, conn *Connection, cfg *Config, database string, ta
 
 		flds := cursor.Fields()
 		for _, fld := range flds {
-			log.Debug("dump -- %#v, %s, %s", cfg.Filters, table, fld.Name)
-			if _, ok := cfg.Filters[table][fld.Name]; ok {
+			d.log.Debug("dump -- %#v, %s, %s", d.cfg.Filters, table, fld.Name)
+			if _, ok := d.cfg.Filters[table][fld.Name]; ok {
 				continue
 			}
 
 			fields = append(fields, fmt.Sprintf("`%s`", fld.Name))
-			replacement, ok := cfg.Selects[table][fld.Name]
+			replacement, ok := d.cfg.Selects[table][fld.Name]
 			if ok {
 				selfields = append(selfields, fmt.Sprintf("%s AS `%s`", replacement, fld.Name))
 			} else {
@@ -268,7 +268,7 @@ func dumpTable(log *xlog.Log, conn *Connection, cfg *Config, database string, ta
 		}
 	}
 
-	if v, ok := cfg.Wheres[table]; ok {
+	if v, ok := d.cfg.Wheres[table]; ok {
 		where = fmt.Sprintf(" WHERE %v", v)
 	}
 
@@ -309,25 +309,25 @@ func dumpTable(log *xlog.Log, conn *Connection, cfg *Config, database string, ta
 		stmtsize += len(r)
 		chunkbytes += len(r)
 		allBytes += uint64(len(r))
-		atomic.AddUint64(&cfg.Allbytes, uint64(len(r)))
-		atomic.AddUint64(&cfg.Allrows, 1)
+		atomic.AddUint64(&d.cfg.Allbytes, uint64(len(r)))
+		atomic.AddUint64(&d.cfg.Allrows, 1)
 
-		if stmtsize >= cfg.StmtSize {
+		if stmtsize >= d.cfg.StmtSize {
 			insertone := fmt.Sprintf("INSERT INTO `%s`(%s) VALUES\n%s", table, strings.Join(fields, ","), strings.Join(rows, ",\n"))
 			inserts = append(inserts, insertone)
 			rows = rows[:0]
 			stmtsize = 0
 		}
 
-		if (chunkbytes / 1024 / 1024) >= cfg.ChunksizeInMB {
+		if (chunkbytes / 1024 / 1024) >= d.cfg.ChunksizeInMB {
 			query := strings.Join(inserts, ";\n") + ";\n"
-			file := fmt.Sprintf("%s/%s.%s.%05d.sql", cfg.Outdir, database, table, fileNo)
+			file := fmt.Sprintf("%s/%s.%s.%05d.sql", d.cfg.Outdir, database, table, fileNo)
 			err = writeFile(file, query)
 			if err != nil {
 				return err
 			}
 
-			log.Info("dumping.table[%s.%s].rows[%v].bytes[%vMB].part[%v].thread[%d]", database, table, allRows, (allBytes / 1024 / 1024), fileNo, conn.ID)
+			d.log.Info("dumping.table[%s.%s].rows[%v].bytes[%vMB].part[%v].thread[%d]", database, table, allRows, (allBytes / 1024 / 1024), fileNo, conn.ID)
 			inserts = inserts[:0]
 			chunkbytes = 0
 			fileNo++
@@ -340,7 +340,7 @@ func dumpTable(log *xlog.Log, conn *Connection, cfg *Config, database string, ta
 		}
 
 		query := strings.Join(inserts, ";\n") + ";\n"
-		file := fmt.Sprintf("%s/%s.%s.%05d.sql", cfg.Outdir, database, table, fileNo)
+		file := fmt.Sprintf("%s/%s.%s.%05d.sql", d.cfg.Outdir, database, table, fileNo)
 		err = writeFile(file, query)
 		if err != nil {
 			return err
@@ -351,12 +351,12 @@ func dumpTable(log *xlog.Log, conn *Connection, cfg *Config, database string, ta
 		return err
 	}
 
-	log.Info("dumping.table[%s.%s].done.allrows[%v].allbytes[%vMB].thread[%d]...", database, table, allRows, (allBytes / 1024 / 1024), conn.ID)
+	d.log.Info("dumping.table[%s.%s].done.allrows[%v].allbytes[%vMB].thread[%d]...", database, table, allRows, (allBytes / 1024 / 1024), conn.ID)
 	return nil
 }
 
 // Dump a table in CSV/TSV format
-func dumpTableCsv(log *xlog.Log, conn *Connection, cfg *Config, database, table string, separator rune) error {
+func (d *Dumper) dumpTableCsv(conn *Connection, database, table string, separator rune) error {
 	var allBytes uint64
 	var allRows uint64
 	var where string
@@ -371,13 +371,13 @@ func dumpTableCsv(log *xlog.Log, conn *Connection, cfg *Config, database, table 
 
 		flds := cursor.Fields()
 		for _, fld := range flds {
-			log.Debug("dump -- %#v, %s, %s", cfg.Filters, table, fld.Name)
-			if _, ok := cfg.Filters[table][fld.Name]; ok {
+			d.log.Debug("dump -- %#v, %s, %s", d.cfg.Filters, table, fld.Name)
+			if _, ok := d.cfg.Filters[table][fld.Name]; ok {
 				continue
 			}
 
 			headerfields = append(headerfields, fld.Name)
-			replacement, ok := cfg.Selects[table][fld.Name]
+			replacement, ok := d.cfg.Selects[table][fld.Name]
 			if ok {
 				selfields = append(selfields, fmt.Sprintf("%s AS `%s`", replacement, fld.Name))
 			} else {
@@ -391,7 +391,7 @@ func dumpTableCsv(log *xlog.Log, conn *Connection, cfg *Config, database, table 
 
 	}
 
-	if v, ok := cfg.Wheres[table]; ok {
+	if v, ok := d.cfg.Wheres[table]; ok {
 		where = fmt.Sprintf(" WHERE %v", v)
 	}
 
@@ -401,7 +401,7 @@ func dumpTableCsv(log *xlog.Log, conn *Connection, cfg *Config, database, table 
 	}
 
 	fileNo := 1
-	file, err := os.Create(fmt.Sprintf("%s/%s.%s.%05d.csv", cfg.Outdir, database, table, fileNo))
+	file, err := os.Create(fmt.Sprintf("%s/%s.%s.%05d.csv", d.cfg.Outdir, database, table, fileNo))
 	if err != nil {
 		return err
 	}
@@ -447,12 +447,12 @@ func dumpTableCsv(log *xlog.Log, conn *Connection, cfg *Config, database, table 
 		chunkbytes += rowsize
 
 		allRows++
-		atomic.AddUint64(&cfg.Allbytes, uint64(rowsize))
-		atomic.AddUint64(&cfg.Allrows, 1)
+		atomic.AddUint64(&d.cfg.Allbytes, uint64(rowsize))
+		atomic.AddUint64(&d.cfg.Allrows, 1)
 
-		if (chunkbytes / 1024 / 1024) >= cfg.ChunksizeInMB {
+		if (chunkbytes / 1024 / 1024) >= d.cfg.ChunksizeInMB {
 			writer.Flush()
-			file, err := os.Create(fmt.Sprintf("%s/%s.%s.%05d.csv", cfg.Outdir, database, table, fileNo))
+			file, err := os.Create(fmt.Sprintf("%s/%s.%s.%05d.csv", d.cfg.Outdir, database, table, fileNo))
 			if err != nil {
 				return err
 			}
@@ -464,7 +464,7 @@ func dumpTableCsv(log *xlog.Log, conn *Connection, cfg *Config, database, table 
 				return err
 			}
 
-			log.Info("dumping.table[%s.%s].rows[%v].bytes[%vMB].part[%v].thread[%d]", database, table, allRows, (allBytes / 1024 / 1024), fileNo, conn.ID)
+			d.log.Info("dumping.table[%s.%s].rows[%v].bytes[%vMB].part[%v].thread[%d]", database, table, allRows, (allBytes / 1024 / 1024), fileNo, conn.ID)
 			inserts = inserts[:0]
 			chunkbytes = 0
 			fileNo++
@@ -476,11 +476,11 @@ func dumpTableCsv(log *xlog.Log, conn *Connection, cfg *Config, database, table 
 		return err
 	}
 
-	log.Info("dumping.table[%s.%s].done.allrows[%v].allbytes[%vMB].thread[%d]...", database, table, allRows, (allBytes / 1024 / 1024), conn.ID)
+	d.log.Info("dumping.table[%s.%s].done.allrows[%v].allbytes[%vMB].thread[%d]...", database, table, allRows, (allBytes / 1024 / 1024), conn.ID)
 	return nil
 }
 
-func allTables(log *xlog.Log, conn *Connection, database string) ([]string, error) {
+func (d *Dumper) allTables(conn *Connection, database string) ([]string, error) {
 	qr, err := conn.Fetch(fmt.Sprintf("SHOW TABLES FROM `%s`", database))
 	if err != nil {
 		return nil, err
@@ -493,7 +493,7 @@ func allTables(log *xlog.Log, conn *Connection, database string) ([]string, erro
 	return tables, nil
 }
 
-func allDatabases(log *xlog.Log, conn *Connection) ([]string, error) {
+func (d *Dumper) allDatabases(conn *Connection) ([]string, error) {
 	qr, err := conn.Fetch("SHOW DATABASES")
 	if err != nil {
 		return nil, err
@@ -506,7 +506,7 @@ func allDatabases(log *xlog.Log, conn *Connection) ([]string, error) {
 	return databases, nil
 }
 
-func filterDatabases(log *xlog.Log, conn *Connection, filter *regexp.Regexp, invert bool) ([]string, error) {
+func (d *Dumper) filterDatabases(conn *Connection, filter *regexp.Regexp, invert bool) ([]string, error) {
 	qr, err := conn.Fetch("SHOW DATABASES")
 	if err != nil {
 		return nil, err
