@@ -67,7 +67,7 @@ func run(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []string
 		CertSource: proxyutil.NewRemoteCertSource(client),
 		LocalAddr:  localAddr,
 		Instance:   fmt.Sprintf("%s/%s/%s", ch.Config.Organization, database, branch),
-		Logger:     cmdutil.NewZapLogger(ch.Debug),
+		Logger:     cmdutil.NewZapLogger(ch.Debug()),
 	}
 
 	p, err := proxy.NewClient(proxyOpts)
@@ -129,6 +129,8 @@ func run(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []string
 	dumperCfg.Password = status.Credentials.Password
 	dumperCfg.Address = addr.String()
 	dumperCfg.Database = database
+	dumperCfg.Debug = ch.Debug()
+
 	if flags.tables != "" {
 		dumperCfg.Table = flags.tables
 	}

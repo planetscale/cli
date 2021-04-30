@@ -28,11 +28,16 @@ type Helper struct {
 	// Printer is used to print output of a command to stdout.
 	Printer *printer.Printer
 
-	// Debug defines the debug mode
-	Debug bool
+	// bebug defines the debug mode
+	debug *bool
 }
 
-// RequiredArgs returns a short and actionable error message if the given
+func (h *Helper) SetDebug(debug *bool) {
+	h.debug = debug
+}
+
+func (h *Helper) Debug() bool { return *h.debug }
+
 // required arguments are not available.
 func RequiredArgs(reqArgs ...string) cobra.PositionalArgs {
 	return func(cmd *cobra.Command, args []string) error {

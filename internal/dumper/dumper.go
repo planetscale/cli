@@ -12,9 +12,11 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/xelabs/go-mysqlstack/sqlparser/depends/common"
 	querypb "github.com/xelabs/go-mysqlstack/sqlparser/depends/query"
-	"github.com/xelabs/go-mysqlstack/xlog"
+
+	"go.uber.org/zap"
 )
 
 // Config describes the settings to dump from a database.
@@ -62,18 +64,13 @@ func NewDefaultConfig() *Config {
 
 type Dumper struct {
 	cfg *Config
-	log *xlog.Log
+	log *zap.Logger
 }
 
 func NewDumper(cfg *Config) (*Dumper, error) {
-	level := xlog.ERROR
-	if cfg.Debug {
-		level = xlog.DEBUG
-	}
-
 	return &Dumper{
 		cfg: cfg,
-		log: xlog.NewStdLog(xlog.Level(level)),
+		log: cmdutil.NewZapLogger(cfg.Debug),
 	}, nil
 }
 
@@ -155,27 +152,34 @@ func (d *Dumper) Run(ctx context.Context) error {
 					pool.Put(conn)
 				}()
 
-				d.log.Info("dumping.table[%s.%s].datas.thread[%d]...", database, table, conn.ID)
+				d.log.Info("dumping table ...",
+					zap.String("database", database), zap.String("table", table), zap.Int("thread_conn_id", conn.ID))
+
 				if d.cfg.Format == "mysql" {
 					err := d.dumpTable(conn, database, table)
 					if err != nil {
-						d.log.Error("error dumping table: %s", err)
+						d.log.Error("error dumping table", zap.Error(err))
 					}
 				} else if d.cfg.Format == "tsv" {
 					err := d.dumpTableCsv(conn, database, table, '\t')
 					if err != nil {
-						d.log.Error("error dumping table in TSV: %s", err)
+						d.log.Error("error dumping table in TSV", zap.Error(err))
 					}
 				} else if d.cfg.Format == "csv" {
 					err := d.dumpTableCsv(conn, database, table, ',')
 					if err != nil {
-						d.log.Error("error dumping table in CSV: %s", err)
+						d.log.Error("error dumping table in CSV", zap.Error(err))
 					}
 				} else {
-					d.log.Error("error dumping table, unknown dump format: %s", d.cfg.Format)
+					d.log.Error("error dumping table, unknown dump format", zap.String("format", d.cfg.Format))
 				}
 
-				d.log.Info("dumping.table[%s.%s].datas.thread[%d].done...", database, table, conn.ID)
+				d.log.Info(
+					"dumping table done...",
+					zap.String("database", database),
+					zap.String("table", table),
+					zap.Int("thread_conn_id", conn.ID),
+				)
 			}(conn, database, table)
 		}
 	}
@@ -188,13 +192,25 @@ func (d *Dumper) Run(ctx context.Context) error {
 			allbytesMB := float64(atomic.LoadUint64(&d.cfg.Allbytes) / 1024 / 1024)
 			allrows := atomic.LoadUint64(&d.cfg.Allrows)
 			rates := allbytesMB / diff
-			d.log.Info("dumping.allbytes[%vMB].allrows[%v].time[%.2fsec].rates[%.2fMB/sec]...", allbytesMB, allrows, diff, rates)
+			d.log.Info(
+				"dumping rates ...",
+				zap.Float64("allbytes", allbytesMB),
+				zap.Uint64("allrows", allrows),
+				zap.Float64("time_sec", diff),
+				zap.Float64("rates_mb_sec", rates),
+			)
 		}
 	}()
 
 	wg.Wait()
-	elapsed := time.Since(t).Seconds()
-	d.log.Info("dumping.all.done.cost[%.2fsec].allrows[%v].allbytes[%v].rate[%.2fMB/s]", elapsed, d.cfg.Allrows, d.cfg.Allbytes, (float64(d.cfg.Allbytes/1024/1024) / elapsed))
+	elapsed := time.Since(t)
+	d.log.Info(
+		"dumping all done",
+		zap.Duration("elapsed_time", elapsed),
+		zap.Uint64("allrows", d.cfg.Allrows),
+		zap.Uint64("allbytes", d.cfg.Allbytes),
+		zap.Float64("rate_mb_seconds", (float64(d.cfg.Allbytes/1024/1024)/elapsed.Seconds())),
+	)
 	return nil
 }
 
@@ -211,7 +227,7 @@ func (d *Dumper) dumpDatabaseSchema(conn *Connection, database string) error {
 		return err
 	}
 
-	d.log.Info("dumping.database[%s].schema...", database)
+	d.log.Info("dumping database schema...", zap.String("database", database))
 	return nil
 }
 
@@ -229,7 +245,7 @@ func (d *Dumper) dumpTableSchema(conn *Connection, database string, table string
 		return err
 	}
 
-	d.log.Info("dumping.table[%s.%s].schema...", database, table)
+	d.log.Info("dumping table database schema...", zap.String("database", database), zap.String("table", table))
 	return nil
 }
 
@@ -249,7 +265,8 @@ func (d *Dumper) dumpTable(conn *Connection, database string, table string) erro
 
 		flds := cursor.Fields()
 		for _, fld := range flds {
-			d.log.Debug("dump -- %#v, %s, %s", d.cfg.Filters, table, fld.Name)
+			d.log.Debug("dump", zap.Any("filters", d.cfg.Filters), zap.String("table", table), zap.String("field_name", fld.Name))
+
 			if _, ok := d.cfg.Filters[table][fld.Name]; ok {
 				continue
 			}
@@ -327,7 +344,16 @@ func (d *Dumper) dumpTable(conn *Connection, database string, table string) erro
 				return err
 			}
 
-			d.log.Info("dumping.table[%s.%s].rows[%v].bytes[%vMB].part[%v].thread[%d]", database, table, allRows, (allBytes / 1024 / 1024), fileNo, conn.ID)
+			d.log.Info(
+				"dumping table ...",
+				zap.String("database", database),
+				zap.String("table", table),
+				zap.Uint64("rows", allRows),
+				zap.Any("bytes_mb", (allBytes/1024/1024)),
+				zap.Int("part", fileNo),
+				zap.Int("thread_conn_id", conn.ID),
+			)
+
 			inserts = inserts[:0]
 			chunkbytes = 0
 			fileNo++
@@ -351,7 +377,14 @@ func (d *Dumper) dumpTable(conn *Connection, database string, table string) erro
 		return err
 	}
 
-	d.log.Info("dumping.table[%s.%s].done.allrows[%v].allbytes[%vMB].thread[%d]...", database, table, allRows, (allBytes / 1024 / 1024), conn.ID)
+	d.log.Info(
+		"dumping table done...",
+		zap.String("database", database),
+		zap.String("table", table),
+		zap.Uint64("all_rows", allRows),
+		zap.Any("all_bytes", (allBytes/1024/1024)),
+		zap.Int("thread_conn_id", conn.ID),
+	)
 	return nil
 }
 
@@ -371,7 +404,7 @@ func (d *Dumper) dumpTableCsv(conn *Connection, database, table string, separato
 
 		flds := cursor.Fields()
 		for _, fld := range flds {
-			d.log.Debug("dump -- %#v, %s, %s", d.cfg.Filters, table, fld.Name)
+			d.log.Debug("dump", zap.Any("filters", d.cfg.Filters), zap.String("table", table), zap.String("field_name", fld.Name))
 			if _, ok := d.cfg.Filters[table][fld.Name]; ok {
 				continue
 			}
@@ -464,7 +497,16 @@ func (d *Dumper) dumpTableCsv(conn *Connection, database, table string, separato
 				return err
 			}
 
-			d.log.Info("dumping.table[%s.%s].rows[%v].bytes[%vMB].part[%v].thread[%d]", database, table, allRows, (allBytes / 1024 / 1024), fileNo, conn.ID)
+			d.log.Info(
+				"dumping table CSV...",
+				zap.String("database", database),
+				zap.String("table", table),
+				zap.Uint64("rows", allRows),
+				zap.Any("bytes_mb", (allBytes/1024/1024)),
+				zap.Int("part", fileNo),
+				zap.Int("thread_conn_id", conn.ID),
+			)
+
 			inserts = inserts[:0]
 			chunkbytes = 0
 			fileNo++
@@ -476,7 +518,14 @@ func (d *Dumper) dumpTableCsv(conn *Connection, database, table string, separato
 		return err
 	}
 
-	d.log.Info("dumping.table[%s.%s].done.allrows[%v].allbytes[%vMB].thread[%d]...", database, table, allRows, (allBytes / 1024 / 1024), conn.ID)
+	d.log.Info(
+		"dumping table done CSV...",
+		zap.String("database", database),
+		zap.String("table", table),
+		zap.Uint64("all_rows", allRows),
+		zap.Any("all_bytes", (allBytes/1024/1024)),
+		zap.Int("thread_conn_id", conn.ID),
+	)
 	return nil
 }
 

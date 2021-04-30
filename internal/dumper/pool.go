@@ -4,15 +4,15 @@ import (
 	"sync"
 
 	"github.com/xelabs/go-mysqlstack/driver"
-	"github.com/xelabs/go-mysqlstack/xlog"
-
 	"github.com/xelabs/go-mysqlstack/sqlparser/depends/sqltypes"
+
+	"go.uber.org/zap"
 )
 
 // Pool tuple.
 type Pool struct {
 	mu    sync.RWMutex
-	log   *xlog.Log
+	log   *zap.Logger
 	conns chan *Connection
 }
 
@@ -38,7 +38,7 @@ func (conn *Connection) StreamFetch(query string) (driver.Rows, error) {
 }
 
 // NewPool creates the new pool.
-func NewPool(log *xlog.Log, cap int, address string, user string, password string, vars string, database string) (*Pool, error) {
+func NewPool(log *zap.Logger, cap int, address string, user string, password string, vars string, database string) (*Pool, error) {
 	conns := make(chan *Connection, cap)
 	for i := 0; i < cap; i++ {
 		client, err := driver.NewConn(user, password, address, database, "utf8")

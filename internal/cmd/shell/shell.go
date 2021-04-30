@@ -107,7 +107,7 @@ second argument:
 				LocalAddr:  localAddr,
 				RemoteAddr: flags.remoteAddr,
 				Instance:   fmt.Sprintf("%s/%s/%s", ch.Config.Organization, database, branch),
-				Logger:     cmdutil.NewZapLogger(ch.Debug),
+				Logger:     cmdutil.NewZapLogger(ch.Debug()),
 			}
 
 			p, err := proxy.NewClient(proxyOpts)

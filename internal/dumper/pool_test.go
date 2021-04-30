@@ -8,7 +8,9 @@ import (
 	qt "github.com/frankban/quicktest"
 	"github.com/xelabs/go-mysqlstack/driver"
 	"github.com/xelabs/go-mysqlstack/sqlparser/depends/sqltypes"
+
 	"github.com/xelabs/go-mysqlstack/xlog"
+	"go.uber.org/zap/zaptest"
 )
 
 func TestPool(t *testing.T) {
@@ -27,7 +29,8 @@ func TestPool(t *testing.T) {
 		fakedbs.AddQueryPattern("select .*", &sqltypes.Result{})
 	}
 
-	pool, err := NewPool(log, 8, address, "mock", "mock", "", "")
+	pool, err := NewPool(zaptest.NewLogger(t), 8, address, "mock", "mock", "", "")
+
 	c.Assert(err, qt.IsNil)
 
 	var wg sync.WaitGroup

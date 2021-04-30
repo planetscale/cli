@@ -113,8 +113,8 @@ func Execute(ver, commit, buildDate string) error {
 		Client: func() (*ps.Client, error) {
 			return cfg.NewClientFromConfig()
 		},
-		Debug: debug,
 	}
+	ch.SetDebug(&debug)
 
 	// service token flags. they are hidden for now.
 	rootCmd.PersistentFlags().StringVar(&cfg.ServiceTokenName,
