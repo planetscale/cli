@@ -27,6 +27,7 @@ import (
 	"github.com/planetscale/cli/internal/cmd/connect"
 	"github.com/planetscale/cli/internal/cmd/database"
 	"github.com/planetscale/cli/internal/cmd/deployrequest"
+	"github.com/planetscale/cli/internal/cmd/dump"
 	"github.com/planetscale/cli/internal/cmd/org"
 	"github.com/planetscale/cli/internal/cmd/shell"
 	"github.com/planetscale/cli/internal/cmd/signup"
@@ -43,10 +44,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
-)
-
-const (
-	MalformedWarning = "Unexpected API response received, the PlanetScale API might be down. Please contact support with the following output"
 )
 
 var cfgFile string
@@ -116,8 +113,8 @@ func Execute(ver, commit, buildDate string) error {
 		Client: func() (*ps.Client, error) {
 			return cfg.NewClientFromConfig()
 		},
-		Debug: debug,
 	}
+	ch.SetDebug(&debug)
 
 	// service token flags. they are hidden for now.
 	rootCmd.PersistentFlags().StringVar(&cfg.ServiceTokenName,
@@ -143,6 +140,7 @@ func Execute(ver, commit, buildDate string) error {
 	rootCmd.AddCommand(connect.ConnectCmd(ch))
 	rootCmd.AddCommand(database.DatabaseCmd(ch))
 	rootCmd.AddCommand(deployrequest.DeployRequestCmd(ch))
+	rootCmd.AddCommand(dump.DumpCmd(ch))
 	rootCmd.AddCommand(org.OrgCmd(ch))
 	rootCmd.AddCommand(shell.ShellCmd(ch))
 	rootCmd.AddCommand(snapshot.SnapshotCmd(ch))
