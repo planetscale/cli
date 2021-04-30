@@ -1,6 +1,7 @@
 package dumper
 
 import (
+	"context"
 	"encoding/csv"
 	"fmt"
 	"io"
@@ -16,6 +17,46 @@ import (
 	"github.com/xelabs/go-mysqlstack/xlog"
 )
 
+// Config describes the settings to dump from a database.
+type Config struct {
+	User                 string
+	Password             string
+	Address              string
+	ToUser               string
+	ToPassword           string
+	ToAddress            string
+	ToDatabase           string
+	ToEngine             string
+	Database             string
+	DatabaseRegexp       string
+	DatabaseInvertRegexp bool
+	Table                string
+	Outdir               string
+	SessionVars          string
+	Format               string
+	Threads              int
+	ChunksizeInMB        int
+	StmtSize             int
+	Allbytes             uint64
+	Allrows              uint64
+	OverwriteTables      bool
+	Wheres               map[string]string
+	Selects              map[string]map[string]string
+	Filters              map[string]map[string]string
+
+	// Interval in millisecond.
+	IntervalMs int
+}
+
+func NewDefaultConfig() *Config {
+	return &Config{
+		Format:     "mysql",
+		Threads:    16,
+		StmtSize:   1000000,
+		IntervalMs: 10 * 1000,
+	}
+}
+
 type Dumper struct {
 	cfg *Config
 	log *xlog.Log
@@ -28,7 +69,7 @@ func NewDumper(cfg *Config) (*Dumper, error) {
 	}, nil
 }
 
-func (d *Dumper) Run() error {
+func (d *Dumper) Run(ctx context.Context) error {
 	initPool, err := NewPool(d.log, d.cfg.Threads, d.cfg.Address, d.cfg.User, d.cfg.Password, "", "")
 	if err != nil {
 		return err

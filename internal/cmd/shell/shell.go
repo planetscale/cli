@@ -21,7 +21,6 @@ import (
 	"github.com/planetscale/sql-proxy/proxy"
 	"github.com/planetscale/sql-proxy/sigutil"
 
-	"github.com/planetscale/planetscale-go/planetscale"
 	ps "github.com/planetscale/planetscale-go/planetscale"
 	"github.com/spf13/cobra"
 )
@@ -82,14 +81,14 @@ second argument:
 			}
 
 			// check whether database and branch exist
-			_, err = client.DatabaseBranches.Get(ctx, &planetscale.GetDatabaseBranchRequest{
+			_, err = client.DatabaseBranches.Get(ctx, &ps.GetDatabaseBranchRequest{
 				Organization: ch.Config.Organization,
 				Database:     database,
 				Branch:       branch,
 			})
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
-				case planetscale.ErrNotFound:
+				case ps.ErrNotFound:
 					return fmt.Errorf("database %s and branch %s does not exist in organization %s\n",
 						printer.BoldBlue(database), printer.BoldBlue(branch), printer.BoldBlue(ch.Config.Organization))
 				default:
@@ -134,7 +133,7 @@ second argument:
 			})
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
-				case planetscale.ErrNotFound:
+				case ps.ErrNotFound:
 					return fmt.Errorf("branch %s does not exist in database %s (organization: %s)",
 						printer.BoldBlue(branch), printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
 				default:
