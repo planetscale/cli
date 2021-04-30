@@ -46,6 +46,7 @@ type Config struct {
 
 	// Interval in millisecond.
 	IntervalMs int
+	Debug      bool
 }
 
 func NewDefaultConfig() *Config {
@@ -65,9 +66,14 @@ type Dumper struct {
 }
 
 func NewDumper(cfg *Config) (*Dumper, error) {
+	level := xlog.ERROR
+	if cfg.Debug {
+		level = xlog.DEBUG
+	}
+
 	return &Dumper{
 		cfg: cfg,
-		log: xlog.NewStdLog(xlog.Level(xlog.INFO)),
+		log: xlog.NewStdLog(xlog.Level(level)),
 	}, nil
 }
 

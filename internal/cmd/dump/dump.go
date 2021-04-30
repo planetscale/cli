@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"syscall"
+	"time"
 
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/dumper"
@@ -143,15 +144,17 @@ func run(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []string
 		ch.Printer.Printf("Starting to dump all tables from database %s to dir %s\n",
 			printer.BoldBlue(database), printer.Bold(dir))
 	} else {
-		ch.Printer.Printf("Starting to dump tables %s from database %s to dir %s\n",
+		ch.Printer.Printf("Starting to dump tables '%s' from database %s to dir %s\n",
 			printer.BoldRed(flags.tables), printer.BoldBlue(database), printer.BoldBlue(dir))
 	}
 
+	start := time.Now()
 	err = d.Run(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to dump database: %s", err)
 	}
 
+	ch.Printer.Printf("Dumping is finished! (elapsed time: %s)\n", time.Since(start))
 	return nil
 }
 
