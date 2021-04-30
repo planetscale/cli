@@ -28,6 +28,5 @@ require (
 	github.com/stretchr/testify v1.7.0
 	github.com/xelabs/go-mysqlstack v0.0.0-20210217114447-6f59da6c3358
 	go.uber.org/zap v1.16.0
-	gopkg.in/ini.v1 v1.51.0
 	gopkg.in/yaml.v2 v2.4.0
 )
