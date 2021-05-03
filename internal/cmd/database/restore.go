@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 	"syscall"
 	"time"
 
@@ -20,36 +18,37 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type dumpFlags struct {
+type restoreFlags struct {
 	localAddr string
-	tables    string
-	output    string
+	dir       string
 }
 
-// DumpCmd encapsulates the commands for dumping a database
-func DumpCmd(ch *cmdutil.Helper) *cobra.Command {
-	f := &dumpFlags{}
+// RestoreCmd encapsulates the commands for restore a database
+func RestoreCmd(ch *cmdutil.Helper) *cobra.Command {
+	f := &restoreFlags{}
 	cmd := &cobra.Command{
-		Use:   "dump <database> <branch> [options]",
-		Short: "Backup and dump your database",
+		Use:   "restore <database> <branch> [options]",
+		Short: "Restore your database",
 		Args:  cmdutil.RequiredArgs("database", "branch"),
-		RunE:  func(cmd *cobra.Command, args []string) error { return dump(ch, cmd, f, args) },
+		RunE:  func(cmd *cobra.Command, args []string) error { return restore(ch, cmd, f, args) },
 	}
 
 	cmd.PersistentFlags().StringVar(&f.localAddr, "local-addr",
 		"", "Local address to bind and listen for connections. By default the proxy binds to 127.0.0.1 with a random port.")
-	cmd.PersistentFlags().StringVar(&f.tables, "tables", "",
-		"Comma separated string of tables to dump. By default all tables are dumped.")
-	cmd.PersistentFlags().StringVar(&f.output, "output", "",
-		"Output director of the dump. By default the dump is stored to a folder in the current directory.")
+	cmd.PersistentFlags().StringVar(&f.dir, "dir", "",
+		"Directory that contains the files to be used for restoration (required)")
 
 	return cmd
 }
 
-func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []string) error {
+func restore(ch *cmdutil.Helper, cmd *cobra.Command, flags *restoreFlags, args []string) error {
 	ctx := context.Background()
 	database := args[0]
 	branch := args[1]
+
+	if flags.dir == "" {
+		return errors.New("--dir flag is missing, it's needed to restore the database")
+	}
 
 	client, err := ch.Client()
 	if err != nil {
@@ -109,59 +108,32 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 		return err
 	}
 
-	dir, err := os.Getwd()
-	if err != nil {
-		return err
-	}
-	dir = filepath.Join(dir, fmt.Sprintf("pscale_dump_%s_%s", database, branch))
-
-	if flags.output != "" {
-		dir = flags.output
-	}
-	err = os.MkdirAll(dir, 0755)
-	if err != nil {
-		return err
-	}
-
 	cfg := dumper.NewDefaultConfig()
 	cfg.User = status.Credentials.User
 	cfg.Password = status.Credentials.Password
 	cfg.Address = addr.String()
-	cfg.Database = database
 	cfg.Debug = ch.Debug()
-	cfg.StmtSize = 1000000
 	cfg.IntervalMs = 10 * 1000
-	cfg.ChunksizeInMB = 128
-	cfg.SessionVars = "set workload=olap;"
-	cfg.Outdir = dir
+	cfg.Outdir = flags.dir
 
-	if flags.tables != "" {
-		cfg.Table = flags.tables
-	}
-
-	d, err := dumper.NewDumper(cfg)
+	loader, err := dumper.NewLoader(cfg)
 	if err != nil {
 		return err
 	}
 
-	if flags.tables == "" {
-		ch.Printer.Printf("Starting to dump all tables from database %s to folder %s\n",
-			printer.BoldBlue(database), printer.Bold(dir))
-	} else {
-		ch.Printer.Printf("Starting to dump tables '%s' from database %s to folder %s\n",
-			printer.BoldRed(flags.tables), printer.BoldBlue(database), printer.BoldBlue(dir))
-	}
+	ch.Printer.Printf("Starting to restore database %s from folder %s\n",
+		printer.BoldBlue(database), printer.BoldBlue(flags.dir))
 
-	end := ch.Printer.PrintProgress("Dumping tables ...")
+	end := ch.Printer.PrintProgress("Restoring database ...")
 	defer end()
 
 	start := time.Now()
-	err = d.Run(ctx)
+	err = loader.Run(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to dump database: %s", err)
+		return fmt.Errorf("failed to restore database: %s", err)
 	}
 
 	end()
-	ch.Printer.Printf("Dumping is finished! (elapsed time: %s)\n", time.Since(start))
+	ch.Printer.Printf("Restoring is finished! (elapsed time: %s)\n", time.Since(start))
 	return nil
 }

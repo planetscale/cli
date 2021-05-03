@@ -28,6 +28,7 @@ func DatabaseCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.AddCommand(DeleteCmd(ch))
 	cmd.AddCommand(ShowCmd(ch))
 	cmd.AddCommand(DumpCmd(ch))
+	cmd.AddCommand(RestoreCmd(ch))
 
 	return cmd
 }
