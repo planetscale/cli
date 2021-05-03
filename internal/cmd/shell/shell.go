@@ -220,7 +220,7 @@ func formatMySQLBranch(database, branch string) string {
 		branchStyled = printer.BoldRed(branch)
 	}
 
-	return printer.Bold(fmt.Sprintf("%s/%s> ", database, branchStyled))
+	return fmt.Sprintf("%s/%s> ", printer.Bold(database), branchStyled)
 }
 
 // createLoginFile creates a temporary file to store the username and password, so we don't have to
