@@ -27,7 +27,6 @@ import (
 	"github.com/planetscale/cli/internal/cmd/connect"
 	"github.com/planetscale/cli/internal/cmd/database"
 	"github.com/planetscale/cli/internal/cmd/deployrequest"
-	"github.com/planetscale/cli/internal/cmd/dump"
 	"github.com/planetscale/cli/internal/cmd/org"
 	"github.com/planetscale/cli/internal/cmd/shell"
 	"github.com/planetscale/cli/internal/cmd/signup"
@@ -140,7 +139,6 @@ func Execute(ver, commit, buildDate string) error {
 	rootCmd.AddCommand(connect.ConnectCmd(ch))
 	rootCmd.AddCommand(database.DatabaseCmd(ch))
 	rootCmd.AddCommand(deployrequest.DeployRequestCmd(ch))
-	rootCmd.AddCommand(dump.DumpCmd(ch))
 	rootCmd.AddCommand(org.OrgCmd(ch))
 	rootCmd.AddCommand(shell.ShellCmd(ch))
 	rootCmd.AddCommand(snapshot.SnapshotCmd(ch))

@@ -1,4 +1,4 @@
-package dump
+package database
 
 import (
 	"context"
@@ -36,7 +36,6 @@ func DumpCmd(ch *cmdutil.Helper) *cobra.Command {
 		RunE:  func(cmd *cobra.Command, args []string) error { return run(ch, cmd, f, args) },
 	}
 
-	cmd.PersistentFlags().StringVar(&ch.Config.Organization, "org", ch.Config.Organization, "The organization for the current user")
 	cmd.PersistentFlags().StringVar(&f.localAddr, "local-addr",
 		"", "Local address to bind and listen for connections. By default the proxy binds to 127.0.0.1 with a random port.")
 	cmd.PersistentFlags().StringVar(&f.tables, "tables", "",
