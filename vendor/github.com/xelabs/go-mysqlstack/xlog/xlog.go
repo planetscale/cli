@@ -13,7 +13,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"log/syslog"
 	"os"
 	"strings"
 )
@@ -59,15 +58,6 @@ const (
 type Log struct {
 	opts *Options
 	*log.Logger
-}
-
-// NewSysLog creates a new sys log.
-func NewSysLog(opts ...Option) *Log {
-	w, err := syslog.New(syslog.LOG_DEBUG, "")
-	if err != nil {
-		panic(err)
-	}
-	return NewXLog(w, opts...)
 }
 
 // NewStdLog creates a new std log.

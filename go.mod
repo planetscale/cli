@@ -30,3 +30,6 @@ require (
 	go.uber.org/zap v1.16.0
 	gopkg.in/yaml.v2 v2.4.0
 )
+
+// git sha points to https://github.com/fatih/go-mysqlstack/tree/fatih/fix-windows
+replace github.com/xelabs/go-mysqlstack => github.com/fatih/go-mysqlstack v0.0.0-20210504182522-ef614032cad1
