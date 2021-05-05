@@ -165,6 +165,7 @@ second argument:
 
 			mysqlArgs := []string{
 				fmt.Sprintf("--defaults-extra-file=%s", tmpFile),
+				"-s",
 				"-h", host,
 				"-P", port,
 			}
