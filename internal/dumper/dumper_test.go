@@ -105,11 +105,33 @@ func TestDumper(t *testing.T) {
 		},
 	}
 
+	fieldsResult := &sqltypes.Result{
+		Fields: []*querypb.Field{
+			{Name: "Field", Type: querypb.Type_VARCHAR},
+			{Name: "Type", Type: querypb.Type_VARCHAR},
+			{Name: "Null", Type: querypb.Type_VARCHAR},
+			{Name: "Key", Type: querypb.Type_VARCHAR},
+			{Name: "Default", Type: querypb.Type_VARCHAR},
+			{Name: "Extra", Type: querypb.Type_VARCHAR},
+		},
+		Rows: [][]sqltypes.Value{
+			{
+				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("not_deleted")),
+				sqltypes.MakeTrusted(querypb.Type_BLOB, []byte("int")),
+				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("YES")),
+				sqltypes.MakeTrusted(querypb.Type_BINARY, []byte("")),
+				sqltypes.MakeTrusted(querypb.Type_NULL_TYPE, []byte("NULL")),
+				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("VIRTUAL GENERATED")),
+			},
+		},
+	}
+
 	// fakedbs.
 	{
 		fakedbs.AddQueryPattern("use .*", &sqltypes.Result{})
 		fakedbs.AddQueryPattern("show create table .*", schemaResult)
 		fakedbs.AddQueryPattern("show tables from .*", tablesResult)
+		fakedbs.AddQueryPattern("show fields from .*", fieldsResult)
 		fakedbs.AddQueryPattern("select .*", selectResult)
 		fakedbs.AddQueryPattern("set .*", &sqltypes.Result{})
 	}
@@ -139,6 +161,154 @@ func TestDumper(t *testing.T) {
 
 	want := strings.Contains(string(dat), `(11,"11\"xx\"","",NULL,210.01,NULL)`)
 	c.Assert(want, qt.IsTrue)
+}
+
+func TestDumperGeneratedFields(t *testing.T) {
+	c := qt.New(t)
+
+	log := xlog.NewStdLog(xlog.Level(xlog.INFO))
+	fakedbs := driver.NewTestHandler(log)
+	server, err := driver.MockMysqlServer(log, fakedbs)
+	c.Assert(err, qt.IsNil)
+	c.Cleanup(func() { server.Close() })
+
+	address := server.Addr()
+
+	selectResult := &sqltypes.Result{
+		Fields: []*querypb.Field{
+			{
+				Name: "id",
+				Type: querypb.Type_INT32,
+			},
+			{
+				Name: "namei1",
+				Type: querypb.Type_VARCHAR,
+			},
+			{
+				Name: "name",
+				Type: querypb.Type_VARCHAR,
+			},
+			{
+				Name: "null",
+				Type: querypb.Type_NULL_TYPE,
+			},
+			{
+				Name: "decimal",
+				Type: querypb.Type_DECIMAL,
+			},
+			{
+				Name: "datetime",
+				Type: querypb.Type_DATETIME,
+			},
+		},
+		Rows: make([][]sqltypes.Value, 0, 256),
+	}
+
+	for i := 0; i < 201710; i++ {
+		row := []sqltypes.Value{
+			sqltypes.MakeTrusted(querypb.Type_INT32, []byte("11")),
+			sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("11\"xx\"")),
+			sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("")),
+			sqltypes.MakeTrusted(querypb.Type_NULL_TYPE, nil),
+			sqltypes.MakeTrusted(querypb.Type_DECIMAL, []byte("210.01")),
+			sqltypes.NULL,
+		}
+		selectResult.Rows = append(selectResult.Rows, row)
+	}
+
+	schemaResult := &sqltypes.Result{
+		Fields: []*querypb.Field{
+			{
+				Name: "Table",
+				Type: querypb.Type_VARCHAR,
+			},
+			{
+				Name: "Create Table",
+				Type: querypb.Type_VARCHAR,
+			},
+		},
+		Rows: [][]sqltypes.Value{
+			{
+				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("t1")),
+				sqltypes.MakeTrusted(querypb.Type_VARCHAR,
+					[]byte("CREATE TABLE `t1-05-11` (`a` int(11) DEFAULT NULL,`b` varchar(100) DEFAULT NULL) ENGINE=InnoDB")),
+			},
+		},
+	}
+
+	tablesResult := &sqltypes.Result{
+		Fields: []*querypb.Field{
+			{
+				Name: "Tables_in_test",
+				Type: querypb.Type_VARCHAR,
+			},
+		},
+		Rows: [][]sqltypes.Value{
+			{
+				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("t1-05-11")),
+			},
+			{
+				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("t2-05-11")),
+			},
+		},
+	}
+
+	fieldsResult := &sqltypes.Result{
+		Fields: []*querypb.Field{
+			{Name: "Field", Type: querypb.Type_VARCHAR},
+			{Name: "Type", Type: querypb.Type_VARCHAR},
+			{Name: "Null", Type: querypb.Type_VARCHAR},
+			{Name: "Key", Type: querypb.Type_VARCHAR},
+			{Name: "Default", Type: querypb.Type_VARCHAR},
+			{Name: "Extra", Type: querypb.Type_VARCHAR},
+		},
+		Rows: [][]sqltypes.Value{
+			{
+				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("name")),
+				sqltypes.MakeTrusted(querypb.Type_BLOB, []byte("varchar(255)")),
+				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("YES")),
+				sqltypes.MakeTrusted(querypb.Type_BINARY, []byte("")),
+				sqltypes.MakeTrusted(querypb.Type_NULL_TYPE, []byte("NULL")),
+				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("VIRTUAL GENERATED")),
+			},
+		},
+	}
+
+	// fakedbs.
+	{
+		fakedbs.AddQueryPattern("use .*", &sqltypes.Result{})
+		fakedbs.AddQueryPattern("show create table .*", schemaResult)
+		fakedbs.AddQueryPattern("show tables from .*", tablesResult)
+		fakedbs.AddQueryPattern("show fields from .*", fieldsResult)
+		fakedbs.AddQueryPattern("select .*", selectResult)
+		fakedbs.AddQueryPattern("set .*", &sqltypes.Result{})
+	}
+
+	cfg := &Config{
+		Database:      "test",
+		Outdir:        c.TempDir(),
+		Format:        "mysql",
+		User:          "mock",
+		Password:      "mock",
+		Address:       address,
+		ChunksizeInMB: 1,
+		Threads:       16,
+		StmtSize:      10000,
+		IntervalMs:    500,
+		SessionVars:   "SET @@radon_streaming_fetch='ON', @@xx=1",
+	}
+
+	d, err := NewDumper(cfg)
+	c.Assert(err, qt.IsNil)
+
+	err = d.Run(context.Background())
+	c.Assert(err, qt.IsNil)
+
+	dat, err := ioutil.ReadFile(cfg.Outdir + "/test.t1-05-11.00001.sql")
+	c.Assert(err, qt.IsNil)
+
+	insStmt := "INSERT INTO `t1-05-11`(`id`,`namei1`,`null`,`decimal`,`datetime`) VALUES"
+	c.Assert(string(dat), qt.Contains, insStmt)
 }
 
 func TestDumperAll(t *testing.T) {
@@ -265,12 +435,34 @@ func TestDumperAll(t *testing.T) {
 		},
 	}
 
+	fieldsResult := &sqltypes.Result{
+		Fields: []*querypb.Field{
+			{Name: "Field", Type: querypb.Type_VARCHAR},
+			{Name: "Type", Type: querypb.Type_VARCHAR},
+			{Name: "Null", Type: querypb.Type_VARCHAR},
+			{Name: "Key", Type: querypb.Type_VARCHAR},
+			{Name: "Default", Type: querypb.Type_VARCHAR},
+			{Name: "Extra", Type: querypb.Type_VARCHAR},
+		},
+		Rows: [][]sqltypes.Value{
+			{
+				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("not_deleted")),
+				sqltypes.MakeTrusted(querypb.Type_BLOB, []byte("int")),
+				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("YES")),
+				sqltypes.MakeTrusted(querypb.Type_BINARY, []byte("")),
+				sqltypes.MakeTrusted(querypb.Type_NULL_TYPE, []byte("NULL")),
+				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("VIRTUAL GENERATED")),
+			},
+		},
+	}
+
 	// fakedbs.
 	{
 		fakedbs.AddQueryPattern("show databases", databasesResult)
 		fakedbs.AddQueryPattern("use .*", &sqltypes.Result{})
 		fakedbs.AddQueryPattern("show create table .*", schemaResult)
 		fakedbs.AddQueryPattern("show tables from .*", tablesResult)
+		fakedbs.AddQueryPattern("show fields from .*", fieldsResult)
 		fakedbs.AddQueryPattern("select .* from `test1`.*", selectResult1)
 		fakedbs.AddQueryPattern("select .* from `test2`.*", selectResult2)
 		fakedbs.AddQueryPattern("set .*", &sqltypes.Result{})
@@ -432,12 +624,34 @@ func TestDumperMultiple(t *testing.T) {
 		},
 	}
 
+	fieldsResult := &sqltypes.Result{
+		Fields: []*querypb.Field{
+			{Name: "Field", Type: querypb.Type_VARCHAR},
+			{Name: "Type", Type: querypb.Type_VARCHAR},
+			{Name: "Null", Type: querypb.Type_VARCHAR},
+			{Name: "Key", Type: querypb.Type_VARCHAR},
+			{Name: "Default", Type: querypb.Type_VARCHAR},
+			{Name: "Extra", Type: querypb.Type_VARCHAR},
+		},
+		Rows: [][]sqltypes.Value{
+			{
+				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("not_deleted")),
+				sqltypes.MakeTrusted(querypb.Type_BLOB, []byte("int")),
+				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("YES")),
+				sqltypes.MakeTrusted(querypb.Type_BINARY, []byte("")),
+				sqltypes.MakeTrusted(querypb.Type_NULL_TYPE, []byte("NULL")),
+				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("VIRTUAL GENERATED")),
+			},
+		},
+	}
+
 	// fakedbs.
 	{
 		fakedbs.AddQueryPattern("show databases", databasesResult)
 		fakedbs.AddQueryPattern("use .*", &sqltypes.Result{})
 		fakedbs.AddQueryPattern("show create table .*", schemaResult)
 		fakedbs.AddQueryPattern("show tables from .*", tablesResult)
+		fakedbs.AddQueryPattern("show fields from .*", fieldsResult)
 		fakedbs.AddQueryPattern("select .* from `test1`.*", selectResult1)
 		fakedbs.AddQueryPattern("select .* from `test2`.*", selectResult2)
 		fakedbs.AddQueryPattern("set .*", &sqltypes.Result{})
@@ -609,12 +823,34 @@ func TestDumperSimpleRegexp(t *testing.T) {
 		},
 	}
 
+	fieldsResult := &sqltypes.Result{
+		Fields: []*querypb.Field{
+			{Name: "Field", Type: querypb.Type_VARCHAR},
+			{Name: "Type", Type: querypb.Type_VARCHAR},
+			{Name: "Null", Type: querypb.Type_VARCHAR},
+			{Name: "Key", Type: querypb.Type_VARCHAR},
+			{Name: "Default", Type: querypb.Type_VARCHAR},
+			{Name: "Extra", Type: querypb.Type_VARCHAR},
+		},
+		Rows: [][]sqltypes.Value{
+			{
+				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("not_deleted")),
+				sqltypes.MakeTrusted(querypb.Type_BLOB, []byte("int")),
+				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("YES")),
+				sqltypes.MakeTrusted(querypb.Type_BINARY, []byte("")),
+				sqltypes.MakeTrusted(querypb.Type_NULL_TYPE, []byte("NULL")),
+				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("VIRTUAL GENERATED")),
+			},
+		},
+	}
+
 	// fakedbs.
 	{
 		fakedbs.AddQueryPattern("show databases", databasesResult)
 		fakedbs.AddQueryPattern("use .*", &sqltypes.Result{})
 		fakedbs.AddQueryPattern("show create table .*", schemaResult)
 		fakedbs.AddQueryPattern("show tables from .*", tablesResult)
+		fakedbs.AddQueryPattern("show fields from .*", fieldsResult)
 		fakedbs.AddQueryPattern("select .* from `test1`.*", selectResult1)
 		fakedbs.AddQueryPattern("select .* from `test2`.*", selectResult2)
 		fakedbs.AddQueryPattern("set .*", &sqltypes.Result{})
@@ -786,12 +1022,34 @@ func TestDumperComplexRegexp(t *testing.T) {
 		},
 	}
 
+	fieldsResult := &sqltypes.Result{
+		Fields: []*querypb.Field{
+			{Name: "Field", Type: querypb.Type_VARCHAR},
+			{Name: "Type", Type: querypb.Type_VARCHAR},
+			{Name: "Null", Type: querypb.Type_VARCHAR},
+			{Name: "Key", Type: querypb.Type_VARCHAR},
+			{Name: "Default", Type: querypb.Type_VARCHAR},
+			{Name: "Extra", Type: querypb.Type_VARCHAR},
+		},
+		Rows: [][]sqltypes.Value{
+			{
+				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("not_deleted")),
+				sqltypes.MakeTrusted(querypb.Type_BLOB, []byte("int")),
+				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("YES")),
+				sqltypes.MakeTrusted(querypb.Type_BINARY, []byte("")),
+				sqltypes.MakeTrusted(querypb.Type_NULL_TYPE, []byte("NULL")),
+				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("VIRTUAL GENERATED")),
+			},
+		},
+	}
+
 	// fakedbs.
 	{
 		fakedbs.AddQueryPattern("show databases", databasesResult)
 		fakedbs.AddQueryPattern("use .*", &sqltypes.Result{})
 		fakedbs.AddQueryPattern("show create table .*", schemaResult)
 		fakedbs.AddQueryPattern("show tables from .*", tablesResult)
+		fakedbs.AddQueryPattern("show fields from .*", fieldsResult)
 		fakedbs.AddQueryPattern("select .* from `test1`.*", selectResult1)
 		fakedbs.AddQueryPattern("select .* from `test2`.*", selectResult2)
 		fakedbs.AddQueryPattern("set .*", &sqltypes.Result{})
@@ -966,12 +1224,34 @@ func TestDumperInvertMatch(t *testing.T) {
 		},
 	}
 
+	fieldsResult := &sqltypes.Result{
+		Fields: []*querypb.Field{
+			{Name: "Field", Type: querypb.Type_VARCHAR},
+			{Name: "Type", Type: querypb.Type_VARCHAR},
+			{Name: "Null", Type: querypb.Type_VARCHAR},
+			{Name: "Key", Type: querypb.Type_VARCHAR},
+			{Name: "Default", Type: querypb.Type_VARCHAR},
+			{Name: "Extra", Type: querypb.Type_VARCHAR},
+		},
+		Rows: [][]sqltypes.Value{
+			{
+				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("not_deleted")),
+				sqltypes.MakeTrusted(querypb.Type_BLOB, []byte("int")),
+				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("YES")),
+				sqltypes.MakeTrusted(querypb.Type_BINARY, []byte("")),
+				sqltypes.MakeTrusted(querypb.Type_NULL_TYPE, []byte("NULL")),
+				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("VIRTUAL GENERATED")),
+			},
+		},
+	}
+
 	// fakedbs.
 	{
 		fakedbs.AddQueryPattern("show databases", databasesResult)
 		fakedbs.AddQueryPattern("use .*", &sqltypes.Result{})
 		fakedbs.AddQueryPattern("show create table .*", schemaResult)
 		fakedbs.AddQueryPattern("show tables from .*", tablesResult)
+		fakedbs.AddQueryPattern("show fields from .*", fieldsResult)
 		fakedbs.AddQueryPattern("select .* from `test1`.*", selectResult1)
 		fakedbs.AddQueryPattern("select .* from `test2`.*", selectResult2)
 		fakedbs.AddQueryPattern("set .*", &sqltypes.Result{})
