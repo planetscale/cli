@@ -5,7 +5,7 @@ set -e
 # Install Homebrew if necessary
 if [[ $(uname) != "Linux" ]] ; then
     which -s brew
-    if [[ $? != 0 && $(uname) != "Linux" ]] ; then
+    if [[ $? != 0 ]] ; then
         echo "Installing Homebrew..."
         # Install Homebrew
         /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
