@@ -30,7 +30,6 @@ import (
 	"github.com/planetscale/cli/internal/cmd/org"
 	"github.com/planetscale/cli/internal/cmd/shell"
 	"github.com/planetscale/cli/internal/cmd/signup"
-	"github.com/planetscale/cli/internal/cmd/snapshot"
 	"github.com/planetscale/cli/internal/cmd/token"
 	"github.com/planetscale/cli/internal/cmd/version"
 	"github.com/planetscale/cli/internal/cmdutil"
@@ -141,7 +140,6 @@ func Execute(ver, commit, buildDate string) error {
 	rootCmd.AddCommand(deployrequest.DeployRequestCmd(ch))
 	rootCmd.AddCommand(org.OrgCmd(ch))
 	rootCmd.AddCommand(shell.ShellCmd(ch))
-	rootCmd.AddCommand(snapshot.SnapshotCmd(ch))
 	rootCmd.AddCommand(signup.SignupCmd(ch))
 	rootCmd.AddCommand(token.TokenCmd(ch))
 	rootCmd.AddCommand(version.VersionCmd(ch, ver, commit, buildDate))
