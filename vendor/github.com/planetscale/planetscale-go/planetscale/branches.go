@@ -76,6 +76,14 @@ type BranchSchemaRequest struct {
 	Branch       string `json:"-"`
 }
 
+// RefreshSchemaRequest reflects the request needed to refresh a schema
+// snapshot on a database branch.
+type RefreshSchemaRequest struct {
+	Organization string `json:"-"`
+	Database     string `json:"-"`
+	Branch       string `json:"-"`
+}
+
 // DatabaseBranchesService is an interface for communicating with the PlanetScale
 // Database Branch API endpoint.
 type DatabaseBranchesService interface {
@@ -86,6 +94,7 @@ type DatabaseBranchesService interface {
 	GetStatus(context.Context, *GetDatabaseBranchStatusRequest) (*DatabaseBranchStatus, error)
 	Diff(context.Context, *DiffBranchRequest) ([]*Diff, error)
 	Schema(context.Context, *BranchSchemaRequest) ([]*Diff, error)
+	RefreshSchema(context.Context, *RefreshSchemaRequest) error
 }
 
 type databaseBranchesService struct {
@@ -223,6 +232,21 @@ func (d *databaseBranchesService) GetStatus(ctx context.Context, statusReq *GetD
 	}
 
 	return status, nil
+}
+
+// RefreshSchema refreshes the schema for a
+func (d *databaseBranchesService) RefreshSchema(ctx context.Context, refreshReq *RefreshSchemaRequest) error {
+	path := fmt.Sprintf("%s/%s/refresh-schema", databaseBranchesAPIPath(refreshReq.Organization, refreshReq.Database), refreshReq.Branch)
+	req, err := d.client.newRequest(http.MethodGet, path, nil)
+	if err != nil {
+		return errors.Wrap(err, "error creating http request")
+	}
+
+	if err := d.client.do(ctx, req, nil); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func databaseBranchesAPIPath(org, db string) string {
