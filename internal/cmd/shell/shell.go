@@ -166,6 +166,7 @@ second argument:
 			mysqlArgs := []string{
 				fmt.Sprintf("--defaults-extra-file=%s", tmpFile),
 				"-s",
+				"-t", // the -s (silent) flag disables tabular output, re-enable it.
 				"-h", host,
 				"-P", port,
 			}
