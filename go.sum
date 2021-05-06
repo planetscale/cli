@@ -253,8 +253,6 @@ github.com/pkg/errors v0.8.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINE
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/planetscale/planetscale-go v0.18.0/go.mod h1:R+07GStW2oGSfeTwWoplnimSEFzxIzEofOHgPFxArg0=
-github.com/planetscale/planetscale-go v0.23.0 h1:Vvlq02DEeAGb/+FCrWnp0GjZ5zd5/z3PkABKjYtQgKo=
-github.com/planetscale/planetscale-go v0.23.0/go.mod h1:6J6w0t3GSeM/Etb5x2Fc7kEbA9M9rW2PY3h1y5Mc8Ew=
 github.com/planetscale/planetscale-go v0.24.0 h1:cA4M8PNg56WH2ykosmxyfgz8dbooWKhkcJ7st4AIxBg=
 github.com/planetscale/planetscale-go v0.24.0/go.mod h1:6J6w0t3GSeM/Etb5x2Fc7kEbA9M9rW2PY3h1y5Mc8Ew=
 github.com/planetscale/sql-proxy v0.3.2 h1:S0X8nvyk8Mr7I/t0LjpH4e2XNoBB+azK934dK4EvYWU=
