@@ -27,6 +27,9 @@ type DatabaseBranchesService struct {
 
 	SchemaFn        func(context.Context, *ps.BranchSchemaRequest) ([]*ps.Diff, error)
 	SchemaFnInvoked bool
+
+	RefreshSchemaFn        func(context.Context, *ps.RefreshSchemaRequest) error
+	RefreshSchemaFnInvoked bool
 }
 
 func (d *DatabaseBranchesService) Create(ctx context.Context, req *ps.CreateDatabaseBranchRequest) (*ps.DatabaseBranch, error) {
@@ -62,4 +65,9 @@ func (d *DatabaseBranchesService) Diff(ctx context.Context, req *ps.DiffBranchRe
 func (d *DatabaseBranchesService) Schema(ctx context.Context, req *ps.BranchSchemaRequest) ([]*ps.Diff, error) {
 	d.SchemaFnInvoked = true
 	return d.SchemaFn(ctx, req)
+}
+
+func (d *DatabaseBranchesService) RefreshSchema(ctx context.Context, req *ps.RefreshSchemaRequest) error {
+	d.RefreshSchemaFnInvoked = true
+	return d.RefreshSchemaFn(ctx, req)
 }
