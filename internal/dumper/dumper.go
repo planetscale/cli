@@ -592,7 +592,7 @@ func (d *Dumper) generatedFields(conn *Connection, table string) (map[string]boo
 
 		// Can be either "VIRTUAL GENERATED" or "VIRTUAL STORED"
 		// https://dev.mysql.com/doc/refman/8.0/en/show-columns.html
-		if strings.HasPrefix(extra, "VIRTUAL") {
+		if strings.Contains(extra, "VIRTUAL") {
 			fields[name] = true
 		}
 	}
