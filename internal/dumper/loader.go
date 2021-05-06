@@ -58,12 +58,16 @@ func (l *Loader) Run(ctx context.Context) error {
 
 	// database.
 	conn := pool.Get()
-	l.restoreDatabaseSchema(files.databases, conn)
+	if err := l.restoreDatabaseSchema(files.databases, conn); err != nil {
+		return err
+	}
 	pool.Put(conn)
 
 	// tables.
 	conn = pool.Get()
-	l.restoreTableSchema(l.cfg.OverwriteTables, files.schemas, conn)
+	if err := l.restoreTableSchema(l.cfg.OverwriteTables, files.schemas, conn); err != nil {
+		return err
+	}
 	pool.Put(conn)
 
 	// Shuffle the tables
