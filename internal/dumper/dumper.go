@@ -107,11 +107,6 @@ func (d *Dumper) Run(ctx context.Context) error {
 			}
 		}
 	}
-	for _, database := range databases {
-		if err := d.dumpDatabaseSchema(conn, database); err != nil {
-			return err
-		}
-	}
 
 	tables := make([][]string, len(databases))
 	for i, database := range databases {
@@ -217,18 +212,6 @@ func (d *Dumper) Run(ctx context.Context) error {
 func writeMetaData(outdir string) error {
 	file := fmt.Sprintf("%s/metadata", outdir)
 	return writeFile(file, "")
-}
-
-func (d *Dumper) dumpDatabaseSchema(conn *Connection, database string) error {
-	schema := fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s`;", database)
-	file := fmt.Sprintf("%s/%s-schema-create.sql", d.cfg.Outdir, database)
-	err := writeFile(file, schema)
-	if err != nil {
-		return err
-	}
-
-	d.log.Info("dumping database schema...", zap.String("database", database))
-	return nil
 }
 
 func (d *Dumper) dumpTableSchema(conn *Connection, database string, table string) error {
