@@ -237,7 +237,7 @@ func (d *databaseBranchesService) GetStatus(ctx context.Context, statusReq *GetD
 // RefreshSchema refreshes the schema for a
 func (d *databaseBranchesService) RefreshSchema(ctx context.Context, refreshReq *RefreshSchemaRequest) error {
 	path := fmt.Sprintf("%s/%s/refresh-schema", databaseBranchesAPIPath(refreshReq.Organization, refreshReq.Database), refreshReq.Branch)
-	req, err := d.client.newRequest(http.MethodGet, path, nil)
+	req, err := d.client.newRequest(http.MethodPost, path, nil)
 	if err != nil {
 		return errors.Wrap(err, "error creating http request")
 	}
