@@ -2,7 +2,6 @@ package dumper
 
 import (
 	"context"
-	"encoding/csv"
 	"fmt"
 	"io"
 	"os"
@@ -35,7 +34,6 @@ type Config struct {
 	Table                string
 	Outdir               string
 	SessionVars          string
-	Format               string
 	Threads              int
 	ChunksizeInMB        int
 	StmtSize             int
@@ -53,7 +51,6 @@ type Config struct {
 
 func NewDefaultConfig() *Config {
 	return &Config{
-		Format:  "mysql",
 		Threads: 16,
 	}
 }
@@ -143,34 +140,18 @@ func (d *Dumper) Run(ctx context.Context) error {
 					pool.Put(conn)
 				}()
 
-				d.log.Info("dumping table ...",
-					zap.String("database", database), zap.String("table", table), zap.Int("thread_conn_id", conn.ID))
-
-				if d.cfg.Format == "mysql" {
-					err := d.dumpTable(conn, database, table)
-					if err != nil {
-						d.log.Error("error dumping table", zap.Error(err))
-					}
-				} else if d.cfg.Format == "tsv" {
-					err := d.dumpTableCsv(conn, database, table, '\t')
-					if err != nil {
-						d.log.Error("error dumping table in TSV", zap.Error(err))
-					}
-				} else if d.cfg.Format == "csv" {
-					err := d.dumpTableCsv(conn, database, table, ',')
-					if err != nil {
-						d.log.Error("error dumping table in CSV", zap.Error(err))
-					}
-				} else {
-					d.log.Error("error dumping table, unknown dump format", zap.String("format", d.cfg.Format))
-				}
-
 				d.log.Info(
-					"dumping table done...",
+					"dumping table ...",
 					zap.String("database", database),
 					zap.String("table", table),
 					zap.Int("thread_conn_id", conn.ID),
 				)
+
+				err := d.dumpTable(conn, database, table)
+				if err != nil {
+					d.log.Error("error dumping table", zap.Error(err))
+				}
+
 			}(conn, database, table)
 		}
 	}
@@ -368,156 +349,6 @@ func (d *Dumper) dumpTable(conn *Connection, database string, table string) erro
 
 	d.log.Info(
 		"dumping table done...",
-		zap.String("database", database),
-		zap.String("table", table),
-		zap.Uint64("all_rows", allRows),
-		zap.Any("all_bytes", (allBytes/1024/1024)),
-		zap.Int("thread_conn_id", conn.ID),
-	)
-	return nil
-}
-
-// Dump a table in CSV/TSV format
-func (d *Dumper) dumpTableCsv(conn *Connection, database, table string, separator rune) error {
-	var allBytes uint64
-	var allRows uint64
-	var where string
-	var selfields []string
-	var headerfields []string
-
-	isGenerated, err := d.generatedFields(conn, table)
-	if err != nil {
-		return err
-	}
-
-	{
-		cursor, err := conn.StreamFetch(fmt.Sprintf("SELECT * FROM `%s`.`%s` LIMIT 1", database, table))
-		if err != nil {
-			return err
-		}
-
-		flds := cursor.Fields()
-		for _, fld := range flds {
-			d.log.Debug("dump", zap.Any("filters", d.cfg.Filters), zap.String("table", table), zap.String("field_name", fld.Name))
-			if _, ok := d.cfg.Filters[table][fld.Name]; ok {
-				continue
-			}
-
-			if isGenerated[fld.Name] {
-				continue
-			}
-
-			headerfields = append(headerfields, fld.Name)
-			replacement, ok := d.cfg.Selects[table][fld.Name]
-			if ok {
-				selfields = append(selfields, fmt.Sprintf("%s AS `%s`", replacement, fld.Name))
-			} else {
-				selfields = append(selfields, fmt.Sprintf("`%s`", fld.Name))
-			}
-		}
-		err = cursor.Close()
-		if err != nil {
-			return err
-		}
-
-	}
-
-	if v, ok := d.cfg.Wheres[table]; ok {
-		where = fmt.Sprintf(" WHERE %v", v)
-	}
-
-	cursor, err := conn.StreamFetch(fmt.Sprintf("SELECT %s FROM `%s`.`%s` %s", strings.Join(selfields, ", "), database, table, where))
-	if err != nil {
-		return err
-	}
-
-	fileNo := 1
-	file, err := os.Create(fmt.Sprintf("%s/%s.%s.%05d.csv", d.cfg.Outdir, database, table, fileNo))
-	if err != nil {
-		return err
-	}
-
-	writer := csv.NewWriter(file)
-	writer.Comma = separator
-	err = writer.Write(headerfields)
-	if err != nil {
-		return err
-	}
-
-	chunkbytes := 0
-
-	inserts := make([]string, 0, 256)
-	for cursor.Next() {
-		row, err := cursor.RowValues()
-		if err != nil {
-			return err
-		}
-
-		values := make([]string, 0, 16)
-		rowsize := 0
-		for _, v := range row {
-			if v.Raw() == nil {
-				values = append(values, "NULL")
-				rowsize += 4
-			} else {
-				str := v.String()
-				switch {
-				case v.IsSigned(), v.IsUnsigned(), v.IsFloat(), v.IsIntegral(), v.Type() == querypb.Type_DECIMAL:
-					values = append(values, str)
-					rowsize += len(str)
-				default:
-					values = append(values, fmt.Sprintf("%s", escapeBytes(v.Raw())))
-					rowsize += len(v.Raw())
-				}
-			}
-		}
-		err = writer.Write(values)
-		if err != nil {
-			return err
-		}
-		chunkbytes += rowsize
-
-		allRows++
-		atomic.AddUint64(&d.cfg.Allbytes, uint64(rowsize))
-		atomic.AddUint64(&d.cfg.Allrows, 1)
-
-		if (chunkbytes / 1024 / 1024) >= d.cfg.ChunksizeInMB {
-			writer.Flush()
-			file, err := os.Create(fmt.Sprintf("%s/%s.%s.%05d.csv", d.cfg.Outdir, database, table, fileNo))
-			if err != nil {
-				return err
-			}
-
-			writer = csv.NewWriter(file)
-			writer.Comma = separator
-			err = writer.Write(headerfields)
-			if err != nil {
-				return err
-			}
-
-			d.log.Info(
-				"dumping table CSV...",
-				zap.String("database", database),
-				zap.String("table", table),
-				zap.Uint64("rows", allRows),
-				zap.Any("bytes_mb", (allBytes/1024/1024)),
-				zap.Int("part", fileNo),
-				zap.Int("thread_conn_id", conn.ID),
-			)
-
-			inserts = inserts[:0]
-			chunkbytes = 0
-			fileNo++
-		}
-	}
-	writer.Flush()
-	err = cursor.Close()
-	if err != nil {
-		return err
-	}
-
-	d.log.Info(
-		"dumping table done CSV...",
 		zap.String("database", database),
 		zap.String("table", table),
 		zap.Uint64("all_rows", allRows),

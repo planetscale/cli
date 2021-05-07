@@ -139,7 +139,6 @@ func TestDumper(t *testing.T) {
 	cfg := &Config{
 		Database:      "test",
 		Outdir:        c.TempDir(),
-		Format:        "mysql",
 		User:          "mock",
 		Password:      "mock",
 		Address:       address,
@@ -287,7 +286,6 @@ func TestDumperGeneratedFields(t *testing.T) {
 	cfg := &Config{
 		Database:      "test",
 		Outdir:        c.TempDir(),
-		Format:        "mysql",
 		User:          "mock",
 		Password:      "mock",
 		Address:       address,
@@ -469,7 +467,6 @@ func TestDumperAll(t *testing.T) {
 	}
 
 	cfg := &Config{
-		Format:        "mysql",
 		Outdir:        c.TempDir(),
 		User:          "mock",
 		Password:      "mock",
@@ -658,7 +655,6 @@ func TestDumperMultiple(t *testing.T) {
 	}
 
 	cfg := &Config{
-		Format:        "mysql",
 		Database:      "test1,test2",
 		Outdir:        c.TempDir(),
 		User:          "mock",
@@ -857,7 +853,6 @@ func TestDumperSimpleRegexp(t *testing.T) {
 	}
 
 	cfg := &Config{
-		Format:         "mysql",
 		DatabaseRegexp: "(test1|test2)",
 		Outdir:         c.TempDir(),
 		User:           "mock",
@@ -1056,7 +1051,6 @@ func TestDumperComplexRegexp(t *testing.T) {
 	}
 
 	cfg := &Config{
-		Format:         "mysql",
 		DatabaseRegexp: "^[ets]+?[0-2]$",
 		Outdir:         c.TempDir(),
 		User:           "mock",
@@ -1258,7 +1252,6 @@ func TestDumperInvertMatch(t *testing.T) {
 	}
 
 	cfg := &Config{
-		Format:               "mysql",
 		DatabaseRegexp:       "^(mysql|sys|information_schema|performance_schema)$",
 		DatabaseInvertRegexp: true,
 		Outdir:               c.TempDir(),

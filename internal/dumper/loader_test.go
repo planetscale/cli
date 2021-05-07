@@ -32,7 +32,6 @@ func TestLoader(t *testing.T) {
 	}
 
 	cfg := &Config{
-		Format:          "mysql",
 		Outdir:          c.TempDir(),
 		User:            "mock",
 		Password:        "mock",
