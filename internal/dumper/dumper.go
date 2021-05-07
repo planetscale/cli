@@ -1,6 +1,7 @@
 package dumper
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -12,7 +13,6 @@ import (
 	"time"
 
 	"github.com/planetscale/cli/internal/cmdutil"
-	"github.com/xelabs/go-mysqlstack/sqlparser/depends/common"
 	querypb "github.com/xelabs/go-mysqlstack/sqlparser/depends/query"
 
 	"go.uber.org/zap"
@@ -439,7 +439,7 @@ func writeFile(file string, data string) error {
 	}
 	defer f.Close()
 
-	n, err := f.Write(common.StringToBytes(data))
+	n, err := f.Write([]byte(data))
 	if err != nil {
 		return err
 	}
@@ -450,33 +450,33 @@ func writeFile(file string, data string) error {
 }
 
 // escapeBytes used to escape the literal byte.
-func escapeBytes(bytes []byte) []byte {
-	buffer := common.NewBuffer(128)
-	for _, b := range bytes {
-		// See https://dev.mysql.com/doc/refman/5.7/en/string-literals.html
-		// for more information on how to escape string literals in MySQL.
+// See https://dev.mysql.com/doc/refman/5.7/en/string-literals.html
+// for more information on how to escape string literals in MySQL.
+func escapeBytes(data []byte) []byte {
+	var buf bytes.Buffer
+	for _, b := range data {
 		switch b {
 		case 0:
-			buffer.WriteString(`\0`)
+			buf.WriteString(`\0`)
 		case '\'':
-			buffer.WriteString(`\'`)
+			buf.WriteString(`\'`)
 		case '"':
-			buffer.WriteString(`\"`)
+			buf.WriteString(`\"`)
 		case '\b':
-			buffer.WriteString(`\b`)
+			buf.WriteString(`\b`)
 		case '\n':
-			buffer.WriteString(`\n`)
+			buf.WriteString(`\n`)
 		case '\r':
-			buffer.WriteString(`\r`)
+			buf.WriteString(`\r`)
 		case '\t':
-			buffer.WriteString(`\t`)
+			buf.WriteString(`\t`)
 		case 0x1A:
-			buffer.WriteString(`\Z`)
+			buf.WriteString(`\Z`)
 		case '\\':
-			buffer.WriteString(`\\`)
+			buf.WriteString(`\\`)
 		default:
-			buffer.WriteU8(b)
+			buf.WriteByte(b)
 		}
 	}
-	return buffer.Datas()
+	return buf.Bytes()
 }

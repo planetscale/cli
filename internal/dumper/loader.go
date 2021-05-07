@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/planetscale/cli/internal/cmdutil"
-	"github.com/xelabs/go-mysqlstack/sqlparser/depends/common"
 
 	"go.uber.org/zap"
 )
@@ -160,9 +159,7 @@ func (l *Loader) restoreDatabaseSchema(dbs []string, conn *Connection) error {
 			return err
 		}
 
-		sql := common.BytesToString(data)
-
-		err = conn.Execute(sql)
+		err = conn.Execute(string(data))
 		if err != nil {
 			return err
 		}
@@ -201,7 +198,7 @@ func (l *Loader) restoreTableSchema(overwrite bool, tables []string, conn *Conne
 		if err != nil {
 			return err
 		}
-		query1 := common.BytesToString(data)
+		query1 := string(data)
 		querys := strings.Split(query1, ";\n")
 		for _, query := range querys {
 			if !strings.HasPrefix(query, "/*") && query != "" {
@@ -267,7 +264,7 @@ func (l *Loader) restoreTable(table string, conn *Connection) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	query1 := common.BytesToString(data)
+	query1 := string(data)
 	querys := strings.Split(query1, ";\n")
 	bytes = len(query1)
 	for _, query := range querys {
