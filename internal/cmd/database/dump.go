@@ -118,6 +118,11 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 	if flags.output != "" {
 		dir = flags.output
 	}
+
+	if _, err := os.Stat(dir); err == nil {
+		return fmt.Errorf("backup directory already exist: %s", dir)
+	}
+
 	err = os.MkdirAll(dir, 0755)
 	if err != nil {
 		return err
