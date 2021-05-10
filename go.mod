@@ -26,10 +26,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.7.0
-	github.com/xelabs/go-mysqlstack v0.0.0-20210217114447-6f59da6c3358
+	github.com/xelabs/go-mysqlstack v0.0.0-20210509133322-082114d9069b
 	go.uber.org/zap v1.16.0
 	gopkg.in/yaml.v2 v2.4.0
 )
-
-// git sha points to https://github.com/fatih/go-mysqlstack/tree/fatih/fix-windows
-replace github.com/xelabs/go-mysqlstack => github.com/fatih/go-mysqlstack v0.0.0-20210504182522-ef614032cad1
