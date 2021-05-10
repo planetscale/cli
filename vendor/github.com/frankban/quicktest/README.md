@@ -215,6 +215,16 @@ So it's just fine to check an error like this:
     c.Assert(err, qt.IsNil)
 
 
+### IsNotNil
+
+IsNotNil is a Checker checking that the provided value is not nil. IsNotNil is
+the equivalent of qt.Not(qt.IsNil)
+
+For instance:
+
+    c.Assert(got, qt.IsNotNil)
+
+
 ### IsTrue
 
 IsTrue checks that the provided value is true. The value must have a boolean

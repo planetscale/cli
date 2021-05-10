@@ -316,6 +316,17 @@ func (c *isNilChecker) Check(got interface{}, args []interface{}, note func(key 
 	return errors.New("got non-nil value")
 }
 
+// IsNotNil is a Checker checking that the provided value is not nil.
+// IsNotNil is the equivalent of qt.Not(qt.IsNil)
+//
+// For instance:
+//
+//     c.Assert(got, qt.IsNotNil)
+//
+var IsNotNil Checker = &notChecker{
+	Checker: IsNil,
+}
+
 // HasLen is a Checker checking that the provided value has the given length.
 //
 // For instance:
