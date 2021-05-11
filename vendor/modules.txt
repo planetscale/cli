@@ -125,7 +125,7 @@ github.com/spf13/viper
 github.com/stretchr/testify/assert
 # github.com/subosito/gotenv v1.2.0
 github.com/subosito/gotenv
-# github.com/xelabs/go-mysqlstack v0.0.0-20210217114447-6f59da6c3358 => github.com/fatih/go-mysqlstack v0.0.0-20210504182522-ef614032cad1
+# github.com/xelabs/go-mysqlstack v0.0.0-20210509133322-082114d9069b
 ## explicit
 github.com/xelabs/go-mysqlstack/driver
 github.com/xelabs/go-mysqlstack/packet
@@ -210,4 +210,3 @@ gopkg.in/ini.v1
 gopkg.in/yaml.v2
 # gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776
 gopkg.in/yaml.v3
-# github.com/xelabs/go-mysqlstack => github.com/fatih/go-mysqlstack v0.0.0-20210504182522-ef614032cad1
