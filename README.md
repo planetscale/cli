@@ -49,20 +49,12 @@ git push origin <version>
 This will trigger the CI and invoke `goreleaser`, which will then release all the appropriate packages and archives.
 
 
-### Updating the vendored API package 
+### Updating the `planetscale-go` API package 
 
-
-To update the vendored `github.com/planetscale/planetscale-go` API package,
-first make sure to set up Go for private repositories:
-
-```
-go env -w GOPRIVATE="github.com/planetscale/*"
-```
-
-Then, use the following commands to fetch the `latest` HEAD version of the CLI:
+To update the `github.com/planetscale/planetscale-go` API package, use the
+following commands to fetch the `latest` HEAD version of the CLI:
 
 ```
 go get github.com/planetscale/planetscale-go/planetscale
-go mod vendor
 go mod tidy
 ```
