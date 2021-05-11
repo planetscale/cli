@@ -12,6 +12,7 @@ import (
 	"github.com/planetscale/cli/internal/config"
 	"github.com/planetscale/cli/internal/mock"
 	"github.com/planetscale/cli/internal/printer"
+	"github.com/planetscale/cli/internal/testutil"
 	ps "github.com/planetscale/planetscale-go/planetscale"
 
 	qt "github.com/frankban/quicktest"
@@ -26,7 +27,7 @@ func TestOrganization_SwitchCmd(t *testing.T) {
 	p.SetHumanOutput(&buf)
 
 	organization := "planetscale"
-	testfs := memFS{}
+	testfs := testutil.MemFS{}
 
 	svc := &mock.OrganizationsService{
 		GetFn: func(ctx context.Context, req *ps.GetOrganizationRequest) (*ps.Organization, error) {
