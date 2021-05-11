@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/planetscale/cli/internal/cmdutil"
-	"github.com/planetscale/cli/internal/dumper"
 	"github.com/planetscale/cli/internal/printer"
 	"github.com/planetscale/cli/internal/proxyutil"
 	ps "github.com/planetscale/planetscale-go/planetscale"
@@ -30,10 +29,11 @@ type dumpFlags struct {
 func DumpCmd(ch *cmdutil.Helper) *cobra.Command {
 	f := &dumpFlags{}
 	cmd := &cobra.Command{
-		Use:   "dump <database> <branch> [options]",
-		Short: "Backup and dump your database",
-		Args:  cmdutil.RequiredArgs("database", "branch"),
-		RunE:  func(cmd *cobra.Command, args []string) error { return dump(ch, cmd, f, args) },
+		Use:    "dump <database> <branch> [options]",
+		Short:  "Backup and dump your database",
+		Args:   cmdutil.RequiredArgs("database", "branch"),
+		Hidden: true,
+		RunE:   func(cmd *cobra.Command, args []string) error { return dump(ch, cmd, f, args) },
 	}
 
 	cmd.PersistentFlags().StringVar(&f.localAddr, "local-addr",
@@ -47,7 +47,9 @@ func DumpCmd(ch *cmdutil.Helper) *cobra.Command {
 }
 
 func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []string) error {
-	ctx := context.Background()
+	return errors.New("the dump functionality is not implemented yet")
+
+	ctx := context.Background() //nolint: govet
 	database := args[0]
 	branch := args[1]
 
@@ -104,7 +106,8 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 		return errors.New("database branch is not ready yet, please try again in a few minutes.")
 	}
 
-	addr, err := p.LocalAddr()
+	// address to talk for dumping
+	_, err = p.LocalAddr()
 	if err != nil {
 		return err
 	}
@@ -128,27 +131,6 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 		return err
 	}
 
-	cfg := dumper.NewDefaultConfig()
-	cfg.User = status.Credentials.User
-	cfg.Password = status.Credentials.Password
-	cfg.Address = addr.String()
-	cfg.Database = database
-	cfg.Debug = ch.Debug()
-	cfg.StmtSize = 1000000
-	cfg.IntervalMs = 10 * 1000
-	cfg.ChunksizeInMB = 128
-	cfg.SessionVars = "set workload=olap;"
-	cfg.Outdir = dir
-
-	if flags.tables != "" {
-		cfg.Table = flags.tables
-	}
-
-	d, err := dumper.NewDumper(cfg)
-	if err != nil {
-		return err
-	}
-
 	if flags.tables == "" {
 		ch.Printer.Printf("Starting to dump all tables from database %s to folder %s\n",
 			printer.BoldBlue(database), printer.Bold(dir))
@@ -161,10 +143,8 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 	defer end()
 
 	start := time.Now()
-	err = d.Run(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to dump database: %s", err)
-	}
+
+	// start the dumping process here...
 
 	end()
 	ch.Printer.Printf("Dumping is finished! (elapsed time: %s)\n", time.Since(start))

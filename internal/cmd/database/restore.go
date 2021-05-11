@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/planetscale/cli/internal/cmdutil"
-	"github.com/planetscale/cli/internal/dumper"
 	"github.com/planetscale/cli/internal/printer"
 	"github.com/planetscale/cli/internal/proxyutil"
 	ps "github.com/planetscale/planetscale-go/planetscale"
@@ -27,10 +26,11 @@ type restoreFlags struct {
 func RestoreCmd(ch *cmdutil.Helper) *cobra.Command {
 	f := &restoreFlags{}
 	cmd := &cobra.Command{
-		Use:   "restore <database> <branch> [options]",
-		Short: "Restore your database",
-		Args:  cmdutil.RequiredArgs("database", "branch"),
-		RunE:  func(cmd *cobra.Command, args []string) error { return restore(ch, cmd, f, args) },
+		Use:    "restore <database> <branch> [options]",
+		Short:  "Restore your database",
+		Args:   cmdutil.RequiredArgs("database", "branch"),
+		Hidden: true,
+		RunE:   func(cmd *cobra.Command, args []string) error { return restore(ch, cmd, f, args) },
 	}
 
 	cmd.PersistentFlags().StringVar(&f.localAddr, "local-addr",
@@ -42,7 +42,9 @@ func RestoreCmd(ch *cmdutil.Helper) *cobra.Command {
 }
 
 func restore(ch *cmdutil.Helper, cmd *cobra.Command, flags *restoreFlags, args []string) error {
-	ctx := context.Background()
+	return errors.New("the restore functionality is not implemented yet")
+
+	ctx := context.Background() //nolint: govet
 	database := args[0]
 	branch := args[1]
 
@@ -103,20 +105,8 @@ func restore(ch *cmdutil.Helper, cmd *cobra.Command, flags *restoreFlags, args [
 		return errors.New("database branch is not ready yet, please try again in a few minutes.")
 	}
 
-	addr, err := p.LocalAddr()
-	if err != nil {
-		return err
-	}
-
-	cfg := dumper.NewDefaultConfig()
-	cfg.User = status.Credentials.User
-	cfg.Password = status.Credentials.Password
-	cfg.Address = addr.String()
-	cfg.Debug = ch.Debug()
-	cfg.IntervalMs = 10 * 1000
-	cfg.Outdir = flags.dir
-
-	loader, err := dumper.NewLoader(cfg)
+	// address to talk for dumping
+	_, err = p.LocalAddr()
 	if err != nil {
 		return err
 	}
@@ -128,10 +118,8 @@ func restore(ch *cmdutil.Helper, cmd *cobra.Command, flags *restoreFlags, args [
 	defer end()
 
 	start := time.Now()
-	err = loader.Run(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to restore database: %s", err)
-	}
+
+	// start the restoring here ...
 
 	end()
 	ch.Printer.Printf("Restoring is finished! (elapsed time: %s)\n", time.Since(start))
