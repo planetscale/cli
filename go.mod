@@ -1,6 +1,6 @@
 module github.com/planetscale/cli
 
-go 1.15
+go 1.16
 
 require (
 	github.com/AlecAivazis/survey/v2 v2.2.12
@@ -21,12 +21,11 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/planetscale/planetscale-go v0.25.0
 	github.com/planetscale/sql-proxy v0.3.2
-	github.com/shopspring/decimal v1.2.0 // indirect
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.7.0
-	github.com/xelabs/go-mysqlstack v0.0.0-20210509133322-082114d9069b
+	github.com/xelabs/go-mysqlstack v1.0.0
 	go.uber.org/zap v1.16.0
 	gopkg.in/yaml.v2 v2.4.0
 )
