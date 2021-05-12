@@ -78,7 +78,11 @@ func SwitchCmd(ch *cmdutil.Helper) *cobra.Command {
 				return errors.Wrap(err, "error writing project configuration file")
 			}
 
-			ch.Printer.Printf("Successfully switched to branch %s on database %s", printer.BoldBlue(branch), printer.BoldBlue(parentBranch))
+			ch.Printer.Printf(
+				"Successfully switched to branch %s on database %s",
+				printer.BoldBlue(branch),
+				printer.BoldBlue(ch.Config.Database),
+			)
 
 			return nil
 		},
