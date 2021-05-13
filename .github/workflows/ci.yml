@@ -14,12 +14,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
-    - name: Configure git private repo access
-      env:
-        GITHUB_TOKEN: ${{ secrets.PLANETSCALE_ACTIONS_BOT_TOKEN }}
-      run: |
-        git config --global --add url."https://x-access-token:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
-
     - name: Set up Go 1.x
       uses: actions/setup-go@v2
       with:
@@ -55,17 +49,13 @@ jobs:
         version: v0.164.0
         args: release --rm-dist
       env:
-        GITHUB_TOKEN: ${{ secrets.PLANETSCALE_ACTIONS_BOT_TOKEN }}
+        # https://github.com/goreleaser/goreleaser-action#limitation
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   lint:
     name: lint
     runs-on: ubuntu-latest
     steps:
-      - name: Configure git private repo access
-        env:
-          GITHUB_TOKEN: ${{ secrets.PLANETSCALE_ACTIONS_BOT_TOKEN }}
-        run: |
-          git config --global --add url."https://${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
       - uses: actions/checkout@v2
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v2
