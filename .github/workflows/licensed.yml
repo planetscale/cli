@@ -11,12 +11,6 @@ jobs:
   licensed:
     runs-on: ubuntu-latest
     steps:
-      - name: Configure git private repo access
-        env:
-          GITHUB_TOKEN: ${{ secrets.PLANETSCALE_ACTIONS_BOT_TOKEN }}
-        run: |
-          git config --global --add url."https://x-access-token:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
-
       - name: Checkout repository
         uses: actions/checkout@v2
 
@@ -34,13 +28,12 @@ jobs:
         id: licensed
         uses: jonabc/licensed-ci@v1
         with:
-          github_token: ${{ secrets.PLANETSCALE_ACTIONS_BOT_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Report licensed activity
         uses: actions/github-script@0.2.0
         if: always() && steps.licensed.outputs.pr_number
         with:
-          github-token: ${{ secrets.PLANETSCALE_ACTIONS_BOT_TOKEN }}
           script: |
             github.issues.createComment({
               owner: context.repo.owner,
