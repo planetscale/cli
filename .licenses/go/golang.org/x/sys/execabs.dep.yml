@@ -1,9 +1,10 @@
 ---
-name: golang.org/x/sys/unix
+name: golang.org/x/sys/execabs
 version: v0.0.0-20210511113859-b0526f3d8744
 type: go
-summary: Package unix contains an interface to the low-level operating system primitives.
-homepage: https://godoc.org/golang.org/x/sys/unix
+summary: Package execabs is a drop-in replacement for os/exec that requires PATH lookups
+  to find absolute paths.
+homepage: https://godoc.org/golang.org/x/sys/execabs
 license: bsd-3-clause
 licenses:
 - sources: sys@v0.0.0-20210511113859-b0526f3d8744/LICENSE

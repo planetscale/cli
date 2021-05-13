@@ -1,6 +1,11 @@
 name: licensed-ci
 
-on: [push]
+on:
+  push:
+    branches:
+      - master
+      - main
+  pull_request:
 
 jobs:
   licensed:
