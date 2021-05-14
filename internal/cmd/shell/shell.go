@@ -61,9 +61,9 @@ second argument:
 				return errors.New("pscale shell only works in interactive mode")
 			}
 
-			_, err := exec.LookPath("mysql")
+			mysqlPath, err := cmdutil.MySQLClientPath()
 			if err != nil {
-				return fmt.Errorf("couldn't find the 'mysql' CLI")
+				return err
 			}
 
 			client, err := ch.Config.NewClientFromConfig()
@@ -182,6 +182,7 @@ second argument:
 			styledBranch := formatMySQLBranch(database, branch)
 
 			m := &mysql{
+				mysqlPath:    mysqlPath,
 				historyFile:  historyFile,
 				styledBranch: styledBranch,
 				debug:        ch.Debug(),
@@ -252,6 +253,7 @@ func createLoginFile(username, password string) (string, error) {
 }
 
 type mysql struct {
+	mysqlPath    string
 	dir          string
 	styledBranch string
 	historyFile  string
@@ -261,12 +263,7 @@ type mysql struct {
 
 // Run runs the `mysql` client with the given arguments.
 func (m *mysql) Run(ctx context.Context, args ...string) error {
-	mysqlPath, err := exec.LookPath("mysql")
-	if err != nil {
-		return err
-	}
-
-	c := exec.CommandContext(ctx, mysqlPath, args...)
+	c := exec.CommandContext(ctx, m.mysqlPath, args...)
 	if m.dir != "" {
 		c.Dir = m.dir
 	}
@@ -275,7 +272,7 @@ func (m *mysql) Run(ctx context.Context, args ...string) error {
 		fmt.Sprintf("MYSQL_HISTFILE=%s", m.historyFile),
 	)
 
-	linked, err := checkLibs(ctx, mysqlPath)
+	linked, err := checkLibs(ctx, m.mysqlPath)
 	if m.debug {
 		if err != nil {
 			m.printer.Printf("failed to check linking: %s", err)
