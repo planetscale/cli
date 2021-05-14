@@ -20,6 +20,7 @@ import (
 	"io/fs"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/planetscale/cli/internal/cmd/auth"
 	"github.com/planetscale/cli/internal/cmd/backup"
@@ -45,6 +46,7 @@ import (
 )
 
 var cfgFile string
+var replacer = strings.NewReplacer("-", "_", ".", "_")
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -184,6 +186,7 @@ func initConfig() {
 	}
 
 	viper.SetEnvPrefix("planetscale")
+	viper.SetEnvKeyReplacer(replacer)
 	viper.AutomaticEnv() // read in environment variables that match
 
 	// If a config file is found, read it in.
