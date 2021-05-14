@@ -104,6 +104,6 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().BoolVarP(&force, "force", "f", false, "Delete a backup without confirmation")
+	cmd.Flags().BoolVar(&force, "force", false, "Delete a backup without confirmation")
 	return cmd
 }
