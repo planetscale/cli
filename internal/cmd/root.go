@@ -121,8 +121,6 @@ func Execute(ver, commit, buildDate string) error {
 		"service-token-name", "", "The Service Token name for authenticating.")
 	rootCmd.PersistentFlags().StringVar(&cfg.ServiceToken,
 		"service-token", "", "Service Token for authenticating.")
-	_ = rootCmd.PersistentFlags().MarkHidden("service-token-name")
-	_ = rootCmd.PersistentFlags().MarkHidden("service-token")
 
 	// We don't want to show the default value
 	rootCmd.PersistentFlags().Lookup("api-token").DefValue = ""
