@@ -312,7 +312,7 @@ func checkLibs(ctx context.Context, mysqlPath string) (bool, error) {
 		name = "otool"
 		args = []string{"-L"}
 	case "linux":
-		name = "ldd"
+		return false, nil
 	case "unix":
 		return false, nil
 	}
