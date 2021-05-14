@@ -4,18 +4,19 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
 
-	"github.com/cli/safeexec"
 	"github.com/planetscale/cli/internal/config"
 	"github.com/planetscale/cli/internal/printer"
+
 	ps "github.com/planetscale/planetscale-go/planetscale"
+
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	exec "golang.org/x/sys/execabs"
 )
 
 // Helper is passed to every single command and is used by individual
@@ -103,7 +104,7 @@ func IsUnderHomebrew(binpath string) bool {
 		return false
 	}
 
-	brewExe, err := safeexec.LookPath("brew")
+	brewExe, err := exec.LookPath("brew")
 	if err != nil {
 		return false
 	}

@@ -10,7 +10,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"os/exec"
 	"path"
 	"time"
 
@@ -19,6 +18,8 @@ import (
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/config"
 	"gopkg.in/yaml.v2"
+
+	exec "golang.org/x/sys/execabs"
 )
 
 type UpdateInfo struct {

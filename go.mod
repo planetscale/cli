@@ -6,7 +6,6 @@ require (
 	github.com/AlecAivazis/survey/v2 v2.2.12
 	github.com/benbjohnson/clock v1.1.0
 	github.com/briandowns/spinner v1.12.0
-	github.com/cli/safeexec v1.0.0
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/fatih/color v1.10.0
 	github.com/frankban/quicktest v1.13.0
