@@ -15,7 +15,7 @@ brew upgrade pscale
 
 **deb/rpm**:
 
-Download the .deb or .rpm from the [releases](https://github.com/planetscale/cli/releases/latest) page and install with dpkg -i and rpm -i respectively.
+Download the .deb or .rpm from the [releases](https://github.com/planetscale/cli/releases/latest) page and install with `sudo dpkg -i` and `sudo rpm -i` respectively.
 
 **manually**:
 
