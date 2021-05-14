@@ -68,7 +68,7 @@ func New() (*Config, error) {
 }
 
 func (c *Config) IsAuthenticated() bool {
-	return c.AccessToken != ""
+	return ((c.ServiceToken != "" && c.ServiceTokenName != "") || (c.AccessToken != ""))
 }
 
 // NewClientFromConfig creates a PlaentScale API client from our configuration
