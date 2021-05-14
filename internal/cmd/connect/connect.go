@@ -100,7 +100,7 @@ argument:
 				Logger:     cmdutil.NewZapLogger(ch.Debug()),
 			}
 
-			proxyReady := make(chan string)
+			proxyReady := make(chan string, 1)
 
 			if flags.execCommand != "" {
 				go runCommand(ctx, flags.execCommand, database, proxyReady)
@@ -164,11 +164,12 @@ func runProxy(proxyOpts proxy.Options, database, branch string, ready chan strin
 }
 
 func runCommand(ctx context.Context, command, database string, ready chan string) {
-	addr := <-ready
 	args, err := shellwords.Parse(command)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "\nfailed to parse command: %s", err)
+		fmt.Fprintf(os.Stderr, "\nfailed to parse command, not running: %s", err)
+		return
 	}
+	addr := <-ready
 
 	ctx = sigutil.WithSignal(ctx, syscall.SIGINT, syscall.SIGTERM)
 	child := exec.CommandContext(ctx, args[0], args[1:]...)
