@@ -99,7 +99,7 @@ argument:
 			proxyReady := make(chan string, 1)
 
 			if flags.execCommand != "" {
-				go runCommand(ctx, flags.execCommand, database, proxyReady)
+				go runCommand(ctx, flags.execCommand, database, branch, proxyReady)
 			}
 
 			err = runProxy(proxyOpts, database, branch, proxyReady)
@@ -157,7 +157,7 @@ func runProxy(proxyOpts proxy.Options, database, branch string, ready chan strin
 	return p.Run(ctx)
 }
 
-func runCommand(ctx context.Context, command, database string, ready chan string) {
+func runCommand(ctx context.Context, command, database, branch string, ready chan string) {
 	args, err := shellwords.Parse(command)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "\nfailed to parse command, not running: %s", err)
@@ -174,6 +174,20 @@ func runCommand(ctx context.Context, command, database string, ready chan string
 	connStr := fmt.Sprintf("DATABASE_URL=mysql2://root@%s/%s", addr, database)
 	child.Env = append(child.Env, connStr)
 
+	hostEnv := fmt.Sprintf("PLANETSCALE_DATABASE_HOST=%s", addr)
+	child.Env = append(child.Env, hostEnv)
+
+	dbName := fmt.Sprintf("PLANETSCALE_DATABASE_NAME=%s", database)
+	child.Env = append(child.Env, dbName)
+
+	branchName := fmt.Sprintf("PLANETSCALE_BRANCH_NAME=%s", branch)
+	child.Env = append(child.Env, branchName)
+
+	// todo(nickvanw): right now, this starts the process and then doesn't track what happens next
+	// if the process exits (non-zero or otherwise) the proxy will remain running
+	//
+	// the right behavior is probably to at least allow the user to configure that the proxy should
+	// exit when this process exits, and pass through the exit code
 	if err := child.Start(); err != nil {
 		fmt.Fprintf(os.Stderr, "\nfailed to execute command: %s", err)
 	}
