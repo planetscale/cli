@@ -12,13 +12,11 @@ import (
 	"os"
 	"os/exec"
 	"path"
-	"path/filepath"
-	"strings"
 	"time"
 
-	"github.com/cli/safeexec"
 	"github.com/fatih/color"
 	"github.com/hashicorp/go-version"
+	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/config"
 	"gopkg.in/yaml.v2"
 )
@@ -69,7 +67,14 @@ func CheckVersion(buildVersion string) error {
 		color.CyanString(buildVersion),
 		color.CyanString(updateInfo.ReleaseInfo.Version))
 
-	if isUnderHomebrew() {
+	var binpath string
+	if exepath, err := os.Executable(); err == nil {
+		binpath = exepath
+	} else if path, err := exec.LookPath("pscale"); err == nil {
+		binpath = path
+	}
+
+	if cmdutil.IsUnderHomebrew(binpath) {
 		fmt.Fprintf(os.Stderr, "To upgrade, run: %s\n", "brew update && brew upgrade pscale")
 	}
 	fmt.Fprintf(os.Stderr, "%s\n", color.YellowString(updateInfo.ReleaseInfo.URL))
@@ -175,27 +180,6 @@ func latestVersion(addr string) (*ReleaseInfo, error) {
 	}
 
 	return info, nil
-}
-
-// copied from: https://github.com/cli/cli/blob/trunk/cmd/gh/main.go#L298
-func isUnderHomebrew() bool {
-	binary := "pscale"
-	if exe, err := os.Executable(); err == nil {
-		binary = exe
-	}
-
-	brewExe, err := safeexec.LookPath("brew")
-	if err != nil {
-		return false
-	}
-
-	brewPrefixBytes, err := exec.Command(brewExe, "--prefix").Output()
-	if err != nil {
-		return false
-	}
-
-	brewBinPrefix := filepath.Join(strings.TrimSpace(string(brewPrefixBytes)), "bin") + string(filepath.Separator)
-	return strings.HasPrefix(binary, brewBinPrefix)
 }
 
 func getStateEntry(stateFilePath string) (*StateEntry, error) {
