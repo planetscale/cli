@@ -6,12 +6,13 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"os/exec"
 	"path"
 	"strings"
 
-	"github.com/mitchellh/go-homedir"
 	ps "github.com/planetscale/planetscale-go/planetscale"
+
+	"github.com/mitchellh/go-homedir"
+	exec "golang.org/x/sys/execabs"
 )
 
 const (
