@@ -20,6 +20,7 @@ import (
 	"io/fs"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/planetscale/cli/internal/cmd/auth"
 	"github.com/planetscale/cli/internal/cmd/backup"
@@ -45,6 +46,7 @@ import (
 )
 
 var cfgFile string
+var replacer = strings.NewReplacer("-", "_", ".", "_")
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -119,8 +121,6 @@ func Execute(ver, commit, buildDate string) error {
 		"service-token-name", "", "The Service Token name for authenticating.")
 	rootCmd.PersistentFlags().StringVar(&cfg.ServiceToken,
 		"service-token", "", "Service Token for authenticating.")
-	_ = rootCmd.PersistentFlags().MarkHidden("service-token-name")
-	_ = rootCmd.PersistentFlags().MarkHidden("service-token")
 
 	// We don't want to show the default value
 	rootCmd.PersistentFlags().Lookup("api-token").DefValue = ""
@@ -184,6 +184,7 @@ func initConfig() {
 	}
 
 	viper.SetEnvPrefix("planetscale")
+	viper.SetEnvKeyReplacer(replacer)
 	viper.AutomaticEnv() // read in environment variables that match
 
 	// If a config file is found, read it in.

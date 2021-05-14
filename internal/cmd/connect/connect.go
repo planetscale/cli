@@ -5,9 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"runtime"
 	"syscall"
 
+	"github.com/mattn/go-shellwords"
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
 	"github.com/planetscale/cli/internal/promptutil"
@@ -21,8 +23,9 @@ import (
 
 func ConnectCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
-		localAddr  string
-		remoteAddr string
+		localAddr   string
+		remoteAddr  string
+		execCommand string
 	}
 
 	cmd := &cobra.Command{
@@ -46,10 +49,6 @@ argument:
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 			database := args[0]
-
-			if !printer.IsTTY || ch.Printer.Format() != printer.Human {
-				return errors.New("pscale connect only works in interactive mode")
-			}
 
 			client, err := ch.Config.NewClientFromConfig()
 			if err != nil {
@@ -97,12 +96,18 @@ argument:
 				Logger:     cmdutil.NewZapLogger(ch.Debug()),
 			}
 
-			err = runProxy(proxyOpts, database, branch)
+			proxyReady := make(chan string, 1)
+
+			if flags.execCommand != "" {
+				go runCommand(ctx, flags.execCommand, database, branch, proxyReady)
+			}
+
+			err = runProxy(proxyOpts, database, branch, proxyReady)
 			if err != nil {
 				if isAddrInUse(err) {
 					ch.Printer.Println("Tried address 127.0.0.1:3306, but it's already in use. Picking up a random port ...")
 					proxyOpts.LocalAddr = "127.0.0.1:0"
-					return runProxy(proxyOpts, database, branch)
+					return runProxy(proxyOpts, database, branch, proxyReady)
 				}
 				return err
 			}
@@ -117,18 +122,19 @@ argument:
 	cmd.PersistentFlags().StringVar(&flags.remoteAddr, "remote-addr", "",
 		"PlanetScale Database remote network address. By default the remote address is populated automatically from the PlanetScale API.")
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
+	cmd.PersistentFlags().StringVar(&flags.execCommand, "execute", "", "Run this command after successfully connecting to the database.")
 
 	return cmd
 }
 
-func runProxy(proxyOpts proxy.Options, database, branch string) error {
+func runProxy(proxyOpts proxy.Options, database, branch string, ready chan string) error {
 	ctx := context.Background()
 	p, err := proxy.NewClient(proxyOpts)
 	if err != nil {
 		return fmt.Errorf("couldn't create proxy client: %s", err)
 	}
 
-	go func() {
+	go func(ready chan string) {
 		// this is blocking and will only return once p.Run() below is
 		// invoked
 		addr, err := p.LocalAddr()
@@ -142,12 +148,49 @@ func runProxy(proxyOpts proxy.Options, database, branch string) error {
 			printer.BoldBlue(branch),
 			printer.BoldBlue(addr.String()),
 		)
-	}()
+		ready <- addr.String()
+	}(ready)
 
 	// TODO(fatih): replace with signal.NotifyContext once Go 1.16 is released
 	// https://go-review.googlesource.com/c/go/+/219640
 	ctx = sigutil.WithSignal(ctx, syscall.SIGINT, syscall.SIGTERM)
 	return p.Run(ctx)
+}
+
+func runCommand(ctx context.Context, command, database, branch string, ready chan string) {
+	args, err := shellwords.Parse(command)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "\nfailed to parse command, not running: %s", err)
+		return
+	}
+	addr := <-ready
+
+	ctx = sigutil.WithSignal(ctx, syscall.SIGINT, syscall.SIGTERM)
+	child := exec.CommandContext(ctx, args[0], args[1:]...)
+	child.Env = os.Environ()
+	child.Stdout = os.Stdout
+	child.Stderr = os.Stderr
+
+	connStr := fmt.Sprintf("DATABASE_URL=mysql2://root@%s/%s", addr, database)
+	child.Env = append(child.Env, connStr)
+
+	hostEnv := fmt.Sprintf("PLANETSCALE_DATABASE_HOST=%s", addr)
+	child.Env = append(child.Env, hostEnv)
+
+	dbName := fmt.Sprintf("PLANETSCALE_DATABASE_NAME=%s", database)
+	child.Env = append(child.Env, dbName)
+
+	branchName := fmt.Sprintf("PLANETSCALE_BRANCH_NAME=%s", branch)
+	child.Env = append(child.Env, branchName)
+
+	// todo(nickvanw): right now, this starts the process and then doesn't track what happens next
+	// if the process exits (non-zero or otherwise) the proxy will remain running
+	//
+	// the right behavior is probably to at least allow the user to configure that the proxy should
+	// exit when this process exits, and pass through the exit code
+	if err := child.Start(); err != nil {
+		fmt.Fprintf(os.Stderr, "\nfailed to execute command: %s", err)
+	}
 }
 
 // isAddrInUse returns an error if the error indicates that the given address
