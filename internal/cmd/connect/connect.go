@@ -180,7 +180,6 @@ func runCommand(ctx context.Context, command, database string, ready chan string
 
 	if err := child.Start(); err != nil {
 		fmt.Fprintf(os.Stderr, "\nfailed to execute command: %s", err)
-		os.Exit(1)
 	}
 }
 
