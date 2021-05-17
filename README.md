@@ -13,12 +13,13 @@ PlanetScale is more than a database and our CLI is more than a jumble of command
 ```
 brew install planetscale/tap/pscale
 ```
+
 To upgrade to the latest version:
 
 ```
 brew upgrade pscale
-
 ```
+
 ### Linux
 
 `pscale` is available as downloadable binaries from the [releases](https://github.com/planetscale/cli/releases/latest) page. Download the .deb or .rpm from the [releases](https://github.com/planetscale/cli/releases/latest) page and install with `sudo dpkg -i` and `sudo rpm -i` respectively.
