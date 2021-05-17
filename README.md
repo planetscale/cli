@@ -1,8 +1,14 @@
 # PlanetScale CLI
 
+PlanetScale is more than a database and our CLI is more than a jumble of commands. The `pscale` command line tool brings branches, deploy requests, and other PlanetScale concepts to your finger tips.
+
+![ScreenShot-2021-05-17-at-19 12 22@2x](https://user-images.githubusercontent.com/438920/118521960-30d72f80-b744-11eb-86fa-cd776767fd20.png)
+
 ## Installation
 
-**homebrew tap** (only on macOS for now):
+### macOS
+
+`pscale` is available via a Homebrew Tap, and as downloadable binary from the [releases](https://github.com/planetscale/cli/releases/latest) page:
 
 ```
 brew install planetscale/tap/pscale
@@ -11,50 +17,17 @@ To upgrade to the latest version:
 
 ```
 brew upgrade pscale
+
 ```
+### Linux
 
-**deb/rpm**:
+`pscale` is available as downloadable binaries from the [releases](https://github.com/planetscale/cli/releases/latest) page. Download the .deb or .rpm from the [releases](https://github.com/planetscale/cli/releases/latest) page and install with `sudo dpkg -i` and `sudo rpm -i` respectively.
 
-Download the .deb or .rpm from the [releases](https://github.com/planetscale/cli/releases/latest) page and install with `sudo dpkg -i` and `sudo rpm -i` respectively.
+### Windows
 
-**manually**:
+`pscale` is available as downloadable binary from the [releases](https://github.com/planetscale/cli/releases/latest) page.
+
+### Manually
 
 Download the pre-compiled binaries from the [releases](https://github.com/planetscale/cli/releases/latest) page and copy to the desired location.
 
-### Local Dev Setup
-
-In order to get setup and running with this project, you can run `script/setup` which will install all of the necessary dependencies. If `script/setup` installs Go, you should ensure that your `$GOPATH` is set properly and that you have added `$GOPATH/bin` to your `$PATH`.
-
-You can install and use the program using `script/build` or `go install ./...`. After doing so, you can run the tool using `pscale <command> [subcommand] [flags]`.
-
-
-For using the CLI locally, there's some extra setup involved to get authenticated.
-
-### Releasing a new version
-
-To release a new version of the CLI make sure to switch to an updated `main` branch:
-
-```
-git checkout main
-git pull origin main
-```
-
-after that create a new tag and push to the repo. Make sure the version is bumped:
-
-```
-git tag -a <version> -m <comment>
-git push origin <version>
-```
-
-This will trigger the CI and invoke `goreleaser`, which will then release all the appropriate packages and archives.
-
-
-### Updating the `planetscale-go` API package 
-
-To update the `github.com/planetscale/planetscale-go` API package, use the
-following commands to fetch the `latest` HEAD version of the CLI:
-
-```
-go get github.com/planetscale/planetscale-go/planetscale
-go mod tidy
-```
