@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"runtime"
@@ -23,7 +24,8 @@ import (
 
 func ConnectCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
-		localAddr   string
+		port        string
+		host        string
 		remoteAddr  string
 		execCommand string
 	}
@@ -83,10 +85,7 @@ argument:
 				}
 			}
 
-			localAddr := "127.0.0.1:3306"
-			if flags.localAddr != "" {
-				localAddr = flags.localAddr
-			}
+			localAddr := net.JoinHostPort(flags.host, flags.port)
 
 			proxyOpts := proxy.Options{
 				CertSource: proxyutil.NewRemoteCertSource(client),
@@ -105,8 +104,8 @@ argument:
 			err = runProxy(proxyOpts, database, branch, proxyReady)
 			if err != nil {
 				if isAddrInUse(err) {
-					ch.Printer.Println("Tried address 127.0.0.1:3306, but it's already in use. Picking up a random port ...")
-					proxyOpts.LocalAddr = "127.0.0.1:0"
+					ch.Printer.Printf("Tried address %s, but it's already in use. Picking up a random port ...", localAddr)
+					proxyOpts.LocalAddr = net.JoinHostPort(flags.host, "0")
 					return runProxy(proxyOpts, database, branch, proxyReady)
 				}
 				return err
@@ -117,8 +116,8 @@ argument:
 	}
 
 	cmd.PersistentFlags().StringVar(&ch.Config.Organization, "org", ch.Config.Organization, "The organization for the current user")
-	cmd.PersistentFlags().StringVar(&flags.localAddr, "local-addr", "",
-		"Local address to bind and listen for connections")
+	cmd.PersistentFlags().StringVar(&flags.host, "host", "127.0.0.1", "Local host to bind and listen for connections")
+	cmd.PersistentFlags().StringVar(&flags.port, "port", "3306", "Local port to bind and listen for connections")
 	cmd.PersistentFlags().StringVar(&flags.remoteAddr, "remote-addr", "",
 		"PlanetScale Database remote network address. By default the remote address is populated automatically from the PlanetScale API.")
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
