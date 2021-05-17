@@ -2,7 +2,8 @@
 
 PlanetScale is more than a database and our CLI is more than a jumble of commands. The `pscale` command line tool brings branches, deploy requests, and other PlanetScale concepts to your finger tips.
 
-![ScreenShot-2021-05-17-at-19 12 22@2x](https://user-images.githubusercontent.com/438920/118521960-30d72f80-b744-11eb-86fa-cd776767fd20.png)
+![PlanetScale CLI](https://user-images.githubusercontent.com/155044/118568235-66c8e380-b745-11eb-8124-5a72e17f7f7b.png)
+
 
 ## Installation
 
