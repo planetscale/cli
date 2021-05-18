@@ -15,7 +15,7 @@ import (
 func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	createReq := &ps.CreateBackupRequest{}
 	cmd := &cobra.Command{
-		Use:     "create <database> <branch> [options]",
+		Use:     "create <database> <branch>",
 		Short:   "Backup a branch's data and schema",
 		Args:    cmdutil.RequiredArgs("database", "branch"),
 		Aliases: []string{"b"},

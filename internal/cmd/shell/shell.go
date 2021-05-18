@@ -8,11 +8,11 @@ import (
 	"log"
 	"net"
 	"os"
-	"os/exec"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"syscall"
 
-	"github.com/mitchellh/go-homedir"
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
 	"github.com/planetscale/cli/internal/promptutil"
@@ -22,7 +22,10 @@ import (
 	"github.com/planetscale/sql-proxy/sigutil"
 
 	ps "github.com/planetscale/planetscale-go/planetscale"
+
+	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
+	exec "golang.org/x/sys/execabs"
 )
 
 func ShellCmd(ch *cmdutil.Helper) *cobra.Command {
@@ -35,10 +38,10 @@ func ShellCmd(ch *cmdutil.Helper) *cobra.Command {
 		Use: "shell [database] [branch]",
 		// we only require database, because we deduct branch automatically
 		Args:  cmdutil.RequiredArgs("database"),
-		Short: "Open a shell instance to the given database and branch",
+		Short: "Open a MySQL shell instance to the given database and branch",
 		Example: `The shell subcommand opens a secure MySQL shell instance to your database.
 
-It uses the "mysqli" 
+It uses the MySQL command-line client ("mysql"), which needs to be installed.
 By default, if no branch names are given and there is only one branch, it
 automatically opens a shell to that branch:
 
@@ -58,9 +61,9 @@ second argument:
 				return errors.New("pscale shell only works in interactive mode")
 			}
 
-			_, err := exec.LookPath("mysql")
+			mysqlPath, err := cmdutil.MySQLClientPath()
 			if err != nil {
-				return fmt.Errorf("couldn't find the 'mysql' CLI")
+				return err
 			}
 
 			client, err := ch.Config.NewClientFromConfig()
@@ -177,8 +180,16 @@ second argument:
 			}
 
 			styledBranch := formatMySQLBranch(database, branch)
-			m := &mysql{}
-			err = m.Run(ctx, historyFile, styledBranch, mysqlArgs...)
+
+			m := &mysql{
+				mysqlPath:    mysqlPath,
+				historyFile:  historyFile,
+				styledBranch: styledBranch,
+				debug:        ch.Debug(),
+				printer:      ch.Printer,
+			}
+
+			err = m.Run(ctx, mysqlArgs...)
 			return err
 
 		},
@@ -242,31 +253,88 @@ func createLoginFile(username, password string) (string, error) {
 }
 
 type mysql struct {
-	Dir string
+	mysqlPath    string
+	dir          string
+	styledBranch string
+	historyFile  string
+	debug        bool
+	printer      *printer.Printer
 }
 
 // Run runs the `mysql` client with the given arguments.
-func (m *mysql) Run(ctx context.Context, historyFile string, styledBranch string, args ...string) error {
-	c := exec.CommandContext(ctx, "mysql", args...)
-	if m.Dir != "" {
-		c.Dir = m.Dir
+func (m *mysql) Run(ctx context.Context, args ...string) error {
+	c := exec.CommandContext(ctx, m.mysqlPath, args...)
+	if m.dir != "" {
+		c.Dir = m.dir
 	}
 
 	c.Env = append(os.Environ(),
-		fmt.Sprintf("MYSQL_PS1=%s", styledBranch),
-		fmt.Sprintf("MYSQL_HISTFILE=%s", historyFile),
+		fmt.Sprintf("MYSQL_HISTFILE=%s", m.historyFile),
 	)
+
+	linked, err := checkLibs(ctx, m.mysqlPath)
+	if m.debug {
+		if err != nil {
+			m.printer.Printf("failed to check linking: %s", err)
+		} else if linked {
+			m.printer.Println("mysql is linked against readline/editline")
+		} else {
+			m.printer.Println("mysql is not linked against readline/editline")
+		}
+	}
+
+	// only enable prompt if mysql is linked against readline or editline.
+	if linked {
+		c.Env = append(c.Env, fmt.Sprintf("MYSQL_PS1=%s", m.styledBranch))
+	}
 
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr
 	c.Stdin = os.Stdin
 
-	err := c.Start()
+	err = c.Start()
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	err = c.Wait()
 	return err
+}
 
+// checkLibs returns true when the mysql CLI is linked against readline
+// (libreadline) or editline (libedit).
+func checkLibs(ctx context.Context, mysqlPath string) (bool, error) {
+	var name string
+	var args []string
+
+	switch runtime.GOOS {
+	case "darwin":
+		name = "otool"
+		args = []string{"-L"}
+	case "linux":
+		return false, nil
+	case "unix":
+		return false, nil
+	}
+
+	args = append(args, mysqlPath)
+
+	out, err := exec.CommandContext(ctx, name, args...).CombinedOutput()
+	if err != nil {
+		return false, fmt.Errorf("failed to check linking: %s\noutput: %s",
+			err, string(out))
+	}
+
+	return isLinked(string(out)), nil
+}
+
+// isLinked checks whether the given libs output indicates that the mysql CLI
+// is linked against readline (libreadline) or editline (libedit).
+func isLinked(libs string) bool {
+	if strings.Contains(libs, "libreadline") ||
+		strings.Contains(libs, "libedit") {
+		return true
+	}
+
+	return false
 }

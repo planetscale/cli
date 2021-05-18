@@ -1,0 +1,16 @@
+version: '2'
+
+services:
+  app:
+    image: golang:1.16.4
+    volumes:
+      - .:/work
+    working_dir: /work
+
+  licensing:
+    build:
+      context: ./docker
+      dockerfile: Dockerfile.licensed
+    volumes:
+      - .:/work
+    working_dir: /work

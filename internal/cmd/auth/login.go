@@ -2,7 +2,6 @@ package auth
 
 import (
 	"context"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"runtime"
@@ -48,15 +47,15 @@ func LoginCmd(ch *cmdutil.Helper) *cobra.Command {
 			openCmd := cmdutil.OpenBrowser(runtime.GOOS, deviceVerification.VerificationCompleteURL)
 			err = openCmd.Run()
 			if err != nil {
-				return errors.Wrap(err, "error opening browser")
+				ch.Printer.Printf("Failed to open a browser: %s\n", printer.BoldRed(err.Error()))
 			}
 
 			bold := color.New(color.Bold)
-			bold.Printf("Confirmation Code: ")
+			bold.Printf("\nConfirmation Code: ")
 			boldGreen := bold.Add(color.FgGreen)
-			boldGreen.Println(deviceVerification.UserCode)
+			boldGreen.Fprintln(color.Output, deviceVerification.UserCode)
 
-			fmt.Printf("\nIf something goes wrong, copy and paste this URL into your browser: %s\n\n", printer.Bold(deviceVerification.VerificationCompleteURL))
+			ch.Printer.Printf("\nIf something goes wrong, copy and paste this URL into your browser: %s\n\n", printer.Bold(deviceVerification.VerificationCompleteURL))
 
 			end := ch.Printer.PrintProgress("Waiting for confirmation...")
 			defer end()

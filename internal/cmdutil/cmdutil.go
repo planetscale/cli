@@ -4,14 +4,19 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/planetscale/cli/internal/config"
 	"github.com/planetscale/cli/internal/printer"
+
 	ps "github.com/planetscale/planetscale-go/planetscale"
+
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	exec "golang.org/x/sys/execabs"
 )
 
 // Helper is passed to every single command and is used by individual
@@ -90,4 +95,59 @@ func NewZapLogger(debug bool) *zap.Logger {
 	logger := zap.New(zapcore.NewCore(zapcore.NewConsoleEncoder(encoderCfg), os.Stdout, level))
 
 	return logger
+}
+
+// IsUnderHomebrew checks whether the given binary is under the homebrew path.
+// copied from: https://github.com/cli/cli/blob/trunk/cmd/gh/main.go#L298
+func IsUnderHomebrew(binpath string) bool {
+	if binpath == "" {
+		return false
+	}
+
+	brewExe, err := exec.LookPath("brew")
+	if err != nil {
+		return false
+	}
+
+	brewPrefixBytes, err := exec.Command(brewExe, "--prefix").Output()
+	if err != nil {
+		return false
+	}
+
+	brewBinPrefix := filepath.Join(strings.TrimSpace(string(brewPrefixBytes)), "bin") + string(filepath.Separator)
+	return strings.HasPrefix(binpath, brewBinPrefix)
+}
+
+// HasHomebrew check whether the user has installed brew
+func HasHomebrew() bool {
+	_, err := exec.LookPath("brew")
+	return err == nil
+}
+
+// MySQLClientPath checks whether the 'mysql' client exists and returns the
+// path to the binary. The returned error contains instructions to install the
+// client.
+func MySQLClientPath() (string, error) {
+	path, err := exec.LookPath("mysql")
+	if err == nil {
+		return path, nil
+	}
+
+	msg := "couldn't find the 'mysql' client required to run this command."
+	installURL := "https://dev.mysql.com/doc/mysql-shell/8.0/en/mysql-shell-install.html"
+
+	switch runtime.GOOS {
+	case "darwin":
+		if HasHomebrew() {
+			return "", fmt.Errorf("%s\nTo install, run: brew install mysql-client", msg)
+		}
+
+		installURL = "https://dev.mysql.com/doc/mysql-shell/8.0/en/mysql-shell-install-macos-quick.html"
+	case "linux":
+		installURL = "https://dev.mysql.com/doc/mysql-shell/8.0/en/mysql-shell-install-linux-quick.html"
+	case "windows":
+		installURL = "https://dev.mysql.com/doc/mysql-shell/8.0/en/mysql-shell-install-windows-quick.html"
+	}
+
+	return "", fmt.Errorf("%s\nTo install, follow the instructions: %s", msg, installURL)
 }

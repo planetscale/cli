@@ -1,12 +1,11 @@
 module github.com/planetscale/cli
 
-go 1.15
+go 1.16
 
 require (
 	github.com/AlecAivazis/survey/v2 v2.2.12
 	github.com/benbjohnson/clock v1.1.0
 	github.com/briandowns/spinner v1.12.0
-	github.com/cli/safeexec v1.0.0
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/fatih/color v1.10.0
 	github.com/frankban/quicktest v1.13.0
@@ -16,20 +15,18 @@ require (
 	github.com/kataras/tablewriter v0.0.0-20180708051242-e063d29b7c23 // indirect
 	github.com/lensesio/tableprinter v0.0.0-20201125135848-89e81fc956e7
 	github.com/mattn/go-runewidth v0.0.9 // indirect
+	github.com/mattn/go-shellwords v1.0.11
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/pkg/browser v0.0.0-20201112035734-206646e67786
 	github.com/pkg/errors v0.9.1
-	github.com/planetscale/planetscale-go v0.25.0
-	github.com/planetscale/sql-proxy v0.3.2
-	github.com/shopspring/decimal v1.2.0 // indirect
+	github.com/planetscale/planetscale-go v0.26.0
+	github.com/planetscale/sql-proxy v0.4.0
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.7.0
-	github.com/xelabs/go-mysqlstack v0.0.0-20210217114447-6f59da6c3358
+	github.com/xelabs/go-mysqlstack v1.0.0
 	go.uber.org/zap v1.16.0
+	golang.org/x/sys v0.0.0-20210511113859-b0526f3d8744
 	gopkg.in/yaml.v2 v2.4.0
 )
-
-// git sha points to https://github.com/fatih/go-mysqlstack/tree/fatih/fix-windows
-replace github.com/xelabs/go-mysqlstack => github.com/fatih/go-mysqlstack v0.0.0-20210504182522-ef614032cad1
