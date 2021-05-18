@@ -1,4 +1,4 @@
-# PlanetScale CLI
+# PlanetScale CLI [![Build status](https://badge.buildkite.com/2307000d934b6a245eb9b84bcac9c1eea1a7c13f010b20c8ba.svg?branch=main)](https://buildkite.com/planetscale/cli)
 
 PlanetScale is more than a database and our CLI is more than a jumble of commands. The `pscale` command line tool brings branches, deploy requests, and other PlanetScale concepts to your finger tips.
 
