@@ -1,7 +1,5 @@
-FROM ruby:2.7-slim-buster
-
-WORKDIR /work
+FROM golang:1.16-buster
 
 RUN apt-get update && apt-get upgrade -y
-RUN apt-get install -y cmake pkg-config git-core libgit2-dev
+RUN apt-get install -y ruby-dev rubygems ruby cmake pkg-config git-core libgit2-dev
 RUN gem install licensed
