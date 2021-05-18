@@ -1,7 +1,0 @@
-#!/bin/sh
-# script/test: Runs the test suite. Optionally allows flags for filtering tests.
-
-set -e
-
-golangci-lint run
-go test -v ./... "$@"
