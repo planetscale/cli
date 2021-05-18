@@ -8,3 +8,8 @@ test:
 build:
 	go build ./...
 
+
+.PHONY: licensed
+licensed:
+	licensed cache
+	licensed status
