@@ -1,6 +1,7 @@
-all: build test
+.PHONY: all
+all: build test lint
 
-.PHONY: build test
+.PHONY: test
 test:
 	go test ./...
 
@@ -8,3 +9,7 @@ test:
 build:
 	go build ./...
 
+
+.PHONY: lint
+lint: 
+	@script/lint
