@@ -20,7 +20,6 @@ import (
 	"io/fs"
 	"log"
 	"os"
-	"runtime"
 	"strings"
 
 	"github.com/planetscale/cli/internal/cmd/auth"
@@ -41,7 +40,6 @@ import (
 
 	ps "github.com/planetscale/planetscale-go/planetscale"
 
-	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -205,12 +203,6 @@ func initConfig() {
 		viper.AddConfigPath(rootDir)
 		viper.SetConfigName(config.ProjectConfigFile())
 		viper.MergeInConfig() // nolint:errcheck
-	}
-
-	switch runtime.GOOS {
-	case "windows":
-		// TODO(fatih): make sure fatih/color supports Windows
-		color.NoColor = true
 	}
 
 	postInitCommands(rootCmd.Commands())
