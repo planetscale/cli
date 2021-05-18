@@ -47,9 +47,6 @@ func LoginCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
-			ch.Printer.Println("Press Enter to authenticate via your browser...")
-
-			_ = waitForEnter(cmd.InOrStdin())
 			openCmd := cmdutil.OpenBrowser(runtime.GOOS, deviceVerification.VerificationCompleteURL)
 			err = openCmd.Run()
 			if err != nil {
