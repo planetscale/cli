@@ -133,7 +133,7 @@ func MySQLClientPath() (string, error) {
 		return path, nil
 	}
 
-	msg := "couldn't find the 'msyql' client required to run this command."
+	msg := "couldn't find the 'mysql' client required to run this command."
 	installURL := "https://dev.mysql.com/doc/mysql-shell/8.0/en/mysql-shell-install.html"
 
 	switch runtime.GOOS {
