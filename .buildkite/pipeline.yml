@@ -1,5 +1,5 @@
 steps:
-- name: "Docker Test %n"
+- name: "Go build and test %n"
   command: make
   plugins:
     - docker-compose#v3.7.0:

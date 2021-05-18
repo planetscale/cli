@@ -121,10 +121,7 @@ func IsUnderHomebrew(binpath string) bool {
 // HasHomebrew check whether the user has installed brew
 func HasHomebrew() bool {
 	_, err := exec.LookPath("brew")
-	if err == nil {
-		return true
-	}
-	return false
+	return err == nil
 }
 
 // MySQLClientPath checks whether the 'mysql' client exists and returns the
