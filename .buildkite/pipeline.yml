@@ -4,3 +4,9 @@ steps:
   plugins:
     - docker-compose#v3.7.0:
         run: app
+
+- name: "Check licenses %n"
+  command: make licensed
+  plugins:
+    - docker-compose#3.7.0:
+        run: licensing
