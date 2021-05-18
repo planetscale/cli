@@ -3,7 +3,6 @@ package auth
 import (
 	"bufio"
 	"context"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -47,21 +46,21 @@ func LoginCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
-			ch.Printer.Println("Press Enter to authenticate via your browser...")
+			ch.Printer.Print("Press Enter to authenticate via your browser...")
 
 			_ = waitForEnter(cmd.InOrStdin())
 			openCmd := cmdutil.OpenBrowser(runtime.GOOS, deviceVerification.VerificationCompleteURL)
 			err = openCmd.Run()
 			if err != nil {
-				return errors.Wrap(err, "error opening browser")
+				ch.Printer.Printf("Failed to open a browser: %s\n", printer.BoldRed(err.Error()))
 			}
 
 			bold := color.New(color.Bold)
-			bold.Printf("Confirmation Code: ")
+			bold.Printf("\nConfirmation Code: ")
 			boldGreen := bold.Add(color.FgGreen)
 			boldGreen.Fprintln(color.Output, deviceVerification.UserCode)
 
-			fmt.Printf("\nIf something goes wrong, copy and paste this URL into your browser: %s\n\n", printer.Bold(deviceVerification.VerificationCompleteURL))
+			ch.Printer.Printf("\nIf something goes wrong, copy and paste this URL into your browser: %s\n\n", printer.Bold(deviceVerification.VerificationCompleteURL))
 
 			end := ch.Printer.PrintProgress("Waiting for confirmation...")
 			defer end()
