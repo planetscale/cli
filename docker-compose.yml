@@ -11,7 +11,6 @@ services:
     build:
       context: ./docker
       dockerfile: Dockerfile.licensed
-
     volumes:
       - .:/work
     working_dir: /work
