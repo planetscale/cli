@@ -63,7 +63,7 @@ func CheckVersion(buildVersion string) error {
 		return fmt.Errorf("skipping update, reason: %s", updateInfo.Reason)
 	}
 
-	fmt.Fprintf(os.Stderr, "\n%s %s → %s\n",
+	fmt.Fprintf(color.Error, "\n%s %s → %s\n",
 		color.BlueString("A new release of pscale is available:"),
 		color.CyanString(buildVersion),
 		color.CyanString(updateInfo.ReleaseInfo.Version))
@@ -78,7 +78,7 @@ func CheckVersion(buildVersion string) error {
 	if cmdutil.IsUnderHomebrew(binpath) {
 		fmt.Fprintf(os.Stderr, "To upgrade, run: %s\n", "brew update && brew upgrade pscale")
 	}
-	fmt.Fprintf(os.Stderr, "%s\n", color.YellowString(updateInfo.ReleaseInfo.URL))
+	fmt.Fprintf(color.Error, "%s\n", color.YellowString(updateInfo.ReleaseInfo.URL))
 	return nil
 }
 
