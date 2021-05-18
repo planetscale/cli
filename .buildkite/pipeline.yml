@@ -3,4 +3,4 @@ steps:
   command: make
   plugins:
     - docker-compose#v3.0.3:
-        run: test
+        run: app
