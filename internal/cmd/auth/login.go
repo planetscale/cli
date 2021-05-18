@@ -59,7 +59,7 @@ func LoginCmd(ch *cmdutil.Helper) *cobra.Command {
 			bold := color.New(color.Bold)
 			bold.Printf("Confirmation Code: ")
 			boldGreen := bold.Add(color.FgGreen)
-			boldGreen.Println(deviceVerification.UserCode)
+			boldGreen.Fprintln(color.Output, deviceVerification.UserCode)
 
 			fmt.Printf("\nIf something goes wrong, copy and paste this URL into your browser: %s\n\n", printer.Bold(deviceVerification.VerificationCompleteURL))
 

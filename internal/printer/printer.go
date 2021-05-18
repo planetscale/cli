@@ -110,7 +110,7 @@ func (p *Printer) out() io.Writer {
 	}
 
 	if *p.format == Human {
-		return os.Stdout
+		return color.Output
 	}
 
 	return ioutil.Discard // /dev/nullj
@@ -125,7 +125,6 @@ func (p *Printer) PrintProgress(message string) func() {
 		return func() {}
 	}
 
-	// Output to STDERR so we don't polluate STDOUT.
 	s := spinner.New(spinner.CharSets[14], 100*time.Millisecond, spinner.WithWriter(p.out()))
 	s.Suffix = fmt.Sprintf(" %s", message)
 
