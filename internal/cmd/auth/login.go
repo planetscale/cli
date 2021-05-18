@@ -1,10 +1,8 @@
 package auth
 
 import (
-	"bufio"
 	"context"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 	"runtime"
@@ -151,10 +149,4 @@ func writeAccessToken(ctx context.Context, accessToken string) error {
 	}
 
 	return nil
-}
-
-func waitForEnter(r io.Reader) error {
-	scanner := bufio.NewScanner(r)
-	scanner.Scan()
-	return scanner.Err()
 }

@@ -1,7 +1,9 @@
 package auth
 
 import (
+	"bufio"
 	"context"
+	"io"
 	"os"
 
 	"github.com/planetscale/cli/internal/auth"
@@ -89,4 +91,10 @@ func deleteAccessToken() error {
 	}
 
 	return nil
+}
+
+func waitForEnter(r io.Reader) error {
+	scanner := bufio.NewScanner(r)
+	scanner.Scan()
+	return scanner.Err()
 }
