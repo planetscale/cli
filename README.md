@@ -14,7 +14,7 @@ PlanetScale is more than a database and our CLI is more than a jumble of command
 ```
 brew install planetscale/tap/pscale
 ```
-!! Note of importance: `pscale` requires the MySQL Client. You can install it by running:
+Optional: `pscale` requires the MySQL Client for certain commands. You can install it by running:
 
 ```
 brew install mysql-client
@@ -37,4 +37,3 @@ brew upgrade pscale
 ### Manually
 
 Download the pre-compiled binaries from the [releases](https://github.com/planetscale/cli/releases/latest) page and copy to the desired location.
-
