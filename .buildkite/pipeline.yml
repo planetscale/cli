@@ -2,5 +2,5 @@ steps:
 - name: "Docker Test %n"
   command: make
   plugins:
-    - docker-compose#v3.0.3:
+    - docker-compose#v3.7.0:
         run: app
