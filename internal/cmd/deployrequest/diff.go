@@ -43,7 +43,7 @@ func DiffCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			n, err := strconv.ParseUint(number, 10, 64)
 			if err != nil {
-				return fmt.Errorf("The argument <number> is invalid: %s", err)
+				return fmt.Errorf("the argument <number> is invalid: %s", err)
 			}
 
 			diffs, err := client.DeployRequests.Diff(ctx, &planetscale.DiffRequest{
@@ -54,7 +54,7 @@ func DiffCmd(ch *cmdutil.Helper) *cobra.Command {
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
-					return fmt.Errorf("deploy rquest '%s/%s' does not exist in organization %s\n",
+					return fmt.Errorf("deploy rquest '%s/%s' does not exist in organization %s",
 						printer.BoldBlue(database), printer.BoldBlue(number), printer.BoldBlue(ch.Config.Organization))
 				default:
 					return cmdutil.HandleError(err)

@@ -32,7 +32,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
-					return fmt.Errorf("organization %s does not exist\n", printer.BoldBlue(ch.Config.Organization))
+					return fmt.Errorf("organization %s does not exist", printer.BoldBlue(ch.Config.Organization))
 				default:
 					return cmdutil.HandleError(err)
 				}

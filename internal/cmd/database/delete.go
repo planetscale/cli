@@ -37,7 +37,7 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			if !force {
 				if !printer.IsTTY {
-					return fmt.Errorf("Cannot confirm deletion of database %q (run with -force to override)", name)
+					return fmt.Errorf("cannot confirm deletion of database %q (run with -force to override)", name)
 				}
 				confirmationMessage := fmt.Sprintf("%s %s %s", printer.Bold("Please type"), printer.BoldBlue(name), printer.Bold("to confirm:"))
 
@@ -56,7 +56,7 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 				}
 
 				if userInput != name {
-					return errors.New("Incorrect database name entered, skipping database deletion...")
+					return errors.New("incorrect database name entered, skipping database deletion")
 				}
 			}
 
@@ -70,7 +70,7 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
-					return fmt.Errorf("database %s does not exist in organization %s\n",
+					return fmt.Errorf("database %s does not exist in organization %s",
 						printer.BoldBlue(name), printer.BoldBlue(ch.Config.Organization))
 				default:
 					return cmdutil.HandleError(err)

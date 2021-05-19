@@ -43,7 +43,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
-					return fmt.Errorf("database %s does not exist in %s\n",
+					return fmt.Errorf("database %s does not exist in %s",
 						printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
 				default:
 					return cmdutil.HandleError(err)

@@ -150,6 +150,7 @@ func Execute(ver, commit, buildDate string) error {
 		case printer.JSON:
 			return fmt.Errorf(`{"error": "%s"}`, err)
 		default:
+			//lint:ignore ST1005 This is shown to the user
 			return fmt.Errorf("Error: %s", err)
 		}
 	}

@@ -8,7 +8,6 @@ import (
 	"github.com/pkg/browser"
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
-	"github.com/planetscale/planetscale-go/planetscale"
 	ps "github.com/planetscale/planetscale-go/planetscale"
 	"github.com/spf13/cobra"
 )
@@ -30,7 +29,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			// Simplest case, the names are equivalent
 			if source == branch {
-				return fmt.Errorf("A branch named '%s' already exists", branch)
+				return fmt.Errorf("a branch named '%s' already exists", branch)
 			}
 
 			createReq.Database = source
@@ -64,8 +63,8 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			dbBranch, err := client.DatabaseBranches.Create(ctx, createReq)
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
-				case planetscale.ErrNotFound:
-					return fmt.Errorf("source database %s does not exist in organization %s\n",
+				case ps.ErrNotFound:
+					return fmt.Errorf("source database %s does not exist in organization %s",
 						printer.BoldBlue(source), printer.BoldBlue(ch.Config.Organization))
 				default:
 					return cmdutil.HandleError(err)

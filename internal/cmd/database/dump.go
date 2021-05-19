@@ -101,7 +101,7 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 	}
 
 	if status.Credentials.User == "" {
-		return errors.New("database branch is not ready yet, please try again in a few minutes.")
+		return errors.New("database branch is not ready yet, please try again in a few minutes")
 	}
 
 	addr, err := p.LocalAddr()

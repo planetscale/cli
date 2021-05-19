@@ -78,7 +78,7 @@ argument:
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
-					return fmt.Errorf("database %s and branch %s does not exist in organization %s\n",
+					return fmt.Errorf("database %s and branch %s does not exist in organization %s",
 						printer.BoldBlue(database), printer.BoldBlue(branch), printer.BoldBlue(ch.Config.Organization))
 				default:
 					return cmdutil.HandleError(err)

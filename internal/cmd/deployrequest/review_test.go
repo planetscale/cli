@@ -12,7 +12,6 @@ import (
 	"github.com/planetscale/cli/internal/printer"
 
 	qt "github.com/frankban/quicktest"
-	"github.com/planetscale/planetscale-go/planetscale"
 	ps "github.com/planetscale/planetscale-go/planetscale"
 )
 
@@ -27,7 +26,7 @@ func TestDeployRequest_ReviewCmd(t *testing.T) {
 	org := "planetscale"
 	db := "planetscale"
 	var number uint64 = 10
-	action := planetscale.ReviewComment
+	action := ps.ReviewComment
 	comment := "this is a comment"
 
 	res := &ps.DeployRequestReview{

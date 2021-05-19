@@ -8,7 +8,6 @@ import (
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
 
-	"github.com/planetscale/planetscale-go/planetscale"
 	ps "github.com/planetscale/planetscale-go/planetscale"
 
 	"github.com/pkg/browser"
@@ -52,8 +51,8 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			database, err := client.Databases.Create(ctx, createReq)
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
-				case planetscale.ErrNotFound:
-					return fmt.Errorf("organization %s does not exist\n", printer.BoldBlue(ch.Config.Organization))
+				case ps.ErrNotFound:
+					return fmt.Errorf("organization %s does not exist", printer.BoldBlue(ch.Config.Organization))
 				default:
 					return cmdutil.HandleError(err)
 				}

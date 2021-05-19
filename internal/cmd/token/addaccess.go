@@ -8,6 +8,7 @@ import (
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
 	"github.com/planetscale/planetscale-go/planetscale"
+
 	"github.com/spf13/cobra"
 )
 
@@ -49,7 +50,7 @@ For a complete list of the access permissions that can be granted to a token, se
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
-					return fmt.Errorf("database %s does not exist in organization %s\n",
+					return fmt.Errorf("database %s does not exist in organization %s",
 						printer.BoldBlue(ch.Config.Database), printer.BoldBlue(ch.Config.Organization))
 				default:
 					return cmdutil.HandleError(err)
