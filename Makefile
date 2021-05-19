@@ -9,11 +9,13 @@ test:
 build:
 	go build ./...
 
+.PHONY: lint
+lint: 
+	@go install honnef.co/go/tools/cmd/staticcheck@latest
+	@staticcheck ./...
+
 .PHONY: licensed
 licensed:
 	licensed cache
 	licensed status
 
-.PHONY: lint
-lint: 
-	@script/lint

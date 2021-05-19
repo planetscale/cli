@@ -38,7 +38,7 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 			if err := client.ServiceTokens.Delete(ctx, req); err != nil {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
-					return fmt.Errorf("token does not exist in organization %s\n",
+					return fmt.Errorf("token does not exist in organization %s",
 						printer.BoldBlue(ch.Config.Organization))
 				default:
 					return cmdutil.HandleError(err)

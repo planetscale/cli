@@ -6,7 +6,6 @@ import (
 
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
-	"github.com/planetscale/planetscale-go/planetscale"
 	ps "github.com/planetscale/planetscale-go/planetscale"
 
 	"github.com/spf13/cobra"
@@ -39,7 +38,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			bkp, err := client.Backups.Create(ctx, createReq)
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
-				case planetscale.ErrNotFound:
+				case ps.ErrNotFound:
 					return fmt.Errorf("branch %s does not exist in database %s (organization: %s)",
 						printer.BoldBlue(branch), printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
 				default:

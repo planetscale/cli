@@ -9,8 +9,8 @@ import (
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/config"
 	"github.com/planetscale/cli/internal/printer"
-	"github.com/planetscale/planetscale-go/planetscale"
 	ps "github.com/planetscale/planetscale-go/planetscale"
+
 	"github.com/spf13/cobra"
 )
 
@@ -34,7 +34,7 @@ func SwitchCmd(ch *cmdutil.Helper) *cobra.Command {
 			ch.Printer.Printf("Finding branch %s on database %s\n",
 				printer.BoldBlue(branch), printer.BoldBlue(ch.Config.Database))
 
-			_, err = client.DatabaseBranches.Get(ctx, &planetscale.GetDatabaseBranchRequest{
+			_, err = client.DatabaseBranches.Get(ctx, &ps.GetDatabaseBranchRequest{
 				Organization: ch.Config.Organization,
 				Database:     ch.Config.Database,
 				Branch:       branch,

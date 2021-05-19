@@ -8,7 +8,6 @@ import (
 
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
-
 	"github.com/planetscale/planetscale-go/planetscale"
 
 	"github.com/AlecAivazis/survey/v2"
@@ -36,12 +35,12 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			if !force {
 				if ch.Printer.Format() != printer.Human {
-					return fmt.Errorf("Cannot delete branch with the output format %q (run with -force to override)", ch.Printer.Format())
+					return fmt.Errorf("cannot delete branch with the output format %q (run with -force to override)", ch.Printer.Format())
 				}
 
 				confirmationName := fmt.Sprintf("%s/%s", source, branch)
 				if !printer.IsTTY {
-					return fmt.Errorf("Cannot confirm deletion of branch %q (run with -force to override)", confirmationName)
+					return fmt.Errorf("cannot confirm deletion of branch %q (run with -force to override)", confirmationName)
 				}
 
 				confirmationMessage := fmt.Sprintf("%s %s %s", printer.Bold("Please type"),
@@ -63,7 +62,7 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 
 				// If the confirmations don't match up, let's return an error.
 				if userInput != confirmationName {
-					return errors.New("Incorrect database and branch name entered, skipping branch deletion...")
+					return errors.New("incorrect database and branch name entered, skipping branch deletion")
 				}
 			}
 
@@ -77,7 +76,7 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
-					return fmt.Errorf("source database %s does not exist in organization %s\n",
+					return fmt.Errorf("source database %s does not exist in organization %s",
 						printer.BoldBlue(source), printer.BoldBlue(ch.Config.Organization))
 				default:
 					return cmdutil.HandleError(err)
