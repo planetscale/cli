@@ -130,8 +130,12 @@ func HasHomebrew() bool {
 func MySQLClientPath() (string, error) {
 	// brew install mysql-client installs the client into an unusual path
 	if runtime.GOOS == "darwin" {
+		homebrewPrefix := "/usr/local"
+		if runtime.GOARCH == "arm64" {
+			homebrewPrefix = "/opt/homebrew"
+		}
 		oldpath := os.Getenv("PATH")
-		newpath := "/usr/local/opt/mysql-client/bin/" + string(os.PathListSeparator) + oldpath
+		newpath := homebrewPrefix + "/opt/mysql-client/bin/" + string(os.PathListSeparator) + oldpath
 
 		defer func() {
 			if err := os.Setenv("PATH", oldpath); err != nil {
