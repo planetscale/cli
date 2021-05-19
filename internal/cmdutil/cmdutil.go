@@ -128,6 +128,22 @@ func HasHomebrew() bool {
 // path to the binary. The returned error contains instructions to install the
 // client.
 func MySQLClientPath() (string, error) {
+	// brew install mysql-client installs the client into an unusual path
+	if runtime.GOOS == "darwin" {
+		oldpath := os.Getenv("PATH")
+		newpath := "/usr/local/opt/mysql-client/bin/" + string(os.PathListSeparator) + oldpath
+
+		defer func() {
+			if err := os.Setenv("PATH", oldpath); err != nil {
+				fmt.Println("failed to restore PATH", err)
+			}
+		}()
+
+		if err := os.Setenv("PATH", newpath); err != nil {
+			return "", err
+		}
+	}
+
 	path, err := exec.LookPath("mysql")
 	if err == nil {
 		return path, nil
