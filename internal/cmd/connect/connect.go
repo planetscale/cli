@@ -142,7 +142,7 @@ func runProxy(proxyOpts proxy.Options, database, branch string, ready chan strin
 			return
 		}
 
-		fmt.Printf("Secure connection to databases %s and branch %s is established!.\n\nLocal address to connect your application: %s (press ctrl-c to quit)",
+		fmt.Printf("Secure connection to database %s and branch %s is established!.\n\nLocal address to connect your application: %s (press ctrl-c to quit)",
 			printer.BoldBlue(database),
 			printer.BoldBlue(branch),
 			printer.BoldBlue(addr.String()),
