@@ -1,9 +1,7 @@
 package auth
 
 import (
-	"bufio"
 	"context"
-	"io"
 	"io/ioutil"
 	"os"
 	"runtime"
@@ -46,9 +44,6 @@ func LoginCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
-			ch.Printer.Print("Press Enter to authenticate via your browser...")
-
-			_ = waitForEnter(cmd.InOrStdin())
 			openCmd := cmdutil.OpenBrowser(runtime.GOOS, deviceVerification.VerificationCompleteURL)
 			err = openCmd.Run()
 			if err != nil {
@@ -153,10 +148,4 @@ func writeAccessToken(ctx context.Context, accessToken string) error {
 	}
 
 	return nil
-}
-
-func waitForEnter(r io.Reader) error {
-	scanner := bufio.NewScanner(r)
-	scanner.Scan()
-	return scanner.Err()
 }
