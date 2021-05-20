@@ -123,7 +123,7 @@ argument:
 		"PlanetScale Database remote network address. By default the remote address is populated automatically from the PlanetScale API.")
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
 	cmd.PersistentFlags().StringVar(&flags.execCommand, "execute", "", "Run this command after successfully connecting to the database.")
-	cmd.PersistentFlags().StringVar(&flags.execCommandProtocol, "execute.protocol", "mysql2", "Protocol for the DATABASE_URL value in execute")
+	cmd.PersistentFlags().StringVar(&flags.execCommandProtocol, "execute-protocol", "mysql2", "Protocol for the DATABASE_URL value in execute")
 
 	return cmd
 }
