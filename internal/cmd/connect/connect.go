@@ -24,10 +24,11 @@ import (
 
 func ConnectCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
-		port        string
-		host        string
-		remoteAddr  string
-		execCommand string
+		port                string
+		host                string
+		remoteAddr          string
+		execCommand         string
+		execCommandProtocol string
 	}
 
 	cmd := &cobra.Command{
@@ -98,7 +99,7 @@ argument:
 			proxyReady := make(chan string, 1)
 
 			if flags.execCommand != "" {
-				go runCommand(ctx, flags.execCommand, database, branch, proxyReady)
+				go runCommand(ctx, flags.execCommand, flags.execCommandProtocol, database, branch, proxyReady)
 			}
 
 			err = runProxy(proxyOpts, database, branch, proxyReady)
@@ -122,6 +123,7 @@ argument:
 		"PlanetScale Database remote network address. By default the remote address is populated automatically from the PlanetScale API.")
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
 	cmd.PersistentFlags().StringVar(&flags.execCommand, "execute", "", "Run this command after successfully connecting to the database.")
+	cmd.PersistentFlags().StringVar(&flags.execCommandProtocol, "execute-protocol", "mysql2", "Protocol for the DATABASE_URL value in execute")
 
 	return cmd
 }
@@ -156,7 +158,7 @@ func runProxy(proxyOpts proxy.Options, database, branch string, ready chan strin
 	return p.Run(ctx)
 }
 
-func runCommand(ctx context.Context, command, database, branch string, ready chan string) {
+func runCommand(ctx context.Context, command, protocol, database, branch string, ready chan string) {
 	args, err := shellwords.Parse(command)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "\nfailed to parse command, not running: %s", err)
@@ -170,7 +172,7 @@ func runCommand(ctx context.Context, command, database, branch string, ready cha
 	child.Stdout = os.Stdout
 	child.Stderr = os.Stderr
 
-	connStr := fmt.Sprintf("DATABASE_URL=mysql2://root@%s/%s", addr, database)
+	connStr := fmt.Sprintf("DATABASE_URL=%s://root@%s/%s", protocol, addr, database)
 	child.Env = append(child.Env, connStr)
 
 	hostEnv := fmt.Sprintf("PLANETSCALE_DATABASE_HOST=%s", addr)
