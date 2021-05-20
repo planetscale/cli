@@ -194,6 +194,8 @@ func getDatabaseName(name, addr string, credentials ps.DatabaseBranchCredentials
 		return "", err
 	}
 
+	defer results.Close()
+
 	var dbs []string
 
 	for results.Next() {
