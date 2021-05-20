@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"os"
@@ -17,8 +18,12 @@ import (
 	"github.com/planetscale/sql-proxy/proxy"
 	"github.com/planetscale/sql-proxy/sigutil"
 
+	_ "github.com/go-sql-driver/mysql"
+
 	"github.com/spf13/cobra"
 )
+
+var demoDatabaseNames = map[string]struct{}{"onboarding-demo": struct{}{}}
 
 type dumpFlags struct {
 	localAddr string
@@ -109,6 +114,11 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 		return err
 	}
 
+	dbName, err := getDatabaseName(database, addr.String(), status.Credentials)
+	if err != nil {
+		return err
+	}
+
 	dir, err := os.Getwd()
 	if err != nil {
 		return err
@@ -132,7 +142,7 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 	cfg.User = status.Credentials.User
 	cfg.Password = status.Credentials.Password
 	cfg.Address = addr.String()
-	cfg.Database = database
+	cfg.Database = dbName
 	cfg.Debug = ch.Debug()
 	cfg.StmtSize = 1000000
 	cfg.IntervalMs = 10 * 1000
@@ -169,4 +179,44 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 	end()
 	ch.Printer.Printf("Dumping is finished! (elapsed time: %s)\n", time.Since(start))
 	return nil
+}
+
+func getDatabaseName(name, addr string, credentials ps.DatabaseBranchCredentials) (string, error) {
+	dsn := fmt.Sprintf("%s:%s@tcp(%s)/", credentials.User, credentials.Password, addr)
+	db, err := sql.Open("mysql", dsn)
+	if err != nil {
+		return "", err
+	}
+	defer db.Close()
+
+	results, err := db.Query("SHOW DATABASES")
+	if err != nil {
+		return "", err
+	}
+
+	defer results.Close()
+
+	var dbs []string
+
+	for results.Next() {
+		var db string
+		if err := results.Scan(&db); err != nil {
+			return "", err
+		}
+
+		if name == db {
+			return db, nil
+		}
+
+		dbs = append(dbs, db)
+	}
+
+	// this means we didn't find a match.
+	for _, v := range dbs {
+		if _, ok := demoDatabaseNames[v]; ok {
+			return v, nil
+		}
+	}
+
+	return "", errors.New("could not find a valid database name for this database")
 }
