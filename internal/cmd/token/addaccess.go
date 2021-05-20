@@ -43,15 +43,16 @@ For a complete list of the access permissions that can be granted to a token, se
 				Accesses:     perms,
 			}
 
-			end := ch.Printer.PrintProgress(fmt.Sprintf("Adding access %s to database %s", printer.BoldBlue(strings.Join(perms, ", ")), printer.BoldBlue(ch.Config.Database)))
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Adding access %s to database %s",
+				printer.BoldBlue(strings.Join(perms, ", ")), printer.BoldBlue(ch.Config.Database)))
 			defer end()
 
 			access, err := client.ServiceTokens.AddAccess(ctx, req)
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
-					return fmt.Errorf("database %s does not exist in organization %s",
-						printer.BoldBlue(ch.Config.Database), printer.BoldBlue(ch.Config.Organization))
+					return fmt.Errorf("token %s does not exist in database %s and organization %s.\nPlease run 'pscale service-token list' to see a list of tokens",
+						printer.BoldBlue(token), printer.BoldBlue(ch.Config.Database), printer.BoldBlue(ch.Config.Organization))
 				default:
 					return cmdutil.HandleError(err)
 				}
