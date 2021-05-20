@@ -23,8 +23,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var demoDatabaseNames = map[string]struct{}{"onboarding-demo": struct{}{}}
-
 type dumpFlags struct {
 	localAddr string
 	tables    string
@@ -189,18 +187,16 @@ func getDatabaseName(name, addr string, credentials ps.DatabaseBranchCredentials
 	}
 	defer db.Close()
 
-	results, err := db.Query("SHOW DATABASES")
+	rows, err := db.Query("SHOW DATABASES")
 	if err != nil {
 		return "", err
 	}
-
-	defer results.Close()
+	defer rows.Close()
 
 	var dbs []string
-
-	for results.Next() {
+	for rows.Next() {
 		var db string
-		if err := results.Scan(&db); err != nil {
+		if err := rows.Scan(&db); err != nil {
 			return "", err
 		}
 
@@ -211,12 +207,20 @@ func getDatabaseName(name, addr string, credentials ps.DatabaseBranchCredentials
 		dbs = append(dbs, db)
 	}
 
-	// this means we didn't find a match.
+	if err := rows.Err(); err != nil {
+		return "", fmt.Errorf("failed getting database names: %s", err)
+	}
+
+	var hasDatabaseName = map[string]bool{
+		"onboarding-demo": true,
+	}
+
 	for _, v := range dbs {
-		if _, ok := demoDatabaseNames[v]; ok {
+		if hasDatabaseName[v] {
 			return v, nil
 		}
 	}
 
+	// this means we didn't find a match.
 	return "", errors.New("could not find a valid database name for this database")
 }
