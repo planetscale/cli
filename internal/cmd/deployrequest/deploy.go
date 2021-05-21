@@ -16,7 +16,7 @@ import (
 func DeployCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "deploy <database> <number>",
-		Short: "Deploy a specific deploy request by its number",
+		Short: "Deploy a specific deploy request",
 		Args:  cmdutil.RequiredArgs("database", "number"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()

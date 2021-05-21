@@ -12,7 +12,7 @@ import (
 func TokenCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "service-token <action>",
-		Short:             "Create, get, and list service tokens",
+		Short:             "Create, list, and manage access for service tokens",
 		PersistentPreRunE: cmdutil.CheckAuthentication(ch.Config),
 	}
 
