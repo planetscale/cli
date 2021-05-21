@@ -16,7 +16,7 @@ import (
 func CloseCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "close <database> <number>",
-		Short: "Close deploy requests",
+		Short: "Close a deploy request",
 		Args:  cmdutil.RequiredArgs("database", "number"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()

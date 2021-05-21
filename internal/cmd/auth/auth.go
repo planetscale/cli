@@ -9,7 +9,7 @@ import (
 func AuthCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "auth <command>",
-		Short: "Login, logout, and refresh your authentication",
+		Short: "Login and logout via the PlanetScale API",
 		Long:  "Manage authentication",
 	}
 

@@ -38,7 +38,7 @@ func ShellCmd(ch *cmdutil.Helper) *cobra.Command {
 		Use: "shell [database] [branch]",
 		// we only require database, because we deduct branch automatically
 		Args:  cmdutil.RequiredArgs("database"),
-		Short: "Open a MySQL shell instance to the given database and branch",
+		Short: "Open a MySQL shell instance to a database and branch",
 		Example: `The shell subcommand opens a secure MySQL shell instance to your database.
 
 It uses the MySQL command-line client ("mysql"), which needs to be installed.

@@ -27,7 +27,7 @@ func LoginCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "login",
 		Args:  cobra.ExactArgs(0),
-		Short: "Authenticate with PlanetScale",
+		Short: "Authenticate with the PlanetScale API",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !printer.IsTTY {
 				return errors.New("The 'login' command requires an interactive shell")

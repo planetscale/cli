@@ -13,7 +13,7 @@ import (
 func BranchCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "branch <command>",
-		Short:             "Create, delete, and manage branches",
+		Short:             "Create, delete, diff, and manage branches",
 		PersistentPreRunE: cmdutil.CheckAuthentication(ch.Config),
 	}
 
