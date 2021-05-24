@@ -10,13 +10,13 @@ import (
 	"runtime"
 	"syscall"
 
-	"github.com/mattn/go-shellwords"
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
 	"github.com/planetscale/cli/internal/promptutil"
 	"github.com/planetscale/cli/internal/proxyutil"
 	"github.com/planetscale/planetscale-go/planetscale"
 
+	"github.com/mattn/go-shellwords"
 	"github.com/planetscale/sql-proxy/proxy"
 	"github.com/planetscale/sql-proxy/sigutil"
 	"github.com/spf13/cobra"
@@ -211,9 +211,22 @@ func isAddrInUse(err error) bool {
 		return true
 	}
 
-	const WSAEADDRINUSE = 10048
-	if runtime.GOOS == "windows" && errErrno == WSAEADDRINUSE {
-		return true
+	if runtime.GOOS == "windows" {
+		// Looks like on Windows we might see multiple different errors. Here
+		// are some information on how to track them down.
+		// There is a list of human readable Windows errors here:  https://github.com/benmoss/monitor/blob/8bcb512752ea0d322e0498309ab2cc1821090f01/errno/msg.go
+		// The errors constants map to the syscall codes defined in: https://pkg.go.dev/golang.org/x/sys/windows
+		// The official docs for some windows socket errors are here: // https://docs.microsoft.com/en-us/windows/win32/winsock/windows-sockets-error-codes-2
+		const (
+			WSAEACCES     = 10013
+			WSAEADDRINUSE = 10048
+		)
+
+		switch errErrno {
+		case WSAEACCES, WSAEADDRINUSE:
+			return true
+		}
 	}
+
 	return false
 }
