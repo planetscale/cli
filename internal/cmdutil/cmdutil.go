@@ -158,8 +158,8 @@ func MySQLClientPath() (string, error) {
 		return path, nil
 	}
 
-	msg := "couldn't find the 'mysql' client required to run this command."
-	installURL := "https://dev.mysql.com/doc/mysql-shell/8.0/en/mysql-shell-install.html"
+	msg := "couldn't find the 'mysql' command-line tool required to run this command."
+	installURL := "https://dev.mysql.com/doc/refman/8.0/en/installing.html"
 
 	switch runtime.GOOS {
 	case "darwin":
@@ -167,11 +167,11 @@ func MySQLClientPath() (string, error) {
 			return "", fmt.Errorf("%s\nTo install, run: brew install mysql-client", msg)
 		}
 
-		installURL = "https://dev.mysql.com/doc/mysql-shell/8.0/en/mysql-shell-install-macos-quick.html"
+		installURL = "https://dev.mysql.com/doc/refman/8.0/en/macos-installation.html"
 	case "linux":
-		installURL = "https://dev.mysql.com/doc/mysql-shell/8.0/en/mysql-shell-install-linux-quick.html"
+		installURL = "https://dev.mysql.com/doc/refman/8.0/en/linux-installation.html"
 	case "windows":
-		installURL = "https://dev.mysql.com/doc/mysql-shell/8.0/en/mysql-shell-install-windows-quick.html"
+		installURL = "https://dev.mysql.com/doc/refman/8.0/en/windows-installation.html"
 	}
 
 	return "", fmt.Errorf("%s\nTo install, follow the instructions: %s", msg, installURL)
