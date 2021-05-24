@@ -23,7 +23,6 @@ import (
 	"strings"
 
 	"github.com/planetscale/cli/internal/cmd/auth"
-	"github.com/planetscale/cli/internal/cmd/backup"
 	"github.com/planetscale/cli/internal/cmd/branch"
 	"github.com/planetscale/cli/internal/cmd/connect"
 	"github.com/planetscale/cli/internal/cmd/database"
@@ -133,7 +132,8 @@ func Execute(ver, commit, buildDate string) error {
 	rootCmd.AddCommand(loginCmd)
 	rootCmd.AddCommand(logoutCmd)
 	rootCmd.AddCommand(auth.AuthCmd(ch))
-	rootCmd.AddCommand(backup.BackupCmd(ch))
+	// Disable backup commands until it's fully implemented
+	// rootCmd.AddCommand(backup.BackupCmd(ch))
 	rootCmd.AddCommand(branch.BranchCmd(ch))
 	rootCmd.AddCommand(connect.ConnectCmd(ch))
 	rootCmd.AddCommand(database.DatabaseCmd(ch))
