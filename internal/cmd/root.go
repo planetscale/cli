@@ -22,6 +22,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/fatih/color"
 	"github.com/planetscale/cli/internal/cmd/auth"
 	"github.com/planetscale/cli/internal/cmd/backup"
 	"github.com/planetscale/cli/internal/cmd/branch"
@@ -45,8 +46,10 @@ import (
 	"github.com/spf13/viper"
 )
 
-var cfgFile string
-var replacer = strings.NewReplacer("-", "_", ".", "_")
+var (
+	cfgFile  string
+	replacer = strings.NewReplacer("-", "_", ".", "_")
+)
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -121,6 +124,11 @@ func Execute(ver, commit, buildDate string) error {
 		"service-token-name", "", "The Service Token name for authenticating.")
 	rootCmd.PersistentFlags().StringVar(&cfg.ServiceToken,
 		"service-token", "", "Service Token for authenticating.")
+
+	rootCmd.PersistentFlags().BoolVar(&color.NoColor, "no-color", false, "Disable color output")
+	if err := viper.BindPFlag("no-color", rootCmd.PersistentFlags().Lookup("no-color")); err != nil {
+		return err
+	}
 
 	// We don't want to show the default value
 	rootCmd.PersistentFlags().Lookup("api-token").DefValue = ""
