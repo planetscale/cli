@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"os/signal"
 	"runtime"
 	"syscall"
 
@@ -50,7 +51,9 @@ argument:
   pscale connect mydatabase mybranch`,
 		PersistentPreRunE: cmdutil.CheckAuthentication(ch.Config),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
+			defer cancel()
+
 			database := args[0]
 
 			client, err := ch.Config.NewClientFromConfig()
@@ -99,15 +102,23 @@ argument:
 			proxyReady := make(chan string, 1)
 
 			if flags.execCommand != "" {
-				go runCommand(ctx, flags.execCommand, flags.execCommandProtocol, database, branch, proxyReady)
+				go func() {
+					err := runCommand(ctx, flags.execCommand, flags.execCommandProtocol, database, branch, proxyReady)
+					if err != nil {
+						ch.Printer.Printf("running command with --execute has failed: %s", err)
+					}
+
+					// TODO(fatih): is it worth to making cancellation configurable?
+					cancel() // stop the proxy by cancelling all other child contexts
+				}()
 			}
 
-			err = runProxy(proxyOpts, database, branch, proxyReady)
+			err = runProxy(ctx, proxyOpts, database, branch, proxyReady)
 			if err != nil {
 				if isAddrInUse(err) {
-					ch.Printer.Printf("Tried address %s, but it's already in use. Picking up a random port ...", localAddr)
+					ch.Printer.Printf("Tried address %s, but it's already in use. Picking up a random port ...\n", localAddr)
 					proxyOpts.LocalAddr = net.JoinHostPort(flags.host, "0")
-					return runProxy(proxyOpts, database, branch, proxyReady)
+					return runProxy(ctx, proxyOpts, database, branch, proxyReady)
 				}
 				return err
 			}
@@ -124,12 +135,11 @@ argument:
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
 	cmd.PersistentFlags().StringVar(&flags.execCommand, "execute", "", "Run this command after successfully connecting to the database.")
 	cmd.PersistentFlags().StringVar(&flags.execCommandProtocol, "execute-protocol", "mysql2", "Protocol for the DATABASE_URL value in execute")
-
 	return cmd
 }
 
-func runProxy(proxyOpts proxy.Options, database, branch string, ready chan string) error {
-	ctx := context.Background()
+// runProxy runs the sql-proxy with the given options.
+func runProxy(ctx context.Context, proxyOpts proxy.Options, database, branch string, ready chan string) error {
 	p, err := proxy.NewClient(proxyOpts)
 	if err != nil {
 		return fmt.Errorf("couldn't create proxy client: %s", err)
@@ -152,46 +162,37 @@ func runProxy(proxyOpts proxy.Options, database, branch string, ready chan strin
 		ready <- addr.String()
 	}(ready)
 
-	// TODO(fatih): replace with signal.NotifyContext once Go 1.16 is released
-	// https://go-review.googlesource.com/c/go/+/219640
-	ctx = sigutil.WithSignal(ctx, syscall.SIGINT, syscall.SIGTERM)
 	return p.Run(ctx)
 }
 
-func runCommand(ctx context.Context, command, protocol, database, branch string, ready chan string) {
+// runCommand runs the given command with several environment variables exposed
+// to the command.
+func runCommand(ctx context.Context, command, protocol, database, branch string, ready chan string) error {
 	args, err := shellwords.Parse(command)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "\nfailed to parse command, not running: %s", err)
-		return
+		return fmt.Errorf("failed to parse command, not running: %s", err)
 	}
 	addr := <-ready
 
 	ctx = sigutil.WithSignal(ctx, syscall.SIGINT, syscall.SIGTERM)
-	child := exec.CommandContext(ctx, args[0], args[1:]...)
-	child.Env = os.Environ()
-	child.Stdout = os.Stdout
-	child.Stderr = os.Stderr
+	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
+	cmd.Env = os.Environ()
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 
 	connStr := fmt.Sprintf("DATABASE_URL=%s://root@%s/%s", protocol, addr, database)
-	child.Env = append(child.Env, connStr)
+	cmd.Env = append(cmd.Env, connStr)
 
 	hostEnv := fmt.Sprintf("PLANETSCALE_DATABASE_HOST=%s", addr)
-	child.Env = append(child.Env, hostEnv)
+	cmd.Env = append(cmd.Env, hostEnv)
 
 	dbName := fmt.Sprintf("PLANETSCALE_DATABASE_NAME=%s", database)
-	child.Env = append(child.Env, dbName)
+	cmd.Env = append(cmd.Env, dbName)
 
 	branchName := fmt.Sprintf("PLANETSCALE_BRANCH_NAME=%s", branch)
-	child.Env = append(child.Env, branchName)
+	cmd.Env = append(cmd.Env, branchName)
 
-	// todo(nickvanw): right now, this starts the process and then doesn't track what happens next
-	// if the process exits (non-zero or otherwise) the proxy will remain running
-	//
-	// the right behavior is probably to at least allow the user to configure that the proxy should
-	// exit when this process exits, and pass through the exit code
-	if err := child.Start(); err != nil {
-		fmt.Fprintf(os.Stderr, "\nfailed to execute command: %s", err)
-	}
+	return cmd.Run()
 }
 
 // isAddrInUse returns an error if the error indicates that the given address
