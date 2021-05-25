@@ -22,7 +22,7 @@ For example, to give a service token the ability to create, read and delete bran
 
   pscale token add-access <token id> read_branch delete_branch create_branch --database <database name>
 
-For a complete list of the access permissions that can be granted to a token, see: TODO.`,
+For a complete list of the access permissions that can be granted to a token, see: https://docs.planetscale.com/reference/planetscale-cli#service-tokens-in-organizations.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 			client, err := ch.Client()
