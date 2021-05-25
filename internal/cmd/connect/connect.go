@@ -105,7 +105,7 @@ argument:
 				go func() {
 					err := runCommand(ctx, flags.execCommand, flags.execCommandProtocol, database, branch, proxyReady)
 					if err != nil {
-						ch.Printer.Println("running command with --execute has failed: %s", err)
+						ch.Printer.Printf("running command with --execute has failed: %s", err)
 					}
 
 					// TODO(fatih): is it worth to making cancellation configurable?
