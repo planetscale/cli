@@ -6,6 +6,15 @@ import (
 	"github.com/planetscale/planetscale-go/planetscale"
 )
 
+// Error can be used by a command to change the exit status of the CLI.
+type Error struct {
+	Msg string
+	// Status
+	ExitCode int
+}
+
+func (e *Error) Error() string { return e.Msg }
+
 // ErrCode returns the code from a *planetscale.Error, if available. If the
 // error is not of type *planetscale.Error or is nil, it returns an empty,
 // undefined error code.

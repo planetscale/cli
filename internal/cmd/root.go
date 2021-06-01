@@ -60,7 +60,7 @@ var rootCmd = &cobra.Command{
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
-func Execute(ver, commit, buildDate string) error {
+func Execute(ver, commit, buildDate string, format *printer.Format) error {
 	cobra.OnInitialize(initConfig)
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config",
@@ -95,8 +95,7 @@ func Execute(ver, commit, buildDate string) error {
 		return err
 	}
 
-	var format printer.Format
-	rootCmd.PersistentFlags().VarP(printer.NewFormatValue(printer.Human, &format), "format", "f",
+	rootCmd.PersistentFlags().VarP(printer.NewFormatValue(printer.Human, format), "format", "f",
 		"Show output in a specific format. Possible values: [human, json, csv]")
 	if err := viper.BindPFlag("format", rootCmd.PersistentFlags().Lookup("format")); err != nil {
 		return err
@@ -109,7 +108,7 @@ func Execute(ver, commit, buildDate string) error {
 	}
 
 	ch := &cmdutil.Helper{
-		Printer:  printer.NewPrinter(&format),
+		Printer:  printer.NewPrinter(format),
 		Config:   cfg,
 		ConfigFS: config.NewConfigFS(osFS{}),
 		Client: func() (*ps.Client, error) {
@@ -154,16 +153,10 @@ func Execute(ver, commit, buildDate string) error {
 
 	err = rootCmd.Execute()
 	if err != nil {
-		switch format {
-		case printer.JSON:
-			return fmt.Errorf(`{"error": "%s"}`, err)
-		default:
-			//lint:ignore ST1005 This is shown to the user
-			return fmt.Errorf("Error: %s", err)
-		}
+		return err
 	}
 
-	if format == printer.Human {
+	if *format == printer.Human {
 		err := update.CheckVersion(ver)
 		if err != nil && debug {
 			return err

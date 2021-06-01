@@ -101,15 +101,17 @@ argument:
 
 			proxyReady := make(chan string, 1)
 
+			var executeCh chan error
 			if flags.execCommand != "" {
+				executeCh = make(chan error, 1)
+
 				go func() {
 					err := runCommand(ctx, flags.execCommand, flags.execCommandProtocol, database, branch, proxyReady)
-					if err != nil {
-						ch.Printer.Printf("running command with --execute has failed: %s", err)
-					}
 
 					// TODO(fatih): is it worth to making cancellation configurable?
 					cancel() // stop the proxy by cancelling all other child contexts
+
+					executeCh <- err
 				}()
 			}
 
@@ -121,6 +123,12 @@ argument:
 					return runProxy(ctx, proxyOpts, database, branch, proxyReady)
 				}
 				return err
+			}
+
+			// if the user enabled the --execute flag, make sure to return the
+			// error message and status from that command
+			if executeCh != nil {
+				return <-executeCh
 			}
 
 			return nil
@@ -192,7 +200,20 @@ func runCommand(ctx context.Context, command, protocol, database, branch string,
 	branchName := fmt.Sprintf("PLANETSCALE_BRANCH_NAME=%s", branch)
 	cmd.Env = append(cmd.Env, branchName)
 
-	return cmd.Run()
+	err = cmd.Run()
+	if err == nil {
+		return nil
+	}
+
+	var ee *exec.ExitError
+	if errors.As(err, &ee) {
+		return &cmdutil.Error{
+			Msg:      fmt.Sprintf("running command with --execute has failed: %s\n", err),
+			ExitCode: ee.ProcessState.ExitCode(),
+		}
+	}
+
+	return err
 }
 
 // isAddrInUse returns an error if the error indicates that the given address
