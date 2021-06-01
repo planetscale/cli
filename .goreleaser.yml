@@ -12,6 +12,18 @@ builds:
     ldflags:
      - -s -w -X main.version={{.Version}} -X main.commit={{.ShortCommit}} -X main.date={{.Date}}
     binary: "pscale"   
+dockers:
+  - image_templates:
+    - "planetscale/pscale:latest"
+    - "planetscale/pscale:{{ .Tag }}"
+    build_flag_templates:
+    - "--pull"
+    - "--label=org.opencontainers.image.created={{.Date}}"
+    - "--label=org.opencontainers.image.title={{.ProjectName}}"
+    - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+    - "--label=org.opencontainers.image.version={{.Version}}"
+    - "--label=org.opencontainers.image.source={{.GitURL}}"
+    dockerfile: Dockerfile.goreleaser
 nfpms:
   - maintainer: PlanetScale
     description: The PlanetScale CLI
@@ -52,3 +64,4 @@ changelog:
     exclude:
       - '^docs:'
       - '^test:'
+      - Merge pull request
