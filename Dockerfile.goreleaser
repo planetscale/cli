@@ -1,0 +1,6 @@
+FROM alpine:latest  
+RUN apk --no-cache add ca-certificates mysql-client
+EXPOSE 3306
+
+ENTRYPOINT ["/usr/bin/pscale"] 
+COPY pscale /usr/bin
