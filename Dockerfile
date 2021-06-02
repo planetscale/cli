@@ -10,6 +10,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-X main.commit=$COM
 
 FROM alpine:latest  
 RUN apk --no-cache add ca-certificates mysql-client
+EXPOSE 3306
 
 WORKDIR /app
 COPY --from=build /app/pscale /usr/bin
