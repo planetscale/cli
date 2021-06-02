@@ -16,6 +16,7 @@ limitations under the License.
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
 	"log"
@@ -58,9 +59,41 @@ var rootCmd = &cobra.Command{
 	TraverseChildren: true,
 }
 
-// Execute adds all child commands to the root command and sets flags appropriately.
-// This is called by main.main(). It only needs to happen once to the rootCmd.
-func Execute(ver, commit, buildDate string, format *printer.Format) error {
+// Execute executes the command and returns the exit status of the finished
+// command.
+func Execute(ver, commit, buildDate string) int {
+	var format printer.Format
+	var debug bool
+
+	err := runCmd(ver, commit, buildDate, &format, &debug)
+	if err == nil {
+		return 0
+	}
+
+	// print any user specific messages first
+	switch format {
+	case printer.JSON:
+		fmt.Fprintf(os.Stderr, `{"error": "%s"}`, err)
+	default:
+		if err := update.CheckVersion(ver); err != nil && debug {
+			fmt.Fprintf(os.Stderr, "Updater error: %s\n", err)
+		}
+
+		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
+	}
+
+	// check if a sub command wants to return a specific exit code
+	var cmdErr *cmdutil.Error
+	if errors.As(err, &cmdErr) {
+		return cmdErr.ExitCode
+	}
+
+	return 1
+}
+
+// runCmd adds all child commands to the root command, sets flags
+// appropriately, and runs the root command.
+func runCmd(ver, commit, buildDate string, format *printer.Format, debug *bool) error {
 	cobra.OnInitialize(initConfig)
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config",
@@ -101,8 +134,7 @@ func Execute(ver, commit, buildDate string, format *printer.Format) error {
 		return err
 	}
 
-	var debug bool
-	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "Enable debug mode")
+	rootCmd.PersistentFlags().BoolVar(debug, "debug", false, "Enable debug mode")
 	if err := viper.BindPFlag("debug", rootCmd.PersistentFlags().Lookup("debug")); err != nil {
 		return err
 	}
@@ -115,7 +147,7 @@ func Execute(ver, commit, buildDate string, format *printer.Format) error {
 			return cfg.NewClientFromConfig()
 		},
 	}
-	ch.SetDebug(&debug)
+	ch.SetDebug(debug)
 
 	// service token flags. they are hidden for now.
 	rootCmd.PersistentFlags().StringVar(&cfg.ServiceTokenName,
@@ -151,19 +183,7 @@ func Execute(ver, commit, buildDate string, format *printer.Format) error {
 	rootCmd.AddCommand(token.TokenCmd(ch))
 	rootCmd.AddCommand(version.VersionCmd(ch, ver, commit, buildDate))
 
-	err = rootCmd.Execute()
-	if err != nil {
-		return err
-	}
-
-	if *format == printer.Human {
-		err := update.CheckVersion(ver)
-		if err != nil && debug {
-			return err
-		}
-	}
-
-	return nil
+	return rootCmd.Execute()
 }
 
 // initConfig reads in config file and ENV variables if set.
