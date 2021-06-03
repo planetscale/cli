@@ -19,7 +19,6 @@ import (
 
 	"github.com/mattn/go-shellwords"
 	"github.com/planetscale/sql-proxy/proxy"
-	"github.com/planetscale/sql-proxy/sigutil"
 	"github.com/spf13/cobra"
 )
 
@@ -182,7 +181,9 @@ func runCommand(ctx context.Context, command, protocol, database, branch string,
 	}
 	addr := <-ready
 
-	ctx = sigutil.WithSignal(ctx, syscall.SIGINT, syscall.SIGTERM)
+	ctx, cancel := signal.NotifyContext(ctx, os.Interrupt, os.Kill)
+	defer cancel()
+
 	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
 	cmd.Env = os.Environ()
 	cmd.Stdout = os.Stdout
