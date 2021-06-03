@@ -37,3 +37,22 @@ brew upgrade pscale
 ### Manually
 
 Download the pre-compiled binaries from the [releases](https://github.com/planetscale/cli/releases/latest) page and copy to the desired location.
+
+
+### Container images 
+
+We provide ready to use Docker container images.  To pull the latest image:
+
+```
+docker pull planetscale/pscale:latest
+```
+
+To pull a specific version:
+
+```
+docker pull planetscale/pscale:v0.44.0
+```
+
+### Documentation
+
+Please checkout our Documentation page: [docs.planetscale.com](https://docs.planetscale.com/reference/planetscale-cli/)
