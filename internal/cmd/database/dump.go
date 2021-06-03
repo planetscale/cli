@@ -6,8 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/signal"
 	"path/filepath"
-	"syscall"
 	"time"
 
 	"github.com/planetscale/cli/internal/cmdutil"
@@ -16,7 +16,6 @@ import (
 	"github.com/planetscale/cli/internal/proxyutil"
 	ps "github.com/planetscale/planetscale-go/planetscale"
 	"github.com/planetscale/sql-proxy/proxy"
-	"github.com/planetscale/sql-proxy/sigutil"
 
 	_ "github.com/go-sql-driver/mysql"
 
@@ -50,7 +49,9 @@ func DumpCmd(ch *cmdutil.Helper) *cobra.Command {
 }
 
 func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []string) error {
-	ctx := context.Background()
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
+	defer cancel()
+
 	database := args[0]
 	branch := args[1]
 
@@ -76,10 +77,6 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 	if err != nil {
 		return fmt.Errorf("couldn't create proxy client: %s", err)
 	}
-
-	// TODO(fatih): replace with signal.NotifyContext once Go 1.16 is released
-	// https://go-review.googlesource.com/c/go/+/219640
-	ctx = sigutil.WithSignal(ctx, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
 		err := p.Run(ctx)

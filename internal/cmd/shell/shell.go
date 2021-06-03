@@ -8,10 +8,10 @@ import (
 	"log"
 	"net"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"runtime"
 	"strings"
-	"syscall"
 
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
@@ -19,7 +19,6 @@ import (
 	"github.com/planetscale/cli/internal/proxyutil"
 
 	"github.com/planetscale/sql-proxy/proxy"
-	"github.com/planetscale/sql-proxy/sigutil"
 
 	ps "github.com/planetscale/planetscale-go/planetscale"
 
@@ -54,7 +53,9 @@ second argument:
   pscale shell mydatabase mybranch`,
 		PersistentPreRunE: cmdutil.CheckAuthentication(ch.Config),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
+			defer cancel()
+
 			database := args[0]
 
 			if !printer.IsTTY || ch.Printer.Format() != printer.Human {
@@ -117,10 +118,6 @@ second argument:
 			if err != nil {
 				return fmt.Errorf("couldn't create proxy client: %s", err)
 			}
-
-			// TODO(fatih): replace with signal.NotifyContext once Go 1.16 is released
-			// https://go-review.googlesource.com/c/go/+/219640
-			ctx = sigutil.WithSignal(ctx, syscall.SIGINT, syscall.SIGTERM)
 
 			go func() {
 				err := p.Run(ctx)
