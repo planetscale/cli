@@ -7,7 +7,7 @@ PlanetScale is more than a database and our CLI is more than a jumble of command
 
 ## Installation
 
-### macOS
+#### macOS
 
 `pscale` is available via a Homebrew Tap, and as downloadable binary from the [releases](https://github.com/planetscale/cli/releases/latest) page:
 
@@ -26,20 +26,20 @@ To upgrade to the latest version:
 brew upgrade pscale
 ```
 
-### Linux
+#### Linux
 
 `pscale` is available as downloadable binaries from the [releases](https://github.com/planetscale/cli/releases/latest) page. Download the .deb or .rpm from the [releases](https://github.com/planetscale/cli/releases/latest) page and install with `sudo dpkg -i` and `sudo rpm -i` respectively.
 
-### Windows
+#### Windows
 
 `pscale` is available as downloadable binary from the [releases](https://github.com/planetscale/cli/releases/latest) page.
 
-### Manually
+#### Manually
 
 Download the pre-compiled binaries from the [releases](https://github.com/planetscale/cli/releases/latest) page and copy to the desired location.
 
 
-### Container images 
+#### Container images 
 
 We provide ready to use Docker container images.  To pull the latest image:
 
@@ -53,6 +53,6 @@ To pull a specific version:
 docker pull planetscale/pscale:v0.44.0
 ```
 
-### Documentation
+## Documentation
 
 Please checkout our Documentation page: [docs.planetscale.com](https://docs.planetscale.com/reference/planetscale-cli/)
