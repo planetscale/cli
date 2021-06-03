@@ -19,6 +19,9 @@ import (
 	exec "golang.org/x/sys/execabs"
 )
 
+const WarnAuthMessage = "not authenticated yet. Please run 'pscale auth login'" +
+	"or create a service token with 'pscale service-token create'"
+
 // Helper is passed to every single command and is used by individual
 // subcommands.
 type Helper struct {
@@ -70,7 +73,7 @@ func CheckAuthentication(cfg *config.Config) func(cmd *cobra.Command, args []str
 			return nil
 		}
 
-		return errors.New("not authenticated yet. Please run 'pscale auth login'")
+		return errors.New(WarnAuthMessage)
 	}
 }
 
