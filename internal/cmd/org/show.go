@@ -31,7 +31,7 @@ func ShowCmd(ch *cmdutil.Helper) *cobra.Command {
 
 				cfg, err = ch.ConfigFS.NewFileConfig(configPath)
 				if os.IsNotExist(err) {
-					return errors.New("not authenticated, please authenticate with: \"pscale auth login\"")
+					return errors.New(cmdutil.WarnAuthMessage)
 				}
 
 				if err != nil {
