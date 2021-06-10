@@ -5,13 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net"
 	"os"
 	"os/signal"
 	"path/filepath"
-	"runtime"
-	"strings"
 
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
@@ -202,53 +199,6 @@ second argument:
 	return cmd
 }
 
-func historyFilePath(org, db, branch string) (string, error) {
-	dir, err := homedir.Dir()
-	if err != nil {
-		return "", err
-	}
-
-	historyDir := filepath.Join(dir, ".pscale", "history")
-
-	_, err = os.Stat(historyDir)
-	if os.IsNotExist(err) {
-		err := os.MkdirAll(historyDir, 0771)
-		if err != nil {
-			return "", err
-		}
-	}
-
-	historyFilename := fmt.Sprintf("%s.%s.%s", org, db, branch)
-	historyFile := filepath.Join(historyDir, historyFilename)
-
-	return historyFile, nil
-}
-
-func formatMySQLBranch(database, branch string) string {
-	branchStyled := printer.BoldBlue(branch)
-	if branch == "main" {
-		branchStyled = printer.BoldRed(branch)
-	}
-
-	return fmt.Sprintf("%s/%s> ", printer.Bold(database), branchStyled)
-}
-
-// createLoginFile creates a temporary file to store the username and password, so we don't have to
-// pass them as `mysql` command-line arguments.
-func createLoginFile(username, password string) (string, error) {
-	// ioutil.TempFile defaults to creating the file in the OS temporary directory with 0600 permissions
-	tmpFile, err := ioutil.TempFile("", "pscale-*")
-	if err != nil {
-		fmt.Println("could not create temporary file: ", err)
-		return "", err
-	}
-	fmt.Fprintln(tmpFile, "[client]")
-	fmt.Fprintf(tmpFile, "user=%s\n", username)
-	fmt.Fprintf(tmpFile, "password=%s\n", password)
-	_ = tmpFile.Close()
-	return tmpFile.Name(), nil
-}
-
 type mysql struct {
 	mysqlPath    string
 	dir          string
@@ -269,69 +219,57 @@ func (m *mysql) Run(ctx context.Context, args ...string) error {
 		fmt.Sprintf("MYSQL_HISTFILE=%s", m.historyFile),
 	)
 
-	linked, err := checkLibs(ctx, m.mysqlPath)
-	if m.debug {
-		if err != nil {
-			m.printer.Printf("failed to check linking: %s", err)
-		} else if linked {
-			m.printer.Println("mysql is linked against readline/editline")
-		} else {
-			m.printer.Println("mysql is not linked against readline/editline")
-		}
-	}
-
-	// only enable prompt if mysql is linked against readline or editline.
-	if linked {
-		c.Env = append(c.Env, fmt.Sprintf("MYSQL_PS1=%s", m.styledBranch))
-	}
+	c.Env = append(c.Env, fmt.Sprintf("MYSQL_PS1=%s", m.styledBranch))
 
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr
 	c.Stdin = os.Stdin
 
-	err = c.Start()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	err = c.Wait()
-	return err
+	return c.Run()
 }
 
-// checkLibs returns true when the mysql CLI is linked against readline
-// (libreadline) or editline (libedit).
-func checkLibs(ctx context.Context, mysqlPath string) (bool, error) {
-	var name string
-	var args []string
-
-	switch runtime.GOOS {
-	case "darwin":
-		name = "otool"
-		args = []string{"-L"}
-	case "linux":
-		return false, nil
-	case "unix":
-		return false, nil
+func formatMySQLBranch(database, branch string) string {
+	if branch == "main" {
+		branch = "|⚠ main ⚠|"
 	}
 
-	args = append(args, mysqlPath)
-
-	out, err := exec.CommandContext(ctx, name, args...).CombinedOutput()
-	if err != nil {
-		return false, fmt.Errorf("failed to check linking: %s\noutput: %s",
-			err, string(out))
-	}
-
-	return isLinked(string(out)), nil
+	return fmt.Sprintf("%s/%s> ", database, branch)
 }
 
-// isLinked checks whether the given libs output indicates that the mysql CLI
-// is linked against readline (libreadline) or editline (libedit).
-func isLinked(libs string) bool {
-	if strings.Contains(libs, "libreadline") ||
-		strings.Contains(libs, "libedit") {
-		return true
+// createLoginFile creates a temporary file to store the username and password, so we don't have to
+// pass them as `mysql` command-line arguments.
+func createLoginFile(username, password string) (string, error) {
+	// ioutil.TempFile defaults to creating the file in the OS temporary directory with 0600 permissions
+	tmpFile, err := ioutil.TempFile("", "pscale-*")
+	if err != nil {
+		fmt.Println("could not create temporary file: ", err)
+		return "", err
+	}
+	fmt.Fprintln(tmpFile, "[client]")
+	fmt.Fprintf(tmpFile, "user=%s\n", username)
+	fmt.Fprintf(tmpFile, "password=%s\n", password)
+	_ = tmpFile.Close()
+	return tmpFile.Name(), nil
+}
+
+func historyFilePath(org, db, branch string) (string, error) {
+	dir, err := homedir.Dir()
+	if err != nil {
+		return "", err
 	}
 
-	return false
+	historyDir := filepath.Join(dir, ".pscale", "history")
+
+	_, err = os.Stat(historyDir)
+	if os.IsNotExist(err) {
+		err := os.MkdirAll(historyDir, 0771)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	historyFilename := fmt.Sprintf("%s.%s.%s", org, db, branch)
+	historyFile := filepath.Join(historyDir, historyFilename)
+
+	return historyFile, nil
 }
