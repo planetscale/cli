@@ -133,6 +133,9 @@ func runCmd(ver, commit, buildDate string, format *printer.Format, debug *bool) 
 	if err := viper.BindPFlag("format", rootCmd.PersistentFlags().Lookup("format")); err != nil {
 		return err
 	}
+	rootCmd.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"human", "json", "csv"}, cobra.ShellCompDirectiveDefault
+	})
 
 	rootCmd.PersistentFlags().BoolVar(debug, "debug", false, "Enable debug mode")
 	if err := viper.BindPFlag("debug", rootCmd.PersistentFlags().Lookup("debug")); err != nil {
