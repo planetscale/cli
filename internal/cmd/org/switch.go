@@ -23,6 +23,28 @@ func SwitchCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "switch <organization>",
 		Short: "Switch the currently active organization",
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			if len(args) != 0 {
+				return nil, cobra.ShellCompDirectiveNoFileComp
+			}
+
+			client, err := ch.Client()
+			if err != nil {
+				return nil, cobra.ShellCompDirectiveNoFileComp
+			}
+
+			orgs, err := client.Organizations.List(context.Background())
+			if err != nil {
+				return nil, cobra.ShellCompDirectiveNoFileComp
+			}
+
+			orgNames := make([]string, 0, len(orgs))
+			for _, org := range orgs {
+				orgNames = append(orgNames, org.Name)
+			}
+
+			return orgNames, cobra.ShellCompDirectiveNoFileComp
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 

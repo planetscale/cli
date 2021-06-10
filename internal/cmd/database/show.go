@@ -18,6 +18,40 @@ func ShowCmd(ch *cmdutil.Helper) *cobra.Command {
 		Use:   "show <database>",
 		Short: "Retrieve information about a database",
 		Args:  cmdutil.RequiredArgs("database"),
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			if len(args) != 0 {
+				return nil, cobra.ShellCompDirectiveNoFileComp
+			}
+
+			client, err := ch.Client()
+			if err != nil {
+				return nil, cobra.ShellCompDirectiveNoFileComp
+			}
+
+			org := ch.Config.Organization // --org flag
+			if org == "" {
+				cfg, err := ch.ConfigFS.DefaultConfig()
+				if err != nil {
+					return nil, cobra.ShellCompDirectiveNoFileComp
+				}
+
+				org = cfg.Organization
+			}
+
+			databases, err := client.Databases.List(context.Background(), &planetscale.ListDatabasesRequest{
+				Organization: org,
+			})
+			if err != nil {
+				return nil, cobra.ShellCompDirectiveNoFileComp
+			}
+
+			candidates := make([]string, 0, len(databases))
+			for _, db := range databases {
+				candidates = append(candidates, db.Name)
+			}
+
+			return candidates, cobra.ShellCompDirectiveNoFileComp
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 			name := args[0]
