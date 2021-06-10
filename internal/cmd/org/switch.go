@@ -37,7 +37,7 @@ func SwitchCmd(ch *cmdutil.Helper) *cobra.Command {
 			if len(args) == 1 {
 				orgName := args[0]
 
-				end := ch.Printer.PrintProgress(fmt.Sprintf("Fetching organization %s...", printer.Bold(orgName)))
+				end := ch.Printer.PrintProgress(fmt.Sprintf("Checking organization %s...", printer.Bold(orgName)))
 				defer end()
 				org, err := client.Organizations.Get(ctx, &planetscale.GetOrganizationRequest{
 					Organization: orgName,
