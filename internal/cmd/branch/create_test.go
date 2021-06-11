@@ -32,6 +32,7 @@ func TestBranch_CreateCmd(t *testing.T) {
 		CreateFn: func(ctx context.Context, req *ps.CreateDatabaseBranchRequest) (*ps.DatabaseBranch, error) {
 			c.Assert(req.Name, qt.Equals, branch)
 			c.Assert(req.Database, qt.Equals, db)
+			c.Assert(req.Region, qt.Equals, "us-east")
 			c.Assert(req.Organization, qt.Equals, org)
 
 			return res, nil
@@ -52,7 +53,7 @@ func TestBranch_CreateCmd(t *testing.T) {
 	}
 
 	cmd := CreateCmd(ch)
-	cmd.SetArgs([]string{db, branch})
+	cmd.SetArgs([]string{db, branch, "--region", "us-east"})
 	err := cmd.Execute()
 
 	c.Assert(err, qt.IsNil)
