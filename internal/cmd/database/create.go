@@ -8,7 +8,6 @@ import (
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
 
-	"github.com/planetscale/planetscale-go/planetscale"
 	ps "github.com/planetscale/planetscale-go/planetscale"
 
 	"github.com/pkg/browser"
@@ -78,7 +77,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
 
-		regions, err := client.Regions.List(context.Background(), &planetscale.ListRegionsRequest{})
+		regions, err := client.Regions.List(context.Background(), &ps.ListRegionsRequest{})
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
