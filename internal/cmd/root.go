@@ -25,6 +25,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/planetscale/cli/internal/cmd/auth"
+	"github.com/planetscale/cli/internal/cmd/backup"
 	"github.com/planetscale/cli/internal/cmd/branch"
 	"github.com/planetscale/cli/internal/cmd/connect"
 	"github.com/planetscale/cli/internal/cmd/database"
@@ -174,8 +175,7 @@ func runCmd(ver, commit, buildDate string, format *printer.Format, debug *bool) 
 	rootCmd.AddCommand(loginCmd)
 	rootCmd.AddCommand(logoutCmd)
 	rootCmd.AddCommand(auth.AuthCmd(ch))
-	// Disable backup commands until it's fully implemented
-	// rootCmd.AddCommand(backup.BackupCmd(ch))
+	rootCmd.AddCommand(backup.BackupCmd(ch))
 	rootCmd.AddCommand(branch.BranchCmd(ch))
 	rootCmd.AddCommand(connect.ConnectCmd(ch))
 	rootCmd.AddCommand(database.DatabaseCmd(ch))
