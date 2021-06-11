@@ -30,7 +30,7 @@ func TestBranch_CreateCmd(t *testing.T) {
 
 	svc := &mock.DatabaseBranchesService{
 		CreateFn: func(ctx context.Context, req *ps.CreateDatabaseBranchRequest) (*ps.DatabaseBranch, error) {
-			c.Assert(req.Branch.Name, qt.Equals, branch)
+			c.Assert(req.Name, qt.Equals, branch)
 			c.Assert(req.Database, qt.Equals, db)
 			c.Assert(req.Organization, qt.Equals, org)
 

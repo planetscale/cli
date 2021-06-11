@@ -54,10 +54,8 @@ func SwitchCmd(ch *cmdutil.Helper) *cobra.Command {
 				createReq := &ps.CreateDatabaseBranchRequest{
 					Organization: ch.Config.Organization,
 					Database:     ch.Config.Database,
-					Branch: &ps.DatabaseBranch{
-						Name:         branch,
-						ParentBranch: parentBranch,
-					},
+					Name:         branch,
+					ParentBranch: parentBranch,
 				}
 
 				_, err = client.DatabaseBranches.Create(ctx, createReq)

@@ -13,9 +13,7 @@ import (
 )
 
 func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
-	createReq := &ps.CreateDatabaseBranchRequest{
-		Branch: new(ps.DatabaseBranch),
-	}
+	createReq := &ps.CreateDatabaseBranchRequest{}
 
 	cmd := &cobra.Command{
 		Use:     "create <source-database> <branch> [options]",
@@ -67,7 +65,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			createReq.Database = source
-			createReq.Branch.Name = branch
+			createReq.Name = branch
 			createReq.Organization = ch.Config.Organization
 
 			web, err := cmd.Flags().GetBool("web")
@@ -79,7 +77,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 				ch.Printer.Println("🌐  Redirecting you to branch a database in your web browser.")
 				err := browser.OpenURL(fmt.Sprintf(
 					"%s/%s/%s/branches?name=%s&notes=%s&showDialog=true",
-					cmdutil.ApplicationURL, ch.Config.Organization, source, url.QueryEscape(createReq.Branch.Name), url.QueryEscape(createReq.Branch.Notes),
+					cmdutil.ApplicationURL, ch.Config.Organization, source, url.QueryEscape(createReq.Name), url.QueryEscape(createReq.Notes),
 				))
 				if err != nil {
 					return err
@@ -116,8 +114,8 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&createReq.Branch.Notes, "notes", "", "notes for the database branch")
-	cmd.Flags().StringVar(&createReq.Branch.ParentBranch, "from", "", "branch to be created from")
+	cmd.Flags().StringVar(&createReq.Notes, "notes", "", "notes for the database branch")
+	cmd.Flags().StringVar(&createReq.ParentBranch, "from", "", "branch to be created from")
 	cmd.Flags().BoolP("web", "w", false, "Create a branch in your web browser")
 
 	return cmd
