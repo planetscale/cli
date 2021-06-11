@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/browser"
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
+	"github.com/planetscale/planetscale-go/planetscale"
 	ps "github.com/planetscale/planetscale-go/planetscale"
 	"github.com/spf13/cobra"
 )
@@ -116,6 +117,28 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	cmd.Flags().StringVar(&createReq.Notes, "notes", "", "notes for the database branch")
 	cmd.Flags().StringVar(&createReq.ParentBranch, "from", "", "branch to be created from")
+	cmd.Flags().StringVar(&createReq.Region, "region", "", "region for the database")
+	cmd.RegisterFlagCompletionFunc("region", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		client, err := ch.Client()
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+
+		regions, err := client.Regions.List(context.Background(), &planetscale.ListRegionsRequest{})
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+
+		regionStrs := make([]string, 0)
+
+		for _, r := range regions {
+			if r.Enabled {
+				regionStrs = append(regionStrs, r.Slug)
+			}
+		}
+
+		return regionStrs, cobra.ShellCompDirectiveDefault
+	})
 	cmd.Flags().BoolP("web", "w", false, "Create a branch in your web browser")
 
 	return cmd
