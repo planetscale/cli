@@ -189,7 +189,7 @@ func runCommand(ctx context.Context, command, protocol, database, branch string,
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	connStr := fmt.Sprintf("DATABASE_URL=%s://root@%s/%s", protocol, addr, database)
+	connStr := fmt.Sprintf("DATABASE_URL=%s://root@%s/", protocol, addr)
 	cmd.Env = append(cmd.Env, connStr)
 
 	hostEnv := fmt.Sprintf("PLANETSCALE_DATABASE_HOST=%s", addr)
