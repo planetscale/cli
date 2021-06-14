@@ -117,6 +117,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().StringVar(&createReq.Notes, "notes", "", "notes for the database branch")
 	cmd.Flags().StringVar(&createReq.ParentBranch, "from", "", "branch to be created from")
 	cmd.Flags().StringVar(&createReq.Region, "region", "", "region for the database")
+	cmd.Flags().MarkHidden("region")
 	cmd.RegisterFlagCompletionFunc("region", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		client, err := ch.Client()
 		if err != nil {
