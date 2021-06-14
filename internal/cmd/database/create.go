@@ -70,6 +70,30 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&createReq.Notes, "notes", "", "notes for the database")
+	cmd.Flags().StringVar(&createReq.Region, "region", "", "region for the database")
+	cmd.Flags().MarkHidden("region")
+	cmd.RegisterFlagCompletionFunc("region", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		client, err := ch.Client()
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+
+		regions, err := client.Regions.List(context.Background(), &ps.ListRegionsRequest{})
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+
+		regionStrs := make([]string, 0)
+
+		for _, r := range regions {
+			if r.Enabled {
+				regionStrs = append(regionStrs, r.Slug)
+			}
+		}
+
+		return regionStrs, cobra.ShellCompDirectiveDefault
+	})
+
 	cmd.Flags().BoolP("web", "w", false, "Create a database in your web browser")
 
 	return cmd

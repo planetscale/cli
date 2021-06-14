@@ -31,6 +31,7 @@ func TestDatabase_CreateCmd(t *testing.T) {
 		CreateFn: func(ctx context.Context, req *ps.CreateDatabaseRequest) (*ps.Database, error) {
 			c.Assert(req.Organization, qt.Equals, org)
 			c.Assert(req.Name, qt.Equals, db)
+			c.Assert(req.Region, qt.Equals, "us-east")
 
 			return res, nil
 		},
@@ -50,7 +51,7 @@ func TestDatabase_CreateCmd(t *testing.T) {
 	}
 
 	cmd := CreateCmd(ch)
-	cmd.SetArgs([]string{db})
+	cmd.SetArgs([]string{db, "--region", "us-east"})
 	err := cmd.Execute()
 
 	c.Assert(err, qt.IsNil)
