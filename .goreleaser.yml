@@ -1,6 +1,10 @@
 project_name: pscale
 release:
   prerelease: auto # don't publish release with -rc1,-pre, etc suffixes
+before:
+  hooks:
+    - go mod tidy
+    - ./script/completions
 builds:
   - env:
       - CGO_ENABLED=0
@@ -29,6 +33,13 @@ nfpms:
     description: The PlanetScale CLI
     homepage: https://github.com/planetscale/cli
     license: Apache 2.0
+    contents:
+      - src: ./completions/pscale.bash
+        dst: /etc/bash_completion.d/pscale
+      - src: ./completions/pscale.fish
+        dst: /usr/share/fish/completions/pscale.fish
+      - src: ./completions/pscale.zsh
+        dst: /usr/local/share/zsh/site-functions/_pscale
     formats:
     - deb
     - rpm
@@ -50,12 +61,19 @@ brews:
          system "#{bin}/pscale --version"
     install: |
       bin.install "pscale"
+      bash_completion.install "completions/pscale.bash" => "pscale"
+      zsh_completion.install "completions/pscale.zsh" => "_pscale"
+      fish_completion.install "completions/pscale.fish"
 archives:
   - replacements:
       darwin: macOS
     format_overrides:
       - goos: windows
         format: zip
+    files:
+      - README.md
+      - LICENSE
+      - completions/*
 snapshot:
   name_template: "{{ .Tag }}-next"
 changelog:
