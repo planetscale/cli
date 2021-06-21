@@ -1,13 +1,13 @@
 ---
 name: go.uber.org/zap/zapcore
-version: v1.16.0
+version: v1.17.0
 type: go
 summary: Package zapcore defines and implements the low-level interfaces upon which
   zap is built.
 homepage: https://godoc.org/go.uber.org/zap/zapcore
 license: mit
 licenses:
-- sources: zap@v1.16.0/LICENSE.txt
+- sources: zap@v1.17.0/LICENSE.txt
   text: |
     Copyright (c) 2016-2017 Uber Technologies, Inc.
 

@@ -1,6 +1,6 @@
 ---
 name: github.com/mattn/go-shellwords
-version: v1.0.11
+version: v1.0.12
 type: go
 summary: 
 homepage: https://godoc.org/github.com/mattn/go-shellwords
