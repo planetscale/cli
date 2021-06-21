@@ -1,6 +1,6 @@
 ---
 name: github.com/spf13/jwalterweatherman
-version: v1.0.0
+version: v1.1.0
 type: go
 summary: 
 homepage: https://godoc.org/github.com/spf13/jwalterweatherman
