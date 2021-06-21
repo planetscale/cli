@@ -117,18 +117,6 @@ func runCmd(ver, commit, buildDate string, format *printer.Format, debug *bool) 
 	rootCmd.PersistentFlags().StringVar(&cfg.AccessToken,
 		"api-token", cfg.AccessToken, "The API token to use for authenticating against the PlanetScale API.")
 
-	if err := viper.BindPFlag("org", rootCmd.PersistentFlags().Lookup("org")); err != nil {
-		return err
-	}
-
-	if err := viper.BindPFlag("database", rootCmd.PersistentFlags().Lookup("database")); err != nil {
-		return err
-	}
-
-	if err := viper.BindPFlag("branch", rootCmd.PersistentFlags().Lookup("branch")); err != nil {
-		return err
-	}
-
 	rootCmd.PersistentFlags().VarP(printer.NewFormatValue(printer.Human, format), "format", "f",
 		"Show output in a specific format. Possible values: [human, json, csv]")
 	if err := viper.BindPFlag("format", rootCmd.PersistentFlags().Lookup("format")); err != nil {
