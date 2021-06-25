@@ -76,8 +76,8 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			if web {
 				ch.Printer.Println("🌐  Redirecting you to branch a database in your web browser.")
 				err := browser.OpenURL(fmt.Sprintf(
-					"%s/%s/%s/branches?name=%s&notes=%s&showDialog=true",
-					cmdutil.ApplicationURL, ch.Config.Organization, source, url.QueryEscape(createReq.Name), url.QueryEscape(createReq.Notes),
+					"%s/%s/%s/branches?name=%s&region=%s&showDialog=true",
+					cmdutil.ApplicationURL, ch.Config.Organization, source, url.QueryEscape(createReq.Name), url.QueryEscape(createReq.Region),
 				))
 				if err != nil {
 					return err
@@ -114,7 +114,6 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&createReq.Notes, "notes", "", "notes for the database branch")
 	cmd.Flags().StringVar(&createReq.ParentBranch, "from", "", "branch to be created from")
 	cmd.Flags().StringVar(&createReq.Region, "region", "", "region for the database")
 	cmd.Flags().MarkHidden("region")
