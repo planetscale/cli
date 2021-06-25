@@ -40,7 +40,6 @@ type DatabaseBranch struct {
 	ParentBranch string `header:"parent branch,n/a" json:"parent_branch"`
 	CreatedAt    int64  `header:"created_at,timestamp(ms|utc|human)" json:"created_at"`
 	UpdatedAt    int64  `header:"updated_at,timestamp(ms|utc|human)" json:"updated_at"`
-	Notes        string `header:"notes" json:"notes"`
 
 	orig *ps.DatabaseBranch
 }
@@ -58,7 +57,6 @@ func (d *DatabaseBranch) MarshalCSVValue() interface{} {
 func toDatabaseBranch(db *ps.DatabaseBranch) *DatabaseBranch {
 	return &DatabaseBranch{
 		Name:         db.Name,
-		Notes:        db.Notes,
 		Status:       db.Status,
 		ParentBranch: db.ParentBranch,
 		CreatedAt:    db.CreatedAt.UTC().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond)),
