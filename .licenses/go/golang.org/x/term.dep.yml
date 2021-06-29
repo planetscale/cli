@@ -1,13 +1,13 @@
 ---
-name: golang.org/x/crypto/ssh/terminal
-version: v0.0.0-20200622213623-75b288015ac9
+name: golang.org/x/term
+version: v0.0.0-20210503060354-a79de5458b56
 type: go
-summary: Package terminal provides support functions for dealing with terminals, as
-  commonly found on UNIX systems.
-homepage: https://godoc.org/golang.org/x/crypto/ssh/terminal
+summary: Package term provides support functions for dealing with terminals, as commonly
+  found on UNIX systems.
+homepage: https://godoc.org/golang.org/x/term
 license: bsd-3-clause
 licenses:
-- sources: crypto@v0.0.0-20200622213623-75b288015ac9/LICENSE
+- sources: LICENSE
   text: |
     Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -36,7 +36,7 @@ licenses:
     THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-- sources: crypto@v0.0.0-20200622213623-75b288015ac9/PATENTS
+- sources: PATENTS
   text: |
     Additional IP Rights Grant (Patents)
 
@@ -60,4 +60,9 @@ licenses:
     infringement, or inducement of patent infringement, then any patent
     rights granted to you under this License for this implementation of Go
     shall terminate as of the date such litigation is filed.
-notices: []
+notices:
+- sources: AUTHORS
+  text: |-
+    # This source code refers to The Go Authors for copyright purposes.
+    # The master list of authors is in the main Go distribution,
+    # visible at http://tip.golang.org/AUTHORS.

@@ -1,12 +1,12 @@
 ---
 name: go.uber.org/zap/internal/color
-version: v1.17.0
+version: v1.18.1
 type: go
 summary: Package color adds coloring functionality for TTY output.
 homepage: https://godoc.org/go.uber.org/zap/internal/color
 license: mit
 licenses:
-- sources: zap@v1.17.0/LICENSE.txt
+- sources: zap@v1.18.1/LICENSE.txt
   text: |
     Copyright (c) 2016-2017 Uber Technologies, Inc.
 
