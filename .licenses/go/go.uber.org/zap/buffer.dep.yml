@@ -1,12 +1,12 @@
 ---
 name: go.uber.org/zap/buffer
-version: v1.17.0
+version: v1.18.1
 type: go
 summary: Package buffer provides a thin wrapper around a byte slice.
 homepage: https://godoc.org/go.uber.org/zap/buffer
 license: mit
 licenses:
-- sources: zap@v1.17.0/LICENSE.txt
+- sources: zap@v1.18.1/LICENSE.txt
   text: |
     Copyright (c) 2016-2017 Uber Technologies, Inc.
 

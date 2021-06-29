@@ -1,6 +1,6 @@
 ---
 name: github.com/AlecAivazis/survey/v2
-version: v2.2.12
+version: v2.2.13
 type: go
 summary: 
 homepage: https://godoc.org/github.com/AlecAivazis/survey/v2

@@ -1,6 +1,6 @@
 ---
 name: go.uber.org/zap
-version: v1.17.0
+version: v1.18.1
 type: go
 summary: Package zap provides fast, structured, leveled logging.
 homepage: https://godoc.org/go.uber.org/zap
