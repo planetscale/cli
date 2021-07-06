@@ -15,8 +15,12 @@ var (
 )
 
 func main() {
+	os.Exit(realMain())
+}
+
+func realMain() int {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
 	defer cancel()
 
-	os.Exit(cmd.Execute(ctx, version, commit, date))
+	return cmd.Execute(ctx, version, commit, date)
 }
