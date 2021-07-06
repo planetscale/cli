@@ -1,7 +1,6 @@
 package branch
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/planetscale/cli/internal/cmdutil"
@@ -19,7 +18,7 @@ func ShowCmd(ch *cmdutil.Helper) *cobra.Command {
 		Short: "Show a specific branch of a database",
 		Args:  cmdutil.RequiredArgs("source-database", "branch"),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx := cmd.Context()
 			source := args[0]
 			branch := args[1]
 

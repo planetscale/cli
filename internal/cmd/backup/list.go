@@ -1,7 +1,6 @@
 package backup
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/planetscale/cli/internal/cmdutil"
@@ -20,7 +19,7 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 		Args:    cmdutil.RequiredArgs("database", "branch"),
 		Aliases: []string{"ls"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx := cmd.Context()
 			database := args[0]
 			branch := args[1]
 

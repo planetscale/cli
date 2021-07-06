@@ -50,7 +50,7 @@ argument:
   pscale connect mydatabase mybranch`,
 		PersistentPreRunE: cmdutil.CheckAuthentication(ch.Config),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
+			ctx, cancel := context.WithCancel(cmd.Context())
 			defer cancel()
 
 			database := args[0]

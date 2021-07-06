@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"os"
+	"os/signal"
 
 	"github.com/planetscale/cli/internal/cmd"
 )
@@ -13,5 +15,12 @@ var (
 )
 
 func main() {
-	os.Exit(cmd.Execute(version, commit, date))
+	os.Exit(realMain())
+}
+
+func realMain() int {
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
+	defer cancel()
+
+	return cmd.Execute(ctx, version, commit, date)
 }

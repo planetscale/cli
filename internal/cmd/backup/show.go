@@ -1,7 +1,6 @@
 package backup
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/planetscale/cli/internal/cmdutil"
@@ -19,7 +18,7 @@ func ShowCmd(ch *cmdutil.Helper) *cobra.Command {
 		Short: "Show a specific backup of a branch",
 		Args:  cmdutil.RequiredArgs("database", "branch", "backup"),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx := cmd.Context()
 			database := args[0]
 			branch := args[1]
 			backup := args[2]

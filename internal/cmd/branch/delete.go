@@ -1,7 +1,6 @@
 package branch
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -24,7 +23,7 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 		Args:    cmdutil.RequiredArgs("database", "branch"),
 		Aliases: []string{"rm"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx := cmd.Context()
 			source := args[0]
 			branch := args[1]
 

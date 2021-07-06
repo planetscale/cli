@@ -1,6 +1,7 @@
 package update
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -40,7 +41,7 @@ func TestLatestVersion(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			info, err := latestVersion(ts.URL)
+			info, err := latestVersion(context.Background(), ts.URL)
 
 			success := tt.statusCode >= 200 && tt.statusCode < 300
 			if !success {
@@ -104,9 +105,10 @@ func TestCheckVersion(t *testing.T) {
 			}
 
 			updateInfo, err := checkVersion(
+				context.Background(),
 				tt.buildVersion,
 				path,
-				func(addr string) (*ReleaseInfo, error) {
+				func(ctx context.Context, addr string) (*ReleaseInfo, error) {
 					return &ReleaseInfo{Version: tt.latestVersion}, nil
 				},
 			)

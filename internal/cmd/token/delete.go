@@ -1,7 +1,6 @@
 package token
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/planetscale/cli/internal/cmdutil"
@@ -15,7 +14,7 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 		Use:   "delete <token>",
 		Short: "delete an entire service token in an organization",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx := cmd.Context()
 			client, err := ch.Client()
 			if err != nil {
 				return err

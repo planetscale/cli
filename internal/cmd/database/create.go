@@ -1,7 +1,6 @@
 package database
 
 import (
-	"context"
 	"fmt"
 	"net/url"
 
@@ -23,7 +22,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 		Short: "Create a database instance",
 		Args:  cmdutil.RequiredArgs("database"),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx := cmd.Context()
 			web, err := cmd.Flags().GetBool("web")
 			if err != nil {
 				return err
@@ -73,12 +72,13 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().StringVar(&createReq.Region, "region", "", "region for the database")
 	cmd.Flags().MarkHidden("region")
 	cmd.RegisterFlagCompletionFunc("region", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		ctx := cmd.Context()
 		client, err := ch.Client()
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
 
-		regions, err := client.Regions.List(context.Background(), &ps.ListRegionsRequest{})
+		regions, err := client.Regions.List(ctx, &ps.ListRegionsRequest{})
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}

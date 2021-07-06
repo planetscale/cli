@@ -1,7 +1,6 @@
 package deployrequest
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/planetscale/cli/internal/cmdutil"
@@ -22,7 +21,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 		Short: "Create a deploy request from a branch",
 		Args:  cmdutil.RequiredArgs("database", "branch"),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx := cmd.Context()
 			database := args[0]
 			branch := args[1]
 

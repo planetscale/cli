@@ -37,7 +37,8 @@ func LoginCmd(ch *cmdutil.Helper) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			ctx := context.Background()
+
+			ctx := cmd.Context()
 
 			deviceVerification, err := authenticator.VerifyDevice(ctx)
 			if err != nil {

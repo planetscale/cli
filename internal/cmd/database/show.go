@@ -1,7 +1,6 @@
 package database
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/planetscale/cli/internal/cmdutil"
@@ -38,7 +37,7 @@ func ShowCmd(ch *cmdutil.Helper) *cobra.Command {
 				org = cfg.Organization
 			}
 
-			databases, err := client.Databases.List(context.Background(), &planetscale.ListDatabasesRequest{
+			databases, err := client.Databases.List(cmd.Context(), &planetscale.ListDatabasesRequest{
 				Organization: org,
 			})
 			if err != nil {
@@ -53,7 +52,7 @@ func ShowCmd(ch *cmdutil.Helper) *cobra.Command {
 			return candidates, cobra.ShellCompDirectiveNoFileComp
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx := cmd.Context()
 			name := args[0]
 
 			web, err := cmd.Flags().GetBool("web")

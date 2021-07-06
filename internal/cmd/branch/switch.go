@@ -1,7 +1,6 @@
 package branch
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 
@@ -23,7 +22,7 @@ func SwitchCmd(ch *cmdutil.Helper) *cobra.Command {
 		Short: "Switches the current project to use the specified branch",
 		Args:  cmdutil.RequiredArgs("branch"),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx := cmd.Context()
 			branch := args[0]
 
 			client, err := ch.Config.NewClientFromConfig()

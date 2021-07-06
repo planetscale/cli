@@ -1,7 +1,6 @@
 package deployrequest
 
 import (
-	"context"
 	"fmt"
 	"strconv"
 
@@ -19,7 +18,7 @@ func DeployCmd(ch *cmdutil.Helper) *cobra.Command {
 		Short: "Deploy a specific deploy request",
 		Args:  cmdutil.RequiredArgs("database", "number"),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx := cmd.Context()
 			database := args[0]
 			number := args[1]
 

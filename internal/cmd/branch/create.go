@@ -1,7 +1,6 @@
 package branch
 
 import (
-	"context"
 	"fmt"
 	"net/url"
 
@@ -40,7 +39,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 				org = cfg.Organization
 			}
 
-			databases, err := client.Databases.List(context.Background(), &ps.ListDatabasesRequest{
+			databases, err := client.Databases.List(cmd.Context(), &ps.ListDatabasesRequest{
 				Organization: org,
 			})
 			if err != nil {
@@ -55,7 +54,6 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			return candidates, cobra.ShellCompDirectiveNoFileComp
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
 			source := args[0]
 			branch := args[1]
 
@@ -92,7 +90,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Creating branch from %s...", printer.BoldBlue(source)))
 			defer end()
-			dbBranch, err := client.DatabaseBranches.Create(ctx, createReq)
+			dbBranch, err := client.DatabaseBranches.Create(cmd.Context(), createReq)
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case ps.ErrNotFound:
@@ -118,12 +116,13 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().StringVar(&createReq.Region, "region", "", "region for the database")
 	cmd.Flags().MarkHidden("region")
 	cmd.RegisterFlagCompletionFunc("region", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		ctx := cmd.Context()
 		client, err := ch.Client()
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
 
-		regions, err := client.Regions.List(context.Background(), &ps.ListRegionsRequest{})
+		regions, err := client.Regions.List(ctx, &ps.ListRegionsRequest{})
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
