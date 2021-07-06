@@ -2,7 +2,6 @@ package deployrequest
 
 import (
 	"bufio"
-	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -27,7 +26,7 @@ func DiffCmd(ch *cmdutil.Helper) *cobra.Command {
 		Short: "Show the diff of a deploy request",
 		Args:  cmdutil.RequiredArgs("database", "number"),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx := cmd.Context()
 			database := args[0]
 			number := args[1]
 

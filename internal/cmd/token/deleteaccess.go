@@ -1,7 +1,6 @@
 package token
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
@@ -16,7 +15,7 @@ func DeleteAccessCmd(ch *cmdutil.Helper) *cobra.Command {
 		Use:   "delete-access <token> <access> <access> ...",
 		Short: "delete access granted to a service token in the organization",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx := cmd.Context()
 			client, err := ch.Client()
 			if err != nil {
 				return err

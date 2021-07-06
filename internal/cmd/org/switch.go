@@ -1,7 +1,6 @@
 package org
 
 import (
-	"context"
 	"fmt"
 	"os"
 
@@ -33,7 +32,7 @@ func SwitchCmd(ch *cmdutil.Helper) *cobra.Command {
 				return nil, cobra.ShellCompDirectiveNoFileComp
 			}
 
-			orgs, err := client.Organizations.List(context.Background())
+			orgs, err := client.Organizations.List(cmd.Context())
 			if err != nil {
 				return nil, cobra.ShellCompDirectiveNoFileComp
 			}
@@ -46,7 +45,7 @@ func SwitchCmd(ch *cmdutil.Helper) *cobra.Command {
 			return orgNames, cobra.ShellCompDirectiveNoFileComp
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx := cmd.Context()
 
 			organization := ""
 

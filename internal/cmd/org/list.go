@@ -1,8 +1,6 @@
 package org
 
 import (
-	"context"
-
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
 
@@ -16,7 +14,7 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 		Args:    cobra.NoArgs,
 		Aliases: []string{"ls"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx := cmd.Context()
 			client, err := ch.Client()
 			if err != nil {
 				return err

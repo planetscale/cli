@@ -2,7 +2,6 @@ package branch
 
 import (
 	"bufio"
-	"context"
 	"fmt"
 	"strings"
 
@@ -25,7 +24,7 @@ func SchemaCmd(ch *cmdutil.Helper) *cobra.Command {
 		Short: "Show the schema of a branch",
 		Args:  cmdutil.RequiredArgs("database", "branch"),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx := cmd.Context()
 			database, branch := args[0], args[1]
 
 			if flags.web {

@@ -2,7 +2,6 @@ package auth
 
 import (
 	"bufio"
-	"context"
 	"io"
 	"os"
 
@@ -40,7 +39,7 @@ func LogoutCmd(ch *cmdutil.Helper) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			ctx := context.Background()
+			ctx := cmd.Context()
 
 			end := ch.Printer.PrintProgress("Logging out...")
 			defer end()

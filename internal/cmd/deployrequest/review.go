@@ -1,7 +1,6 @@
 package deployrequest
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"strconv"
@@ -30,7 +29,7 @@ func ReviewCmd(ch *cmdutil.Helper) *cobra.Command {
 				return errors.New("neither --approve nor --comment is set")
 			}
 
-			ctx := context.Background()
+			ctx := cmd.Context()
 			database := args[0]
 			number := args[1]
 

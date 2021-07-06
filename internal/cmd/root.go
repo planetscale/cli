@@ -16,6 +16,7 @@ limitations under the License.
 package cmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -62,11 +63,11 @@ var rootCmd = &cobra.Command{
 
 // Execute executes the command and returns the exit status of the finished
 // command.
-func Execute(ver, commit, buildDate string) int {
+func Execute(ctx context.Context, ver, commit, buildDate string) int {
 	var format printer.Format
 	var debug bool
 
-	err := runCmd(ver, commit, buildDate, &format, &debug)
+	err := runCmd(ctx, ver, commit, buildDate, &format, &debug)
 	if err == nil {
 		return 0
 	}
@@ -76,7 +77,7 @@ func Execute(ver, commit, buildDate string) int {
 	case printer.JSON:
 		fmt.Fprintf(os.Stderr, `{"error": "%s"}`, err)
 	default:
-		if err := update.CheckVersion(ver); err != nil && debug {
+		if err := update.CheckVersion(ctx, ver); err != nil && debug {
 			fmt.Fprintf(os.Stderr, "Updater error: %s\n", err)
 		}
 
@@ -94,7 +95,7 @@ func Execute(ver, commit, buildDate string) int {
 
 // runCmd adds all child commands to the root command, sets flags
 // appropriately, and runs the root command.
-func runCmd(ver, commit, buildDate string, format *printer.Format, debug *bool) error {
+func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.Format, debug *bool) error {
 	cobra.OnInitialize(initConfig)
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config",
@@ -174,7 +175,7 @@ func runCmd(ver, commit, buildDate string, format *printer.Format, debug *bool) 
 	rootCmd.AddCommand(token.TokenCmd(ch))
 	rootCmd.AddCommand(version.VersionCmd(ch, ver, commit, buildDate))
 
-	return rootCmd.Execute()
+	return rootCmd.ExecuteContext(ctx)
 }
 
 // initConfig reads in config file and ENV variables if set.

@@ -1,7 +1,6 @@
 package database
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/planetscale/cli/internal/cmdutil"
@@ -20,7 +19,7 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 		Short:   "List databases",
 		Aliases: []string{"ls"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx := cmd.Context()
 			web, err := cmd.Flags().GetBool("web")
 			if err != nil {
 				return err

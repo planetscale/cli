@@ -1,7 +1,6 @@
 package database
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -27,7 +26,7 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 		Args:    cmdutil.RequiredArgs("database"),
 		Aliases: []string{"rm"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx := cmd.Context()
 			name := args[0]
 
 			client, err := ch.Client()

@@ -5,6 +5,7 @@
 package update
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -44,13 +45,18 @@ type StateEntry struct {
 
 // CheckVersion checks for the given build version whether there is a new
 // version of the CLI or not.
-func CheckVersion(buildVersion string) error {
+func CheckVersion(ctx context.Context, buildVersion string) error {
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+
 	path, err := stateFilePath()
 	if err != nil {
 		return err
 	}
 
 	updateInfo, err := checkVersion(
+		ctx,
 		buildVersion,
 		path,
 		latestVersion,
@@ -82,7 +88,11 @@ func CheckVersion(buildVersion string) error {
 	return nil
 }
 
-func checkVersion(buildVersion, path string, latestVersionFn func(addr string) (*ReleaseInfo, error)) (*UpdateInfo, error) {
+func checkVersion(
+	ctx context.Context,
+	buildVersion, path string,
+	latestVersionFn func(ctx context.Context, addr string) (*ReleaseInfo, error),
+) (*UpdateInfo, error) {
 	if os.Getenv("PSCALE_NO_UPDATE_NOTIFIER") != "" {
 		return &UpdateInfo{
 			Update: false,
@@ -99,7 +109,7 @@ func checkVersion(buildVersion, path string, latestVersionFn func(addr string) (
 	}
 
 	addr := "https://api.github.com/repos/planetscale/cli/releases/latest"
-	info, err := latestVersionFn(addr)
+	info, err := latestVersionFn(ctx, addr)
 	if err != nil {
 		return nil, err
 	}
@@ -137,8 +147,8 @@ func checkVersion(buildVersion, path string, latestVersionFn func(addr string) (
 
 }
 
-func latestVersion(addr string) (*ReleaseInfo, error) {
-	req, err := http.NewRequest("GET", addr, nil)
+func latestVersion(ctx context.Context, addr string) (*ReleaseInfo, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", addr, nil)
 	if err != nil {
 		return nil, err
 	}

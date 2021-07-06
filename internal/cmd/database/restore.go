@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
-	"os/signal"
 	"time"
 
 	"github.com/planetscale/cli/internal/cmdutil"
@@ -42,7 +40,7 @@ func RestoreCmd(ch *cmdutil.Helper) *cobra.Command {
 }
 
 func restore(ch *cmdutil.Helper, cmd *cobra.Command, flags *restoreFlags, args []string) error {
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
+	ctx, cancel := context.WithCancel(cmd.Context())
 	defer cancel()
 
 	database := args[0]

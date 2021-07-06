@@ -1,7 +1,6 @@
 package branch
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/planetscale/cli/internal/cmdutil"
@@ -16,7 +15,7 @@ func RefreshSchemaCmd(ch *cmdutil.Helper) *cobra.Command {
 		Short: "Refresh the schema for a database branch",
 		Args:  cmdutil.RequiredArgs("database", "branch"),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx := cmd.Context()
 			database, branch := args[0], args[1]
 
 			client, err := ch.Client()

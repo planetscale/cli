@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/signal"
 	"path/filepath"
 	"time"
 
@@ -49,7 +48,7 @@ func DumpCmd(ch *cmdutil.Helper) *cobra.Command {
 }
 
 func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []string) error {
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
+	ctx, cancel := context.WithCancel(cmd.Context())
 	defer cancel()
 
 	database := args[0]

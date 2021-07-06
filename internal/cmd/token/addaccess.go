@@ -1,7 +1,6 @@
 package token
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
@@ -24,7 +23,7 @@ For example, to give a service token the ability to create, read and delete bran
 
 For a complete list of the access permissions that can be granted to a token, see: https://docs.planetscale.com/reference/planetscale-cli#service-tokens-in-organizations.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx := cmd.Context()
 			client, err := ch.Client()
 			if err != nil {
 				return err

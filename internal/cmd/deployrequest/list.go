@@ -1,7 +1,6 @@
 package deployrequest
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/planetscale/cli/internal/cmdutil"
@@ -20,7 +19,7 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 		Aliases: []string{"ls"},
 		Args:    cmdutil.RequiredArgs("database"),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx := cmd.Context()
 			database := args[0]
 
 			web, err := cmd.Flags().GetBool("web")
