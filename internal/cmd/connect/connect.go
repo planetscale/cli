@@ -29,6 +29,7 @@ func ConnectCmd(ch *cmdutil.Helper) *cobra.Command {
 		remoteAddr          string
 		execCommand         string
 		execCommandProtocol string
+		execCommandEnvURL   string
 	}
 
 	cmd := &cobra.Command{
@@ -105,7 +106,15 @@ argument:
 				executeCh = make(chan error, 1)
 
 				go func() {
-					err := runCommand(ctx, flags.execCommand, flags.execCommandProtocol, database, branch, proxyReady)
+					err := runCommand(
+						ctx,
+						flags.execCommand,
+						flags.execCommandProtocol,
+						flags.execCommandEnvURL,
+						database,
+						branch,
+						proxyReady,
+					)
 
 					// TODO(fatih): is it worth to making cancellation configurable?
 					cancel() // stop the proxy by cancelling all other child contexts
@@ -141,7 +150,10 @@ argument:
 		"PlanetScale Database remote network address. By default the remote address is populated automatically from the PlanetScale API.")
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
 	cmd.PersistentFlags().StringVar(&flags.execCommand, "execute", "", "Run this command after successfully connecting to the database.")
-	cmd.PersistentFlags().StringVar(&flags.execCommandProtocol, "execute-protocol", "mysql2", "Protocol for the DATABASE_URL value in execute")
+	cmd.PersistentFlags().StringVar(&flags.execCommandProtocol, "execute-protocol",
+		"mysql2", "Protocol for the exposed URL (by default DATABASE_URL) value in execute")
+	cmd.PersistentFlags().StringVar(&flags.execCommandEnvURL, "execute-env-url", "DATABASE_URL",
+		"Environment variable name that contains the exposed Database URL.")
 	return cmd
 }
 
@@ -174,7 +186,7 @@ func runProxy(ctx context.Context, proxyOpts proxy.Options, database, branch str
 
 // runCommand runs the given command with several environment variables exposed
 // to the command.
-func runCommand(ctx context.Context, command, protocol, database, branch string, ready chan string) error {
+func runCommand(ctx context.Context, command, protocol, databaseEnvURL, database, branch string, ready chan string) error {
 	args, err := shellwords.Parse(command)
 	if err != nil {
 		return fmt.Errorf("failed to parse command, not running: %s", err)
@@ -189,7 +201,7 @@ func runCommand(ctx context.Context, command, protocol, database, branch string,
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	connStr := fmt.Sprintf("DATABASE_URL=%s://root@%s/%s", protocol, addr, database)
+	connStr := fmt.Sprintf("%s=%s://root@%s/%s", databaseEnvURL, protocol, addr, database)
 	cmd.Env = append(cmd.Env, connStr)
 
 	hostEnv := fmt.Sprintf("PLANETSCALE_DATABASE_HOST=%s", addr)
