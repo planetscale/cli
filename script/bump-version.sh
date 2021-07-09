@@ -16,7 +16,7 @@ git config --global --add url."https://${GITHUB_TOKEN}@github.com/".insteadOf "h
 
 buildkite-agent meta-data set "release-version" "$RELEASE_VERSION"
 
-git tag "$RELEASE_VERSION"
-git push origin "$RELEASE_VERSION"
+# git tag "$RELEASE_VERSION"
+# git push origin "$RELEASE_VERSION"
 
 echo "✅"

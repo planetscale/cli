@@ -17,16 +17,16 @@ steps:
 - wait
 
 - block: ":rocket: Release !"
-  branches: "main"
+  # branches: "main"
 
 - command: script/bump-version.sh
-  if: build.branch == "main"
+  # if: build.branch == "main"
   label: ":arrow_up_small: Bump & tag version"
 
 - wait
 
 - label: ":github: Publishing artifacts"
-  if: build.branch == "main"
+  # if: build.branch == "main"
   command: script/release.sh
   plugins:
     - docker#v3.8.0:
