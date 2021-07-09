@@ -14,4 +14,5 @@ echo "--- running goreleaser"
 
 export GORELEASER_CURRENT_TAG=$(buildkite-agent meta-data get "release-version")
 
+cd $WORKDIR
 /tmp/goreleaser release --rm-dist 
