@@ -34,7 +34,7 @@ cd /tmp && tar -zxvf goreleaser_Linux_x86_64.tar.gz
 echo "--- running goreleaser"
 
 echo "Login to the docker..."
-echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin "$DOCKER_REGISTRY"
+echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
 
 export GORELEASER_CURRENT_TAG=$(buildkite-agent meta-data get "release-version")
 
