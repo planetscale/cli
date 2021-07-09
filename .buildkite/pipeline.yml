@@ -26,7 +26,7 @@ steps:
 - wait
 
 - label: ":github: Publishing artifacts"
-  if: build.branch == "main" && build.tag =~ /^v[0-9]+\.0\$/
+  if: build.branch == "main"
   plugins:
     - docker#v3.8.0:
         image: "goreleaser/goreleaser:v0.169.0"
