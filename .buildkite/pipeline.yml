@@ -1,3 +1,6 @@
+agents:
+  queue: "public"
+
 steps:
 - name: "Go build and test %n"
   command: make
@@ -10,3 +13,29 @@ steps:
   plugins:
     - docker-compose#v3.7.0:
         run: licensing
+
+- wait
+
+- block: ":rocket: Release !"
+  branches: "main"
+
+- command: script/release.sh
+  if: build.branch == "main"
+  label: ":arrow_up_small: Bump & tag version"
+
+- wait
+
+- label: ":github: Publishing artifacts"
+  if: build.branch == "main" && build.tag =~ /^v[0-9]+\.0\$/
+  plugins:
+    - docker#v3.8.0:
+        image: "goreleaser/goreleaser:v0.169.0"
+        command: ["release", "--rm-dist"]
+        propagate-environment: true
+        volumes:
+          - "/var/run/docker.sock:/var/run/docker.sock"
+  env:
+      GITHUB_TOKEN: "${ACTIONS_BOT_TOKEN}"
+      DOCKER_REGISTRY: "https://index.docker.io/v1/"
+      DOCKER_USERNAME: "${DOCKER_USERNAME}"
+      DOCKER_PASSWORD: "${DOCKER_PASSWORD}"
