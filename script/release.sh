@@ -3,18 +3,15 @@
 set -eu
 
 WORKDIR=$(pwd)
-SVU_BIN="${WORKDIR}/svu"
 
-echo "+++ :construction:  Installing 'svu' tool"
-curl -sfL https://install.goreleaser.com/github.com/caarlos0/svu.sh | bash -s -- -b $WORKDIR
+echo "--- installing goreleaser"
 
-RELEASE_VERSION=$($SVU_BIN minor)
+curl -L -o /tmp/goreleaser_Linux_x86_64.tar.gz https://github.com/goreleaser/goreleaser/releases/download/v0.173.2/goreleaser_Linux_x86_64.tar.gz
 
-echo "+++ :boom: Bumping to version $RELEASE_VERSION"
+cd /tmp && tar -zxvf goreleaser_Linux_x86_64.tar.gz
 
-git config --global --add url."https://${ACTIONS_BOT_TOKEN}@github.com/".insteadOf "https://github.com/"
+echo "--- running goreleaser"
 
-git tag "$RELEASE_VERSION"
-git push origin "$RELEASE_VERSION"
+export GORELEASER_CURRENT_TAG=$(buildkite-agent meta-data get "release-version")
 
-echo "✅"
+/tmp/goreleaser release --rm-dist 

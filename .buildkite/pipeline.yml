@@ -19,7 +19,7 @@ steps:
 - block: ":rocket: Release !"
   branches: "main"
 
-- command: script/release.sh
+- command: script/bump-version.sh
   if: build.branch == "main"
   label: ":arrow_up_small: Bump & tag version"
 
@@ -27,12 +27,14 @@ steps:
 
 - label: ":github: Publishing artifacts"
   if: build.branch == "main"
+  command: script/release.sh
   plugins:
     - docker#v3.8.0:
-        image: "goreleaser/goreleaser:v0.169.0"
-        command: ["release", "--rm-dist"]
+        image: "golang:1.16.5"
         propagate-environment: true
+        environment:
+          - "GITHUB_TOKEN"
+          - "DOCKER_USERNAME"
+          - "DOCKER_PASSWORD"
         volumes:
           - "/var/run/docker.sock:/var/run/docker.sock"
-  env:
-      DOCKER_REGISTRY: "https://index.docker.io/v1/"
