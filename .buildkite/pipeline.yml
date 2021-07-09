@@ -35,7 +35,4 @@ steps:
         volumes:
           - "/var/run/docker.sock:/var/run/docker.sock"
   env:
-      GITHUB_TOKEN: "${ACTIONS_BOT_TOKEN}"
       DOCKER_REGISTRY: "https://index.docker.io/v1/"
-      DOCKER_USERNAME: "${DOCKER_USERNAME}"
-      DOCKER_PASSWORD: "${DOCKER_PASSWORD}"
