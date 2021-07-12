@@ -76,17 +76,7 @@ func toDatabaseBranches(branches []*ps.DatabaseBranch) []*DatabaseBranch {
 }
 
 type DatabaseBranchStatus struct {
-	Status      string `header:"status" json:"status"`
-	GatewayHost string `header:"gateway_host" json:"gateway_host"`
-	GatewayPort int    `header:"gateway_port,text" json:"gateway_port"`
-	User        string `header:"username" json:"user"`
-	Password    string `header:"password" json:"password"`
-
-	orig *ps.DatabaseBranchStatus
-}
-
-func (d *DatabaseBranchStatus) MarshalJSON() ([]byte, error) {
-	return json.MarshalIndent(d.orig, "", "  ")
+	Status string `header:"status" json:"status"`
 }
 
 func toDatabaseBranchStatus(status *ps.DatabaseBranchStatus) *DatabaseBranchStatus {
@@ -95,11 +85,6 @@ func toDatabaseBranchStatus(status *ps.DatabaseBranchStatus) *DatabaseBranchStat
 		ready = "not ready"
 	}
 	return &DatabaseBranchStatus{
-		Status:      ready,
-		GatewayHost: status.Credentials.GatewayHost,
-		GatewayPort: status.Credentials.GatewayPort,
-		User:        status.Credentials.User,
-		Password:    status.Credentials.Password,
-		orig:        status,
+		Status: ready,
 	}
 }

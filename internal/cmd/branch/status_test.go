@@ -57,5 +57,7 @@ func TestBranch_StatusCmd(t *testing.T) {
 
 	c.Assert(err, qt.IsNil)
 	c.Assert(svc.GetStatusFnInvoked, qt.IsTrue)
-	c.Assert(buf.String(), qt.JSONEquals, res)
+
+	orig := &DatabaseBranchStatus{Status: "ready"}
+	c.Assert(buf.String(), qt.JSONEquals, orig)
 }
