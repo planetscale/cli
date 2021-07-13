@@ -1,6 +1,8 @@
 package cmdutil
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/planetscale/planetscale-go/planetscale"
@@ -43,6 +45,26 @@ func HandleError(err error) error {
 
 	perr, ok := err.(*planetscale.Error)
 	if !ok {
+		// TODO(fatih): fix the return type in our API.
+		// authErrorResponse represents an error response from the API
+		type authErrorResponse struct {
+			Error            string `json:"error"`
+			ErrorDescription string `json:"error_description"`
+			State            string `json:"state"`
+		}
+
+		errorRes := &authErrorResponse{}
+		mErr := json.Unmarshal([]byte(err.Error()), errorRes)
+		if mErr != nil {
+			// return back original error (not *mErr*). Looks like the error is
+			// not an authentication error
+			return err
+		}
+
+		if errorRes.Error == "invalid_token" {
+			return errors.New(ExpiredAuthMessage)
+		}
+
 		return err
 	}
 
