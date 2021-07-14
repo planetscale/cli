@@ -53,7 +53,7 @@ func DiffCmd(ch *cmdutil.Helper) *cobra.Command {
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
-					return fmt.Errorf("deploy rquest '%s/%s' does not exist in organization %s",
+					return fmt.Errorf("deploy request '%s/%s' does not exist in organization %s",
 						printer.BoldBlue(database), printer.BoldBlue(number), printer.BoldBlue(ch.Config.Organization))
 				default:
 					return cmdutil.HandleError(err)
