@@ -28,12 +28,12 @@ func TestServiceToken_ShowAccess(t *testing.T) {
 
 	orig := []*ps.ServiceTokenAccess{
 		{
-			ID:       1,
+			ID:       "id-1",
 			Access:   "read_branch",
 			Resource: ps.Database{Name: db},
 		},
 		{
-			ID:       2,
+			ID:       "id-2",
 			Access:   "delete_branch",
 			Resource: ps.Database{Name: db},
 		},
