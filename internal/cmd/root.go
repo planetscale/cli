@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	"github.com/fatih/color"
+	"github.com/planetscale/cli/internal/cmd/auditlog"
 	"github.com/planetscale/cli/internal/cmd/auth"
 	"github.com/planetscale/cli/internal/cmd/backup"
 	"github.com/planetscale/cli/internal/cmd/branch"
@@ -163,6 +164,7 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 
 	rootCmd.AddCommand(loginCmd)
 	rootCmd.AddCommand(logoutCmd)
+	rootCmd.AddCommand(auditlog.AuditLogCmd(ch))
 	rootCmd.AddCommand(auth.AuthCmd(ch))
 	rootCmd.AddCommand(backup.BackupCmd(ch))
 	rootCmd.AddCommand(branch.BranchCmd(ch))
