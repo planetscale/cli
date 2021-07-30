@@ -43,6 +43,7 @@ func toRegion(region *ps.Region) *Region {
 		Name:    region.Name,
 		Slug:    region.Slug,
 		Enabled: region.Enabled,
+		orig:    region,
 	}
 }
 
