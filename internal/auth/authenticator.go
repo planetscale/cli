@@ -202,7 +202,7 @@ type OAuthTokenResponse struct {
 }
 
 func (d *DeviceAuthenticator) requestToken(ctx context.Context, deviceCode string, clientID string) (string, error) {
-	payload := strings.NewReader(fmt.Sprintf("grant_type=device_code&device_code=%s&client_id=%s", deviceCode, clientID))
+	payload := strings.NewReader(fmt.Sprintf("grant_type=urn:ietf:params:oauth:grant-type:device_code&device_code=%s&client_id=%s", deviceCode, clientID))
 	req, err := d.NewFormRequest(ctx, http.MethodPost, "oauth/token", payload)
 	if err != nil {
 		return "", errors.Wrap(err, "error creating request")
