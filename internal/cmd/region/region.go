@@ -10,7 +10,6 @@ import (
 
 // RegionCmd encapsulates the commands for interacting with regions
 func RegionCmd(ch *cmdutil.Helper) *cobra.Command {
-
 	cmd := &cobra.Command{
 		Use:               "region <command>",
 		Short:             "List regions",

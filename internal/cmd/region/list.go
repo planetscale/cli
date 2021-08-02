@@ -48,7 +48,5 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 		TraverseChildren: true,
 	}
 
-	cmd.Flags().BoolP("web", "w", false, "Open in your web browser")
-
 	return cmd
 }
