@@ -38,6 +38,11 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			end()
+			
+			if len(tokens) == 0 && ch.Printer.Format() == printer.Human {
+				ch.Printer.Println("No service tokens have been created yet.")
+				return nil
+			}
 
 			return ch.Printer.PrintResource(toServiceTokens(tokens))
 		},
