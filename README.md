@@ -50,7 +50,7 @@ docker pull planetscale/pscale:latest
 To pull a specific version:
 
 ```
-docker pull planetscale/pscale:v0.62.0
+docker pull planetscale/pscale:v0.63.0
 ```
 
 ## Documentation
