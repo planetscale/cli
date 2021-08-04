@@ -99,7 +99,7 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 		}
 	}
 
-	if status.Credentials.User == "" {
+	if !status.Ready {
 		return errors.New("database branch is not ready yet, please try again in a few minutes")
 	}
 
@@ -108,7 +108,7 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 		return err
 	}
 
-	dbName, err := getDatabaseName(database, addr.String(), status.Credentials)
+	dbName, err := getDatabaseName(database, addr.String())
 	if err != nil {
 		return err
 	}
@@ -133,8 +133,7 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 	}
 
 	cfg := dumper.NewDefaultConfig()
-	cfg.User = status.Credentials.User
-	cfg.Password = status.Credentials.Password
+	cfg.User = "root"
 	cfg.Address = addr.String()
 	cfg.Database = dbName
 	cfg.Debug = ch.Debug()
@@ -175,8 +174,8 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 	return nil
 }
 
-func getDatabaseName(name, addr string, credentials ps.DatabaseBranchCredentials) (string, error) {
-	dsn := fmt.Sprintf("%s:%s@tcp(%s)/", credentials.User, credentials.Password, addr)
+func getDatabaseName(name, addr string) (string, error) {
+	dsn := fmt.Sprintf("%s:%s@tcp(%s)/", "root", "", addr)
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		return "", err

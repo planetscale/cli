@@ -95,7 +95,7 @@ func restore(ch *cmdutil.Helper, cmd *cobra.Command, flags *restoreFlags, args [
 		}
 	}
 
-	if status.Credentials.User == "" {
+	if !status.Ready {
 		return errors.New("database branch is not ready yet, please try again in a few minutes")
 	}
 
@@ -105,8 +105,7 @@ func restore(ch *cmdutil.Helper, cmd *cobra.Command, flags *restoreFlags, args [
 	}
 
 	cfg := dumper.NewDefaultConfig()
-	cfg.User = status.Credentials.User
-	cfg.Password = status.Credentials.Password
+	cfg.User = "root"
 	cfg.Address = addr.String()
 	cfg.Debug = ch.Debug()
 	cfg.IntervalMs = 10 * 1000

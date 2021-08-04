@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
@@ -137,16 +136,8 @@ second argument:
 				}
 			}
 
-			if status.Credentials.User == "" {
+			if !status.Ready {
 				return errors.New("database branch is not ready yet")
-			}
-
-			tmpFile, err := createLoginFile(status.Credentials.User, status.Credentials.Password)
-			if tmpFile != "" {
-				defer os.Remove(tmpFile)
-			}
-			if err != nil {
-				return err
 			}
 
 			addr, err := p.LocalAddr()
@@ -160,7 +151,8 @@ second argument:
 			}
 
 			mysqlArgs := []string{
-				fmt.Sprintf("--defaults-extra-file=%s", tmpFile),
+				"-u",
+				"root",
 				"-s",
 				"-t", // the -s (silent) flag disables tabular output, re-enable it.
 				"-h", host,
@@ -235,21 +227,6 @@ func formatMySQLBranch(database, branch string) string {
 	return fmt.Sprintf("%s/%s> ", database, branch)
 }
 
-// createLoginFile creates a temporary file to store the username and password, so we don't have to
-// pass them as `mysql` command-line arguments.
-func createLoginFile(username, password string) (string, error) {
-	// ioutil.TempFile defaults to creating the file in the OS temporary directory with 0600 permissions
-	tmpFile, err := ioutil.TempFile("", "pscale-*")
-	if err != nil {
-		fmt.Println("could not create temporary file: ", err)
-		return "", err
-	}
-	fmt.Fprintln(tmpFile, "[client]")
-	fmt.Fprintf(tmpFile, "user=%s\n", username)
-	fmt.Fprintf(tmpFile, "password=%s\n", password)
-	_ = tmpFile.Close()
-	return tmpFile.Name(), nil
-}
 
 func historyFilePath(org, db, branch string) (string, error) {
 	dir, err := homedir.Dir()
