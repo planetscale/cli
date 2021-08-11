@@ -1,0 +1,71 @@
+package passwords
+
+import (
+	"fmt"
+
+	"github.com/planetscale/cli/internal/cmdutil"
+	"github.com/planetscale/cli/internal/printer"
+
+	"github.com/planetscale/planetscale-go/planetscale"
+
+	"github.com/pkg/browser"
+	"github.com/spf13/cobra"
+)
+
+func ShowCmd(ch *cmdutil.Helper) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "show <database> <branch> <password>",
+		Short: "Show a specific password of a branch",
+		Args:  cmdutil.RequiredArgs("database", "branch", "password"),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			database := args[0]
+			branch := args[1]
+			password := args[2]
+
+			web, err := cmd.Flags().GetBool("web")
+			if err != nil {
+				return err
+			}
+
+			if web {
+				ch.Printer.Println("🌐  Redirecting you to your password in your web browser.")
+				err := browser.OpenURL(fmt.Sprintf("%s/%s/%s/%s/passwords/%s", cmdutil.ApplicationURL, ch.Config.Organization, database, branch, password))
+				if err != nil {
+					return err
+				}
+				return nil
+			}
+
+			client, err := ch.Client()
+			if err != nil {
+				return err
+			}
+
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Fetching password %s for %s", printer.BoldBlue(password), printer.BoldBlue(branch)))
+			defer end()
+			bkp, err := client.Passwords.Get(ctx, &planetscale.GetDatabaseBranchPasswordRequest{
+				Organization: ch.Config.Organization,
+				Database:     database,
+				Branch:       branch,
+				Password:     password,
+			})
+			if err != nil {
+				switch cmdutil.ErrCode(err) {
+				case planetscale.ErrNotFound:
+					return fmt.Errorf("password %s does not exist in branch %s of %s (organization: %s)",
+						printer.BoldBlue(password), printer.BoldBlue(branch), printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
+				default:
+					return cmdutil.HandleError(err)
+				}
+			}
+
+			end()
+
+			return ch.Printer.PrintResource(toPassword(bkp))
+		},
+	}
+
+	cmd.Flags().BoolP("web", "w", false, "Show a branch password in your web browser.")
+	return cmd
+}

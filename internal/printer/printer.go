@@ -72,6 +72,10 @@ func (f *Format) Type() string {
 	return "string"
 }
 
+type SelfPrinter interface {
+	Print()
+}
+
 // Printer is used to print information to the defined output.
 type Printer struct {
 	humanOut    io.Writer
@@ -194,6 +198,12 @@ func (p *Printer) PrintResource(v interface{}) error {
 		}
 		fmt.Fprintln(out, buf)
 		return nil
+	default:
+		if i, ok := v.(SelfPrinter); ok {
+			i.Print()
+		} else {
+			return fmt.Errorf("unknown printer.Format: %T", *p.format)
+		}
 	}
 
 	return fmt.Errorf("unknown printer.Format: %T", *p.format)
