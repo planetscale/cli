@@ -56,11 +56,6 @@ func PromoteCmd(ch *cmdutil.Helper) *cobra.Command {
 			source := args[0]
 			branch := args[1]
 
-			// Simplest case, the names are equivalent
-			if source == branch {
-				return fmt.Errorf("a branch named '%s' already exists", branch)
-			}
-
 			promoteReq.Database = source
 			promoteReq.Organization = ch.Config.Organization
 			promoteReq.Branch = branch
@@ -70,14 +65,14 @@ func PromoteCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
-			end := ch.Printer.PrintProgress(fmt.Sprintf("Creating branch from %s...", printer.BoldBlue(source)))
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Promoting %s branch in %s to production...", printer.BoldBlue(branch), printer.BoldBlue(source)))
 			defer end()
 			dbBranch, err := client.DatabaseBranches.Promote(cmd.Context(), promoteReq)
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case ps.ErrNotFound:
-					return fmt.Errorf("source database %s does not exist in organization %s",
-						printer.BoldBlue(source), printer.BoldBlue(ch.Config.Organization))
+					return fmt.Errorf("branch %s does not exist in database %s",
+						printer.BoldBlue(branch), printer.BoldBlue(source))
 				default:
 					return cmdutil.HandleError(err)
 				}
@@ -86,7 +81,7 @@ func PromoteCmd(ch *cmdutil.Helper) *cobra.Command {
 			end()
 
 			if ch.Printer.Format() == printer.Human {
-				ch.Printer.Printf("Branch %s was successfully promoted.\n", printer.BoldBlue(dbBranch.Name))
+				ch.Printer.Printf("Branch %s in %s was successfully promoted.\n", printer.BoldBlue(dbBranch.Name), printer.BoldBlue(source))
 				return nil
 			}
 
