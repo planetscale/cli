@@ -57,11 +57,6 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			source := args[0]
 			branch := args[1]
 
-			// Simplest case, the names are equivalent
-			if source == branch {
-				return fmt.Errorf("a branch named '%s' already exists", branch)
-			}
-
 			createReq.Database = source
 			createReq.Name = branch
 			createReq.Organization = ch.Config.Organization
