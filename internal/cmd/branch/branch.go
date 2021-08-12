@@ -30,6 +30,7 @@ func BranchCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.AddCommand(DiffCmd(ch))
 	cmd.AddCommand(SchemaCmd(ch))
 	cmd.AddCommand(RefreshSchemaCmd(ch))
+	cmd.AddCommand(PromoteCmd(ch))
 
 	return cmd
 }
@@ -38,6 +39,7 @@ type DatabaseBranch struct {
 	Name         string `header:"name" json:"name"`
 	Status       string `header:"status" json:"status"`
 	ParentBranch string `header:"parent branch,n/a" json:"parent_branch"`
+	Production   bool   `header:"production" json:"production"`
 	CreatedAt    int64  `header:"created_at,timestamp(ms|utc|human)" json:"created_at"`
 	UpdatedAt    int64  `header:"updated_at,timestamp(ms|utc|human)" json:"updated_at"`
 
@@ -59,6 +61,7 @@ func toDatabaseBranch(db *ps.DatabaseBranch) *DatabaseBranch {
 		Name:         db.Name,
 		Status:       db.Status,
 		ParentBranch: db.ParentBranch,
+		Production:   db.Production,
 		CreatedAt:    db.CreatedAt.UTC().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond)),
 		UpdatedAt:    db.UpdatedAt.UTC().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond)),
 		orig:         db,
