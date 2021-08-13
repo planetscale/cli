@@ -30,7 +30,7 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			if web {
 				fmt.Println("🌐  Redirecting you to your passwords in your web browser.")
-				err := browser.OpenURL(fmt.Sprintf("%s/%s/%s/%s/passwords", cmdutil.ApplicationURL, ch.Config.Organization, database, branch))
+				err := browser.OpenURL(fmt.Sprintf("%s/%s/%s/settings/passwords", cmdutil.ApplicationURL, ch.Config.Organization, database))
 				if err != nil {
 					return err
 				}
