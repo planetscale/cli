@@ -32,5 +32,3 @@ require (
 	golang.org/x/sys v0.0.0-20210511113859-b0526f3d8744
 	gopkg.in/yaml.v2 v2.4.0
 )
-
-replace github.com/planetscale/planetscale-go => /Users/phaniraj/ps/planetscale-go
