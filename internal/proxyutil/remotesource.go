@@ -40,6 +40,7 @@ func (r *RemoteCertSource) Cert(ctx context.Context, org, db, branch string) (*p
 	return &proxy.Cert{
 		ClientCert: cert.ClientCert,
 		CACerts:    cert.CACerts,
+		RemoteAddr: cert.RemoteAddr,
 		Ports: proxy.RemotePorts{
 			Proxy: cert.Ports.Proxy,
 			MySQL: cert.Ports.MySQL,
