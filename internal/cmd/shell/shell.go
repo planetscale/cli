@@ -227,6 +227,7 @@ func formatMySQLBranch(database, branch string) string {
 	return fmt.Sprintf("%s/%s> ", database, branch)
 }
 
+
 func historyFilePath(org, db, branch string) (string, error) {
 	dir, err := homedir.Dir()
 	if err != nil {
