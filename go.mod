@@ -21,14 +21,14 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/pkg/browser v0.0.0-20201112035734-206646e67786
 	github.com/pkg/errors v0.9.1
-	github.com/planetscale/planetscale-go v0.38.0
+	github.com/planetscale/planetscale-go v0.39.0
 	github.com/planetscale/sql-proxy v0.8.0
 	github.com/spf13/cobra v1.2.1
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.8.1
 	github.com/stretchr/testify v1.7.0
 	github.com/xelabs/go-mysqlstack v1.0.0
-	go.uber.org/zap v1.18.1
+	go.uber.org/zap v1.19.0
 	golang.org/x/sys v0.0.0-20210511113859-b0526f3d8744
 	gopkg.in/yaml.v2 v2.4.0
 )

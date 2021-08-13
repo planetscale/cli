@@ -57,11 +57,6 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			source := args[0]
 			branch := args[1]
 
-			// Simplest case, the names are equivalent
-			if source == branch {
-				return fmt.Errorf("a branch named '%s' already exists", branch)
-			}
-
 			createReq.Database = source
 			createReq.Name = branch
 			createReq.Organization = ch.Config.Organization
@@ -114,7 +109,6 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	cmd.Flags().StringVar(&createReq.ParentBranch, "from", "", "branch to be created from")
 	cmd.Flags().StringVar(&createReq.Region, "region", "", "region for the database")
-	cmd.Flags().MarkHidden("region")
 	cmd.RegisterFlagCompletionFunc("region", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		ctx := cmd.Context()
 		client, err := ch.Client()
