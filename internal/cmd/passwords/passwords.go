@@ -16,7 +16,7 @@ import (
 func PasswordCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "password <command>",
-		Short:             "Create, list, show, and delete branch passwords",
+		Short:             "Create, list, and delete branch passwords",
 		PersistentPreRunE: cmdutil.CheckAuthentication(ch.Config),
 	}
 
@@ -26,7 +26,6 @@ func PasswordCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.AddCommand(CreateCmd(ch))
 	cmd.AddCommand(ListCmd(ch))
 	cmd.AddCommand(DeleteCmd(ch))
-	// cmd.AddCommand(ShowCmd(ch))
 
 	return cmd
 }
