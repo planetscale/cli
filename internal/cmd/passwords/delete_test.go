@@ -28,11 +28,11 @@ func TestPassword_DeleteCmd(t *testing.T) {
 	password := "mypassword"
 
 	svc := &mock.PasswordsService{
-		DeleteFn: func(ctx context.Context, req *ps.DeletePasswordRequest) error {
+		DeleteFn: func(ctx context.Context, req *ps.DeleteDatabaseBranchPasswordRequest) error {
 			c.Assert(req.Organization, qt.Equals, org)
 			c.Assert(req.Database, qt.Equals, db)
 			c.Assert(req.Branch, qt.Equals, branch)
-			c.Assert(req.Password, qt.Equals, password)
+			c.Assert(req.PasswordId, qt.Equals, password)
 
 			return nil
 		},

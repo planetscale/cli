@@ -26,13 +26,13 @@ func TestPassword_ListCmd(t *testing.T) {
 	db := "planetscale"
 	branch := "development"
 
-	resp := []*ps.Password{
+	resp := []*ps.DatabaseBranchPassword{
 		{Name: "foo"},
 		{Name: "bar"},
 	}
 
 	svc := &mock.PasswordsService{
-		ListFn: func(ctx context.Context, req *ps.ListPasswordsRequest) ([]*ps.Password, error) {
+		ListFn: func(ctx context.Context, req *ps.ListDatabaseBranchPasswordRequest) ([]*ps.DatabaseBranchPassword, error) {
 			c.Assert(req.Organization, qt.Equals, org)
 			c.Assert(req.Database, qt.Equals, db)
 			c.Assert(req.Branch, qt.Equals, branch)
