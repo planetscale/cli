@@ -42,14 +42,6 @@ type Password struct {
 	orig      *ps.DatabaseBranchPassword
 }
 
-type DeletedPassword struct {
-	Name      string `header:"name" json:"name"`
-	Role      string `header:"role" json:"role"`
-	CreatedAt int64  `header:"created_at,timestamp(ms|utc|human)" json:"created_at"`
-	DeletedAt int64  `header:"deleted_at,timestamp(ms|utc|human)" json:"deleted_at"`
-	orig      *ps.DatabaseBranchPassword
-}
-
 type PasswordWithPlainText struct {
 	Name              string               `header:"name" json:"name"`
 	PublicID          string               `header:"username" json:"username"`
