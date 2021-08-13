@@ -70,12 +70,10 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 			defer end()
 
 			err = client.Passwords.Delete(ctx, &ps.DeleteDatabaseBranchPasswordRequest{
-				DatabaseBranchPasswordRequest: ps.DatabaseBranchPasswordRequest{
-					Organization: ch.Config.Organization,
-					Database:     database,
-					Branch:       branch,
-				},
-				PasswordId: password,
+				Organization: ch.Config.Organization,
+				Database:     database,
+				Branch:       branch,
+				PasswordId:   password,
 			})
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
