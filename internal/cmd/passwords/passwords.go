@@ -34,14 +34,16 @@ func PasswordCmd(ch *cmdutil.Helper) *cobra.Command {
 type Passwords []*Password
 
 type Password struct {
+	PublicID  string `header:"id" json:"id"`
 	Name      string `header:"name" json:"name"`
-	PublicID  string `header:"username" json:"username"`
+	UserName  string `header:"username" json:"username"`
 	Role      string `header:"role" json:"role"`
+	RoleDesc  string `header:"role description" json:"-"`
 	CreatedAt int64  `json:"created_at"`
 	orig      *ps.DatabaseBranchPassword
 }
 
-type DeletedPasswords struct {
+type DeletedPassword struct {
 	Name      string `header:"name" json:"name"`
 	Role      string `header:"role" json:"role"`
 	CreatedAt int64  `header:"created_at,timestamp(ms|utc|human)" json:"created_at"`
@@ -49,18 +51,15 @@ type DeletedPasswords struct {
 	orig      *ps.DatabaseBranchPassword
 }
 
-type ConnectionStrings struct {
-	MysqlCLI string `header:"MySQL CLI"`
-}
-
 type PasswordWithPlainText struct {
-	Name          string `header:"name" json:"name"`
-	PublicID      string `header:"username" json:"username"`
-	AccessHostUrl string `header:"access host url" json:"access_host_url"`
-	Role          string `header:"role" json:"role"`
-	PlainText     string `header:"plain text" json:"plain_text"`
-	ConnectionStrings ConnectionStrings
-	orig          *ps.DatabaseBranchPassword
+	Name              string               `header:"name" json:"name"`
+	PublicID          string               `header:"username" json:"username"`
+	AccessHostUrl     string               `header:"access host url" json:"access_host_url"`
+	Role              string               `header:"role" json:"role"`
+	RoleDesc          string               `header:"role description" json:"role_description"`
+	PlainText         string               `header:"plain text" json:"plain_text"`
+	ConnectionStrings ps.ConnectionStrings `json:"connection_strings"`
+	orig              *ps.DatabaseBranchPassword
 }
 
 func (b *Password) MarshalJSON() ([]byte, error) {
@@ -82,7 +81,9 @@ func toPassword(password *ps.DatabaseBranchPassword) *Password {
 	return &Password{
 		Name:      password.Name,
 		PublicID:  password.PublicID,
-		Role:      toRoleDesc(password.Role),
+		UserName:  password.PublicID,
+		Role:      password.Role,
+		RoleDesc:  toRoleDesc(password.Role),
 		CreatedAt: password.CreatedAt.UTC().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond)),
 		orig:      password,
 	}
@@ -98,12 +99,14 @@ func toPasswords(passwords []*ps.DatabaseBranchPassword) []*Password {
 
 func toPasswordWithPlainText(password *ps.DatabaseBranchPassword) *PasswordWithPlainText {
 	return &PasswordWithPlainText{
-		Name:          password.Name,
-		PublicID:      password.PublicID,
-		PlainText:     password.PlainText,
-		AccessHostUrl: password.Branch.AccessHostUrl,
-		Role:          toRoleDesc(password.Role),
-		orig:          password,
+		Name:              password.Name,
+		PublicID:          password.PublicID,
+		PlainText:         password.PlainText,
+		AccessHostUrl:     password.Branch.AccessHostUrl,
+		Role:              password.Role,
+		RoleDesc:          toRoleDesc(password.Role),
+		orig:              password,
+		ConnectionStrings: password.ConnectionStrings,
 	}
 }
 

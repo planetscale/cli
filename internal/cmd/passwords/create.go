@@ -14,7 +14,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	createReq := &ps.DatabaseBranchPasswordRequest{}
 	cmd := &cobra.Command{
 		Use:     "create <database> <branch> <name>",
-		Short:   "create a password to access a branch's data",
+		Short:   "create password to access a branch's data",
 		Args:    cmdutil.RequiredArgs("database", "branch", "name"),
 		Aliases: []string{"p"},
 		RunE: func(cmd *cobra.Command, args []string) error {

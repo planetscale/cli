@@ -8,7 +8,7 @@ import (
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
 
-	"github.com/planetscale/planetscale-go/planetscale"
+	ps "github.com/planetscale/planetscale-go/planetscale"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/terminal"
@@ -69,15 +69,17 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Deleting password %s from %s", printer.BoldBlue(password), printer.BoldBlue(branch)))
 			defer end()
 
-			err = client.Passwords.Delete(ctx, &planetscale.DatabaseBranchPasswordRequest{
-				Organization: ch.Config.Organization,
-				Database:     database,
-				Branch:       branch,
-				DisplayName:  password,
+			err = client.Passwords.Delete(ctx, &ps.DeleteDatabaseBranchPasswordRequest{
+				DatabaseBranchPasswordRequest: ps.DatabaseBranchPasswordRequest{
+					Organization: ch.Config.Organization,
+					Database:     database,
+					Branch:       branch,
+				},
+				PasswordId: password,
 			})
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
-				case planetscale.ErrNotFound:
+				case ps.ErrNotFound:
 					return fmt.Errorf("password %s does not exist in branch %s of %s (organization: %s)",
 						printer.BoldBlue(password), printer.BoldBlue(branch), printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
 				default:
