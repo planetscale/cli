@@ -254,11 +254,10 @@ github.com/pkg/errors v0.8.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINE
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pkg/sftp v1.10.1/go.mod h1:lYOWFsE0bwd1+KfKJaKeuokY15vzFx25BLbzYYoAxZI=
-github.com/planetscale/planetscale-go v0.33.0/go.mod h1:99n+tnrvJaaUako3UZNCiC1dTtSPKr81GqAUNibw5pc=
-github.com/planetscale/planetscale-go v0.41.0 h1:WjAkYbMEQCch0OFYrfkUXRb7gndqilYgb4f/ejhH6hw=
-github.com/planetscale/planetscale-go v0.41.0/go.mod h1:99n+tnrvJaaUako3UZNCiC1dTtSPKr81GqAUNibw5pc=
-github.com/planetscale/sql-proxy v0.8.0 h1:EeWQhocldn0ldrTxPIIIrbHWWqNqHrNFYiSdp4tUY0E=
-github.com/planetscale/sql-proxy v0.8.0/go.mod h1:vOcL5jRMzaza+8q79hRRhMj3ABpYHy3cgenr2FOhDWU=
+github.com/planetscale/planetscale-go v0.43.0 h1:TSz2dH7eaXhdyAdLFqo3wPiw0XVjC7zIbeWYp1PsEbs=
+github.com/planetscale/planetscale-go v0.43.0/go.mod h1:99n+tnrvJaaUako3UZNCiC1dTtSPKr81GqAUNibw5pc=
+github.com/planetscale/sql-proxy v0.9.0 h1:Uc/TWvUQn6KIaUvHCJ/V6dtmIA0kEOp6b/u6z1vJ7GE=
+github.com/planetscale/sql-proxy v0.9.0/go.mod h1:P1CWQsaA+gNdLnfPWM8WR/UgPMFedjP1SFz3b+QAbVw=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/posener/complete v1.1.1/go.mod h1:em0nMJCgc9GFtwrmVmEMR/ZL6WyhyjMBndrE9hABlRI=
@@ -322,7 +321,6 @@ go.uber.org/goleak v1.1.10/go.mod h1:8a7PlsEVH3e/a/GLqe5IIrQx6GzcnRmZEufDUTk4A7A
 go.uber.org/multierr v1.6.0 h1:y6IPFStTAIT5Ytl7/XYmHvzXQ7S3g/IeZW9hyZ5thw4=
 go.uber.org/multierr v1.6.0/go.mod h1:cdWPpRnG4AhwMwsgIHip0KRBQjJy5kYEpYjJxpXp9iU=
 go.uber.org/zap v1.17.0/go.mod h1:MXVU+bhUf/A7Xi2HNOnopQOrmycQ5Ih87HtOu4q5SSo=
-go.uber.org/zap v1.18.1/go.mod h1:xg/QME4nWcxGxrpdeYfq7UvYrLh66cuVKdrbD1XF/NI=
 go.uber.org/zap v1.19.0 h1:mZQZefskPPCMIBCSEH0v2/iUqqLrYtaeqwD6FUGUnFE=
 go.uber.org/zap v1.19.0/go.mod h1:xg/QME4nWcxGxrpdeYfq7UvYrLh66cuVKdrbD1XF/NI=
 golang.org/x/crypto v0.0.0-20181029021203-45a5f77698d3/go.mod h1:6SG95UA2DQfeDnfUPMdvaQW0Q7yPrPDi9nlGo2tz2b4=
