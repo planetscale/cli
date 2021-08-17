@@ -1,4 +1,4 @@
-package passwords
+package password
 
 import (
 	"bytes"
@@ -14,7 +14,7 @@ import (
 	qt "github.com/frankban/quicktest"
 )
 
-func TestPassword_ListCmd(t *testing.T) {
+func TestPassword_DeleteCmd(t *testing.T) {
 	c := qt.New(t)
 
 	var buf bytes.Buffer
@@ -25,19 +25,16 @@ func TestPassword_ListCmd(t *testing.T) {
 	org := "planetscale"
 	db := "planetscale"
 	branch := "development"
-
-	resp := []*ps.DatabaseBranchPassword{
-		{Name: "foo"},
-		{Name: "bar"},
-	}
+	password := "mypassword"
 
 	svc := &mock.PasswordsService{
-		ListFn: func(ctx context.Context, req *ps.ListDatabaseBranchPasswordRequest) ([]*ps.DatabaseBranchPassword, error) {
+		DeleteFn: func(ctx context.Context, req *ps.DeleteDatabaseBranchPasswordRequest) error {
 			c.Assert(req.Organization, qt.Equals, org)
 			c.Assert(req.Database, qt.Equals, db)
 			c.Assert(req.Branch, qt.Equals, branch)
+			c.Assert(req.PasswordId, qt.Equals, password)
 
-			return resp, nil
+			return nil
 		},
 	}
 
@@ -54,23 +51,17 @@ func TestPassword_ListCmd(t *testing.T) {
 		},
 	}
 
-	cmd := ListCmd(ch)
-	cmd.SetArgs([]string{db, branch})
+	cmd := DeleteCmd(ch)
+	cmd.SetArgs([]string{db, branch, password, "--force"})
 	err := cmd.Execute()
 
 	c.Assert(err, qt.IsNil)
-	c.Assert(svc.ListFnInvoked, qt.IsTrue)
+	c.Assert(svc.DeleteFnInvoked, qt.IsTrue)
 
-	passwords := []*Password{
-		{
-			Name: "foo",
-			orig: resp[0],
-		},
-		{
-			Name: "bar",
-			orig: resp[1],
-		},
+	res := map[string]string{
+		"result":   "password deleted",
+		"password": password,
+		"branch":   branch,
 	}
-
-	c.Assert(buf.String(), qt.JSONEquals, passwords)
+	c.Assert(buf.String(), qt.JSONEquals, res)
 }
