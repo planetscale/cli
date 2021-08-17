@@ -1,4 +1,4 @@
-package passwords
+package password
 
 import (
 	"encoding/json"
@@ -35,6 +35,7 @@ type Passwords []*Password
 type Password struct {
 	PublicID  string `header:"id" json:"id"`
 	Name      string `header:"name" json:"name"`
+	Branch    string `header:"branch" json:"branch"`
 	UserName  string `header:"username" json:"username"`
 	Role      string `header:"role" json:"role"`
 	RoleDesc  string `header:"role description" json:"-"`
@@ -44,6 +45,7 @@ type Password struct {
 
 type PasswordWithPlainText struct {
 	Name              string               `header:"name" json:"name"`
+	Branch            string               `header:"branch" json:"branch"`
 	PublicID          string               `header:"username" json:"username"`
 	AccessHostUrl     string               `header:"access host url" json:"access_host_url"`
 	Role              string               `header:"role" json:"role"`
@@ -71,6 +73,7 @@ func (b Passwords) String() string {
 func toPassword(password *ps.DatabaseBranchPassword) *Password {
 	return &Password{
 		Name:      password.Name,
+		Branch:    password.Branch.Name,
 		PublicID:  password.PublicID,
 		UserName:  password.PublicID,
 		Role:      password.Role,
@@ -91,6 +94,7 @@ func toPasswords(passwords []*ps.DatabaseBranchPassword) []*Password {
 func toPasswordWithPlainText(password *ps.DatabaseBranchPassword) *PasswordWithPlainText {
 	return &PasswordWithPlainText{
 		Name:              password.Name,
+		Branch:            password.Branch.Name,
 		PublicID:          password.PublicID,
 		PlainText:         password.PlainText,
 		AccessHostUrl:     password.Branch.AccessHostURL,

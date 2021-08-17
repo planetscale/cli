@@ -1,4 +1,4 @@
-package passwords
+package password
 
 import (
 	"fmt"
@@ -14,14 +14,13 @@ import (
 // ListCmd encapsulates the command for listing passwords for a branch.
 func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "list <database> <branch>",
-		Short:   "List all passwords of a branch",
-		Args:    cmdutil.RequiredArgs("database", "branch"),
+		Use:     "list <database> [branch]",
+		Short:   "List all passwords of a database",
+		Args:    cmdutil.RequiredArgs("database"),
 		Aliases: []string{"ls"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			database := args[0]
-			branch := args[1]
 
 			web, err := cmd.Flags().GetBool("web")
 			if err != nil {
@@ -35,6 +34,11 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 					return err
 				}
 				return nil
+			}
+
+			var branch string
+			if len(args) == 2 {
+				branch = args[1]
 			}
 
 			client, err := ch.Client()

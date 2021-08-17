@@ -1,4 +1,4 @@
-package passwords
+package password
 
 import (
 	"bytes"
@@ -14,7 +14,7 @@ import (
 	qt "github.com/frankban/quicktest"
 )
 
-func TestPassword_CreateCmd(t *testing.T) {
+func TestPassword_ListCmd(t *testing.T) {
 	c := qt.New(t)
 
 	var buf bytes.Buffer
@@ -25,17 +25,19 @@ func TestPassword_CreateCmd(t *testing.T) {
 	org := "planetscale"
 	db := "planetscale"
 	branch := "development"
-	name := "production-password"
-	res := &ps.DatabaseBranchPassword{Name: "foo"}
+
+	resp := []*ps.DatabaseBranchPassword{
+		{Name: "foo"},
+		{Name: "bar"},
+	}
 
 	svc := &mock.PasswordsService{
-		CreateFn: func(ctx context.Context, req *ps.DatabaseBranchPasswordRequest) (*ps.DatabaseBranchPassword, error) {
+		ListFn: func(ctx context.Context, req *ps.ListDatabaseBranchPasswordRequest) ([]*ps.DatabaseBranchPassword, error) {
 			c.Assert(req.Organization, qt.Equals, org)
 			c.Assert(req.Database, qt.Equals, db)
 			c.Assert(req.Branch, qt.Equals, branch)
-			c.Assert(req.DisplayName, qt.Equals, name)
 
-			return res, nil
+			return resp, nil
 		},
 	}
 
@@ -52,10 +54,23 @@ func TestPassword_CreateCmd(t *testing.T) {
 		},
 	}
 
-	cmd := CreateCmd(ch)
-	cmd.SetArgs([]string{db, branch, name})
+	cmd := ListCmd(ch)
+	cmd.SetArgs([]string{db, branch})
 	err := cmd.Execute()
 
 	c.Assert(err, qt.IsNil)
-	c.Assert(svc.CreateFnInvoked, qt.IsTrue)
+	c.Assert(svc.ListFnInvoked, qt.IsTrue)
+
+	passwords := []*Password{
+		{
+			Name: "foo",
+			orig: resp[0],
+		},
+		{
+			Name: "bar",
+			orig: resp[1],
+		},
+	}
+
+	c.Assert(buf.String(), qt.JSONEquals, passwords)
 }
