@@ -110,6 +110,7 @@ func restore(ch *cmdutil.Helper, cmd *cobra.Command, flags *restoreFlags, args [
 	cfg.Debug = ch.Debug()
 	cfg.IntervalMs = 10 * 1000
 	cfg.Outdir = flags.dir
+	cfg.SessionVars = "set workload=olap;"
 
 	loader, err := dumper.NewLoader(cfg)
 	if err != nil {
