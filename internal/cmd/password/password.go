@@ -50,7 +50,7 @@ type PasswordWithPlainText struct {
 	AccessHostUrl     string               `header:"access host url" json:"access_host_url"`
 	Role              string               `header:"role" json:"role"`
 	RoleDesc          string               `header:"role description" json:"role_description"`
-	PlainText         string               `header:"plain text" json:"plain_text"`
+	PlainText         string               `header:"password" json:"password"`
 	ConnectionStrings ps.ConnectionStrings `json:"connection_strings"`
 	orig              *ps.DatabaseBranchPassword
 }

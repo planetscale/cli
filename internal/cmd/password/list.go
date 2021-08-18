@@ -41,7 +41,7 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
-			forMsg := fmt.Sprintf("%s", printer.BoldBlue(database))
+			forMsg := printer.BoldBlue(database)
 
 			var branch string
 			if len(args) == 2 {
