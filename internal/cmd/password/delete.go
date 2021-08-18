@@ -66,7 +66,8 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 				}
 			}
 
-			end := ch.Printer.PrintProgress(fmt.Sprintf("Deleting password %s from %s", printer.BoldBlue(password), printer.BoldBlue(branch)))
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Deleting password %s from %s/%s",
+				printer.BoldBlue(password), printer.BoldBlue(database), printer.BoldBlue(branch)))
 			defer end()
 
 			err = client.Passwords.Delete(ctx, &ps.DeleteDatabaseBranchPasswordRequest{
