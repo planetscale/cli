@@ -44,7 +44,8 @@ func SwitchCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			if errorIsNotFound(err) {
 				if !autoCreate {
-					return errors.New("branch does not exist in specified database. Use --create to automatically create during switch")
+					return fmt.Errorf("branch does not exist in database %s and organization %s. Use --create to automatically create during switch",
+						ch.Config.Database, ch.Config.Organization)
 				}
 
 				end := ch.Printer.PrintProgress(fmt.Sprintf("Branch does not exist, creating %s branch from %s...", printer.BoldBlue(branch), printer.BoldBlue(parentBranch)))
