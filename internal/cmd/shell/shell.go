@@ -54,7 +54,9 @@ second argument:
 			database := args[0]
 
 			if !printer.IsTTY || ch.Printer.Format() != printer.Human {
-				return errors.New("pscale shell only works in interactive mode")
+				if !(os.Getenv("PSCALE_ALLOW_NONINTERACTIVE_SHELL") == "true") {
+					return errors.New("pscale shell only works in interactive mode")
+				}
 			}
 
 			mysqlPath, err := cmdutil.MySQLClientPath()
