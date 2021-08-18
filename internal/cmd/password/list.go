@@ -36,18 +36,22 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 				return nil
 			}
 
-			var branch string
-			if len(args) == 2 {
-				branch = args[1]
-			}
-
 			client, err := ch.Client()
 			if err != nil {
 				return err
 			}
 
-			end := ch.Printer.PrintProgress(fmt.Sprintf("Fetching passwords for %s", printer.BoldBlue(branch)))
+			forMsg := printer.BoldBlue(database)
+
+			var branch string
+			if len(args) == 2 {
+				branch = args[1]
+				forMsg = fmt.Sprintf("%s/%s", printer.BoldBlue(database), printer.BoldBlue(branch))
+			}
+
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Fetching passwords for %s", forMsg))
 			defer end()
+
 			passwords, err := client.Passwords.List(ctx, &planetscale.ListDatabaseBranchPasswordRequest{
 				Organization: ch.Config.Organization,
 				Database:     database,
@@ -65,7 +69,7 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 			end()
 
 			if len(passwords) == 0 && ch.Printer.Format() == printer.Human {
-				ch.Printer.Printf("No passwords exist in %s.\n", printer.BoldBlue(branch))
+				ch.Printer.Printf("No passwords exist in %s.\n", forMsg)
 				return nil
 			}
 
