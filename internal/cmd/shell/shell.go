@@ -54,7 +54,7 @@ second argument:
 			database := args[0]
 
 			if !printer.IsTTY || ch.Printer.Format() != printer.Human {
-				if _, ok := os.LookupEnv("PSCALE_ALLOW_NONINTERACTIVE_SHELL"); !ok {
+				if _, exists := os.LookupEnv("PSCALE_ALLOW_NONINTERACTIVE_SHELL"); !exists {
 					return errors.New("pscale shell only works in interactive mode")
 				}
 			}

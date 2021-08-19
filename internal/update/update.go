@@ -93,7 +93,7 @@ func checkVersion(
 	buildVersion, path string,
 	latestVersionFn func(ctx context.Context, addr string) (*ReleaseInfo, error),
 ) (*UpdateInfo, error) {
-	if _, ok := os.LookupEnv("PSCALE_NO_UPDATE_NOTIFIER"); ok {
+	if _, exists := os.LookupEnv("PSCALE_NO_UPDATE_NOTIFIER"); exists {
 		return &UpdateInfo{
 			Update: false,
 			Reason: "PSCALE_NO_UPDATE_NOTIFIER is set",
