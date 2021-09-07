@@ -162,7 +162,7 @@ func MySQLClientPath() (string, error) {
 	}
 
 	msg := "couldn't find the 'mysql' command-line tool required to run this command."
-	installURL := "https://dev.mysql.com/doc/refman/8.0/en/installing.html"
+	installURL := "https://docs.planetscale.com/reference/planetscale-environment-setup"
 
 	switch runtime.GOOS {
 	case "darwin":
@@ -170,11 +170,11 @@ func MySQLClientPath() (string, error) {
 			return "", fmt.Errorf("%s\nTo install, run: brew install mysql-client", msg)
 		}
 
-		installURL = "https://dev.mysql.com/doc/refman/8.0/en/macos-installation.html"
+		installURL = "https://docs.planetscale.com/reference/planetscale-environment-setup#macos-instructions"
 	case "linux":
-		installURL = "https://dev.mysql.com/doc/refman/8.0/en/linux-installation.html"
+		installURL = "https://docs.planetscale.com/reference/planetscale-environment-setup#linux-instructions"
 	case "windows":
-		installURL = "https://dev.mysql.com/doc/refman/8.0/en/windows-installation.html"
+		installURL = "https://docs.planetscale.com/reference/planetscale-environment-setup#windows-instructions"
 	}
 
 	return "", fmt.Errorf("%s\nTo install, follow the instructions: %s", msg, installURL)
