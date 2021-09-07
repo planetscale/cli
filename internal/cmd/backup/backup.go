@@ -27,6 +27,7 @@ func BackupCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.AddCommand(ListCmd(ch))
 	cmd.AddCommand(DeleteCmd(ch))
 	cmd.AddCommand(ShowCmd(ch))
+	cmd.AddCommand(RestoreCmd(ch))
 
 	return cmd
 }
