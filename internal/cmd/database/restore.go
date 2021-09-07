@@ -25,8 +25,8 @@ type restoreFlags struct {
 func RestoreCmd(ch *cmdutil.Helper) *cobra.Command {
 	f := &restoreFlags{}
 	cmd := &cobra.Command{
-		Use:   "restore <database> <branch> [options]",
-		Short: "Restore your database",
+		Use:   "restore-dump <database> <branch> [options]",
+		Short: "Restore your database from a local dump directory",
 		Args:  cmdutil.RequiredArgs("database", "branch"),
 		RunE:  func(cmd *cobra.Command, args []string) error { return restore(ch, cmd, f, args) },
 	}
