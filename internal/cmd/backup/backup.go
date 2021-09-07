@@ -27,6 +27,7 @@ func BackupCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.AddCommand(ListCmd(ch))
 	cmd.AddCommand(DeleteCmd(ch))
 	cmd.AddCommand(ShowCmd(ch))
+	cmd.AddCommand(RestoreCmd(ch))
 
 	return cmd
 }
@@ -34,6 +35,7 @@ func BackupCmd(ch *cmdutil.Helper) *cobra.Command {
 type Backups []*Backup
 
 type Backup struct {
+	PublicID    string `header:"id" json:"id"`
 	Name        string `header:"name" json:"name"`
 	State       string `header:"state" json:"state"`
 	Size        int64  `header:"size" json:"size"`
@@ -63,6 +65,7 @@ func (b Backups) String() string {
 // toBackup Returns a struct that prints out the various fields of a branch model.
 func toBackup(backup *ps.Backup) *Backup {
 	return &Backup{
+		PublicID:    backup.PublicID,
 		Name:        backup.Name,
 		State:       backup.State,
 		Size:        backup.Size,

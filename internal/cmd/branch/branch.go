@@ -54,6 +54,10 @@ func (d *DatabaseBranch) MarshalCSVValue() interface{} {
 	return []*DatabaseBranch{d}
 }
 
+func ToDatabaseBranch(db *ps.DatabaseBranch) *DatabaseBranch {
+	return toDatabaseBranch(db)
+}
+
 // toDatabaseBranch returns a struct that prints out the various fields of a
 // database model.
 func toDatabaseBranch(db *ps.DatabaseBranch) *DatabaseBranch {

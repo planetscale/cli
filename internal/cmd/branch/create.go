@@ -109,6 +109,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	cmd.Flags().StringVar(&createReq.ParentBranch, "from", "", "branch to be created from")
 	cmd.Flags().StringVar(&createReq.Region, "region", "", "region for the database")
+	cmd.Flags().StringVar(&createReq.BackupID, "restore", "", "backup to restore into the branch")
 	cmd.RegisterFlagCompletionFunc("region", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		ctx := cmd.Context()
 		client, err := ch.Client()
