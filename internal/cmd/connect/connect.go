@@ -17,6 +17,7 @@ import (
 	"github.com/planetscale/cli/internal/proxyutil"
 	"github.com/planetscale/planetscale-go/planetscale"
 
+	"github.com/fatih/color"
 	"github.com/mattn/go-shellwords"
 	"github.com/planetscale/sql-proxy/proxy"
 	"github.com/spf13/cobra"
@@ -143,6 +144,7 @@ argument:
 		},
 	}
 
+	cmd.SetOutput(color.Output)
 	cmd.PersistentFlags().StringVar(&ch.Config.Organization, "org", ch.Config.Organization, "The organization for the current user")
 	cmd.PersistentFlags().StringVar(&flags.host, "host", "127.0.0.1", "Local host to bind and listen for connections")
 	cmd.PersistentFlags().StringVar(&flags.port, "port", "3306", "Local port to bind and listen for connections")
@@ -173,7 +175,7 @@ func runProxy(ctx context.Context, proxyOpts proxy.Options, database, branch str
 			return
 		}
 
-		fmt.Printf("Secure connection to database %s and branch %s is established!.\n\nLocal address to connect your application: %s (press ctrl-c to quit)\n",
+		fmt.Fprintf(color.Output, "Secure connection to database %s and branch %s is established!.\n\nLocal address to connect your application: %s (press ctrl-c to quit)\n",
 			printer.BoldBlue(database),
 			printer.BoldBlue(branch),
 			printer.BoldBlue(addr.String()),
