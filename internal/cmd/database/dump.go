@@ -134,6 +134,8 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 
 	cfg := dumper.NewDefaultConfig()
 	cfg.User = "root"
+	// NOTE(fatih): the password is a placeholder, replace once we get rid of the proxy
+	cfg.Password = "root"
 	cfg.Address = addr.String()
 	cfg.Database = dbName
 	cfg.Debug = ch.Debug()
