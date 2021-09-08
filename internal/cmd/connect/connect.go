@@ -17,7 +17,6 @@ import (
 	"github.com/planetscale/cli/internal/proxyutil"
 	"github.com/planetscale/planetscale-go/planetscale"
 
-	"github.com/fatih/color"
 	"github.com/mattn/go-shellwords"
 	"github.com/planetscale/sql-proxy/proxy"
 	"github.com/spf13/cobra"
@@ -124,12 +123,12 @@ argument:
 				}()
 			}
 
-			err = runProxy(ctx, proxyOpts, database, branch, proxyReady)
+			err = runProxy(ctx, ch, proxyOpts, database, branch, proxyReady)
 			if err != nil {
 				if isAddrInUse(err) {
 					ch.Printer.Printf("Tried address %s, but it's already in use. Picking up a random port ...\n", localAddr)
 					proxyOpts.LocalAddr = net.JoinHostPort(flags.host, "0")
-					return runProxy(ctx, proxyOpts, database, branch, proxyReady)
+					return runProxy(ctx, ch, proxyOpts, database, branch, proxyReady)
 				}
 				return err
 			}
@@ -144,7 +143,6 @@ argument:
 		},
 	}
 
-	cmd.SetOutput(color.Output)
 	cmd.PersistentFlags().StringVar(&ch.Config.Organization, "org", ch.Config.Organization, "The organization for the current user")
 	cmd.PersistentFlags().StringVar(&flags.host, "host", "127.0.0.1", "Local host to bind and listen for connections")
 	cmd.PersistentFlags().StringVar(&flags.port, "port", "3306", "Local port to bind and listen for connections")
@@ -160,7 +158,13 @@ argument:
 }
 
 // runProxy runs the sql-proxy with the given options.
-func runProxy(ctx context.Context, proxyOpts proxy.Options, database, branch string, ready chan string) error {
+func runProxy(
+	ctx context.Context,
+	ch *cmdutil.Helper,
+	proxyOpts proxy.Options,
+	database, branch string,
+	ready chan string,
+) error {
 	p, err := proxy.NewClient(proxyOpts)
 	if err != nil {
 		return fmt.Errorf("couldn't create proxy client: %s", err)
@@ -175,7 +179,7 @@ func runProxy(ctx context.Context, proxyOpts proxy.Options, database, branch str
 			return
 		}
 
-		fmt.Fprintf(color.Output, "Secure connection to database %s and branch %s is established!.\n\nLocal address to connect your application: %s (press ctrl-c to quit)\n",
+		ch.Printer.Printf("Secure connection to database %s and branch %s is established!.\n\nLocal address to connect your application: %s (press ctrl-c to quit)\n",
 			printer.BoldBlue(database),
 			printer.BoldBlue(branch),
 			printer.BoldBlue(addr.String()),
