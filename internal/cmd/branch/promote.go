@@ -85,7 +85,7 @@ func PromoteCmd(ch *cmdutil.Helper) *cobra.Command {
 				return nil
 			}
 
-			return ch.Printer.PrintResource(toDatabaseBranch(dbBranch))
+			return ch.Printer.PrintResource(ToDatabaseBranch(dbBranch))
 		},
 	}
 

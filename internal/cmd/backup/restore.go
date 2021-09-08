@@ -3,7 +3,7 @@ package backup
 import (
 	"fmt"
 
-	b "github.com/planetscale/cli/internal/cmd/branch"
+	"github.com/planetscale/cli/internal/cmd/branch"
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
 
@@ -20,7 +20,7 @@ func RestoreCmd(ch *cmdutil.Helper) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			database := args[0]
-			branch := args[1]
+			branchName := args[1]
 			backup := args[2]
 
 			client, err := ch.Client()
@@ -28,12 +28,12 @@ func RestoreCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
-			end := ch.Printer.PrintProgress(fmt.Sprintf("Restoring backup %s to %s", printer.BoldBlue(backup), printer.BoldBlue(branch)))
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Restoring backup %s to %s", printer.BoldBlue(backup), printer.BoldBlue(branchName)))
 			defer end()
 			newBranch, err := client.DatabaseBranches.Create(ctx, &planetscale.CreateDatabaseBranchRequest{
 				Organization: ch.Config.Organization,
 				Database:     database,
-				Name:         branch,
+				Name:         branchName,
 				BackupID:     backup,
 			})
 			if err != nil {
@@ -41,7 +41,7 @@ func RestoreCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			end()
-			return ch.Printer.PrintResource(b.ToDatabaseBranch(newBranch))
+			return ch.Printer.PrintResource(branch.ToDatabaseBranch(newBranch))
 		},
 	}
 
