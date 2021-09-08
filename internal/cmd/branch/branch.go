@@ -54,13 +54,9 @@ func (d *DatabaseBranch) MarshalCSVValue() interface{} {
 	return []*DatabaseBranch{d}
 }
 
-func ToDatabaseBranch(db *ps.DatabaseBranch) *DatabaseBranch {
-	return toDatabaseBranch(db)
-}
-
-// toDatabaseBranch returns a struct that prints out the various fields of a
+// ToDatabaseBranch returns a struct that prints out the various fields of a
 // database model.
-func toDatabaseBranch(db *ps.DatabaseBranch) *DatabaseBranch {
+func ToDatabaseBranch(db *ps.DatabaseBranch) *DatabaseBranch {
 	return &DatabaseBranch{
 		Name:         db.Name,
 		Status:       db.Status,
@@ -76,7 +72,7 @@ func toDatabaseBranches(branches []*ps.DatabaseBranch) []*DatabaseBranch {
 	bs := make([]*DatabaseBranch, 0, len(branches))
 
 	for _, db := range branches {
-		bs = append(bs, toDatabaseBranch(db))
+		bs = append(bs, ToDatabaseBranch(db))
 	}
 
 	return bs
