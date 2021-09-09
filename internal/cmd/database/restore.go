@@ -106,6 +106,8 @@ func restore(ch *cmdutil.Helper, cmd *cobra.Command, flags *restoreFlags, args [
 
 	cfg := dumper.NewDefaultConfig()
 	cfg.User = "root"
+	// NOTE: the password is a placeholder, replace once we get rid of the proxy
+	cfg.Password = "root"
 	cfg.Address = addr.String()
 	cfg.Debug = ch.Debug()
 	cfg.IntervalMs = 10 * 1000
