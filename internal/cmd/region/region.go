@@ -40,7 +40,7 @@ type Region struct {
 // toRegion returns a struct that prints out various fields of a region.
 func toRegion(region *ps.Region) *Region {
 	return &Region{
-		Name:    fmt.Sprintf("%s (%s)", region.Name, region.Location),
+		Name:    fmt.Sprintf("%s - %s", region.Name, region.Location),
 		Slug:    region.Slug,
 		Enabled: region.Enabled,
 		orig:    region,
