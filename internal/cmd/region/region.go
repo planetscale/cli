@@ -2,6 +2,7 @@ package region
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/planetscale/cli/internal/cmdutil"
 	ps "github.com/planetscale/planetscale-go/planetscale"
@@ -39,7 +40,7 @@ type Region struct {
 // toRegion returns a struct that prints out various fields of a region.
 func toRegion(region *ps.Region) *Region {
 	return &Region{
-		Name:    region.Name,
+		Name:    fmt.Sprintf("%s (%s)", region.Name, region.Location),
 		Slug:    region.Slug,
 		Enabled: region.Enabled,
 		orig:    region,
