@@ -2,6 +2,7 @@ package branch
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
@@ -11,7 +12,7 @@ import (
 )
 
 func PromoteCmd(ch *cmdutil.Helper) *cobra.Command {
-	promoteReq := &ps.PromoteBranchRequest{}
+	promoteReq := &ps.PromoteRequest{}
 
 	cmd := &cobra.Command{
 		Use:     "promote <database> <branch> [options]",
@@ -67,7 +68,7 @@ func PromoteCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Promoting %s branch in %s to production...", printer.BoldBlue(branch), printer.BoldBlue(source)))
 			defer end()
-			dbBranch, err := client.DatabaseBranches.Promote(cmd.Context(), promoteReq)
+			promotionRequest, err := client.DatabaseBranches.Promote(cmd.Context(), promoteReq)
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case ps.ErrNotFound:
@@ -78,11 +79,44 @@ func PromoteCmd(ch *cmdutil.Helper) *cobra.Command {
 				}
 			}
 
+			getReq := &ps.GetPromotionRequestRequest{
+				Organization: ch.Config.Organization,
+				Database:     source,
+				Branch:       branch,
+			}
+
+			for promotionRequest.State == "pending" {
+				promotionRequest, err = client.DatabaseBranches.GetPromotionRequest(cmd.Context(), getReq)
+				if err != nil {
+					switch cmdutil.ErrCode(err) {
+					case ps.ErrNotFound:
+						return fmt.Errorf("promotion request for branch %s does not exist in database %s", printer.BoldBlue(branch), printer.BoldBlue(source))
+					default:
+						return cmdutil.HandleError(err)
+					}
+				}
+
+				time.Sleep(1 * time.Second)
+			}
+
 			end()
 
 			if ch.Printer.Format() == printer.Human {
-				ch.Printer.Printf("Branch %s in %s was successfully promoted.\n", printer.BoldBlue(dbBranch.Name), printer.BoldBlue(source))
+				if promotionRequest.State == "lint_error" {
+					ch.Printer.Printf("Branch promotion failed. Fix the following errors and then retry: \n\n%s\n", printer.BoldRed(promotionRequest.LintErrors))
+				} else {
+					ch.Printer.Printf("Branch %s in %s was successfully promoted.\n", printer.BoldBlue(promotionRequest.Branch), printer.BoldBlue(source))
+				}
 				return nil
+			}
+
+			dbBranch, err := client.DatabaseBranches.Get(cmd.Context(), &ps.GetDatabaseBranchRequest{
+				Organization: ch.Config.Organization,
+				Database:     source,
+				Branch:       branch,
+			})
+			if err != nil {
+				return cmdutil.HandleError(err)
 			}
 
 			return ch.Printer.PrintResource(ToDatabaseBranch(dbBranch))
