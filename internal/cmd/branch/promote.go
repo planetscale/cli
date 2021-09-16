@@ -1,6 +1,7 @@
 package branch
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -85,8 +86,10 @@ func PromoteCmd(ch *cmdutil.Helper) *cobra.Command {
 				Branch:       branch,
 			}
 
+			ctx, cancel := context.WithTimeout(cmd.Context(), 30*time.Second)
+			defer cancel()
 			for promotionRequest.State == "pending" {
-				promotionRequest, err = client.DatabaseBranches.GetPromotionRequest(cmd.Context(), getReq)
+				promotionRequest, err = client.DatabaseBranches.GetPromotionRequest(ctx, getReq)
 				if err != nil {
 					switch cmdutil.ErrCode(err) {
 					case ps.ErrNotFound:
