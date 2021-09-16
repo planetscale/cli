@@ -81,19 +81,21 @@ func PromoteCmd(ch *cmdutil.Helper) *cobra.Command {
 				}
 			}
 
-			getReq := &ps.GetPromotionRequestRequest{
-				Organization: ch.Config.Organization,
-				Database:     source,
-				Branch:       branch,
-			}
+			if promotionRequest.State == "pending" {
+				getReq := &ps.GetPromotionRequestRequest{
+					Organization: ch.Config.Organization,
+					Database:     source,
+					Branch:       branch,
+				}
 
-			promotionRequest, err = waitPromoteState(cmd.Context(), client, getReq)
-			if err != nil {
-				switch cmdutil.ErrCode(err) {
-				case ps.ErrNotFound:
-					return fmt.Errorf("promotion request for branch %s does not exist in database %s", printer.BoldBlue(branch), printer.BoldBlue(source))
-				default:
-					return cmdutil.HandleError(err)
+				promotionRequest, err = waitPromoteState(cmd.Context(), client, getReq)
+				if err != nil {
+					switch cmdutil.ErrCode(err) {
+					case ps.ErrNotFound:
+						return fmt.Errorf("promotion request for branch %s does not exist in database %s", printer.BoldBlue(branch), printer.BoldBlue(source))
+					default:
+						return cmdutil.HandleError(err)
+					}
 				}
 			}
 
