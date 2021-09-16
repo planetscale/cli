@@ -2,6 +2,7 @@ package branch
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -86,20 +87,14 @@ func PromoteCmd(ch *cmdutil.Helper) *cobra.Command {
 				Branch:       branch,
 			}
 
-			ctx, cancel := context.WithTimeout(cmd.Context(), 30*time.Second)
-			defer cancel()
-			for promotionRequest.State == "pending" {
-				promotionRequest, err = client.DatabaseBranches.GetPromotionRequest(ctx, getReq)
-				if err != nil {
-					switch cmdutil.ErrCode(err) {
-					case ps.ErrNotFound:
-						return fmt.Errorf("promotion request for branch %s does not exist in database %s", printer.BoldBlue(branch), printer.BoldBlue(source))
-					default:
-						return cmdutil.HandleError(err)
-					}
+			promotionRequest, err = waitPromoteState(cmd.Context(), client, getReq)
+			if err != nil {
+				switch cmdutil.ErrCode(err) {
+				case ps.ErrNotFound:
+					return fmt.Errorf("promotion request for branch %s does not exist in database %s", printer.BoldBlue(branch), printer.BoldBlue(source))
+				default:
+					return cmdutil.HandleError(err)
 				}
-
-				time.Sleep(1 * time.Second)
 			}
 
 			end()
@@ -127,4 +122,29 @@ func PromoteCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 
 	return cmd
+}
+
+func waitPromoteState(ctx context.Context, client *ps.Client, getReq *ps.GetPromotionRequestRequest) (*ps.BranchPromotionRequest, error) {
+	ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
+	defer cancel()
+
+	ticker := time.NewTicker(time.Second)
+
+	var promotionRequest *ps.BranchPromotionRequest
+	var err error
+	for {
+		select {
+		case <-ctx.Done():
+			return nil, errors.New("branch promotion timed out")
+		case <-ticker.C:
+			promotionRequest, err = client.DatabaseBranches.GetPromotionRequest(ctx, getReq)
+			if err != nil {
+				return nil, err
+			}
+
+			if promotionRequest.State != "pending" {
+				return promotionRequest, nil
+			}
+		}
+	}
 }
