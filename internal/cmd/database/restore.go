@@ -80,7 +80,7 @@ func restore(ch *cmdutil.Helper, cmd *cobra.Command, flags *restoreFlags, args [
 		}
 	}()
 
-	status, err := client.DatabaseBranches.GetStatus(ctx, &ps.GetDatabaseBranchStatusRequest{
+	dbBranch, err := client.DatabaseBranches.Get(ctx, &ps.GetDatabaseBranchRequest{
 		Organization: ch.Config.Organization,
 		Database:     database,
 		Branch:       branch,
@@ -95,7 +95,7 @@ func restore(ch *cmdutil.Helper, cmd *cobra.Command, flags *restoreFlags, args [
 		}
 	}
 
-	if !status.Ready {
+	if !dbBranch.Ready {
 		return errors.New("database branch is not ready yet, please try again in a few minutes")
 	}
 

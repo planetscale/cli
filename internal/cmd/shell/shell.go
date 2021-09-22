@@ -123,7 +123,7 @@ second argument:
 				}
 			}()
 
-			status, err := client.DatabaseBranches.GetStatus(ctx, &ps.GetDatabaseBranchStatusRequest{
+			dbBranch, err := client.DatabaseBranches.Get(ctx, &ps.GetDatabaseBranchRequest{
 				Organization: ch.Config.Organization,
 				Database:     database,
 				Branch:       branch,
@@ -138,7 +138,7 @@ second argument:
 				}
 			}
 
-			if !status.Ready {
+			if !dbBranch.Ready {
 				return errors.New("database branch is not ready yet")
 			}
 
