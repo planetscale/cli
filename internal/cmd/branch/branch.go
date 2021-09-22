@@ -23,7 +23,6 @@ func BranchCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	cmd.AddCommand(CreateCmd(ch))
 	cmd.AddCommand(ListCmd(ch))
-	cmd.AddCommand(StatusCmd(ch))
 	cmd.AddCommand(DeleteCmd(ch))
 	cmd.AddCommand(ShowCmd(ch))
 	cmd.AddCommand(SwitchCmd(ch))
@@ -76,18 +75,4 @@ func toDatabaseBranches(branches []*ps.DatabaseBranch) []*DatabaseBranch {
 	}
 
 	return bs
-}
-
-type DatabaseBranchStatus struct {
-	Status string `header:"status" json:"status"`
-}
-
-func toDatabaseBranchStatus(status *ps.DatabaseBranchStatus) *DatabaseBranchStatus {
-	var ready = "ready"
-	if !status.Ready {
-		ready = "not ready"
-	}
-	return &DatabaseBranchStatus{
-		Status: ready,
-	}
 }
