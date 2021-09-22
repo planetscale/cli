@@ -84,7 +84,7 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 		}
 	}()
 
-	status, err := client.DatabaseBranches.GetStatus(ctx, &ps.GetDatabaseBranchStatusRequest{
+	dbBranch, err := client.DatabaseBranches.Get(ctx, &ps.GetDatabaseBranchRequest{
 		Organization: ch.Config.Organization,
 		Database:     database,
 		Branch:       branch,
@@ -99,7 +99,7 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 		}
 	}
 
-	if !status.Ready {
+	if !dbBranch.Ready {
 		return errors.New("database branch is not ready yet, please try again in a few minutes")
 	}
 

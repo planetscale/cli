@@ -21,7 +21,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/pkg/browser v0.0.0-20201112035734-206646e67786
 	github.com/pkg/errors v0.9.1
-	github.com/planetscale/planetscale-go v0.47.0
+	github.com/planetscale/planetscale-go v0.48.0
 	github.com/planetscale/sql-proxy v0.11.0
 	github.com/spf13/cobra v1.2.1
 	github.com/spf13/pflag v1.0.5
