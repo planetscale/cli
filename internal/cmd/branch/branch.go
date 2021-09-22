@@ -36,9 +36,9 @@ func BranchCmd(ch *cmdutil.Helper) *cobra.Command {
 
 type DatabaseBranch struct {
 	Name         string `header:"name" json:"name"`
-	Status       string `header:"status" json:"status"`
 	ParentBranch string `header:"parent branch,n/a" json:"parent_branch"`
 	Production   bool   `header:"production" json:"production"`
+	Ready        bool   `header:"ready" json:"ready"`
 	CreatedAt    int64  `header:"created_at,timestamp(ms|utc|human)" json:"created_at"`
 	UpdatedAt    int64  `header:"updated_at,timestamp(ms|utc|human)" json:"updated_at"`
 
@@ -58,9 +58,9 @@ func (d *DatabaseBranch) MarshalCSVValue() interface{} {
 func ToDatabaseBranch(db *ps.DatabaseBranch) *DatabaseBranch {
 	return &DatabaseBranch{
 		Name:         db.Name,
-		Status:       db.Status,
 		ParentBranch: db.ParentBranch,
 		Production:   db.Production,
+		Ready:        db.Ready,
 		CreatedAt:    db.CreatedAt.UTC().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond)),
 		UpdatedAt:    db.UpdatedAt.UTC().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond)),
 		orig:         db,
