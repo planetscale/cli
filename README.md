@@ -36,7 +36,7 @@ brew upgrade pscale
 
 ```
 scoop bucket add pscale https://github.com/planetscale/scoop-bucket.git
-scoop install pscale
+scoop install pscale mysql
 ```
 
 To upgrade to the latest version:
