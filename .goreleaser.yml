@@ -45,6 +45,13 @@ nfpms:
     - rpm
     replacements:
       darwin: macOS
+scoop:
+  bucket:
+    owner: planetscale
+    name: scoop-bucket
+  homepage: "https://github.com/planetscale/cli"
+  description: "The PlanetScale CLI"
+  license: Apache 2.0
 brews:
   - homepage: "https://planetscale.com/"
     description: "The PlanetScale CLI"
