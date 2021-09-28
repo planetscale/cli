@@ -32,7 +32,18 @@ brew upgrade pscale
 
 #### Windows
 
-`pscale` is available as downloadable binary from the [releases](https://github.com/planetscale/cli/releases/latest) page.
+On Windows, `pscale` is available via [scoop](https://scoop.sh/), and as a downloadable binarty from the [releases](https://github.com/planetscale/cli/releases/latest) page:
+
+```
+scoop bucket add pscale https://github.com/planetscale/scoop-bucket.git
+scoop install pscale
+```
+
+To upgrade to the latest version:
+
+```
+scoop update pscale
+```
 
 #### Manually
 
