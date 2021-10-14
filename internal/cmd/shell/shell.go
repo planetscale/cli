@@ -166,7 +166,7 @@ second argument:
 				return err
 			}
 
-			styledBranch := formatMySQLBranch(database, branch)
+			styledBranch := formatMySQLBranch(database, dbBranch)
 
 			m := &mysql{
 				mysqlPath:    mysqlPath,
@@ -221,12 +221,14 @@ func (m *mysql) Run(ctx context.Context, args ...string) error {
 	return c.Run()
 }
 
-func formatMySQLBranch(database, branch string) string {
-	if branch == "main" {
-		branch = "|⚠ main ⚠|"
+func formatMySQLBranch(database string, branch *ps.DatabaseBranch) string {
+	branchStr := branch.Name
+
+	if branch.Production {
+		branchStr = fmt.Sprintf("|⚠ %s ⚠|", branch.Name)
 	}
 
-	return fmt.Sprintf("%s/%s> ", database, branch)
+	return fmt.Sprintf("%s/%s> ", database, branchStr)
 }
 
 func historyFilePath(org, db, branch string) (string, error) {
