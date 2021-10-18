@@ -116,10 +116,12 @@ second argument:
 				return fmt.Errorf("couldn't create proxy client: %s", err)
 			}
 
+			errCh := make(chan error, 1)
+
 			go func() {
 				err := p.Run(ctx)
 				if err != nil {
-					ch.Printer.Println("proxy error: ", err)
+					errCh <- err
 				}
 			}()
 
@@ -140,6 +142,11 @@ second argument:
 
 			if !dbBranch.Ready {
 				return errors.New("database branch is not ready yet")
+			}
+
+			chErr := <-errCh
+			if chErr != nil {
+				return chErr
 			}
 
 			addr, err := p.LocalAddr()
