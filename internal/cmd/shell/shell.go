@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
@@ -111,19 +112,11 @@ second argument:
 				Logger:     cmdutil.NewZapLogger(ch.Debug()),
 			}
 
-			p, err := proxy.NewClient(proxyOpts)
-			if err != nil {
-				return fmt.Errorf("couldn't create proxy client: %s", err)
-			}
-
-			var errCh chan error
+			proxyAddr := make(chan string, 1)
+			proxyError := make(chan error, 1)
 
 			go func() {
-				err := p.Run(ctx)
-				if err != nil {
-					errCh = make(chan error, 1)
-					errCh <- err
-				}
+				proxyError <- runProxy(ctx, ch, proxyOpts, proxyAddr)
 			}()
 
 			dbBranch, err := client.DatabaseBranches.Get(ctx, &ps.GetDatabaseBranchRequest{
@@ -145,16 +138,16 @@ second argument:
 				return errors.New("database branch is not ready yet")
 			}
 
-			if errCh != nil {
-				return <-errCh
-			}
-
-			addr, err := p.LocalAddr()
-			if err != nil {
+			var addr string
+			select {
+			case err := <-proxyError:
 				return err
+			case addr = <-proxyAddr:
+			case <-time.After(time.Second * 10):
+				return errors.New("proxy timeout retrieving the certs")
 			}
 
-			host, port, err := net.SplitHostPort(addr.String())
+			host, port, err := net.SplitHostPort(addr)
 			if err != nil {
 				return err
 			}
@@ -197,6 +190,28 @@ second argument:
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
 
 	return cmd
+}
+
+// runProxy runs the sql-proxy with the given options.
+func runProxy(ctx context.Context, ch *cmdutil.Helper, proxyOpts proxy.Options, ready chan string) error {
+	p, err := proxy.NewClient(proxyOpts)
+	if err != nil {
+		return fmt.Errorf("couldn't create proxy client: %s", err)
+	}
+
+	go func(ready chan string) {
+		// this is blocking and will only return once p.Run() below is
+		// invoked
+		addr, err := p.LocalAddr()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed getting local addr: %s\n", err)
+			return
+		}
+
+		ready <- addr.String()
+	}(ready)
+
+	return p.Run(ctx)
 }
 
 type mysql struct {
