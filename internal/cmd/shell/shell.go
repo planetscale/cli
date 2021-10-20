@@ -1,20 +1,22 @@
 package shell
 
 import (
+	"bytes"
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"fmt"
-	"net"
 	"os"
 	"path/filepath"
-	"time"
+	"strconv"
 
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
 	"github.com/planetscale/cli/internal/promptutil"
-	"github.com/planetscale/cli/internal/proxyutil"
-
-	"github.com/planetscale/sql-proxy/proxy"
 
 	ps "github.com/planetscale/planetscale-go/planetscale"
 
@@ -98,27 +100,6 @@ second argument:
 				}
 			}
 
-			const localProxyAddr = "127.0.0.1"
-			localAddr := localProxyAddr + ":0"
-			if flags.localAddr != "" {
-				localAddr = flags.localAddr
-			}
-
-			proxyOpts := proxy.Options{
-				CertSource: proxyutil.NewRemoteCertSource(client),
-				LocalAddr:  localAddr,
-				RemoteAddr: flags.remoteAddr,
-				Instance:   fmt.Sprintf("%s/%s/%s", ch.Config.Organization, database, branch),
-				Logger:     cmdutil.NewZapLogger(ch.Debug()),
-			}
-
-			proxyAddr := make(chan string, 1)
-			proxyError := make(chan error, 1)
-
-			go func() {
-				proxyError <- runProxy(ctx, ch, proxyOpts, proxyAddr)
-			}()
-
 			dbBranch, err := client.DatabaseBranches.Get(ctx, &ps.GetDatabaseBranchRequest{
 				Organization: ch.Config.Organization,
 				Database:     database,
@@ -138,16 +119,52 @@ second argument:
 				return errors.New("database branch is not ready yet")
 			}
 
-			var addr string
-			select {
-			case err := <-proxyError:
-				return err
-			case addr = <-proxyAddr:
-			case <-time.After(time.Second * 10):
-				return errors.New("proxy timeout retrieving the certs")
+			pkey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+			if err != nil {
+				return fmt.Errorf("couldn't generate private key: %s", err)
 			}
 
-			host, port, err := net.SplitHostPort(addr)
+			privBytes, err := x509.MarshalPKCS8PrivateKey(pkey)
+			if err != nil {
+				return err
+			}
+
+			keyPem := new(bytes.Buffer)
+			err = pem.Encode(keyPem, &pem.Block{
+				Type:  "PRIVATE KEY",
+				Bytes: privBytes,
+			})
+			if err != nil {
+				return err
+			}
+
+			clientKeyPath := filepath.Join(os.TempDir(), "client-key.pem")
+			err = os.WriteFile(clientKeyPath, keyPem.Bytes(), 0600)
+			if err != nil {
+				return err
+			}
+
+			cert, err := client.Certificates.Create(ctx, &ps.CreateCertificateRequest{
+				Organization: ch.Config.Organization,
+				DatabaseName: database,
+				Branch:       branch,
+				PrivateKey:   pkey,
+			})
+			if err != nil {
+				return err
+			}
+
+			certPem := new(bytes.Buffer)
+			err = pem.Encode(certPem, &pem.Block{
+				Type:  "CERTIFICATE",
+				Bytes: cert.ClientCert.Certificate[0],
+			})
+			if err != nil {
+				return err
+			}
+
+			clientCertPath := filepath.Join(os.TempDir(), "client-cert.pem")
+			err = os.WriteFile(clientCertPath, certPem.Bytes(), 0600)
 			if err != nil {
 				return err
 			}
@@ -157,8 +174,12 @@ second argument:
 				"root",
 				"-s",
 				"-t", // the -s (silent) flag disables tabular output, re-enable it.
-				"-h", host,
-				"-P", port,
+				"-h", cert.AccessHost,
+				"-P", strconv.Itoa(cert.Ports.MySQL),
+				"--ssl-mode", "VERIFY_IDENTITY",
+				"--ssl-ca", "/etc/ssl/cert.pem", // change depending on OS
+				"--ssl-cert", clientCertPath,
+				"--ssl-key", clientKeyPath,
 			}
 
 			historyFile, err := historyFilePath(ch.Config.Organization, database, branch)
@@ -190,28 +211,6 @@ second argument:
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
 
 	return cmd
-}
-
-// runProxy runs the sql-proxy with the given options.
-func runProxy(ctx context.Context, ch *cmdutil.Helper, proxyOpts proxy.Options, ready chan string) error {
-	p, err := proxy.NewClient(proxyOpts)
-	if err != nil {
-		return fmt.Errorf("couldn't create proxy client: %s", err)
-	}
-
-	go func(ready chan string) {
-		// this is blocking and will only return once p.Run() below is
-		// invoked
-		addr, err := p.LocalAddr()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "failed getting local addr: %s\n", err)
-			return
-		}
-
-		ready <- addr.String()
-	}(ready)
-
-	return p.Run(ctx)
 }
 
 type mysql struct {
