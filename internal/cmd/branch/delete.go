@@ -75,7 +75,7 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
-					return fmt.Errorf("database %s and branch %s does not exist in organization %s",
+					return fmt.Errorf("database %s or branch %s does not exist in organization %s",
 						printer.BoldBlue(source), printer.BoldBlue(branch), printer.BoldBlue(ch.Config.Organization))
 				default:
 					return cmdutil.HandleError(err)
