@@ -69,6 +69,14 @@ func (b Passwords) String() string {
 	return buf.String()
 }
 
+func (b *PasswordWithPlainText) MarshalJSON() ([]byte, error) {
+	return json.MarshalIndent(b.orig, "", "  ")
+}
+
+func (b *PasswordWithPlainText) MarshalCSVValue() interface{} {
+	return []*PasswordWithPlainText{b}
+}
+
 // toPassword Returns a struct that prints out the various fields of a branch model.
 func toPassword(password *ps.DatabaseBranchPassword) *Password {
 	return &Password{
