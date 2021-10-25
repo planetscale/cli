@@ -103,7 +103,10 @@ func PromoteCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			if ch.Printer.Format() == printer.Human {
 				if promotionRequest.State == "lint_error" {
-					ch.Printer.Printf("Branch promotion failed. Fix the following errors and then retry: \n\n%s\n\nLean more about this error at the following URL: %s\n", printer.BoldRed(promotionRequest.PromotionRequestError.Message), printer.Bold(promotionRequest.PromotionRequestError.DocsUrl))
+					ch.Printer.Printf("Branch promotion failed. Fix the following errors and then try again: \n\n")
+					for _, lintError := range promotionRequest.LintErrors {
+						ch.Printer.Printf(printer.BoldRed("• %s\n"), lintError.ErrorDescription)
+					}
 				} else {
 					ch.Printer.Printf("Branch %s in %s was successfully promoted.\n", printer.BoldBlue(promotionRequest.Branch), printer.BoldBlue(source))
 				}
