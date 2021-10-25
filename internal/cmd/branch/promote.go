@@ -106,9 +106,10 @@ func PromoteCmd(ch *cmdutil.Helper) *cobra.Command {
 				if promotionRequest.State == "lint_error" {
 
 					var sb strings.Builder
-					sb.WriteString(printer.BoldRed("Branch promotion failed. Fix the following errors and then try again:\n\n"))
+					sb.WriteString(printer.Red("Branch promotion failed. "))
+					sb.WriteString("Fix the following errors and then try again:\n\n")
 					for _, lintError := range promotionRequest.LintErrors {
-						fmt.Fprintf(&sb, printer.Bold("• %s\n"), lintError.ErrorDescription)
+						fmt.Fprintf(&sb, "• %s\n", lintError.ErrorDescription)
 					}
 
 					return errors.New(sb.String())
