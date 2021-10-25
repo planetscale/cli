@@ -238,6 +238,11 @@ func BoldRed(msg interface{}) string {
 	return color.New(color.FgRed).Add(color.Bold).Sprint(msg)
 }
 
+// Red returns a string formatted with red and bold.
+func Red(msg interface{}) string {
+	return color.New(color.FgRed).Sprint(msg)
+}
+
 // Bold returns a string formatted with bold.
 func Bold(msg interface{}) string {
 	// the 'color' package already handles IsTTY gracefully

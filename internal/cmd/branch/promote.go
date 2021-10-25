@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/planetscale/cli/internal/cmdutil"
@@ -103,11 +104,19 @@ func PromoteCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			if ch.Printer.Format() == printer.Human {
 				if promotionRequest.State == "lint_error" {
-					ch.Printer.Printf("Branch promotion failed. Fix the following errors and then retry: \n\n%s\n\nLean more about this error at the following URL: %s\n", printer.BoldRed(promotionRequest.PromotionRequestError.Message), printer.Bold(promotionRequest.PromotionRequestError.DocsUrl))
+
+					var sb strings.Builder
+					sb.WriteString(printer.Red("Branch promotion failed. "))
+					sb.WriteString("Fix the following errors and then try again:\n\n")
+					for _, lintError := range promotionRequest.LintErrors {
+						fmt.Fprintf(&sb, "• %s\n", lintError.ErrorDescription)
+					}
+
+					return errors.New(sb.String())
 				} else {
 					ch.Printer.Printf("Branch %s in %s was successfully promoted.\n", printer.BoldBlue(promotionRequest.Branch), printer.BoldBlue(source))
+					return nil
 				}
-				return nil
 			}
 
 			dbBranch, err := client.DatabaseBranches.Get(cmd.Context(), &ps.GetDatabaseBranchRequest{
