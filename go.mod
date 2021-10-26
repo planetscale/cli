@@ -15,14 +15,15 @@ require (
 	github.com/hashicorp/go-version v1.3.0
 	github.com/kataras/tablewriter v0.0.0-20180708051242-e063d29b7c23 // indirect
 	github.com/lensesio/tableprinter v0.0.0-20201125135848-89e81fc956e7
+	github.com/matoous/go-nanoid/v2 v2.0.0
 	github.com/mattn/go-isatty v0.0.14
 	github.com/mattn/go-runewidth v0.0.9 // indirect
 	github.com/mattn/go-shellwords v1.0.12
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/pkg/browser v0.0.0-20201112035734-206646e67786
 	github.com/pkg/errors v0.9.1
-	github.com/planetscale/planetscale-go v0.50.0
-	github.com/planetscale/sql-proxy v0.11.0
+	github.com/planetscale/planetscale-go v0.51.0
+	github.com/planetscale/sql-proxy v0.12.0
 	github.com/spf13/cobra v1.2.1
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.9.0
