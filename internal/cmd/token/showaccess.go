@@ -12,7 +12,7 @@ import (
 func ShowAccessCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "show-access <name>",
-		Short: "fetch a service token and it's accesses",
+		Short: "fetch a service token and its accesses",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			client, err := ch.Client()
