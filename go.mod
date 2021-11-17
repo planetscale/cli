@@ -4,7 +4,7 @@ go 1.16
 
 require (
 	github.com/AlecAivazis/survey/v2 v2.3.2
-	github.com/benbjohnson/clock v1.2.0
+	github.com/benbjohnson/clock v1.3.0
 	github.com/briandowns/spinner v1.16.0
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/fatih/color v1.13.0
