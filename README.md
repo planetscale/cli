@@ -14,6 +14,9 @@ PlanetScale is more than a database and our CLI is more than a jumble of command
 ```
 brew install planetscale/tap/pscale
 ```
+
+* If you are using an M1 mac and have trouble installing through Homebrew, you may want to read [this](https://stackoverflow.com/questions/64963370/error-cannot-install-in-homebrew-on-arm-processor-in-intel-default-prefix-usr).
+
 Optional: `pscale` requires the MySQL Client for certain commands. You can install it by running:
 
 ```
