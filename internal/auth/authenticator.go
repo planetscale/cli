@@ -30,7 +30,7 @@ const (
 // Authenticator is the interface for authentication via device oauth
 type Authenticator interface {
 	VerifyDevice(ctx context.Context) (*DeviceVerification, error)
-	GetAccessTokenForDevice(ctx context.Context, v *DeviceVerification) (string, error)
+	GetAccessTokenForDevice(ctx context.Context, v *DeviceVerification) (string, string, error)
 	RevokeToken(ctx context.Context, token string) error
 }
 
@@ -172,13 +172,10 @@ func (d *DeviceAuthenticator) VerifyDevice(ctx context.Context) (*DeviceVerifica
 
 // GetAccessTokenForDevice uses the device verification response to fetch an
 // access token.
-func (d *DeviceAuthenticator) GetAccessTokenForDevice(ctx context.Context, v *DeviceVerification) (string, error) {
-	var accessToken string
-	var err error
-
+func (d *DeviceAuthenticator) GetAccessTokenForDevice(ctx context.Context, v *DeviceVerification) (accessToken string, refreshToken string, err error) {
 	for {
 		time.Sleep(v.CheckInterval)
-		accessToken, err = d.requestToken(ctx, v.DeviceCode, d.ClientID)
+		accessToken, refreshToken, err = d.requestToken(ctx, v.DeviceCode, d.ClientID)
 		if accessToken == "" && err == nil {
 			if d.Clock.Now().After(v.ExpiresAt) {
 				err = errors.New("authentication timed out")
@@ -189,7 +186,7 @@ func (d *DeviceAuthenticator) GetAccessTokenForDevice(ctx context.Context, v *De
 
 		break
 	}
-	return accessToken, err
+	return accessToken, refreshToken, err
 }
 
 // OAuthTokenResponse contains the information returned after fetching an access
@@ -201,38 +198,38 @@ type OAuthTokenResponse struct {
 	ExpiresIn    int    `json:"expires_in"`
 }
 
-func (d *DeviceAuthenticator) requestToken(ctx context.Context, deviceCode string, clientID string) (string, error) {
+func (d *DeviceAuthenticator) requestToken(ctx context.Context, deviceCode string, clientID string) (string, string, error) {
 	payload := strings.NewReader(fmt.Sprintf("grant_type=urn:ietf:params:oauth:grant-type:device_code&device_code=%s&client_id=%s", deviceCode, clientID))
 	req, err := d.NewFormRequest(ctx, http.MethodPost, "oauth/token", payload)
 	if err != nil {
-		return "", errors.Wrap(err, "error creating request")
+		return "", "", errors.Wrap(err, "error creating request")
 	}
 
 	res, err := d.client.Do(req)
 	if err != nil {
-		return "", errors.Wrap(err, "error performing http request")
+		return "", "", errors.Wrap(err, "error performing http request")
 	}
 
 	defer res.Body.Close()
 
 	isRetryable, err := checkErrorResponse(res)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	// Bail early so the token fetching is retried.
 	if isRetryable {
-		return "", nil
+		return "", "", nil
 	}
 
 	tokenRes := &OAuthTokenResponse{}
 
 	err = json.NewDecoder(res.Body).Decode(tokenRes)
 	if err != nil {
-		return "", errors.Wrap(err, "error decoding token response")
+		return "", "", errors.Wrap(err, "error decoding token response")
 	}
 
-	return tokenRes.AccessToken, nil
+	return tokenRes.AccessToken, tokenRes.RefreshToken, nil
 }
 
 // RevokeToken revokes an access token.

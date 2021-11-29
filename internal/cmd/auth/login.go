@@ -60,12 +60,17 @@ func LoginCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			end := ch.Printer.PrintProgress("Waiting for confirmation...")
 			defer end()
-			accessToken, err := authenticator.GetAccessTokenForDevice(ctx, deviceVerification)
+			accessToken, refreshToken, err := authenticator.GetAccessTokenForDevice(ctx, deviceVerification)
 			if err != nil {
 				return err
 			}
 
 			err = writeAccessToken(ctx, accessToken)
+			if err != nil {
+				return errors.Wrap(err, "error logging in")
+			}
+
+			err = writeRefreshToken(ctx, refreshToken)
 			if err != nil {
 				return errors.Wrap(err, "error logging in")
 			}
@@ -143,6 +148,36 @@ func writeAccessToken(ctx context.Context, accessToken string) error {
 	}
 
 	tokenBytes := []byte(accessToken)
+	err = ioutil.WriteFile(tokenPath, tokenBytes, config.TokenFileMode)
+	if err != nil {
+		return errors.Wrap(err, "error writing token")
+	}
+
+	return nil
+}
+
+func writeRefreshToken(ctx context.Context, refreshToken string) error {
+	configDir, err := config.ConfigDir()
+	if err != nil {
+		return err
+	}
+
+	_, err = os.Stat(configDir)
+	if os.IsNotExist(err) {
+		err := os.MkdirAll(configDir, 0771)
+		if err != nil {
+			return errors.Wrap(err, "error creating config directory")
+		}
+	} else if err != nil {
+		return err
+	}
+
+	tokenPath, err := config.RefreshTokenPath()
+	if err != nil {
+		return err
+	}
+
+	tokenBytes := []byte(refreshToken)
 	err = ioutil.WriteFile(tokenPath, tokenBytes, config.TokenFileMode)
 	if err != nil {
 		return errors.Wrap(err, "error writing token")

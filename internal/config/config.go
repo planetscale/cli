@@ -25,6 +25,7 @@ const (
 // Config is dynamically sourced from various files and environment variables.
 type Config struct {
 	AccessToken  string
+	RefreshToken string
 	BaseURL      string
 	Organization string
 
@@ -37,7 +38,7 @@ type Config struct {
 }
 
 func New() (*Config, error) {
-	var accessToken []byte
+	var accessToken, refreshToken []byte
 	tokenPath, err := AccessTokenPath()
 	if err != nil {
 		return nil, err
@@ -61,9 +62,33 @@ func New() (*Config, error) {
 		}
 	}
 
+	refreshTokenPath, err := RefreshTokenPath()
+	if err != nil {
+		return nil, err
+	}
+
+	stat, err = os.Stat(refreshTokenPath)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			log.Fatal(err)
+		}
+	} else {
+		if stat.Mode()&^TokenFileMode != 0 {
+			err = os.Chmod(refreshTokenPath, TokenFileMode)
+			if err != nil {
+				log.Printf("Unable to change %v file mode to 0%o: %v", tokenPath, TokenFileMode, err)
+			}
+		}
+		refreshToken, err = ioutil.ReadFile(refreshTokenPath)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
 	return &Config{
-		AccessToken: string(accessToken),
-		BaseURL:     ps.DefaultBaseURL,
+		AccessToken:  string(accessToken),
+		RefreshToken: string(refreshToken),
+		BaseURL:      ps.DefaultBaseURL,
 	}, nil
 }
 
@@ -104,6 +129,16 @@ func AccessTokenPath() (string, error) {
 	}
 
 	return path.Join(dir, "access-token"), nil
+}
+
+// RefreshToken is the path for the refresh token file
+func RefreshTokenPath() (string, error) {
+	dir, err := ConfigDir()
+	if err != nil {
+		return "", err
+	}
+
+	return path.Join(dir, "refresh-token"), nil
 }
 
 // ProjectConfigPath returns the path of a configuration inside a Git
