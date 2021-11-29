@@ -77,6 +77,18 @@ func deleteAccessToken() error {
 		}
 	}
 
+	refreshTokenPath, err := config.RefreshTokenPath()
+	if err != nil {
+		return err
+	}
+
+	err = os.Remove(refreshTokenPath)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return errors.Wrap(err, "error removing refresh token file")
+		}
+	}
+
 	configFile, err := config.DefaultConfigPath()
 	if err != nil {
 		return err
