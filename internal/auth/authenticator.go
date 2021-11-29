@@ -232,6 +232,35 @@ func (d *DeviceAuthenticator) requestToken(ctx context.Context, deviceCode strin
 	return tokenRes.AccessToken, tokenRes.RefreshToken, nil
 }
 
+// RefreshToken for an access token
+func (d *DeviceAuthenticator) RefreshToken(ctx context.Context, token string) (string, string, error) {
+	payload := strings.NewReader(fmt.Sprintf("client_id=%s&client_secret=%s&refresh_token=%s&grant_type=refresh_token", d.ClientID, d.ClientSecret, token))
+	req, err := d.NewFormRequest(ctx, http.MethodPost, "oauth/token", payload)
+	if err != nil {
+		return "", "", errors.Wrap(err, "error creating request")
+	}
+
+	res, err := d.client.Do(req)
+	if err != nil {
+		return "", "", errors.Wrap(err, "error performing http request")
+	}
+
+	defer res.Body.Close()
+
+	tokenRes := &OAuthTokenResponse{}
+
+	err = json.NewDecoder(res.Body).Decode(tokenRes)
+	if err != nil {
+		return "", "", errors.Wrap(err, "error decoding token response")
+	}
+
+	if tokenRes.AccessToken == "" && tokenRes.RefreshToken == "" {
+		return "", "", errors.New("error refreshing tokens, both access token and refresh token are blank")
+	}
+
+	return tokenRes.AccessToken, tokenRes.RefreshToken, nil
+}
+
 // RevokeToken revokes an access token.
 func (d *DeviceAuthenticator) RevokeToken(ctx context.Context, token string) error {
 	payload := strings.NewReader(fmt.Sprintf("client_id=%s&client_secret=%s&token=%s", d.ClientID, d.ClientSecret, token))
