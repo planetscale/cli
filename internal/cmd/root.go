@@ -70,6 +70,12 @@ func Execute(ctx context.Context, ver, commit, buildDate string) int {
 	var format printer.Format
 	var debug bool
 
+	if _, ok := os.LookupEnv("PSCALE_DISABLE_DEV_WARNING"); !ok {
+		if commit == "" || ver == "" || buildDate == "" {
+			fmt.Fprintf(os.Stderr, "!! WARNING: You are using a self-compiled binary which is not officially supported.\n!! To dismiss this warning, set PSCALE_DISABLE_DEV_WARNING=true\n\n")
+		}
+	}
+
 	err := runCmd(ctx, ver, commit, buildDate, &format, &debug)
 	if err == nil {
 		return 0
