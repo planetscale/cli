@@ -37,6 +37,21 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 					return fmt.Errorf("cannot delete branch with the output format %q (run with -force to override)", ch.Printer.Format())
 				}
 
+				_, err := client.DatabaseBranches.Get(ctx, &planetscale.GetDatabaseBranchRequest{
+					Organization: ch.Config.Organization,
+					Database:     source,
+					Branch:       branch,
+				})
+				if err != nil {
+					switch cmdutil.ErrCode(err) {
+					case planetscale.ErrNotFound:
+						return fmt.Errorf("branch %s does not exist in database %s (organization: %s)",
+							printer.BoldBlue(branch), printer.BoldBlue(source), printer.BoldBlue(ch.Config.Organization))
+					default:
+						return cmdutil.HandleError(err)
+					}
+				}
+
 				confirmationName := fmt.Sprintf("%s/%s", source, branch)
 				if !printer.IsTTY {
 					return fmt.Errorf("cannot confirm deletion of branch %q (run with -force to override)", confirmationName)
@@ -50,7 +65,7 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 				}
 
 				var userInput string
-				err := survey.AskOne(prompt, &userInput)
+				err = survey.AskOne(prompt, &userInput)
 				if err != nil {
 					if err == terminal.InterruptErr {
 						os.Exit(0)
