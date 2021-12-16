@@ -26,10 +26,10 @@ require (
 	github.com/planetscale/sql-proxy v0.12.0
 	github.com/spf13/cobra v1.2.1
 	github.com/spf13/pflag v1.0.5
-	github.com/spf13/viper v1.9.0
+	github.com/spf13/viper v1.10.1
 	github.com/stretchr/testify v1.7.0
 	github.com/xelabs/go-mysqlstack v1.0.0
 	go.uber.org/zap v1.19.1
-	golang.org/x/sys v0.0.0-20210823070655-63515b42dcdf
+	golang.org/x/sys v0.0.0-20211210111614-af8b64212486
 	gopkg.in/yaml.v2 v2.4.0
 )
