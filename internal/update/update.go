@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+        "path/filepath"
 	"time"
 
 	"github.com/fatih/color"
@@ -229,5 +230,5 @@ func stateFilePath() (string, error) {
 		return "", err
 	}
 
-	return path.Join(dir, "state.yml"), nil
+	return filepath.Join(dir, "state.yml"), nil
 }
