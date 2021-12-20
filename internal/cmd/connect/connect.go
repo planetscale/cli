@@ -37,13 +37,13 @@ func ConnectCmd(ch *cmdutil.Helper) *cobra.Command {
 		// we only require database, because we deduct branch automatically
 		Args:  cmdutil.RequiredArgs("database"),
 		Short: "Create a secure connection to a database and branch for a local client",
-		Example: `The connect subcommand establishes a secure connection between your host and PlanetScale. 
+		Example: `The connect subcommand establishes a secure connection between your host and PlanetScale.
 
 By default, if no branch names are given and there is only one branch, it
 automatically connects to that branch:
 
   pscale connect mydatabase
- 
+
 If there are multiple branches for the given database, you'll be prompted to
 choose one. To connect to a specific branch, pass the branch as a second
 argument:
@@ -74,7 +74,7 @@ argument:
 			}
 
 			// check whether database and branch exist
-			_, err = client.DatabaseBranches.Get(ctx, &planetscale.GetDatabaseBranchRequest{
+			dbBranch, err := client.DatabaseBranches.Get(ctx, &planetscale.GetDatabaseBranchRequest{
 				Organization: ch.Config.Organization,
 				Database:     database,
 				Branch:       branch,
@@ -87,6 +87,10 @@ argument:
 				default:
 					return cmdutil.HandleError(err)
 				}
+			}
+
+			if !dbBranch.Ready {
+				return errors.New("database branch is not ready yet")
 			}
 
 			localAddr := net.JoinHostPort(flags.host, flags.port)
