@@ -11,8 +11,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"path"
-        "path/filepath"
+	"path/filepath"
 	"time"
 
 	"github.com/fatih/color"
