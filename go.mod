@@ -29,7 +29,7 @@ require (
 	github.com/spf13/viper v1.9.0
 	github.com/stretchr/testify v1.7.0
 	github.com/xelabs/go-mysqlstack v1.0.0
-	go.uber.org/zap v1.19.1
+	go.uber.org/zap v1.20.0
 	golang.org/x/sys v0.0.0-20210823070655-63515b42dcdf
 	gopkg.in/yaml.v2 v2.4.0
 )
