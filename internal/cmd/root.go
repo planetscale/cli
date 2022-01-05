@@ -153,7 +153,8 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 
 	// service token flags. they are hidden for now.
 	rootCmd.PersistentFlags().StringVar(&cfg.ServiceTokenName,
-		"service-token-name", "", "The Service Token name for authenticating.")
+		"service-token-name", "", "The Service Token name for authenticating. (deprecated)")
+	rootCmd.PersistentFlags().StringVar(&cfg.ServiceTokenID, "The Service Token ID for authenticating.")
 	rootCmd.PersistentFlags().StringVar(&cfg.ServiceToken,
 		"service-token", "", "Service Token for authenticating.")
 
