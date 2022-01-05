@@ -30,7 +30,7 @@ func TokenCmd(ch *cmdutil.Helper) *cobra.Command {
 
 // ServiceToken returns a table and json serializable schema snapshot.
 type ServiceToken struct {
-	Name  string `header:"name" json:"name"`
+	ID    string `header:"id" json:"id"`
 	Token string `header:"token" json:"token"`
 
 	orig *ps.ServiceToken
@@ -44,7 +44,7 @@ func (s *ServiceToken) MarshalJSON() ([]byte, error) {
 // of a schema snapshot model.
 func toServiceToken(st *ps.ServiceToken) *ServiceToken {
 	return &ServiceToken{
-		Name:  st.ID,
+		ID:    st.ID,
 		Token: st.Token,
 		orig:  st,
 	}
