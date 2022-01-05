@@ -28,9 +28,8 @@ type Config struct {
 	BaseURL      string
 	Organization string
 
-	ServiceTokenName string
-	ServiceTokenID   string
-	ServiceToken     string
+	ServiceTokenID string
+	ServiceToken   string
 
 	// Project Configuration
 	Database string
@@ -69,7 +68,7 @@ func New() (*Config, error) {
 }
 
 func (c *Config) IsAuthenticated() bool {
-	return (c.ServiceToken != "" && c.GetServiceTokenID() != "") || c.AccessToken != ""
+	return (c.ServiceToken != "" && c.ServiceTokenID != "") || c.AccessToken != ""
 }
 
 // NewClientFromConfig creates a PlaentScale API client from our configuration
@@ -78,26 +77,14 @@ func (c *Config) NewClientFromConfig(clientOpts ...ps.ClientOption) (*ps.Client,
 		ps.WithBaseURL(c.BaseURL),
 	}
 
-	if c.ServiceToken != "" && (c.GetServiceTokenID() != "") {
-		opts = append(opts, ps.WithServiceToken(c.GetServiceTokenID(), c.ServiceToken))
+	if c.ServiceToken != "" && c.ServiceTokenID != "" {
+		opts = append(opts, ps.WithServiceToken(c.ServiceTokenID, c.ServiceToken))
 	} else {
 		opts = append(opts, ps.WithAccessToken(c.AccessToken))
 	}
 	opts = append(opts, clientOpts...)
 
 	return ps.NewClient(opts...)
-}
-
-// GetServiceTokenID gets the service token either from the ServiceTokenName or
-// the ServiceTokenID flag
-func (c *Config) GetServiceTokenID() string {
-	id := c.ServiceTokenID
-
-	if id == "" {
-		id = c.ServiceTokenName
-	}
-
-	return id
 }
 
 // ConfigDir is the directory for PlanetScale config.

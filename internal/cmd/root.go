@@ -152,9 +152,9 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 	ch.SetDebug(debug)
 
 	// service token flags. they are hidden for now.
-	rootCmd.PersistentFlags().StringVar(&cfg.ServiceTokenName,
-		"service-token-name", "", "The Service Token name for authenticating. (deprecated)")
-	rootCmd.PersistentFlags().StringVar(&cfg.ServiceTokenID, "The Service Token ID for authenticating.")
+	rootCmd.PersistentFlags().StringVar(&cfg.ServiceTokenID,
+		"service-token-name", "", "The Service Token name for authenticating.")
+	rootCmd.PersistentFlags().StringVar(&cfg.ServiceTokenID, "service-token-id", "", "The Service Token ID for authenticating.")
 	rootCmd.PersistentFlags().StringVar(&cfg.ServiceToken,
 		"service-token", "", "Service Token for authenticating.")
 
@@ -162,6 +162,9 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 	if err := viper.BindPFlag("no-color", rootCmd.PersistentFlags().Lookup("no-color")); err != nil {
 		return err
 	}
+
+	rootCmd.PersistentFlags().MarkDeprecated("service-token-name", "use --service-token-id instead")
+	rootCmd.PersistentFlags().MarkHidden("service-token-name")
 
 	// We don't want to show the default value
 	rootCmd.PersistentFlags().Lookup("api-token").DefValue = ""
