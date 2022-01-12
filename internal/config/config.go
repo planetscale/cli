@@ -28,8 +28,8 @@ type Config struct {
 	BaseURL      string
 	Organization string
 
-	ServiceTokenName string
-	ServiceToken     string
+	ServiceTokenID string
+	ServiceToken   string
 
 	// Project Configuration
 	Database string
@@ -68,7 +68,7 @@ func New() (*Config, error) {
 }
 
 func (c *Config) IsAuthenticated() bool {
-	return ((c.ServiceToken != "" && c.ServiceTokenName != "") || (c.AccessToken != ""))
+	return (c.ServiceToken != "" && c.ServiceTokenID != "") || c.AccessToken != ""
 }
 
 // NewClientFromConfig creates a PlaentScale API client from our configuration
@@ -76,8 +76,9 @@ func (c *Config) NewClientFromConfig(clientOpts ...ps.ClientOption) (*ps.Client,
 	opts := []ps.ClientOption{
 		ps.WithBaseURL(c.BaseURL),
 	}
-	if c.ServiceToken != "" && c.ServiceTokenName != "" {
-		opts = append(opts, ps.WithServiceToken(c.ServiceTokenName, c.ServiceToken))
+
+	if c.ServiceToken != "" && c.ServiceTokenID != "" {
+		opts = append(opts, ps.WithServiceToken(c.ServiceTokenID, c.ServiceToken))
 	} else {
 		opts = append(opts, ps.WithAccessToken(c.AccessToken))
 	}
