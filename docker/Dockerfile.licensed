@@ -5,4 +5,4 @@ ENV DEBIAN_FRONTEND="noninteractive"
 RUN apt-get update && apt-get upgrade -y
 RUN apt-get install -y apt-utils
 RUN apt-get install -y ruby-dev rubygems ruby cmake pkg-config git-core libgit2-dev
-RUN gem install licensed -v 3.4.0
+RUN gem install licensed -v 3.3.1
