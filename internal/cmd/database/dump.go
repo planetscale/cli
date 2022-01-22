@@ -42,7 +42,7 @@ func DumpCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.PersistentFlags().StringVar(&f.tables, "tables", "",
 		"Comma separated string of tables to dump. By default all tables are dumped.")
 	cmd.PersistentFlags().StringVar(&f.output, "output", "",
-		"Output director of the dump. By default the dump is stored to a folder in the current directory.")
+		"Output directory of the dump. By default the dump is saved to a folder in the current directory.")
 
 	return cmd
 }
@@ -124,7 +124,7 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 	}
 
 	if _, err := os.Stat(dir); err == nil {
-		return fmt.Errorf("backup directory already exist: %s", dir)
+		return fmt.Errorf("backup directory already exists: %s", dir)
 	}
 
 	err = os.MkdirAll(dir, 0755)
