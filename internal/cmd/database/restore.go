@@ -34,7 +34,7 @@ func RestoreCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.PersistentFlags().StringVar(&f.localAddr, "local-addr",
 		"", "Local address to bind and listen for connections. By default the proxy binds to 127.0.0.1 with a random port.")
 	cmd.PersistentFlags().StringVar(&f.dir, "dir", "",
-		"Directory that contains the files to be used for restoration (required)")
+		"Directory containing the files to be used for the restore (required)")
 
 	return cmd
 }
@@ -131,6 +131,6 @@ func restore(ch *cmdutil.Helper, cmd *cobra.Command, flags *restoreFlags, args [
 	}
 
 	end()
-	ch.Printer.Printf("Restoring is finished! (elapsed time: %s)\n", time.Since(start))
+	ch.Printer.Printf("Restore is finished! (elapsed time: %s)\n", time.Since(start))
 	return nil
 }
