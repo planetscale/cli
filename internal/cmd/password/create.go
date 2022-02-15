@@ -13,7 +13,7 @@ import (
 func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	createReq := &ps.DatabaseBranchPasswordRequest{}
 	cmd := &cobra.Command{
-		Use:     "create <database> <branch> <name>",
+		Use:     "create <database> <branch> <name> [<role>]",
 		Short:   "Create password to access a branch's data",
 		Args:    cmdutil.RequiredArgs("database", "branch", "name"),
 		Aliases: []string{"p"},
@@ -22,11 +22,16 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			database := args[0]
 			branch := args[1]
 			name := args[2]
+			role := "reader"
+			if len(args) > 3 {
+				role = args[3]
+			}
 
 			createReq.Database = database
 			createReq.Branch = branch
 			createReq.Organization = ch.Config.Organization
 			createReq.DisplayName = name
+			createReq.Role = role
 
 			client, err := ch.Client()
 			if err != nil {
