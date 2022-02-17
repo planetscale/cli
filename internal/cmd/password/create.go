@@ -63,6 +63,6 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 		},
 	}
 	cmd.PersistentFlags().StringVar(&flags.role, "role", "", "Role for the password, allowed values are : reader, writer, admin")
-
+	cmd.PersistentFlags().MarkHidden("role")
 	return cmd
 }
