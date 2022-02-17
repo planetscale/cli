@@ -15,12 +15,14 @@ import (
 )
 
 type RemoteCertSource struct {
-	client *ps.Client
+	client   *ps.Client
+	readOnly bool
 }
 
-func NewRemoteCertSource(client *ps.Client) *RemoteCertSource {
+func NewRemoteCertSource(client *ps.Client, readOnly bool) *RemoteCertSource {
 	return &RemoteCertSource{
-		client: client,
+		client:   client,
+		readOnly: readOnly,
 	}
 }
 
@@ -33,9 +35,15 @@ func (r *RemoteCertSource) Cert(ctx context.Context, org, db, branch string) (*p
 		return nil, fmt.Errorf("couldn't generate private key: %s", err)
 	}
 
+	role := "admin"
+	if r.readOnly {
+		role = "reader"
+	}
+
 	request := &ps.DatabaseBranchCertificateRequest{
 		Organization: org,
 		Database:     db,
+		Role:         role,
 		Branch:       branch,
 		DisplayName:  fmt.Sprintf("pscale-cli-%s-%s", time.Now().Format("2006-01-02"), nanoid.MustGenerate(publicIdAlphabet, publicIdLength)),
 		PrivateKey:   pkey,

@@ -30,6 +30,7 @@ func ConnectCmd(ch *cmdutil.Helper) *cobra.Command {
 		execCommand         string
 		execCommandProtocol string
 		execCommandEnvURL   string
+		readOnly            bool
 	}
 
 	cmd := &cobra.Command{
@@ -43,6 +44,11 @@ By default, if no branch names are given and there is only one branch, it
 automatically connects to that branch:
 
   pscale connect mydatabase
+
+If you would like to connect to your database in read-only mode,
+please pass the --read-only flag
+
+  pscale connect mydatabase --read-only
 
 If there are multiple branches for the given database, you'll be prompted to
 choose one. To connect to a specific branch, pass the branch as a second
@@ -96,7 +102,7 @@ argument:
 			localAddr := net.JoinHostPort(flags.host, flags.port)
 
 			proxyOpts := proxy.Options{
-				CertSource: proxyutil.NewRemoteCertSource(client),
+				CertSource: proxyutil.NewRemoteCertSource(client, flags.readOnly),
 				LocalAddr:  localAddr,
 				RemoteAddr: flags.remoteAddr,
 				Instance:   fmt.Sprintf("%s/%s/%s", ch.Config.Organization, database, branch),
@@ -158,6 +164,8 @@ argument:
 		"mysql2", "Protocol for the exposed URL (by default DATABASE_URL) value in execute")
 	cmd.PersistentFlags().StringVar(&flags.execCommandEnvURL, "execute-env-url", "DATABASE_URL",
 		"Environment variable name that contains the exposed Database URL.")
+	cmd.PersistentFlags().BoolVar(&flags.readOnly, "read-only",
+		false, "Connect to database in read only mode.")
 	return cmd
 }
 

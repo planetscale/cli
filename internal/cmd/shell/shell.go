@@ -27,6 +27,7 @@ func ShellCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
 		localAddr  string
 		remoteAddr string
+		readOnly   bool
 	}
 
 	cmd := &cobra.Command{
@@ -42,6 +43,11 @@ automatically opens a shell to that branch:
 
   pscale shell mydatabase
  
+If you would like to connect to your database in read-only mode,
+please pass the --read-only flag
+
+  pscale shell mydatabase --read-only
+
 If there are multiple branches for the given database, you'll be prompted to
 choose one. To open a shell instance to a specific branch, pass the branch as a
 second argument:
@@ -105,7 +111,7 @@ second argument:
 			}
 
 			proxyOpts := proxy.Options{
-				CertSource: proxyutil.NewRemoteCertSource(client),
+				CertSource: proxyutil.NewRemoteCertSource(client, flags.readOnly),
 				LocalAddr:  localAddr,
 				RemoteAddr: flags.remoteAddr,
 				Instance:   fmt.Sprintf("%s/%s/%s", ch.Config.Organization, database, branch),
@@ -187,6 +193,8 @@ second argument:
 		"", "Local address to bind and listen for connections. By default the proxy binds to 127.0.0.1 with a random port.")
 	cmd.PersistentFlags().StringVar(&flags.remoteAddr, "remote-addr", "",
 		"PlanetScale Database remote network address. By default the remote address is populated automatically from the PlanetScale API.")
+	cmd.PersistentFlags().BoolVar(&flags.readOnly, "read-only",
+		false, "Connect to database in read only mode.")
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
 
 	return cmd
