@@ -115,8 +115,6 @@ func toPasswordWithPlainText(password *ps.DatabaseBranchPassword) *PasswordWithP
 
 func toRoleDesc(role string) string {
 	switch role {
-	case "reader":
-		return "Can Read"
 	case "writer":
 		return "Can Read & Write"
 	case "admin":
