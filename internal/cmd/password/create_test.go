@@ -55,7 +55,8 @@ func TestPassword_CreateCmd(t *testing.T) {
 	}
 
 	cmd := CreateCmd(ch)
-	cmd.SetArgs([]string{db, branch, name, role})
+	cmd.SetArgs([]string{db, branch, name})
+	cmd.Flag("role").Value.Set(role)
 	err := cmd.Execute()
 
 	c.Assert(err, qt.IsNil)
