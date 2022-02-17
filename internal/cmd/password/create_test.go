@@ -62,7 +62,7 @@ func TestPassword_CreateCmd(t *testing.T) {
 	c.Assert(svc.CreateFnInvoked, qt.IsTrue)
 }
 
-func TestPassword_CreateCmd_DefaultRoleReader(t *testing.T) {
+func TestPassword_CreateCmd_DefaultRoleEmpty(t *testing.T) {
 	c := qt.New(t)
 
 	var buf bytes.Buffer
@@ -82,7 +82,7 @@ func TestPassword_CreateCmd_DefaultRoleReader(t *testing.T) {
 			c.Assert(req.Database, qt.Equals, db)
 			c.Assert(req.Branch, qt.Equals, branch)
 			c.Assert(req.DisplayName, qt.Equals, name)
-			c.Assert(req.Role, qt.Equals, "reader")
+			c.Assert(req.Role, qt.Equals, "")
 
 			return res, nil
 		},
