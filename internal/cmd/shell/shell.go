@@ -42,11 +42,6 @@ By default, if no branch names are given and there is only one branch, it
 automatically opens a shell to that branch:
 
   pscale shell mydatabase
- 
-If you would like to connect to your database in read-only mode,
-please pass the --read-only flag
-
-  pscale shell mydatabase --read-only
 
 If there are multiple branches for the given database, you'll be prompted to
 choose one. To open a shell instance to a specific branch, pass the branch as a
@@ -196,7 +191,7 @@ second argument:
 	cmd.PersistentFlags().BoolVar(&flags.readOnly, "read-only",
 		false, "Connect to database in read only mode.")
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
-
+	cmd.PersistentFlags().MarkHidden("read-only")
 	return cmd
 }
 

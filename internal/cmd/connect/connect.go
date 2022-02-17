@@ -45,11 +45,6 @@ automatically connects to that branch:
 
   pscale connect mydatabase
 
-If you would like to connect to your database in read-only mode,
-please pass the --read-only flag
-
-  pscale connect mydatabase --read-only
-
 If there are multiple branches for the given database, you'll be prompted to
 choose one. To connect to a specific branch, pass the branch as a second
 argument:
@@ -166,6 +161,8 @@ argument:
 		"Environment variable name that contains the exposed Database URL.")
 	cmd.PersistentFlags().BoolVar(&flags.readOnly, "read-only",
 		false, "Connect to database in read only mode.")
+
+	cmd.PersistentFlags().MarkHidden("read-only")
 	return cmd
 }
 
