@@ -11,6 +11,10 @@ import (
 )
 
 func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
+	var flags struct {
+		role string
+	}
+
 	createReq := &ps.DatabaseBranchPasswordRequest{}
 	cmd := &cobra.Command{
 		Use:     "create <database> <branch> <name>",
@@ -27,6 +31,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			createReq.Branch = branch
 			createReq.Organization = ch.Config.Organization
 			createReq.DisplayName = name
+			createReq.Role = flags.role
 
 			client, err := ch.Client()
 			if err != nil {
@@ -57,6 +62,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			return ch.Printer.PrintResource(toPasswordWithPlainText(pass))
 		},
 	}
-
+	cmd.PersistentFlags().StringVar(&flags.role, "role", "", "Role for the password, allowed values are : reader, writer, admin")
+	cmd.PersistentFlags().MarkHidden("role")
 	return cmd
 }
