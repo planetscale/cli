@@ -22,7 +22,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			database := args[0]
 			branch := args[1]
 			name := args[2]
-			role := "reader"
+			role := ""
 			if len(args) > 3 {
 				role = args[3]
 			}
