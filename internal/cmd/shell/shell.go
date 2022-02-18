@@ -156,6 +156,7 @@ second argument:
 			mysqlArgs := []string{
 				"-u",
 				"root",
+				"-c", // allow comments to pass to the server
 				"-s",
 				"-t", // the -s (silent) flag disables tabular output, re-enable it.
 				"-h", host,
