@@ -58,7 +58,7 @@ func RoleFromString(r string) (PasswordRole, error) {
 		return Administrator, nil
 	}
 
-	return 0, fmt.Errorf("Invalid role [%v] requested", r)
+	return 0, fmt.Errorf("invalid role [%v] requested", r)
 }
 
 // Helper is passed to every single command and is used by individual
