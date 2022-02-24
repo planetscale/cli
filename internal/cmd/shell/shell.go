@@ -27,7 +27,7 @@ func ShellCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
 		localAddr  string
 		remoteAddr string
-		readOnly   bool
+		role       string
 	}
 
 	cmd := &cobra.Command{
@@ -106,7 +106,7 @@ second argument:
 			}
 
 			proxyOpts := proxy.Options{
-				CertSource: proxyutil.NewRemoteCertSource(client, flags.readOnly),
+				CertSource: proxyutil.NewRemoteCertSource(client, flags.role),
 				LocalAddr:  localAddr,
 				RemoteAddr: flags.remoteAddr,
 				Instance:   fmt.Sprintf("%s/%s/%s", ch.Config.Organization, database, branch),
@@ -188,10 +188,10 @@ second argument:
 		"", "Local address to bind and listen for connections. By default the proxy binds to 127.0.0.1 with a random port.")
 	cmd.PersistentFlags().StringVar(&flags.remoteAddr, "remote-addr", "",
 		"PlanetScale Database remote network address. By default the remote address is populated automatically from the PlanetScale API.")
-	cmd.PersistentFlags().BoolVar(&flags.readOnly, "read-only",
-		false, "Connect to database in read only mode.")
+	cmd.PersistentFlags().StringVar(&flags.role, "role",
+		"reader", "allowed values are : reader, writer, readwriter, admin, default is reader")
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
-	cmd.PersistentFlags().MarkHidden("read-only")
+	cmd.PersistentFlags().MarkHidden("role")
 	return cmd
 }
 
