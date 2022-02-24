@@ -6,6 +6,7 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"fmt"
+	"github.com/planetscale/cli/internal/cmdutil"
 	"time"
 
 	nanoid "github.com/matoous/go-nanoid/v2"
@@ -19,10 +20,10 @@ type RemoteCertSource struct {
 	role   string
 }
 
-func NewRemoteCertSource(client *ps.Client, role string) *RemoteCertSource {
+func NewRemoteCertSource(client *ps.Client, role cmdutil.PasswordRole) *RemoteCertSource {
 	return &RemoteCertSource{
 		client: client,
-		role:   role,
+		role:   role.ToString(),
 	}
 }
 

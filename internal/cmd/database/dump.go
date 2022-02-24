@@ -66,7 +66,7 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 	}
 
 	proxyOpts := proxy.Options{
-		CertSource: proxyutil.NewRemoteCertSource(client, "reader"),
+		CertSource: proxyutil.NewRemoteCertSource(client, cmdutil.Reader),
 		LocalAddr:  localAddr,
 		Instance:   fmt.Sprintf("%s/%s/%s", ch.Config.Organization, database, branch),
 		Logger:     cmdutil.NewZapLogger(ch.Debug()),

@@ -74,6 +74,14 @@ argument:
 				}
 			}
 
+			role := cmdutil.Reader
+			if flags.role != "" {
+				role, err = cmdutil.RoleFromString(flags.role)
+				if err != nil {
+					return err
+				}
+			}
+
 			// check whether database and branch exist
 			dbBranch, err := client.DatabaseBranches.Get(ctx, &planetscale.GetDatabaseBranchRequest{
 				Organization: ch.Config.Organization,
@@ -97,7 +105,7 @@ argument:
 			localAddr := net.JoinHostPort(flags.host, flags.port)
 
 			proxyOpts := proxy.Options{
-				CertSource: proxyutil.NewRemoteCertSource(client, flags.role),
+				CertSource: proxyutil.NewRemoteCertSource(client, role),
 				LocalAddr:  localAddr,
 				RemoteAddr: flags.remoteAddr,
 				Instance:   fmt.Sprintf("%s/%s/%s", ch.Config.Organization, database, branch),
