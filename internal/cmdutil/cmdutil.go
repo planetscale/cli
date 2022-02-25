@@ -25,10 +25,10 @@ const WarnAuthMessage = "not authenticated yet. Please run 'pscale auth login' "
 type PasswordRole int
 
 const (
-	Reader PasswordRole = iota
-	Writer
-	ReadWriter
-	Administrator
+	ReaderRole PasswordRole = iota
+	WriterRole
+	ReadWriterRole
+	AdministratorRole
 )
 
 func (r PasswordRole) ToString() string {
