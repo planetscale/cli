@@ -27,6 +27,13 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			branch := args[1]
 			name := args[2]
 
+			if flags.role != "" {
+				_, err := cmdutil.RoleFromString(flags.role)
+				if err != nil {
+					return err
+				}
+			}
+
 			createReq.Database = database
 			createReq.Branch = branch
 			createReq.Organization = ch.Config.Organization
@@ -63,7 +70,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 		},
 	}
 	cmd.PersistentFlags().StringVar(&flags.role, "role",
-		"reader", "Role defines the access level, allowed values are : reader, writer, readwriter, admin. By default it is reader.")
+		"", "Role defines the access level, allowed values are : reader, writer, readwriter, admin. By default it is reader.")
 	cmd.PersistentFlags().MarkHidden("role")
 	return cmd
 }
