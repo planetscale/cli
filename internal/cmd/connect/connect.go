@@ -168,7 +168,7 @@ argument:
 	cmd.PersistentFlags().StringVar(&flags.execCommandEnvURL, "execute-env-url", "DATABASE_URL",
 		"Environment variable name that contains the exposed Database URL.")
 	cmd.PersistentFlags().StringVar(&flags.role, "role",
-		"reader", "allowed values are : reader, writer, readwriter, admin, default is reader")
+		"reader", "Role defines the access level, allowed values are : reader, writer, readwriter, admin. By default it is reader.")
 
 	cmd.PersistentFlags().MarkHidden("role")
 	return cmd

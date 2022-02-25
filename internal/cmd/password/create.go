@@ -62,7 +62,8 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			return ch.Printer.PrintResource(toPasswordWithPlainText(pass))
 		},
 	}
-	cmd.PersistentFlags().StringVar(&flags.role, "role", "", "Role for the password, allowed values are : reader, writer, readwriter, admin")
+	cmd.PersistentFlags().StringVar(&flags.role, "role",
+		"reader", "Role defines the access level, allowed values are : reader, writer, readwriter, admin. By default it is reader.")
 	cmd.PersistentFlags().MarkHidden("role")
 	return cmd
 }
