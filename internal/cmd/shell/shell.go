@@ -197,7 +197,7 @@ second argument:
 	cmd.PersistentFlags().StringVar(&flags.remoteAddr, "remote-addr", "",
 		"PlanetScale Database remote network address. By default the remote address is populated automatically from the PlanetScale API.")
 	cmd.PersistentFlags().StringVar(&flags.role, "role",
-		"reader", "allowed values are : reader, writer, readwriter, admin, default is reader")
+		"reader", "Role defines the access level, allowed values are : reader, writer, readwriter, admin. By default it is reader.")
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
 	cmd.PersistentFlags().MarkHidden("role")
 	return cmd

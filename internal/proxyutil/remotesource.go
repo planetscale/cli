@@ -6,8 +6,9 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"fmt"
-	"github.com/planetscale/cli/internal/cmdutil"
 	"time"
+
+	"github.com/planetscale/cli/internal/cmdutil"
 
 	nanoid "github.com/matoous/go-nanoid/v2"
 
