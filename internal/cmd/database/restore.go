@@ -62,7 +62,7 @@ func restore(ch *cmdutil.Helper, cmd *cobra.Command, flags *restoreFlags, args [
 	}
 
 	proxyOpts := proxy.Options{
-		CertSource: proxyutil.NewRemoteCertSource(client, cmdutil.Administrator),
+		CertSource: proxyutil.NewRemoteCertSource(client, cmdutil.AdministratorRole),
 		LocalAddr:  localAddr,
 		Instance:   fmt.Sprintf("%s/%s/%s", ch.Config.Organization, database, branch),
 		Logger:     cmdutil.NewZapLogger(ch.Debug()),

@@ -33,13 +33,13 @@ const (
 
 func (r PasswordRole) ToString() string {
 	switch r {
-	case Reader:
+	case ReaderRole:
 		return "reader"
-	case Writer:
+	case WriterRole:
 		return "writer"
-	case ReadWriter:
+	case ReadWriterRole:
 		return "readwriter"
-	case Administrator:
+	case AdministratorRole:
 		return "admin"
 	}
 	return ""
@@ -49,13 +49,13 @@ func RoleFromString(r string) (PasswordRole, error) {
 	role := strings.ToLower(r)
 	switch role {
 	case "reader":
-		return Reader, nil
+		return ReaderRole, nil
 	case "writer":
-		return Writer, nil
+		return WriterRole, nil
 	case "readwriter":
-		return ReadWriter, nil
+		return ReadWriterRole, nil
 	case "admin":
-		return Administrator, nil
+		return AdministratorRole, nil
 	}
 
 	return 0, fmt.Errorf("invalid role [%v] requested", r)
