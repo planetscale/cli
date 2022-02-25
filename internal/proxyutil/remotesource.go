@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/planetscale/cli/internal/cmdutil"
+
 	nanoid "github.com/matoous/go-nanoid/v2"
 
 	ps "github.com/planetscale/planetscale-go/planetscale"
@@ -15,14 +17,14 @@ import (
 )
 
 type RemoteCertSource struct {
-	client   *ps.Client
-	readOnly bool
+	client *ps.Client
+	role   string
 }
 
-func NewRemoteCertSource(client *ps.Client, readOnly bool) *RemoteCertSource {
+func NewRemoteCertSource(client *ps.Client, role cmdutil.PasswordRole) *RemoteCertSource {
 	return &RemoteCertSource{
-		client:   client,
-		readOnly: readOnly,
+		client: client,
+		role:   role.ToString(),
 	}
 }
 
@@ -35,15 +37,10 @@ func (r *RemoteCertSource) Cert(ctx context.Context, org, db, branch string) (*p
 		return nil, fmt.Errorf("couldn't generate private key: %s", err)
 	}
 
-	role := "admin"
-	if r.readOnly {
-		role = "reader"
-	}
-
 	request := &ps.DatabaseBranchCertificateRequest{
 		Organization: org,
 		Database:     db,
-		Role:         role,
+		Role:         r.role,
 		Branch:       branch,
 		DisplayName:  fmt.Sprintf("pscale-cli-%s-%s", time.Now().Format("2006-01-02"), nanoid.MustGenerate(publicIdAlphabet, publicIdLength)),
 		PrivateKey:   pkey,

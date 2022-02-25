@@ -22,6 +22,45 @@ import (
 const WarnAuthMessage = "not authenticated yet. Please run 'pscale auth login' " +
 	"or create a service token with 'pscale service-token create'"
 
+type PasswordRole int
+
+const (
+	ReaderRole PasswordRole = iota
+	WriterRole
+	ReadWriterRole
+	AdministratorRole
+)
+
+func (r PasswordRole) ToString() string {
+	switch r {
+	case ReaderRole:
+		return "reader"
+	case WriterRole:
+		return "writer"
+	case ReadWriterRole:
+		return "readwriter"
+	case AdministratorRole:
+		return "admin"
+	}
+	return ""
+}
+
+func RoleFromString(r string) (PasswordRole, error) {
+	role := strings.ToLower(r)
+	switch role {
+	case "reader":
+		return ReaderRole, nil
+	case "writer":
+		return WriterRole, nil
+	case "readwriter":
+		return ReadWriterRole, nil
+	case "admin":
+		return AdministratorRole, nil
+	}
+
+	return 0, fmt.Errorf("invalid role [%v] requested", r)
+}
+
 // Helper is passed to every single command and is used by individual
 // subcommands.
 type Helper struct {

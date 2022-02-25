@@ -63,6 +63,54 @@ func TestPassword_CreateCmd(t *testing.T) {
 	c.Assert(svc.CreateFnInvoked, qt.IsTrue)
 }
 
+func TestPassword_CreateCmd_InvalidRole(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	db := "planetscale"
+	branch := "development"
+	name := "production-password"
+	res := &ps.DatabaseBranchPassword{Name: "foo"}
+
+	svc := &mock.PasswordsService{
+		CreateFn: func(ctx context.Context, req *ps.DatabaseBranchPasswordRequest) (*ps.DatabaseBranchPassword, error) {
+			c.Assert(req.Organization, qt.Equals, org)
+			c.Assert(req.Database, qt.Equals, db)
+			c.Assert(req.Branch, qt.Equals, branch)
+			c.Assert(req.DisplayName, qt.Equals, name)
+			c.Assert(req.Role, qt.Equals, "")
+
+			return res, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: org,
+		},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{
+				Passwords: svc,
+			}, nil
+
+		},
+	}
+
+	cmd := CreateCmd(ch)
+	cmd.SetArgs([]string{db, branch, name})
+	cmd.Flag("role").Value.Set("random")
+	err := cmd.Execute()
+	c.Assert(err, qt.IsNotNil)
+	c.Assert(svc.CreateFnInvoked, qt.IsFalse)
+
+}
+
 func TestPassword_CreateCmd_DefaultRoleEmpty(t *testing.T) {
 	c := qt.New(t)
 

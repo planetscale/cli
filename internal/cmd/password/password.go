@@ -118,9 +118,11 @@ func toRoleDesc(role string) string {
 	case "reader":
 		return "Can Read"
 	case "writer":
+		return "Can Write"
+	case "readwriter":
 		return "Can Read & Write"
 	case "admin":
 		return "Can Read, Write & Administer"
 	}
-	return "no idea"
+	return "Can Read"
 }

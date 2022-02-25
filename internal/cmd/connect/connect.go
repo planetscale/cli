@@ -30,7 +30,7 @@ func ConnectCmd(ch *cmdutil.Helper) *cobra.Command {
 		execCommand         string
 		execCommandProtocol string
 		execCommandEnvURL   string
-		readOnly            bool
+		role                string
 	}
 
 	cmd := &cobra.Command{
@@ -74,6 +74,14 @@ argument:
 				}
 			}
 
+			role := cmdutil.ReaderRole
+			if flags.role != "" {
+				role, err = cmdutil.RoleFromString(flags.role)
+				if err != nil {
+					return err
+				}
+			}
+
 			// check whether database and branch exist
 			dbBranch, err := client.DatabaseBranches.Get(ctx, &planetscale.GetDatabaseBranchRequest{
 				Organization: ch.Config.Organization,
@@ -97,7 +105,7 @@ argument:
 			localAddr := net.JoinHostPort(flags.host, flags.port)
 
 			proxyOpts := proxy.Options{
-				CertSource: proxyutil.NewRemoteCertSource(client, flags.readOnly),
+				CertSource: proxyutil.NewRemoteCertSource(client, role),
 				LocalAddr:  localAddr,
 				RemoteAddr: flags.remoteAddr,
 				Instance:   fmt.Sprintf("%s/%s/%s", ch.Config.Organization, database, branch),
@@ -159,10 +167,10 @@ argument:
 		"mysql2", "Protocol for the exposed URL (by default DATABASE_URL) value in execute")
 	cmd.PersistentFlags().StringVar(&flags.execCommandEnvURL, "execute-env-url", "DATABASE_URL",
 		"Environment variable name that contains the exposed Database URL.")
-	cmd.PersistentFlags().BoolVar(&flags.readOnly, "read-only",
-		false, "Connect to database in read only mode.")
+	cmd.PersistentFlags().StringVar(&flags.role, "role",
+		"reader", "Role defines the access level, allowed values are : reader, writer, readwriter, admin. By default it is reader.")
 
-	cmd.PersistentFlags().MarkHidden("read-only")
+	cmd.PersistentFlags().MarkHidden("role")
 	return cmd
 }
 
