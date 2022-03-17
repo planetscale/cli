@@ -5,13 +5,13 @@ steps:
 - name: "Go build and test %n"
   command: make
   plugins:
-    - docker-compose#v3.7.0:
+    - docker-compose#v3.9.0:
         run: app
 
 - name: "Check licenses %n"
   command: make licensed
   plugins:
-    - docker-compose#v3.7.0:
+    - docker-compose#v3.9.0:
         run: licensing
 
 - wait
@@ -30,7 +30,7 @@ steps:
   command: script/release.sh
   plugins:
     - docker#v3.8.0:
-        image: "golang:1.17"
+        image: "golang:1.18"
         propagate-environment: true
         environment:
           - "GITHUB_TOKEN"
