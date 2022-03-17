@@ -25,7 +25,7 @@ build:
 
 .PHONY: lint
 lint: 
-	@go install honnef.co/go/tools/cmd/staticcheck@latest
+	@go install honnef.co/go/tools/cmd/staticcheck@HEAD
 	@staticcheck ./...
 
 .PHONY: licensed
