@@ -3,7 +3,6 @@ package auth
 import (
 	"bufio"
 	"io"
-	"os"
 
 	"github.com/planetscale/cli/internal/auth"
 	"github.com/planetscale/cli/internal/cmdutil"
@@ -11,7 +10,6 @@ import (
 	"github.com/planetscale/cli/internal/printer"
 
 	"github.com/hashicorp/go-cleanhttp"
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -47,7 +45,7 @@ func LogoutCmd(ch *cmdutil.Helper) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			err = deleteAccessToken()
+			err = config.DeleteAccessToken()
 			if err != nil {
 				return err
 			}
@@ -62,34 +60,6 @@ func LogoutCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().StringVar(&clientSecret, "client-secret", auth.OAuthClientSecret, "The client ID for the PlanetScale CLI application")
 	cmd.Flags().StringVar(&apiURL, "api-url", auth.DefaultBaseURL, "The PlanetScale base API URL.")
 	return cmd
-}
-
-func deleteAccessToken() error {
-	tokenPath, err := config.AccessTokenPath()
-	if err != nil {
-		return err
-	}
-
-	err = os.Remove(tokenPath)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			return errors.Wrap(err, "error removing access token file")
-		}
-	}
-
-	configFile, err := config.DefaultConfigPath()
-	if err != nil {
-		return err
-	}
-
-	err = os.Remove(configFile)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			return errors.Wrap(err, "error removing default config file")
-		}
-	}
-
-	return nil
 }
 
 func waitForEnter(r io.Reader) error {

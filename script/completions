@@ -5,6 +5,8 @@ set -e
 rm -rf completions
 mkdir -p completions
 
+PSCALE_DISABLE_DEV_WARNING=true
+
 for sh in bash zsh fish; do
   go run cmd/pscale/main.go completion "$sh" >"completions/pscale.$sh"
 done
