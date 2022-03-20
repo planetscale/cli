@@ -49,6 +49,17 @@ scoop update pscale
 
 Download the pre-compiled binaries from the [releases](https://github.com/planetscale/cli/releases/latest) page and copy to the desired location.
 
+Alternatively, you can install [bin](https://github.com/marcosnils/bin) which works on all `macOS`, `Windows`, and `Linux` platforms:
+
+```
+bin install https://github.com/planetscale/cli
+```
+
+To upgrade to the latest version
+
+```
+bin upgrade pscale
+```
 
 #### Container images 
 
