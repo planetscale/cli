@@ -3,7 +3,7 @@ module github.com/planetscale/cli
 go 1.16
 
 require (
-	github.com/AlecAivazis/survey/v2 v2.3.2
+	github.com/AlecAivazis/survey/v2 v2.3.3
 	github.com/benbjohnson/clock v1.3.0
 	github.com/briandowns/spinner v1.18.1
 	github.com/dustin/go-humanize v1.0.0 // indirect
