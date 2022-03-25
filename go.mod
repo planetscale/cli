@@ -8,7 +8,7 @@ require (
 	github.com/briandowns/spinner v1.18.1
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/fatih/color v1.13.0
-	github.com/frankban/quicktest v1.14.2
+	github.com/frankban/quicktest v1.14.3
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/gocarina/gocsv v0.0.0-20220310154401-d4df709ca055
 	github.com/hashicorp/go-cleanhttp v0.5.2
