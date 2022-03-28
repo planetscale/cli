@@ -111,7 +111,7 @@ func TestPassword_CreateCmd_InvalidRole(t *testing.T) {
 
 }
 
-func TestPassword_CreateCmd_DefaultRoleEmpty(t *testing.T) {
+func TestPassword_CreateCmd_DefaultRoleAdmin(t *testing.T) {
 	c := qt.New(t)
 
 	var buf bytes.Buffer
@@ -131,7 +131,7 @@ func TestPassword_CreateCmd_DefaultRoleEmpty(t *testing.T) {
 			c.Assert(req.Database, qt.Equals, db)
 			c.Assert(req.Branch, qt.Equals, branch)
 			c.Assert(req.DisplayName, qt.Equals, name)
-			c.Assert(req.Role, qt.Equals, "")
+			c.Assert(req.Role, qt.Equals, "admin")
 
 			return res, nil
 		},
