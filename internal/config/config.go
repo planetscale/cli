@@ -78,11 +78,11 @@ func (c *Config) NewClientFromConfig(clientOpts ...ps.ClientOption) (*ps.Client,
 	}
 
 	if c.ServiceToken == "" && c.ServiceTokenID != "" {
-		return nil, errors.New("service token ID was passed, but service token was not")
+		return nil, errors.New("both --service-token and --service-token-id are required for service token authentication")
 	}
 
 	if c.ServiceToken != "" && c.ServiceTokenID == "" {
-		return nil, errors.New("service token was passed, but service token ID was not")
+		return nil, errors.New("both --service-token and --service-token-id are required for service token authentication")
 	}
 
 	if c.ServiceToken != "" && c.ServiceTokenID != "" {
