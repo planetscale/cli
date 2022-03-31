@@ -1,6 +1,6 @@
 ---
 name: github.com/benbjohnson/clock
-version: v1.1.0
+version: v1.3.0
 type: go
 summary: 
 homepage: https://godoc.org/github.com/benbjohnson/clock

@@ -1,9 +1,9 @@
 ---
-name: golang.org/x/text/width
+name: golang.org/x/text/cases
 version: v0.3.7
 type: go
-summary: Package width provides functionality for handling different widths in text.
-homepage: https://godoc.org/golang.org/x/text/width
+summary: Package cases provides general and language-specific case mappers.
+homepage: https://godoc.org/golang.org/x/text/cases
 license: bsd-3-clause
 licenses:
 - sources: text@v0.3.7/LICENSE

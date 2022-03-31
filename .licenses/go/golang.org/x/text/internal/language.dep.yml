@@ -1,13 +1,12 @@
 ---
-name: golang.org/x/oauth2
-version: v0.0.0-20220309155454-6242fa91716a
+name: golang.org/x/text/internal/language
+version: v0.3.7
 type: go
-summary: Package oauth2 provides support for making OAuth2 authorized and authenticated
-  HTTP requests, as specified in RFC 6749.
-homepage: https://godoc.org/golang.org/x/oauth2
+summary: 
+homepage: https://godoc.org/golang.org/x/text/internal/language
 license: bsd-3-clause
 licenses:
-- sources: LICENSE
+- sources: text@v0.3.7/LICENSE
   text: |
     Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -36,9 +35,28 @@ licenses:
     THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-notices:
-- sources: AUTHORS
-  text: |-
-    # This source code refers to The Go Authors for copyright purposes.
-    # The master list of authors is in the main Go distribution,
-    # visible at http://tip.golang.org/AUTHORS.
+- sources: text@v0.3.7/PATENTS
+  text: |
+    Additional IP Rights Grant (Patents)
+
+    "This implementation" means the copyrightable works distributed by
+    Google as part of the Go project.
+
+    Google hereby grants to You a perpetual, worldwide, non-exclusive,
+    no-charge, royalty-free, irrevocable (except as stated in this section)
+    patent license to make, have made, use, offer to sell, sell, import,
+    transfer and otherwise run, modify and propagate the contents of this
+    implementation of Go, where such license applies only to those patent
+    claims, both currently owned or controlled by Google and acquired in
+    the future, licensable by Google that are necessarily infringed by this
+    implementation of Go.  This grant does not include claims that would be
+    infringed only as a consequence of further modification of this
+    implementation.  If you or your agent or exclusive licensee institute or
+    order or agree to the institution of patent litigation against any
+    entity (including a cross-claim or counterclaim in a lawsuit) alleging
+    that this implementation of Go or any code incorporated within this
+    implementation of Go constitutes direct or contributory patent
+    infringement, or inducement of patent infringement, then any patent
+    rights granted to you under this License for this implementation of Go
+    shall terminate as of the date such litigation is filed.
+notices: []

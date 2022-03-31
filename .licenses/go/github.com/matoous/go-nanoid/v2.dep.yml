@@ -1,14 +1,16 @@
 ---
-name: go.uber.org/zap/internal/bufferpool
-version: v1.21.0
+name: github.com/matoous/go-nanoid/v2
+version: v2.0.0
 type: go
-summary: Package bufferpool houses zap's shared internal buffer pool.
-homepage: https://godoc.org/go.uber.org/zap/internal/bufferpool
+summary: 
+homepage: https://godoc.org/github.com/matoous/go-nanoid/v2
 license: mit
 licenses:
-- sources: zap@v1.21.0/LICENSE.txt
+- sources: LICENSE
   text: |
-    Copyright (c) 2016-2017 Uber Technologies, Inc.
+    The MIT License (MIT)
+
+    Copyright (c) 2018 Matous Dzivjak <matousdzivjak@gmail.com>
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to deal
@@ -27,4 +29,6 @@ licenses:
     LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
     THE SOFTWARE.
+- sources: README.md
+  text: The MIT License (MIT). Please see [License File](LICENSE.md) for more information.
 notices: []
