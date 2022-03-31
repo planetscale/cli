@@ -24,7 +24,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8
 	github.com/pkg/errors v0.9.1
-	github.com/planetscale/planetscale-go v0.55.0
+	github.com/planetscale/planetscale-go v0.56.0
 	github.com/planetscale/sql-proxy v0.12.0
 	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/spf13/afero v1.8.2 // indirect
