@@ -1,6 +1,6 @@
 ---
 name: github.com/hashicorp/go-version
-version: v1.3.0
+version: v1.4.0
 type: go
 summary: 
 homepage: https://godoc.org/github.com/hashicorp/go-version

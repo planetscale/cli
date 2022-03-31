@@ -1,9 +1,9 @@
 ---
-name: golang.org/x/text/width
+name: golang.org/x/text/internal/language/compact
 version: v0.3.7
 type: go
-summary: Package width provides functionality for handling different widths in text.
-homepage: https://godoc.org/golang.org/x/text/width
+summary: Package compact defines a compact representation of language tags.
+homepage: https://godoc.org/golang.org/x/text/internal/language/compact
 license: bsd-3-clause
 licenses:
 - sources: text@v0.3.7/LICENSE

@@ -1,12 +1,12 @@
 ---
 name: github.com/AlecAivazis/survey/v2/core
-version: v2.2.13
+version: v2.3.4
 type: go
 summary: 
 homepage: https://godoc.org/github.com/AlecAivazis/survey/v2/core
 license: mit
 licenses:
-- sources: v2@v2.2.13/LICENSE
+- sources: v2@v2.3.4/LICENSE
   text: |
     MIT License
 
