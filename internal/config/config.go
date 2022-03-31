@@ -77,11 +77,7 @@ func (c *Config) NewClientFromConfig(clientOpts ...ps.ClientOption) (*ps.Client,
 		ps.WithBaseURL(c.BaseURL),
 	}
 
-	if c.ServiceToken == "" && c.ServiceTokenID != "" {
-		return nil, errors.New("both --service-token and --service-token-id are required for service token authentication")
-	}
-
-	if c.ServiceToken != "" && c.ServiceTokenID == "" {
+	if (c.ServiceToken == "" && c.ServiceTokenID != "") || (c.ServiceToken != "" && c.ServiceTokenID == "") {
 		return nil, errors.New("both --service-token and --service-token-id are required for service token authentication")
 	}
 
