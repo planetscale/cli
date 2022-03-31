@@ -9,6 +9,8 @@ import (
 	"github.com/lensesio/tableprinter"
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/spf13/cobra"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 
 	ps "github.com/planetscale/planetscale-go/planetscale"
 )
@@ -60,7 +62,7 @@ func (a AuditLogs) String() string {
 func toAuditLog(a *ps.AuditLog) *AuditLog {
 	return &AuditLog{
 		Actor:     a.ActorDisplayName,
-		Action:    fmt.Sprintf("%s %s", strings.Title(a.Action), a.AuditableDisplayName),
+		Action:    fmt.Sprintf("%s %s", cases.Title(language.English).String(a.Action), a.AuditableDisplayName),
 		Event:     a.AuditAction,
 		RemoteIP:  a.RemoteIP,
 		Location:  a.Location,
