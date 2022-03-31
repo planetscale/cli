@@ -77,6 +77,14 @@ func (c *Config) NewClientFromConfig(clientOpts ...ps.ClientOption) (*ps.Client,
 		ps.WithBaseURL(c.BaseURL),
 	}
 
+	if c.ServiceToken == "" && c.ServiceTokenID != "" {
+		return nil, errors.New("service token ID was passed, but service token was not")
+	}
+
+	if c.ServiceToken != "" && c.ServiceTokenID == "" {
+		return nil, errors.New("service token was passed, but service token ID was not")
+	}
+
 	if c.ServiceToken != "" && c.ServiceTokenID != "" {
 		opts = append(opts, ps.WithServiceToken(c.ServiceTokenID, c.ServiceToken))
 	} else {
