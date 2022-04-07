@@ -2,7 +2,8 @@ package auth
 
 import (
 	"context"
-	"io/ioutil"
+	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -73,26 +74,27 @@ func TestVerifyDevice(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			srv, cleanup := setupServer(func(mux *http.ServeMux) {
-				mux.HandleFunc("/oauth/authorize_device", func(w http.ResponseWriter, r *http.Request) {
-					payload, err := ioutil.ReadAll(r.Body)
-					if err != nil {
-						t.Fatal(err)
-					}
+			mux := http.NewServeMux()
+			mux.HandleFunc("/oauth/authorize_device", func(w http.ResponseWriter, r *http.Request) {
+				// HTTP handlers run in goroutines, thus we cannot use t.Fatal.
+				// See: https://pkg.go.dev/testing#T.FailNow.
+				payload, err := io.ReadAll(r.Body)
+				if err != nil {
+					panicf("failed to read request body: %v", err)
+				}
 
-					assert.Equal(t, string(payload), tt.expectedBody)
-					if tt.statusCode > 0 {
-						w.WriteHeader(tt.statusCode)
-					}
+				assert.Equal(t, string(payload), tt.expectedBody)
+				if tt.statusCode > 0 {
+					w.WriteHeader(tt.statusCode)
+				}
 
-					_, err = w.Write([]byte(tt.deviceCodeRes))
-					if err != nil {
-						t.Fatal(err)
-					}
-				})
+				if _, err := io.WriteString(w, tt.deviceCodeRes); err != nil {
+					panicf("failed to write response bytes: %v", err)
+				}
 			})
 
-			t.Cleanup(cleanup)
+			srv := httptest.NewServer(mux)
+			defer srv.Close()
 
 			mockClock := clock.NewMock()
 			authenticator, err := New(cleanhttp.DefaultClient(), testClientID, testClientSecret, SetBaseURL(srv.URL), WithMockClock(mockClock))
@@ -112,16 +114,8 @@ func TestVerifyDevice(t *testing.T) {
 			assert.Equal(t, got, tt.want, "unexpected device verification")
 		})
 	}
-
 }
 
-func setupServer(fn func(mux *http.ServeMux)) (*httptest.Server, func()) {
-	mux := http.NewServeMux()
-
-	fn(mux)
-	server := httptest.NewServer(mux)
-
-	return server, func() {
-		server.Close()
-	}
+func panicf(format string, a ...any) {
+	panic(fmt.Sprintf(format, a...))
 }
