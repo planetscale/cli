@@ -17,8 +17,10 @@ import (
 const (
 	testClientID     = "some-client-id"
 	testClientSecret = "some-client-secret"
+	testToken        = "some-token"
 
-	testPayload = "client_id=some-client-id&scope=read_databases+write_databases+read_user+read_organization"
+	testAuthorizePayload    = "client_id=some-client-id&scope=read_databases+write_databases+read_user+read_organization"
+	testRequestTokenPayload = "client_id=some-client-id&device_code=deadbeef&grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code"
 )
 
 func TestVerifyDevice(t *testing.T) {
@@ -79,7 +81,7 @@ func TestVerifyDevice(t *testing.T) {
 					panicf("failed to read request body: %v", err)
 				}
 
-				assert.Equal(t, testPayload, string(payload))
+				assert.Equal(t, testAuthorizePayload, string(payload))
 				if _, err := io.WriteString(w, tt.deviceCodeRes); err != nil {
 					panicf("failed to write response bytes: %v", err)
 				}
@@ -104,6 +106,64 @@ func TestVerifyDevice(t *testing.T) {
 			}
 
 			assert.Equal(t, tt.want, got, "unexpected device verification")
+		})
+	}
+}
+
+func TestGetAccessTokenForDevice(t *testing.T) {
+	tests := []struct {
+		desc        string
+		tokenRes    string
+		errExpected bool
+	}{
+		{
+			desc:     "first try success",
+			tokenRes: `{"access_token": "some-token"}`,
+		},
+		// TODO(mdlayher): additional test cases:
+		//   - successful token fetch after a single retry
+		//   - authentication timeout due to clock elapsing ExpiresAt time
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			mux := http.NewServeMux()
+			mux.HandleFunc("/oauth/token", func(w http.ResponseWriter, r *http.Request) {
+				// HTTP handlers run in goroutines, thus we cannot use t.Fatal.
+				// See: https://pkg.go.dev/testing#T.FailNow.
+				payload, err := io.ReadAll(r.Body)
+				if err != nil {
+					panicf("failed to read request body: %v", err)
+				}
+
+				assert.Equal(t, testRequestTokenPayload, string(payload))
+				if _, err := io.WriteString(w, tt.tokenRes); err != nil {
+					panicf("failed to write response bytes: %v", err)
+				}
+			})
+
+			srv := httptest.NewServer(mux)
+			defer srv.Close()
+
+			mockClock := clock.NewMock()
+			authenticator, err := New(cleanhttp.DefaultClient(), testClientID, testClientSecret, SetBaseURL(srv.URL), WithMockClock(mockClock))
+			if err != nil {
+				t.Fatalf("error creating client: %v", err)
+			}
+
+			got, err := authenticator.GetAccessTokenForDevice(context.TODO(), DeviceVerification{
+				// TODO(mdlayher): parameterize as necessary for future test
+				// cases. For now hardcoding is good enough, and we especially
+				// don't want to wait a long time for the CheckInterval to
+				// elapse for unit tests.
+				DeviceCode:    "deadbeef",
+				CheckInterval: 10 * time.Millisecond,
+			})
+			if err != nil {
+				t.Fatalf("unexpected error getting access token: %v", err)
+			}
+
+			assert.Equal(t, testToken, got, "unexpected device token")
 		})
 	}
 }

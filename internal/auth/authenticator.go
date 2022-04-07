@@ -28,7 +28,7 @@ const (
 // Authenticator is the interface for authentication via device oauth
 type Authenticator interface {
 	VerifyDevice(ctx context.Context) (*DeviceVerification, error)
-	GetAccessTokenForDevice(ctx context.Context, v *DeviceVerification) (string, error)
+	GetAccessTokenForDevice(ctx context.Context, v DeviceVerification) (string, error)
 	RevokeToken(ctx context.Context, token string) error
 }
 
@@ -174,24 +174,33 @@ func (d *DeviceAuthenticator) VerifyDevice(ctx context.Context) (*DeviceVerifica
 
 // GetAccessTokenForDevice uses the device verification response to fetch an
 // access token.
-func (d *DeviceAuthenticator) GetAccessTokenForDevice(ctx context.Context, v *DeviceVerification) (string, error) {
-	var accessToken string
-	var err error
-
+func (d *DeviceAuthenticator) GetAccessTokenForDevice(ctx context.Context, v DeviceVerification) (string, error) {
 	for {
-		time.Sleep(v.CheckInterval)
-		accessToken, err = d.requestToken(ctx, v.DeviceCode, d.ClientID)
-		if accessToken == "" && err == nil {
-			if d.Clock.Now().After(v.ExpiresAt) {
-				err = errors.New("authentication timed out")
-			} else {
-				continue
-			}
+		// This loop begins right after we open the user's browser to send an
+		// authentication code. We don't request a token immediately because the
+		// has to complete that authentication flow before we can provide a
+		// token anyway.
+		select {
+		case <-ctx.Done():
+			return "", ctx.Err()
+		case <-time.After(v.CheckInterval):
+			// Ready to check again.
 		}
 
-		break
+		token, err := d.requestToken(ctx, v.DeviceCode, d.ClientID)
+		if err != nil {
+			// Fatal error.
+			return "", err
+		}
+		if token != "" {
+			// Successful authentication.
+			return token, nil
+		}
+
+		if token == "" && d.Clock.Now().After(v.ExpiresAt) {
+			return "", errors.New("authentication timed out")
+		}
 	}
-	return accessToken, err
 }
 
 // OAuthTokenResponse contains the information returned after fetching an access
