@@ -19,7 +19,7 @@ func main() {
 }
 
 func realMain() int {
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
 	return cmd.Execute(ctx, version, commit, date)
