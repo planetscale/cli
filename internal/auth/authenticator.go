@@ -99,7 +99,7 @@ type DeviceAuthenticator struct {
 }
 
 // New returns an instance of the DeviceAuthenticator
-func New(client *http.Client, clientID string, clientSecret string, opts ...AuthenticatorOption) (*DeviceAuthenticator, error) {
+func New(client *http.Client, clientID, clientSecret string, opts ...AuthenticatorOption) (*DeviceAuthenticator, error) {
 	if client == nil {
 		client = cleanhttp.DefaultClient()
 	}
