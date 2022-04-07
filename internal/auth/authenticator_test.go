@@ -17,21 +17,19 @@ import (
 const (
 	testClientID     = "some-client-id"
 	testClientSecret = "some-client-secret"
+
+	testPayload = "client_id=some-client-id&scope=read_databases+write_databases+read_user+read_organization"
 )
 
 func TestVerifyDevice(t *testing.T) {
 	tests := []struct {
 		desc          string
-		statusCode    int
-		expectedBody  string
 		deviceCodeRes string
 		errExpected   bool
 		want          *DeviceVerification
 	}{
 		{
-			desc:         "returns device verification when authentication is successful",
-			statusCode:   http.StatusOK,
-			expectedBody: "client_id=some-client-id&scope=read_databases%20write_databases%20read_user%20read_organization",
+			desc: "returns device verification when authentication is successful",
 			deviceCodeRes: `{
 			"device_code": "some_device_code",
 			"user_code": "1234567",
@@ -50,9 +48,7 @@ func TestVerifyDevice(t *testing.T) {
 			},
 		},
 		{
-			desc:         "returns device verification with check interval of 5 seconds when interval is 0",
-			statusCode:   http.StatusOK,
-			expectedBody: "client_id=some-client-id&scope=read_databases%20write_databases%20read_user%20read_organization",
+			desc: "returns device verification with check interval of 5 seconds when interval is 0",
 			deviceCodeRes: `{
 			"device_code": "some_device_code",
 			"user_code": "1234567",
@@ -83,11 +79,7 @@ func TestVerifyDevice(t *testing.T) {
 					panicf("failed to read request body: %v", err)
 				}
 
-				assert.Equal(t, string(payload), tt.expectedBody)
-				if tt.statusCode > 0 {
-					w.WriteHeader(tt.statusCode)
-				}
-
+				assert.Equal(t, testPayload, string(payload))
 				if _, err := io.WriteString(w, tt.deviceCodeRes); err != nil {
 					panicf("failed to write response bytes: %v", err)
 				}
@@ -99,7 +91,7 @@ func TestVerifyDevice(t *testing.T) {
 			mockClock := clock.NewMock()
 			authenticator, err := New(cleanhttp.DefaultClient(), testClientID, testClientSecret, SetBaseURL(srv.URL), WithMockClock(mockClock))
 			if err != nil {
-				t.Fatalf("error creating client: %s", err.Error())
+				t.Fatalf("error creating client: %v", err)
 			}
 
 			got, err := authenticator.VerifyDevice(context.TODO())
@@ -111,7 +103,7 @@ func TestVerifyDevice(t *testing.T) {
 				}
 			}
 
-			assert.Equal(t, got, tt.want, "unexpected device verification")
+			assert.Equal(t, tt.want, got, "unexpected device verification")
 		})
 	}
 }
