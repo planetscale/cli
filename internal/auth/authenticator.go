@@ -3,8 +3,6 @@ package auth
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -129,9 +127,14 @@ func New(client *http.Client, clientID, clientSecret string, opts ...Authenticat
 
 // VerifyDevice performs the device verification API calls.
 func (d *DeviceAuthenticator) VerifyDevice(ctx context.Context) (*DeviceVerification, error) {
-	oauthScopes := []string{"read_databases", "write_databases", "read_user", "read_organization"}
-	payload := strings.NewReader(fmt.Sprintf("client_id=%s&scope=%s", d.ClientID, url.PathEscape(strings.Join(oauthScopes, " "))))
-	req, err := d.NewFormRequest(ctx, http.MethodPost, "oauth/authorize_device", payload)
+	req, err := d.newFormRequest(ctx, "oauth/authorize_device", url.Values{
+		"client_id": []string{d.ClientID},
+		// Scopes are concatenated with strings and ultimately URL-encoded for
+		// use by the server.
+		"scope": []string{strings.Join([]string{
+			"read_databases", "write_databases", "read_user", "read_organization",
+		}, " ")},
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -140,7 +143,6 @@ func (d *DeviceAuthenticator) VerifyDevice(ctx context.Context) (*DeviceVerifica
 	if err != nil {
 		return nil, err
 	}
-
 	defer res.Body.Close()
 
 	if _, err = checkErrorResponse(res); err != nil {
@@ -202,8 +204,11 @@ type OAuthTokenResponse struct {
 }
 
 func (d *DeviceAuthenticator) requestToken(ctx context.Context, deviceCode string, clientID string) (string, error) {
-	payload := strings.NewReader(fmt.Sprintf("grant_type=urn:ietf:params:oauth:grant-type:device_code&device_code=%s&client_id=%s", deviceCode, clientID))
-	req, err := d.NewFormRequest(ctx, http.MethodPost, "oauth/token", payload)
+	req, err := d.newFormRequest(ctx, "oauth/token", url.Values{
+		"grant_type":  []string{"urn:ietf:params:oauth:grant-type:device_code"},
+		"device_code": []string{deviceCode},
+		"client_id":   []string{clientID},
+	})
 	if err != nil {
 		return "", errors.Wrap(err, "error creating request")
 	}
@@ -212,7 +217,6 @@ func (d *DeviceAuthenticator) requestToken(ctx context.Context, deviceCode strin
 	if err != nil {
 		return "", errors.Wrap(err, "error performing http request")
 	}
-
 	defer res.Body.Close()
 
 	isRetryable, err := checkErrorResponse(res)
@@ -237,8 +241,11 @@ func (d *DeviceAuthenticator) requestToken(ctx context.Context, deviceCode strin
 
 // RevokeToken revokes an access token.
 func (d *DeviceAuthenticator) RevokeToken(ctx context.Context, token string) error {
-	payload := strings.NewReader(fmt.Sprintf("client_id=%s&client_secret=%s&token=%s", d.ClientID, d.ClientSecret, token))
-	req, err := d.NewFormRequest(ctx, http.MethodPost, "oauth/revoke", payload)
+	req, err := d.newFormRequest(ctx, "oauth/revoke", url.Values{
+		"client_id":     []string{d.ClientID},
+		"client_secret": []string{d.ClientSecret},
+		"token":         []string{token},
+	})
 	if err != nil {
 		return errors.Wrap(err, "error creating request")
 	}
@@ -247,7 +254,6 @@ func (d *DeviceAuthenticator) RevokeToken(ctx context.Context, token string) err
 	if err != nil {
 		return errors.Wrap(err, "error performing http request")
 	}
-
 	defer res.Body.Close()
 
 	if _, err = checkErrorResponse(res); err != nil {
@@ -256,52 +262,54 @@ func (d *DeviceAuthenticator) RevokeToken(ctx context.Context, token string) err
 	return nil
 }
 
-// NewFormRequest creates a new form URL encoded request
-func (d *DeviceAuthenticator) NewFormRequest(ctx context.Context, method string, path string, body io.Reader) (*http.Request, error) {
+// newFormRequest creates a new form URL encoded request
+func (d *DeviceAuthenticator) newFormRequest(
+	ctx context.Context,
+	path string,
+	payload url.Values,
+) (*http.Request, error) {
 	u, err := d.BaseURL.Parse(path)
 	if err != nil {
 		return nil, err
 	}
 
-	var req *http.Request
-	switch method {
-	case http.MethodGet:
-		req, err = http.NewRequest(method, u.String(), nil)
-		if err != nil {
-			return nil, err
-		}
-	default:
-		req, err = http.NewRequest(method, u.String(), body)
-		if err != nil {
-			return nil, err
-		}
-
-		req.Header.Set("Content-Type", formMediaType)
+	// Emulate the format of data sent by http.Client's PostForm method, but
+	// also preserve context support.
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodPost,
+		u.String(),
+		strings.NewReader(payload.Encode()),
+	)
+	if err != nil {
+		return nil, err
 	}
 
+	req.Header.Set("Content-Type", formMediaType)
 	req.Header.Set("Accept", jsonMediaType)
-	req = req.WithContext(ctx)
 	return req, nil
 }
 
 // checkErrorResponse returns whether the error is retryable or not and the
 // error itself.
 func checkErrorResponse(res *http.Response) (bool, error) {
-	if res.StatusCode >= 400 {
-		errorRes := &ErrorResponse{}
-		err := json.NewDecoder(res.Body).Decode(errorRes)
-		if err != nil {
-			return false, errors.Wrap(err, "error decoding error response")
-		}
-
-		// If we're polling and haven't authorized yet or we need to slow down, we
-		// don't wanna terminate the polling
-		if errorRes.ErrorCode == "authorization_pending" || errorRes.ErrorCode == "slow_down" {
-			return true, nil
-		}
-
-		return false, errorRes
+	if res.StatusCode < 400 {
+		// 200 OK, etc.
+		return false, nil
 	}
 
-	return false, nil
+	// Client or server error.
+	errorRes := &ErrorResponse{}
+	err := json.NewDecoder(res.Body).Decode(errorRes)
+	if err != nil {
+		return false, errors.Wrap(err, "error decoding error response")
+	}
+
+	// If we're polling and haven't authorized yet or we need to slow down, we
+	// don't wanna terminate the polling
+	if errorRes.ErrorCode == "authorization_pending" || errorRes.ErrorCode == "slow_down" {
+		return true, nil
+	}
+
+	return false, errorRes
 }
