@@ -60,7 +60,7 @@ func LoginCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			end := ch.Printer.PrintProgress("Waiting for confirmation...")
 			defer end()
-			accessToken, err := authenticator.GetAccessTokenForDevice(ctx, deviceVerification)
+			accessToken, err := authenticator.GetAccessTokenForDevice(ctx, *deviceVerification)
 			if err != nil {
 				return err
 			}
