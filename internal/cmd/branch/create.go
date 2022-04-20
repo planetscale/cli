@@ -99,7 +99,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			end()
 
 			if ch.Printer.Format() == printer.Human {
-				ch.Printer.Printf("Branch %s was successfully created.\n", printer.BoldBlue(dbBranch.Name))
+				ch.Printer.Printf("Branch %s was successfully created.\n\nView this branch in the browser: %s\n", printer.BoldBlue(dbBranch.Name), printer.BoldBlue(dbBranch.HtmlURL))
 				return nil
 			}
 

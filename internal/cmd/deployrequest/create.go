@@ -52,7 +52,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			if ch.Printer.Format() == printer.Human {
 				number := fmt.Sprintf("#%d", dr.Number)
-				ch.Printer.Printf("Deploy request %s successfully created.\n", printer.BoldBlue(number))
+				ch.Printer.Printf("Deploy request %s successfully created.\n\nView this deploy request in the browser: %s\n", printer.BoldBlue(number), printer.BoldBlue(dr.HtmlURL))
 				return nil
 			}
 
