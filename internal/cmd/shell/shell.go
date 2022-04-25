@@ -83,7 +83,7 @@ second argument:
 				}
 			}
 
-			role := cmdutil.ReaderRole
+			role := cmdutil.AdministratorRole
 			if flags.role != "" {
 				role, err = cmdutil.RoleFromString(flags.role)
 				if err != nil {

@@ -74,7 +74,7 @@ argument:
 				}
 			}
 
-			role := cmdutil.ReaderRole
+			role := cmdutil.AdministratorRole
 			if flags.role != "" {
 				role, err = cmdutil.RoleFromString(flags.role)
 				if err != nil {
@@ -168,7 +168,7 @@ argument:
 	cmd.PersistentFlags().StringVar(&flags.execCommandEnvURL, "execute-env-url", "DATABASE_URL",
 		"Environment variable name that contains the exposed Database URL.")
 	cmd.PersistentFlags().StringVar(&flags.role, "role",
-		"reader", "Role defines the access level, allowed values are : reader, writer, readwriter, admin. By default it is reader.")
+		"admin", "Role defines the access level, allowed values are : reader, writer, readwriter, admin. By default it is admin.")
 
 	cmd.PersistentFlags().MarkHidden("role")
 	return cmd
