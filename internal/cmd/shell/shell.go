@@ -83,7 +83,7 @@ second argument:
 				}
 			}
 
-			role := cmdutil.ReaderRole
+			role := cmdutil.AdministratorRole
 			if flags.role != "" {
 				role, err = cmdutil.RoleFromString(flags.role)
 				if err != nil {
@@ -198,7 +198,7 @@ second argument:
 	cmd.PersistentFlags().StringVar(&flags.remoteAddr, "remote-addr", "",
 		"PlanetScale Database remote network address. By default the remote address is populated automatically from the PlanetScale API.")
 	cmd.PersistentFlags().StringVar(&flags.role, "role",
-		"reader", "Role defines the access level, allowed values are : reader, writer, readwriter, admin. By default it is reader.")
+		"admin", "Role defines the access level, allowed values are : reader, writer, readwriter, admin. By default it is admin.")
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
 	cmd.PersistentFlags().MarkHidden("role")
 	return cmd
