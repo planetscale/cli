@@ -18,6 +18,7 @@ func DataImportsCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	cmd.AddCommand(TestConnectionCmd(ch))
 	cmd.AddCommand(StartDataImportCmd(ch))
+	cmd.AddCommand(DetachExternalDatabaseCmd(ch))
 	cmd.AddCommand(MakePlanetScalePrimaryCmd(ch))
 	cmd.AddCommand(MakePlanetScaleReplicaCmd(ch))
 	cmd.AddCommand(GetDataImportCmd(ch))
