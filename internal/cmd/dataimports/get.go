@@ -18,7 +18,7 @@ func GetDataImportCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:     "get [database]",
-		Short:   "get the current state of a data import request into a planetscale database",
+		Short:   "get the current state of a data import request into a PlanetScale database",
 		Aliases: []string{"g"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -39,33 +39,7 @@ func GetDataImportCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
-			//fmt.Printf("state is %v", resp.ImportState)
-
-			completedSteps := printer.GetCompletedImportStates(resp.ImportState)
-			if len(completedSteps) > 0 {
-				//fmt.Printf("completedSteps is [%v]", len(completedSteps))
-				ch.Printer.Println(completedSteps)
-			}
-			var (
-				endProgressBar func()
-			)
-
-			inProgressStep, _ := printer.GetCurrentImportState(resp.ImportState)
-			if len(inProgressStep) > 0 {
-				ch.Printer.Println(inProgressStep)
-			}
-
-			if endProgressBar != nil {
-				defer endProgressBar()
-			}
-
-			pendingSteps := printer.GetPendingImportStates(resp.ImportState)
-			if len(pendingSteps) > 0 {
-				//fmt.Printf("pendingSteps is [%v]", len(pendingSteps))
-				ch.Printer.Println(pendingSteps)
-			}
-
-			//ch.Printer.Println(printer.ImportProgress(resp.ImportState))
+			ch.Printer.PrintDataImport(*resp)
 
 			if resp.ImportState == ps.DataImportPreparingDataCopyFailed ||
 				resp.ImportState == ps.DataImportCopyingDataFailed ||

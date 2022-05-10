@@ -31,13 +31,12 @@ func TestConnectionCmd(ch *cmdutil.Helper) *cobra.Command {
 			testRequest.Organization = ch.Config.Organization
 			testRequest.Database = flags.database
 			testRequest.Source = ps.DataImportSource{
-				Database: flags.database,
-				UserName: flags.username,
-				Password: flags.password,
-				HostName: flags.host,
-				Port:     flags.port,
-
-				SSLVerificationMode: "disabled",
+				Database:            flags.database,
+				UserName:            flags.username,
+				Password:            flags.password,
+				HostName:            flags.host,
+				Port:                flags.port,
+				SSLVerificationMode: ps.SSLModeDisabled,
 			}
 
 			client, err := ch.Client()

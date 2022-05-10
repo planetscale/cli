@@ -29,7 +29,7 @@ func MakePlanetScaleReplicaCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
-			_, err = client.DataImports.MakePlanetScaleReplica(ctx, makeReplicaReq)
+			dataImport, err := client.DataImports.MakePlanetScaleReplica(ctx, makeReplicaReq)
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case ps.ErrNotFound:
@@ -39,6 +39,7 @@ func MakePlanetScaleReplicaCmd(ch *cmdutil.Helper) *cobra.Command {
 				}
 			}
 
+			ch.Printer.PrintDataImport(*dataImport)
 			return nil
 		},
 	}

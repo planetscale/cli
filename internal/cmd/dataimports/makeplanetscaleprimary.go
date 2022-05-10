@@ -29,7 +29,7 @@ func MakePlanetScalePrimaryCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
-			_, err = client.DataImports.MakePlanetScalePrimary(ctx, makePrimaryReq)
+			dataImport, err := client.DataImports.MakePlanetScalePrimary(ctx, makePrimaryReq)
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case ps.ErrNotFound:
@@ -38,6 +38,8 @@ func MakePlanetScalePrimaryCmd(ch *cmdutil.Helper) *cobra.Command {
 					return cmdutil.HandleError(err)
 				}
 			}
+
+			ch.Printer.PrintDataImport(*dataImport)
 
 			return nil
 		},

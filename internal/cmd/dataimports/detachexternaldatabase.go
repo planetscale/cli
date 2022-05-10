@@ -29,7 +29,7 @@ func DetachExternalDatabaseCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
-			_, err = client.DataImports.DetachExternalDatabase(ctx, detachExternalDatabaseReq)
+			dataImport, err := client.DataImports.DetachExternalDatabase(ctx, detachExternalDatabaseReq)
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case ps.ErrNotFound:
@@ -38,6 +38,8 @@ func DetachExternalDatabaseCmd(ch *cmdutil.Helper) *cobra.Command {
 					return cmdutil.HandleError(err)
 				}
 			}
+
+			ch.Printer.PrintDataImport(*dataImport)
 
 			return nil
 		},

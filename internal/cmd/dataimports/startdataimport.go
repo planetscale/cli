@@ -30,28 +30,21 @@ func StartDataImportCmd(ch *cmdutil.Helper) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			ctx := cmd.Context()
-			startImportRequest.Organization = ch.Config.Organization
-			startImportRequest.DatabaseName = flags.name
-			startImportRequest.Source = ps.DataImportSource{
+			dataSource := ps.DataImportSource{
 				Database:            flags.database,
 				UserName:            flags.username,
 				Password:            flags.password,
 				HostName:            flags.host,
 				Port:                flags.port,
-				SSLVerificationMode: "disabled",
+				SSLVerificationMode: ps.SSLModeDisabled,
 			}
+			startImportRequest.Organization = ch.Config.Organization
+			startImportRequest.DatabaseName = flags.name
+			startImportRequest.Source = dataSource
 
 			testRequest.Organization = ch.Config.Organization
 			testRequest.Database = flags.database
-			testRequest.Source = ps.DataImportSource{
-				Database: flags.database,
-				UserName: flags.username,
-				Password: flags.password,
-				HostName: flags.host,
-				Port:     flags.port,
-
-				SSLVerificationMode: "disabled",
-			}
+			testRequest.Source = dataSource
 
 			client, err := ch.Client()
 			if err != nil {
@@ -89,7 +82,7 @@ func StartDataImportCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			ch.Printer.Println(fmt.Sprintf("starting import of schema and data from external database %s to PlanetScale database %s", printer.BoldBlue(flags.database), printer.BoldGreen(flags.name)))
-			_, err = client.DataImports.StartDataImport(ctx, startImportRequest)
+			dataImport, err := client.DataImports.StartDataImport(ctx, startImportRequest)
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case ps.ErrNotFound:
@@ -100,6 +93,7 @@ func StartDataImportCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			ch.Printer.Printf("database %s hosted at %s is being imported into PlanetScale database %s\n", flags.database, flags.host, flags.name)
+			ch.Printer.PrintDataImport(*dataImport)
 			return nil
 		},
 	}
