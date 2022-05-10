@@ -15,8 +15,8 @@ func MakePlanetScaleReplicaCmd(ch *cmdutil.Helper) *cobra.Command {
 	makeReplicaReq := &ps.MakePlanetScaleReplicaRequest{}
 
 	cmd := &cobra.Command{
-		Use:     "make-Replica [options]",
-		Short:   "mark PlanetScale's database as the Replica, and the external database as replica",
+		Use:     "make-replica [options]",
+		Short:   "mark PlanetScale's database as the Replica, and the external database as Primary",
 		Aliases: []string{"s"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()

@@ -16,7 +16,7 @@ func MakePlanetScalePrimaryCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:     "make-primary [options]",
-		Short:   "mark PlanetScale's database as the primary, and the external database as replica",
+		Short:   "mark PlanetScale's database as the Primary, and the external database as Replica",
 		Aliases: []string{"s"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()

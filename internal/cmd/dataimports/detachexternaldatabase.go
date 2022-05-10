@@ -15,8 +15,8 @@ func DetachExternalDatabaseCmd(ch *cmdutil.Helper) *cobra.Command {
 	detachExternalDatabaseReq := &ps.DetachExternalDatabaseRequest{}
 
 	cmd := &cobra.Command{
-		Use:     "make-primary [options]",
-		Short:   "mark PlanetScale's database as the primary, and the external database as replica",
+		Use:     "detach-external-database [options]",
+		Short:   "detach external database that is used as a source for PlanetScale database",
 		Aliases: []string{"s"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()

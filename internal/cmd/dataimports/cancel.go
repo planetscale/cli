@@ -17,9 +17,9 @@ func CancelDataImportCmd(ch *cmdutil.Helper) *cobra.Command {
 	cancelRequest := &ps.CancelDataImportRequest{}
 
 	cmd := &cobra.Command{
-		Use:     "get [database]",
-		Short:   "get the current state of a data import request into a planetscale database",
-		Aliases: []string{"g"},
+		Use:     "cancel [database]",
+		Short:   "cancel data import request into a planetscale database",
+		Aliases: []string{"c"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
