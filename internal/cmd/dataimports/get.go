@@ -39,7 +39,33 @@ func GetDataImportCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
-			ch.Printer.Println(printer.ImportProgress(resp.ImportState))
+			//fmt.Printf("state is %v", resp.ImportState)
+
+			completedSteps := printer.GetCompletedImportStates(resp.ImportState)
+			if len(completedSteps) > 0 {
+				//fmt.Printf("completedSteps is [%v]", len(completedSteps))
+				ch.Printer.Println(completedSteps)
+			}
+			var (
+				endProgressBar func()
+			)
+
+			inProgressStep, _ := printer.GetCurrentImportState(resp.ImportState)
+			if len(inProgressStep) > 0 {
+				ch.Printer.Println(inProgressStep)
+			}
+
+			if endProgressBar != nil {
+				defer endProgressBar()
+			}
+
+			pendingSteps := printer.GetPendingImportStates(resp.ImportState)
+			if len(pendingSteps) > 0 {
+				//fmt.Printf("pendingSteps is [%v]", len(pendingSteps))
+				ch.Printer.Println(pendingSteps)
+			}
+
+			//ch.Printer.Println(printer.ImportProgress(resp.ImportState))
 
 			if resp.ImportState == ps.DataImportPreparingDataCopyFailed ||
 				resp.ImportState == ps.DataImportCopyingDataFailed ||
@@ -49,13 +75,15 @@ func GetDataImportCmd(ch *cmdutil.Helper) *cobra.Command {
 				return errors.New(fmt.Sprintf("import from external database into PlanetScale failed with \n %s \n current state is %s", printer.BoldRed(resp.Errors), resp.ImportState))
 			}
 
-			if resp.ImportState == ps.DataImportPreparingDataCopy {
+			if resp.ImportState == ps.DataImportSwitchTrafficPending {
 				ch.Printer.Printf("all data and schema has been copied from the external database and your PlanetScale database %s is running in replica mode\n", printer.BoldGreen(flags.name))
-				ch.Printer.Printf("you should now be able to switch your PlanetScale database %s into primary mode\n", printer.BoldGreen(flags.name))
+				ch.Printer.Printf("you should now be able to switch your PlanetScale database %s into primary mode using the \"make-primary\" command \n", printer.BoldGreen(flags.name))
 			}
 
-			ch.Printer.Printf("PlanetScale is importing data from the external database, current state is [%s]", resp.ImportState)
-
+			if resp.ImportState == ps.DataImportSwitchTrafficCompleted {
+				ch.Printer.Printf("Your PlanetScale database %s is now running as a primary \n", printer.BoldGreen(flags.name))
+				ch.Printer.Printf("if necessary, you can use  the \"make-replica\" command to switch back to replica mode\n")
+			}
 			return nil
 		},
 	}

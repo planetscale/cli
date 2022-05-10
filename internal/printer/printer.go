@@ -244,23 +244,91 @@ func BoldGreen(msg interface{}) string {
 	return color.New(color.FgGreen).Add(color.Bold).Sprint(msg)
 }
 
+// BoldBlack returns a string formatted with Black and bold.
+func BoldBlack(msg interface{}) string {
+	return color.New(color.FgBlack).Add(color.Bold).Sprint(msg)
+}
+
+func GetCompletedImportStates(state ps.DataImportState) string {
+	completedStates := []string{}
+	switch state {
+	case ps.DataImportSwitchTrafficPending, ps.DataImportSwitchTrafficError:
+		completedStates = append(completedStates, BoldGreen("1. Started Data Copy"))
+		completedStates = append(completedStates, BoldGreen("2. Copied Data"))
+	case ps.DataImportSwitchTrafficCompleted:
+		completedStates = append(completedStates, BoldGreen("1. Started Data Copy"))
+		completedStates = append(completedStates, BoldGreen("2. Copied Data"))
+		completedStates = append(completedStates, BoldGreen("3. Running as replica"))
+		break
+	}
+	return strings.Join(completedStates, "\n")
+}
+
+func GetCurrentImportState(d ps.DataImportState) (string, bool) {
+	switch d {
+	case ps.DataImportPreparingDataCopy:
+		return BoldYellow("1. Starting Data Copy"), true
+	case ps.DataImportPreparingDataCopyFailed:
+		return BoldRed("1. Cannot Start Data Copy"), false
+	case ps.DataImportCopyingData:
+		return BoldYellow("1. Copying Data"), true
+	case ps.DataImportCopyingDataFailed:
+		return BoldRed("1. Failed to Copy Data"), false
+	case ps.DataImportSwitchTrafficPending:
+		return BoldYellow("3. Running as Replica"), true
+	case ps.DataImportSwitchTrafficRunning:
+		return BoldYellow("3. Switching to primary"), true
+	case ps.DataImportSwitchTrafficError:
+		return BoldRed("3. Failed switching to primary"), false
+	case ps.DataImportReverseTrafficRunning:
+		return BoldYellow("3. Switching to replica"), true
+	case ps.DataImportSwitchTrafficCompleted:
+		return BoldYellow("3. Running as Primary"), true
+	case ps.DataImportReverseTrafficError:
+		return BoldRed("3. Failed switching to primary"), false
+	case ps.DataImportDetachExternalDatabaseRunning:
+		return BoldYellow("4. detaching external database"), true
+	case ps.DataImportDetachExternalDatabaseError:
+		return BoldRed("4. failed to detach external database"), false
+	}
+
+	panic("unhandled state " + d.String())
+}
+
+func GetPendingImportStates(state ps.DataImportState) string {
+	var pendingStates []string
+	switch state {
+	case ps.DataImportSwitchTrafficPending:
+		pendingStates = append(pendingStates, BoldBlack("4. Running as Primary"))
+		pendingStates = append(pendingStates, BoldBlack("5. Detached external database"))
+	case ps.DataImportSwitchTrafficCompleted:
+		pendingStates = append(pendingStates, BoldBlack("5. Detached external database"))
+	}
+	return strings.Join(pendingStates, "\n")
+}
+
 func ImportProgress(state ps.DataImportState) string {
-	preparingDataCopyState := color.New(color.FgBlack).Add(color.Bold).Sprint("Started Data Copy")
-	dataCopyState := color.New(color.FgBlack).Add(color.Bold).Sprint("Copied Data")
-	switchingTrafficState := color.New(color.FgBlack).Add(color.Bold).Sprint("Running as Replica")
-	detachExternalDatabaseState := color.New(color.FgBlack).Add(color.Bold).Sprint("Running as Primary")
-	readyState := color.New(color.FgBlack).Add(color.Bold).Sprint("Detached External Database, ready to use")
+	preparingDataCopyState := color.New(color.FgBlack).Add(color.Bold).Sprint("1. Started Data Copy")
+	dataCopyState := color.New(color.FgBlack).Add(color.Bold).Sprint("2. Copied Data")
+	switchingTrafficState := color.New(color.FgBlack).Add(color.Bold).Sprint("3. Running as Replica")
+	detachExternalDatabaseState := color.New(color.FgBlack).Add(color.Bold).Sprint("4. Running as Primary")
+	readyState := color.New(color.FgBlack).Add(color.Bold).Sprint("5. Detached External Database, ready to use")
 	// Preparing data copy > Data copying > Running as Replica > Running as Primary > Detach External database
 	switch state {
 	case ps.DataImportPreparingDataCopy:
 		preparingDataCopyState = color.New(color.FgYellow).Add(color.Bold).Sprint(state.String())
 		break
+	case ps.DataImportSwitchTrafficPending:
+		preparingDataCopyState = color.New(color.FgGreen).Add(color.Bold).Sprint("1. Started Data Copy")
+		dataCopyState = color.New(color.FgGreen).Add(color.Bold).Sprint("2. Copied Data")
+		switchingTrafficState = color.New(color.FgYellow).Add(color.Bold).Sprint("3. Running as Replica")
+		break
 	case ps.DataImportPreparingDataCopyFailed:
-		preparingDataCopyState = color.New(color.FgGreen).Add(color.Bold).Sprint("Cannot start data copy")
+		preparingDataCopyState = color.New(color.FgGreen).Add(color.Bold).Sprint("1. Cannot start data copy")
 		break
 	}
 
-	return strings.Join([]string{preparingDataCopyState, dataCopyState, switchingTrafficState, detachExternalDatabaseState, readyState}, " > ")
+	return strings.Join([]string{preparingDataCopyState, dataCopyState, switchingTrafficState, detachExternalDatabaseState, readyState}, "\n")
 
 }
 
