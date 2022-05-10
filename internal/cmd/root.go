@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/planetscale/cli/internal/cmd/dataimports"
 	"io/fs"
 	"log"
 	"os"
@@ -182,6 +183,7 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 	rootCmd.AddCommand(branch.BranchCmd(ch))
 	rootCmd.AddCommand(connect.ConnectCmd(ch))
 	rootCmd.AddCommand(database.DatabaseCmd(ch))
+	rootCmd.AddCommand(dataimports.DataImportsCmd(ch))
 	rootCmd.AddCommand(deployrequest.DeployRequestCmd(ch))
 	rootCmd.AddCommand(org.OrgCmd(ch))
 	rootCmd.AddCommand(password.PasswordCmd(ch))

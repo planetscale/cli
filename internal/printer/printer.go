@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	ps "github.com/planetscale/planetscale-go/planetscale"
 	"io"
 	"io/ioutil"
 	"os"
@@ -236,6 +237,36 @@ func BoldBlue(msg interface{}) string {
 // BoldRed returns a string formatted with red and bold.
 func BoldRed(msg interface{}) string {
 	return color.New(color.FgRed).Add(color.Bold).Sprint(msg)
+}
+
+// BoldGreen returns a string formatted with green and bold.
+func BoldGreen(msg interface{}) string {
+	return color.New(color.FgGreen).Add(color.Bold).Sprint(msg)
+}
+
+func ImportProgress(state ps.DataImportState) string {
+	preparingDataCopyState := color.New(color.FgBlack).Add(color.Bold).Sprint("Started Data Copy")
+	dataCopyState := color.New(color.FgBlack).Add(color.Bold).Sprint("Copied Data")
+	switchingTrafficState := color.New(color.FgBlack).Add(color.Bold).Sprint("Running as Replica")
+	detachExternalDatabaseState := color.New(color.FgBlack).Add(color.Bold).Sprint("Running as Primary")
+	readyState := color.New(color.FgBlack).Add(color.Bold).Sprint("Detached External Database, ready to use")
+	// Preparing data copy > Data copying > Running as Replica > Running as Primary > Detach External database
+	switch state {
+	case ps.DataImportPreparingDataCopy:
+		preparingDataCopyState = color.New(color.FgYellow).Add(color.Bold).Sprint(state.String())
+		break
+	case ps.DataImportPreparingDataCopyFailed:
+		preparingDataCopyState = color.New(color.FgGreen).Add(color.Bold).Sprint("Cannot start data copy")
+		break
+	}
+
+	return strings.Join([]string{preparingDataCopyState, dataCopyState, switchingTrafficState, detachExternalDatabaseState, readyState}, " > ")
+
+}
+
+// BoldYellow returns a string formatted with yellow and bold.
+func BoldYellow(msg interface{}) string {
+	return color.New(color.FgYellow).Add(color.Bold).Sprint(msg)
 }
 
 // Red returns a string formatted with red and bold.
