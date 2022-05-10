@@ -22,7 +22,7 @@ func MakePlanetScalePrimaryCmd(ch *cmdutil.Helper) *cobra.Command {
 			ctx := cmd.Context()
 
 			makePrimaryReq.Organization = ch.Config.Organization
-			makePrimaryReq.DatabaseName = flags.name
+			makePrimaryReq.Database = flags.name
 
 			client, err := ch.Client()
 			if err != nil {

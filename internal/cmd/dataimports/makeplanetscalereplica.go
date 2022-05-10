@@ -22,7 +22,7 @@ func MakePlanetScaleReplicaCmd(ch *cmdutil.Helper) *cobra.Command {
 			ctx := cmd.Context()
 
 			makeReplicaReq.Organization = ch.Config.Organization
-			makeReplicaReq.DatabaseName = flags.name
+			makeReplicaReq.Database = flags.name
 
 			client, err := ch.Client()
 			if err != nil {

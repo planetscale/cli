@@ -22,7 +22,7 @@ func DetachExternalDatabaseCmd(ch *cmdutil.Helper) *cobra.Command {
 			ctx := cmd.Context()
 
 			detachExternalDatabaseReq.Organization = ch.Config.Organization
-			detachExternalDatabaseReq.DatabaseName = flags.name
+			detachExternalDatabaseReq.Database = flags.name
 
 			client, err := ch.Client()
 			if err != nil {
