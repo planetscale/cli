@@ -29,7 +29,26 @@ func DetachExternalDatabaseCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
-			dataImport, err := client.DataImports.DetachExternalDatabase(ctx, detachExternalDatabaseReq)
+			getImportReq := &ps.GetImportStatusRequest{
+				Organization: ch.Config.Organization,
+				Database:     flags.name,
+			}
+
+			dataImport, err := client.DataImports.GetDataImportStatus(ctx, getImportReq)
+			if err != nil {
+				switch cmdutil.ErrCode(err) {
+				case ps.ErrNotFound:
+					return fmt.Errorf("unable to switch PlanetScale database %s to primary", flags.name)
+				default:
+					return cmdutil.HandleError(err)
+				}
+			}
+
+			if dataImport.ImportState != ps.DataImportSwitchTrafficCompleted {
+				return fmt.Errorf("cannot detach external database %s at %s because PlanetScale is not serving as a Primary", getImportReq.Organization, getImportReq.Database)
+			}
+
+			dataImport, err = client.DataImports.DetachExternalDatabase(ctx, detachExternalDatabaseReq)
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case ps.ErrNotFound:
