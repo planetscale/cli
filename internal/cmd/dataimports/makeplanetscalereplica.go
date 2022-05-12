@@ -17,7 +17,7 @@ func MakePlanetScaleReplicaCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "make-replica [options]",
 		Short:   "mark PlanetScale's database as the Replica, and the external database as Primary",
-		Aliases: []string{"s"},
+		Aliases: []string{"mr"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
@@ -29,7 +29,26 @@ func MakePlanetScaleReplicaCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
-			dataImport, err := client.DataImports.MakePlanetScaleReplica(ctx, makeReplicaReq)
+			getImportReq := &ps.GetImportStatusRequest{
+				Organization: ch.Config.Organization,
+				Database:     flags.name,
+			}
+
+			dataImport, err := client.DataImports.GetDataImportStatus(ctx, getImportReq)
+			if err != nil {
+				switch cmdutil.ErrCode(err) {
+				case ps.ErrNotFound:
+					return fmt.Errorf("unable to switch PlanetScale database %s to primary", flags.name)
+				default:
+					return cmdutil.HandleError(err)
+				}
+			}
+
+			if dataImport.ImportState != ps.DataImportSwitchTrafficCompleted {
+				return fmt.Errorf("cannot make PlanetScale Database %s/%s Replica because it is not serving as a Primary", getImportReq.Organization, getImportReq.Database)
+			}
+
+			dataImport, err = client.DataImports.MakePlanetScaleReplica(ctx, makeReplicaReq)
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case ps.ErrNotFound:

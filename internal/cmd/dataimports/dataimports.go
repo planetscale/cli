@@ -16,7 +16,7 @@ func DataImportsCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.PersistentFlags().StringVar(&ch.Config.Organization, "org", ch.Config.Organization, "The organization for the current user")
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
 
-	cmd.AddCommand(TestConnectionCmd(ch))
+	cmd.AddCommand(LintExternalDataSourceCmd(ch))
 	cmd.AddCommand(StartDataImportCmd(ch))
 	cmd.AddCommand(DetachExternalDatabaseCmd(ch))
 	cmd.AddCommand(MakePlanetScalePrimaryCmd(ch))

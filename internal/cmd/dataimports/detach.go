@@ -17,7 +17,7 @@ func DetachExternalDatabaseCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "detach-external-database [options]",
 		Short:   "detach external database that is used as a source for PlanetScale database",
-		Aliases: []string{"s"},
+		Aliases: []string{"ded"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 

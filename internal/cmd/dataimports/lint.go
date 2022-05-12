@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-func TestConnectionCmd(ch *cmdutil.Helper) *cobra.Command {
+func LintExternalDataSourceCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
 		host     string
 		username string
@@ -22,9 +22,9 @@ func TestConnectionCmd(ch *cmdutil.Helper) *cobra.Command {
 	testRequest := &ps.TestDataImportSourceRequest{}
 
 	cmd := &cobra.Command{
-		Use:     "test [options]",
-		Short:   "test external database for compatibility with PlanetScale",
-		Aliases: []string{"t"},
+		Use:     "lint [options]",
+		Short:   "lint external database for compatibility with PlanetScale",
+		Aliases: []string{"l"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
