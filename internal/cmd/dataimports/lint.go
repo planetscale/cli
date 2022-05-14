@@ -72,7 +72,7 @@ func LintExternalDataSourceCmd(ch *cmdutil.Helper) *cobra.Command {
 				return errors.New(sb.String())
 			}
 
-			ch.Printer.Printf("\ndatabase %s hosted at %s is compatible and can be imported into PlanetScale!!\n", flags.database, flags.host)
+			ch.Printer.Printf("database %s hosted at %s is compatible and can be imported into PlanetScale!!\n", flags.database, flags.host)
 			return nil
 		},
 	}
@@ -82,6 +82,11 @@ func LintExternalDataSourceCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.PersistentFlags().StringVar(&flags.username, "username", "", "")
 	cmd.PersistentFlags().StringVar(&flags.password, "password", "", "")
 	cmd.PersistentFlags().IntVar(&flags.port, "port", 3306, "")
+
+	cmd.MarkPersistentFlagRequired("host")
+	cmd.MarkPersistentFlagRequired("database")
+	cmd.MarkPersistentFlagRequired("username")
+	cmd.MarkPersistentFlagRequired("password")
 
 	return cmd
 }
