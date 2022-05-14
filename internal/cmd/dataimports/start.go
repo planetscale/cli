@@ -50,7 +50,7 @@ func StartDataImportCmd(ch *cmdutil.Helper) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			ch.Printer.Println(fmt.Sprintf("testing Compatibility of external database %s...", printer.BoldBlue(flags.database)))
+			ch.Printer.Println(fmt.Sprintf("Testing Compatibility of database %s with user %s...", printer.BoldBlue(flags.database), printer.BoldYellow(flags.username)))
 
 			resp, err := client.DataImports.TestDataImportSource(ctx, testRequest)
 			if err != nil {
@@ -76,7 +76,7 @@ func StartDataImportCmd(ch *cmdutil.Helper) *cobra.Command {
 
 				return errors.New(sb.String())
 			}
-			ch.Printer.Printf("external database %s is compatible and can be imported into PlanetScale database %s\n", printer.BoldBlue(flags.database), printer.BoldGreen(flags.name))
+			ch.Printer.Printf("database %s is compatible and can be imported into PlanetScale database %s\n", printer.BoldBlue(flags.database), printer.BoldGreen(flags.name))
 			if flags.dryRun {
 				return nil
 			}
