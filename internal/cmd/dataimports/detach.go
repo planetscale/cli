@@ -9,7 +9,8 @@ import (
 
 func DetachExternalDatabaseCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
-		name string
+		name  string
+		force bool
 	}
 
 	detachExternalDatabaseReq := &ps.DetachExternalDatabaseRequest{}
@@ -27,6 +28,14 @@ func DetachExternalDatabaseCmd(ch *cmdutil.Helper) *cobra.Command {
 			client, err := ch.Client()
 			if err != nil {
 				return err
+			}
+
+			if !flags.force {
+				confirmationName := fmt.Sprintf("%s/%s", detachExternalDatabaseReq.Organization, detachExternalDatabaseReq.Database)
+				confirmError := ch.Printer.ConfirmCommand(confirmationName, "detach external database", "detaching external database")
+				if confirmError != nil {
+					return confirmError
+				}
 			}
 
 			getImportReq := &ps.GetImportStatusRequest{
@@ -65,6 +74,7 @@ func DetachExternalDatabaseCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 
 	cmd.PersistentFlags().StringVar(&flags.name, "name", "", "PlanetScale database importing data")
+	cmd.Flags().BoolVar(&flags.force, "force", false, "Make PlanetScale database Replica without confirmation")
 	cmd.MarkPersistentFlagRequired("name")
 	return cmd
 }
