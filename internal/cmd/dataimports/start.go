@@ -99,12 +99,18 @@ func StartDataImportCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 
 	cmd.PersistentFlags().StringVar(&flags.name, "name", "", "")
-	cmd.PersistentFlags().StringVar(&flags.host, "host", "", "")
-	cmd.PersistentFlags().StringVar(&flags.database, "database", "", "")
-	cmd.PersistentFlags().StringVar(&flags.username, "username", "", "")
-	cmd.PersistentFlags().StringVar(&flags.password, "password", "", "")
-	cmd.PersistentFlags().IntVar(&flags.port, "port", 3306, "")
-	cmd.PersistentFlags().BoolVar(&flags.dryRun, "dry-run", true, "only run compatibility check, do not start import")
+	cmd.PersistentFlags().StringVar(&flags.host, "host", "", "Host name of the external database.")
+	cmd.PersistentFlags().StringVar(&flags.database, "database", "", "Name of the external database")
+	cmd.PersistentFlags().StringVar(&flags.username, "username", "", "Username to connect to external database.")
+	cmd.PersistentFlags().StringVar(&flags.password, "password", "", "Password to connect to external database.")
+	cmd.PersistentFlags().IntVar(&flags.port, "port", 3306, "Port number to connect to external database")
+	cmd.PersistentFlags().BoolVar(&flags.dryRun, "dry-run", true, "Only run compatibility check, do not start import")
+
+	cmd.MarkPersistentFlagRequired("name")
+	cmd.MarkPersistentFlagRequired("host")
+	cmd.MarkPersistentFlagRequired("database")
+	cmd.MarkPersistentFlagRequired("username")
+	cmd.MarkPersistentFlagRequired("password")
 
 	return cmd
 }

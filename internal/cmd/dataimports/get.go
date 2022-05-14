@@ -62,7 +62,8 @@ func GetDataImportCmd(ch *cmdutil.Helper) *cobra.Command {
 		},
 	}
 
-	cmd.PersistentFlags().StringVar(&flags.name, "name", "", "")
+	cmd.PersistentFlags().StringVar(&flags.name, "name", "", "PlanetScale database importing data")
+	cmd.MarkPersistentFlagRequired("name")
 
 	return cmd
 }

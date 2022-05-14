@@ -9,7 +9,8 @@ import (
 
 func MakePlanetScaleReplicaCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
-		name string
+		name  string
+		force bool
 	}
 
 	makeReplicaReq := &ps.MakePlanetScaleReplicaRequest{}
@@ -27,6 +28,14 @@ func MakePlanetScaleReplicaCmd(ch *cmdutil.Helper) *cobra.Command {
 			client, err := ch.Client()
 			if err != nil {
 				return err
+			}
+
+			if !flags.force {
+				confirmationName := fmt.Sprintf("%s/%s", makeReplicaReq.Organization, makeReplicaReq.Database)
+				confirmError := ch.Printer.ConfirmCommand(confirmationName, "make replica", "demotion to replica")
+				if confirmError != nil {
+					return confirmError
+				}
 			}
 
 			getImportReq := &ps.GetImportStatusRequest{
@@ -63,7 +72,9 @@ func MakePlanetScaleReplicaCmd(ch *cmdutil.Helper) *cobra.Command {
 		},
 	}
 
-	cmd.PersistentFlags().StringVar(&flags.name, "name", "", "")
+	cmd.PersistentFlags().StringVar(&flags.name, "name", "", "PlanetScale database importing data")
+	cmd.Flags().BoolVar(&flags.force, "force", false, "Make PlanetScale database Replica without confirmation")
+	cmd.MarkPersistentFlagRequired("name")
 
 	return cmd
 }

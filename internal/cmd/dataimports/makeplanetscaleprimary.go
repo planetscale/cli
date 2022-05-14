@@ -9,7 +9,8 @@ import (
 
 func MakePlanetScalePrimaryCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
-		name string
+		name  string
+		force bool
 	}
 
 	makePrimaryReq := &ps.MakePlanetScalePrimaryRequest{}
@@ -29,6 +30,14 @@ func MakePlanetScalePrimaryCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
+			if !flags.force {
+				confirmationName := fmt.Sprintf("%s/%s", makePrimaryReq.Organization, makePrimaryReq.Database)
+				confirmError := ch.Printer.ConfirmCommand(confirmationName, "make primary", "promotion to primary")
+				if confirmError != nil {
+					return confirmError
+				}
+			}
+
 			getImportReq := &ps.GetImportStatusRequest{
 				Organization: ch.Config.Organization,
 				Database:     flags.name,
@@ -38,7 +47,7 @@ func MakePlanetScalePrimaryCmd(ch *cmdutil.Helper) *cobra.Command {
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case ps.ErrNotFound:
-					return fmt.Errorf("unable to switch PlanetScale database %s to primary", flags.name)
+					return fmt.Errorf("unable to switch PlanetScale database %s to primary.", flags.name)
 				default:
 					return cmdutil.HandleError(err)
 				}
@@ -64,7 +73,9 @@ func MakePlanetScalePrimaryCmd(ch *cmdutil.Helper) *cobra.Command {
 		},
 	}
 
-	cmd.PersistentFlags().StringVar(&flags.name, "name", "", "")
+	cmd.PersistentFlags().StringVar(&flags.name, "name", "", "PlanetScale database importing data")
+	cmd.Flags().BoolVar(&flags.force, "force", false, "Make PlanetScale database Primary without confirmation")
+	cmd.MarkPersistentFlagRequired("name")
 
 	return cmd
 }
