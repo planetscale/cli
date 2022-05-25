@@ -24,6 +24,7 @@ import (
 
 type dumpFlags struct {
 	localAddr string
+	replica   bool
 	tables    string
 	wheres    string
 	output    string
@@ -45,6 +46,7 @@ func DumpCmd(ch *cmdutil.Helper) *cobra.Command {
 		"Comma separated string of tables to dump. By default all tables are dumped.")
 	cmd.PersistentFlags().StringVar(&f.wheres, "wheres", "",
 		"Comma separated string of WHERE clauses to filter the tables to dump. Only used when you specify tables to dump. Default is not to filter dumped tables.")
+	cmd.PersistentFlags().BoolVar(&f.replica, "replica", false, "Dump from a replica (if available; will fail if not).")
 	cmd.PersistentFlags().StringVar(&f.output, "output", "",
 		"Output directory of the dump. By default the dump is saved to a folder in the current directory.")
 
@@ -148,6 +150,10 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 	cfg.ChunksizeInMB = 128
 	cfg.SessionVars = "set workload=olap;"
 	cfg.Outdir = dir
+
+	if flags.replica {
+		cfg.UseReplica = true
+	}
 
 	if flags.tables != "" {
 		cfg.Table = flags.tables
