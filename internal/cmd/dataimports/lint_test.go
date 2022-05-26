@@ -94,10 +94,10 @@ func TestImports_LintDatabase_SchemaIncompatible(t *testing.T) {
 
 	out, err := invokeLintDatabase(&externalDataSource, org, c, res)
 	c.Assert(err, qt.IsNotNil)
-	expectedError := `External database compatibility check failed. Fix the following errors and then try again:
-
-• Table "employees" has no primary key
-• Table "departments" has no primary key
+	expectedError := `External database compatibility check failed.
+Please fix the following errors and then try again:
+1. Table "employees" has no primary key
+2. Table "departments" has no primary key
 `
 	c.Assert(err, qt.ErrorMatches, expectedError)
 	expectedOut := []string{
@@ -143,6 +143,7 @@ func invokeLintDatabase(externalDataSource *ps.DataImportSource, org string, c *
 		"--username", externalDataSource.UserName,
 		"--password", externalDataSource.Password,
 	})
+	cmd.SilenceUsage = true
 	err := cmd.Execute()
 
 	c.Assert(svc.TestDataImportSourceFnInvoked, qt.IsTrue)

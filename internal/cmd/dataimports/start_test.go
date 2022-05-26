@@ -142,7 +142,7 @@ func invokeStartDatabase(externalDataSource *ps.DataImportSource, psdbName, org 
 		"--username", externalDataSource.UserName,
 		"--password", externalDataSource.Password,
 	})
-
+	cmd.SilenceUsage = true
 	err := cmd.Execute()
 
 	c.Assert(svc.TestDataImportSourceFnInvoked, qt.IsTrue)
