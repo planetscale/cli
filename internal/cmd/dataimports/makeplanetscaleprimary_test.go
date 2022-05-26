@@ -122,7 +122,7 @@ func TestImports_MakePrimary_Success(t *testing.T) {
 		"Successfully switch PlanetScale database employees to Primary.\n",
 		"1. Started Data Copy\n",
 		"2. Copied Data\n",
-		"3. Running as replica\n",
+		"3. Running as Replica\n",
 		"> 4. Running as Primary\n",
 		"5. Detached external database\n",
 	}

@@ -3,6 +3,7 @@ package dataimports
 import (
 	"fmt"
 	"github.com/planetscale/cli/internal/cmdutil"
+	"github.com/planetscale/cli/internal/printer"
 	ps "github.com/planetscale/planetscale-go/planetscale"
 	"github.com/spf13/cobra"
 )
@@ -42,12 +43,37 @@ func CancelDataImportCmd(ch *cmdutil.Helper) *cobra.Command {
 				}
 			}
 
+			getImportReq := &ps.GetImportStatusRequest{
+				Organization: ch.Config.Organization,
+				Database:     flags.name,
+			}
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Getting current import status for PlanetScale database %s...", printer.BoldBlue(flags.name)))
+			defer end()
+
+			dataImport, err := client.DataImports.GetDataImportStatus(ctx, getImportReq)
+			if err != nil {
+				switch cmdutil.ErrCode(err) {
+				case ps.ErrNotFound:
+					return fmt.Errorf("unable to cancel import into PlanetScale database %s", flags.name)
+				default:
+					return cmdutil.HandleError(err)
+				}
+			}
+			end()
+
+			if dataImport.ImportState == ps.DataImportReady {
+				return fmt.Errorf("cannot cancel import into PlanetScale Database %s/%s because this import has completed", getImportReq.Organization, getImportReq.Database)
+			}
+
+			end = ch.Printer.PrintProgress(fmt.Sprintf("Cancelling Data Import into PlanetScale database %s...", printer.BoldBlue(getImportReq.Organization+"/"+flags.name)))
+			defer end()
+
 			err = client.DataImports.CancelDataImport(ctx, cancelRequest)
 			if err != nil {
 				return err
 			}
-
-			ch.Printer.Printf("Data import into database %v has been canceleed", flags.name)
+			end()
+			ch.Printer.Printf("Data Import into PlanetScale database %v/%v has been cancelled", getImportReq.Organization, flags.name)
 			return nil
 		},
 	}
