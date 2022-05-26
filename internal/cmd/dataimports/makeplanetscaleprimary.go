@@ -47,7 +47,7 @@ func MakePlanetScalePrimaryCmd(ch *cmdutil.Helper) *cobra.Command {
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case ps.ErrNotFound:
-					return fmt.Errorf("unable to switch PlanetScale database %s to primary.", flags.name)
+					return fmt.Errorf("PlanetScale database %s is not importing data.", flags.name)
 				default:
 					return cmdutil.HandleError(err)
 				}

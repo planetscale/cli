@@ -30,7 +30,7 @@ func LintExternalDataSourceCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			testRequest.Organization = ch.Config.Organization
 			testRequest.Database = flags.database
-			testRequest.Source = ps.DataImportSource{
+			testRequest.Connection = ps.DataImportSource{
 				Database:            flags.database,
 				UserName:            flags.username,
 				Password:            flags.password,

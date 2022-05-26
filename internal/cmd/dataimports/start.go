@@ -39,12 +39,12 @@ func StartDataImportCmd(ch *cmdutil.Helper) *cobra.Command {
 				SSLVerificationMode: ps.SSLModeDisabled,
 			}
 			startImportRequest.Organization = ch.Config.Organization
-			startImportRequest.DatabaseName = flags.name
-			startImportRequest.Source = dataSource
+			startImportRequest.Database = flags.name
+			startImportRequest.Connection = dataSource
 
 			testRequest.Organization = ch.Config.Organization
 			testRequest.Database = flags.database
-			testRequest.Source = dataSource
+			testRequest.Connection = dataSource
 
 			client, err := ch.Client()
 			if err != nil {
