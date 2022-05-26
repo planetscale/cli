@@ -386,15 +386,12 @@ func ImportProgress(state ps.DataImportState) string {
 	switch state {
 	case ps.DataImportPreparingDataCopy:
 		preparingDataCopyState = color.New(color.FgYellow).Add(color.Bold).Sprint(state.String())
-		break
 	case ps.DataImportSwitchTrafficPending:
 		preparingDataCopyState = color.New(color.FgGreen).Add(color.Bold).Sprint("1. Started Data Copy")
 		dataCopyState = color.New(color.FgGreen).Add(color.Bold).Sprint("2. Copied Data")
 		switchingTrafficState = color.New(color.FgYellow).Add(color.Bold).Sprint("3. Running as Replica")
-		break
 	case ps.DataImportPreparingDataCopyFailed:
 		preparingDataCopyState = color.New(color.FgGreen).Add(color.Bold).Sprint("1. Cannot start data copy")
-		break
 	}
 
 	return strings.Join([]string{preparingDataCopyState, dataCopyState, switchingTrafficState, detachExternalDatabaseState, readyState}, "\n")
