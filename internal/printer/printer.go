@@ -311,7 +311,7 @@ func GetCompletedImportStates(state ps.DataImportState) string {
 	case ps.DataImportSwitchTrafficCompleted:
 		completedStates = append(completedStates, BoldGreen("1. Started Data Copy"))
 		completedStates = append(completedStates, BoldGreen("2. Copied Data"))
-		completedStates = append(completedStates, BoldGreen("3. Running as replica"))
+		completedStates = append(completedStates, BoldGreen("3. Running as Replica"))
 
 	case ps.DataImportReady:
 		completedStates = append(completedStates, BoldGreen("1. Started Data Copy"))
@@ -325,29 +325,29 @@ func GetCompletedImportStates(state ps.DataImportState) string {
 func GetCurrentImportState(d ps.DataImportState) (string, bool) {
 	switch d {
 	case ps.DataImportPreparingDataCopy:
-		return BoldYellow("1. Starting Data Copy"), true
+		return BoldYellow("> 1. Starting Data Copy"), true
 	case ps.DataImportPreparingDataCopyFailed:
-		return BoldRed("1. Cannot Start Data Copy"), false
+		return BoldRed("> 1. Cannot Start Data Copy"), false
 	case ps.DataImportCopyingData:
-		return BoldYellow("2. Copying Data"), true
+		return BoldYellow("> 2. Copying Data"), true
 	case ps.DataImportCopyingDataFailed:
-		return BoldRed("2. Failed to Copy Data"), false
+		return BoldRed("> 2. Failed to Copy Data"), false
 	case ps.DataImportSwitchTrafficPending:
-		return BoldYellow("3. Running as Replica"), true
+		return BoldYellow("> 3. Running as Replica"), true
 	case ps.DataImportSwitchTrafficRunning:
-		return BoldYellow("3. Switching to primary"), true
+		return BoldYellow("> 3. Switching to primary"), true
 	case ps.DataImportSwitchTrafficError:
-		return BoldRed("3. Failed switching to primary"), false
+		return BoldRed("> 3. Failed switching to primary"), false
 	case ps.DataImportReverseTrafficRunning:
 		return BoldYellow("3. Switching to replica"), true
 	case ps.DataImportSwitchTrafficCompleted:
-		return BoldYellow("3. Running as Primary"), true
+		return BoldYellow("> 4. Running as Primary"), true
 	case ps.DataImportReverseTrafficError:
-		return BoldRed("3. Failed switching to primary"), false
+		return BoldRed("> 3. Failed switching to primary"), false
 	case ps.DataImportDetachExternalDatabaseRunning:
-		return BoldYellow("4. detaching external database"), true
+		return BoldYellow("> 4. detaching external database"), true
 	case ps.DataImportDetachExternalDatabaseError:
-		return BoldRed("4. failed to detach external database"), false
+		return BoldRed("> 4. failed to detach external database"), false
 	case ps.DataImportReady:
 		return BoldGreen("5. Ready"), false
 	}

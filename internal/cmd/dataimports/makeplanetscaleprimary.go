@@ -3,6 +3,7 @@ package dataimports
 import (
 	"fmt"
 	"github.com/planetscale/cli/internal/cmdutil"
+	"github.com/planetscale/cli/internal/printer"
 	ps "github.com/planetscale/planetscale-go/planetscale"
 	"github.com/spf13/cobra"
 )
@@ -38,6 +39,8 @@ func MakePlanetScalePrimaryCmd(ch *cmdutil.Helper) *cobra.Command {
 				}
 			}
 
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Getting current import status for PlanetScale database %s...", printer.BoldBlue(flags.name)))
+			defer end()
 			getImportReq := &ps.GetImportStatusRequest{
 				Organization: ch.Config.Organization,
 				Database:     flags.name,
@@ -54,8 +57,20 @@ func MakePlanetScalePrimaryCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			if dataImport.ImportState != ps.DataImportSwitchTrafficPending {
-				return fmt.Errorf("cannot make PlanetScale Database %s/%s Primary because it is not serving as a Replica", getImportReq.Organization, getImportReq.Database)
+				reason := "it is already switched to Primary"
+				switch dataImport.ImportState {
+				case ps.DataImportCopyingData, ps.DataImportPreparingDataCopy:
+					reason = "we are still copying data from upstream database"
+				case ps.DataImportCopyingDataFailed, ps.DataImportPreparingDataCopyFailed:
+					reason = "we are unable to copy data from upstream database"
+				case ps.DataImportReady:
+					reason = "this import has completed"
+				}
+				return fmt.Errorf("cannot make PlanetScale Database %s/%s Primary because %s", getImportReq.Organization, getImportReq.Database, reason)
 			}
+			end()
+			end = ch.Printer.PrintProgress(fmt.Sprintf("Switching PlanetScale database %s to Primary...", printer.BoldBlue(flags.name)))
+			defer end()
 
 			dataImport, err = client.DataImports.MakePlanetScalePrimary(ctx, makePrimaryReq)
 			if err != nil {
@@ -66,7 +81,9 @@ func MakePlanetScalePrimaryCmd(ch *cmdutil.Helper) *cobra.Command {
 					return cmdutil.HandleError(err)
 				}
 			}
+			end()
 
+			ch.Printer.Printf("Successfully switch PlanetScale database %s to Primary.\n", printer.BoldBlue(flags.name))
 			ch.Printer.PrintDataImport(*dataImport)
 
 			return nil

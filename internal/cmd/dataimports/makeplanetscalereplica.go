@@ -3,6 +3,7 @@ package dataimports
 import (
 	"fmt"
 	"github.com/planetscale/cli/internal/cmdutil"
+	"github.com/planetscale/cli/internal/printer"
 	ps "github.com/planetscale/planetscale-go/planetscale"
 	"github.com/spf13/cobra"
 )
@@ -42,7 +43,8 @@ func MakePlanetScaleReplicaCmd(ch *cmdutil.Helper) *cobra.Command {
 				Organization: ch.Config.Organization,
 				Database:     flags.name,
 			}
-
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Getting current import status for PlanetScale database %s...", printer.BoldBlue(flags.name)))
+			defer end()
 			dataImport, err := client.DataImports.GetDataImportStatus(ctx, getImportReq)
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
@@ -52,11 +54,18 @@ func MakePlanetScaleReplicaCmd(ch *cmdutil.Helper) *cobra.Command {
 					return cmdutil.HandleError(err)
 				}
 			}
+			end()
+
+			if dataImport.ImportState == ps.DataImportReady {
+				return fmt.Errorf("cannot make PlanetScale Database %s/%s Replica because this import has completed", getImportReq.Organization, getImportReq.Database)
+			}
 
 			if dataImport.ImportState != ps.DataImportSwitchTrafficCompleted {
 				return fmt.Errorf("cannot make PlanetScale Database %s/%s Replica because it is not serving as a Primary", getImportReq.Organization, getImportReq.Database)
 			}
 
+			end = ch.Printer.PrintProgress(fmt.Sprintf("Switching PlanetScale database %s to Primary...", printer.BoldBlue(flags.name)))
+			defer end()
 			dataImport, err = client.DataImports.MakePlanetScaleReplica(ctx, makeReplicaReq)
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
@@ -66,7 +75,8 @@ func MakePlanetScaleReplicaCmd(ch *cmdutil.Helper) *cobra.Command {
 					return cmdutil.HandleError(err)
 				}
 			}
-
+			end()
+			ch.Printer.Printf("Successfully switch PlanetScale database %s to Replica.\n", printer.BoldBlue(flags.name))
 			ch.Printer.PrintDataImport(*dataImport)
 			return nil
 		},

@@ -43,8 +43,7 @@ func LintExternalDataSourceCmd(ch *cmdutil.Helper) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			//end := ch.Printer.PrintProgress(fmt.Sprintf("Fetching database %s...", printer.BoldBlue(name)))
-			//
+
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Testing Compatibility of database %s with user %s...", printer.BoldBlue(flags.database), printer.BoldBlue(flags.username)))
 			defer end()
 
