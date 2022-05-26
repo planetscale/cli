@@ -349,7 +349,7 @@ func GetCurrentImportState(d ps.DataImportState) (string, bool) {
 	case ps.DataImportDetachExternalDatabaseError:
 		return BoldRed("> 4. failed to detach external database"), false
 	case ps.DataImportReady:
-		return BoldGreen("5. Ready"), false
+		return BoldGreen("> 5. Ready"), false
 	}
 
 	panic("unhandled state " + d.String())
