@@ -111,7 +111,7 @@ func invokeStartDatabase(externalDataSource *ps.DataImportSource, psdbName, org 
 	svc := &mock.DataImportsService{
 		TestDataImportSourceFn: func(ctx context.Context, req *ps.TestDataImportSourceRequest) (*ps.TestDataImportSourceResponse, error) {
 			c.Assert(req.Organization, qt.Equals, org)
-			c.Assert(req.Source, qt.Equals, *externalDataSource)
+			c.Assert(req.Connection, qt.Equals, *externalDataSource)
 			return response, nil
 		},
 	}

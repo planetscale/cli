@@ -43,9 +43,10 @@ func LintExternalDataSourceCmd(ch *cmdutil.Helper) *cobra.Command {
 			if err != nil {
 				return err
 			}
-
-			ch.Printer.Println(fmt.Sprintf("Testing Compatibility of database %s with user %s...", printer.BoldBlue(flags.database), printer.BoldBlue(flags.username)))
-			//defer end()
+			//end := ch.Printer.PrintProgress(fmt.Sprintf("Fetching database %s...", printer.BoldBlue(name)))
+			//
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Testing Compatibility of database %s with user %s...", printer.BoldBlue(flags.database), printer.BoldBlue(flags.username)))
+			defer end()
 
 			resp, err := client.DataImports.TestDataImportSource(ctx, testRequest)
 			if err != nil {
@@ -63,14 +64,16 @@ func LintExternalDataSourceCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			if len(resp.Errors) > 0 {
 				var sb strings.Builder
-				sb.WriteString(printer.Red("External database compatibility check failed. "))
-				sb.WriteString("Fix the following errors and then try again:\n\n")
-				for _, compatError := range resp.Errors {
-					fmt.Fprintf(&sb, "• %s\n", compatError.ErrorDescription)
+				sb.WriteString(printer.Red("External database compatibility check failed.\n"))
+				sb.WriteString("Please fix the following errors and then try again:\n")
+
+				for idx, compatError := range resp.Errors {
+					fmt.Fprintf(&sb, "%v. %s\n", (idx + 1), compatError.ErrorDescription)
 				}
 
 				return errors.New(sb.String())
 			}
+			end()
 
 			ch.Printer.Printf("database %s hosted at %s is compatible and can be imported into PlanetScale!!\n", flags.database, flags.host)
 			return nil

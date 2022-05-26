@@ -111,7 +111,7 @@ func invokeLintDatabase(externalDataSource *ps.DataImportSource, org string, c *
 	svc := &mock.DataImportsService{
 		TestDataImportSourceFn: func(ctx context.Context, req *ps.TestDataImportSourceRequest) (*ps.TestDataImportSourceResponse, error) {
 			c.Assert(req.Organization, qt.Equals, org)
-			c.Assert(req.Source, qt.Equals, *externalDataSource)
+			c.Assert(req.Connection, qt.Equals, *externalDataSource)
 			return response, nil
 		},
 	}
@@ -120,6 +120,8 @@ func invokeLintDatabase(externalDataSource *ps.DataImportSource, org string, c *
 	format := printer.Human
 	p := printer.NewPrinter(&format)
 	p.SetHumanOutput(&buf)
+	p.SetResourceOutput(&buf)
+
 	ch := &cmdutil.Helper{
 		Printer: p,
 		Config: &config.Config{
@@ -141,7 +143,6 @@ func invokeLintDatabase(externalDataSource *ps.DataImportSource, org string, c *
 		"--username", externalDataSource.UserName,
 		"--password", externalDataSource.Password,
 	})
-
 	err := cmd.Execute()
 
 	c.Assert(svc.TestDataImportSourceFnInvoked, qt.IsTrue)
