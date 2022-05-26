@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/planetscale/cli/internal/cmdutil"
@@ -24,6 +25,7 @@ import (
 type dumpFlags struct {
 	localAddr string
 	tables    string
+	wheres    string
 	output    string
 }
 
@@ -41,6 +43,8 @@ func DumpCmd(ch *cmdutil.Helper) *cobra.Command {
 		"", "Local address to bind and listen for connections. By default the proxy binds to 127.0.0.1 with a random port.")
 	cmd.PersistentFlags().StringVar(&f.tables, "tables", "",
 		"Comma separated string of tables to dump. By default all tables are dumped.")
+	cmd.PersistentFlags().StringVar(&f.wheres, "wheres", "",
+		"Comma separated string of WHERE clauses to filter the tables to dump. Only used when you specify tables to dump. Default is not to filter dumped tables.")
 	cmd.PersistentFlags().StringVar(&f.output, "output", "",
 		"Output directory of the dump. By default the dump is saved to a folder in the current directory.")
 
@@ -147,6 +151,15 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 
 	if flags.tables != "" {
 		cfg.Table = flags.tables
+		if flags.wheres != "" {
+			m := make(map[string]string)
+			tables := strings.Split(flags.tables, ",")
+			wheres := strings.Split(flags.wheres, ",")
+			for i := range(wheres) {
+				m[tables[i]] = wheres[i]
+			}
+			cfg.Wheres = m
+		}
 	}
 
 	d, err := dumper.NewDumper(cfg)
