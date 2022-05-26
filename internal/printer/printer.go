@@ -229,7 +229,7 @@ func (p *Printer) ConfirmCommand(confirmationName, commandShortName, confirmFail
 
 	// If the confirmations don't match up, let's return an error.
 	if userInput != confirmationName {
-		return errors.New(fmt.Sprintf("incorrect value entered, skipping %s", commandShortName))
+		return fmt.Errorf("incorrect value entered, skipping %s", commandShortName)
 	}
 
 	return nil

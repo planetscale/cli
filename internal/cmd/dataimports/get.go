@@ -1,7 +1,6 @@
 package dataimports
 
 import (
-	"errors"
 	"fmt"
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
@@ -46,7 +45,7 @@ func GetDataImportCmd(ch *cmdutil.Helper) *cobra.Command {
 				resp.ImportState == ps.DataImportSwitchTrafficError ||
 				resp.ImportState == ps.DataImportReverseTrafficError ||
 				resp.ImportState == ps.DataImportDetachExternalDatabaseError {
-				return errors.New(fmt.Sprintf("import from external database into PlanetScale failed with \n %s \n current state is %s", printer.BoldRed(resp.Errors), resp.ImportState))
+				return fmt.Errorf("import from external database into PlanetScale failed with \n %s \n current state is %s", printer.BoldRed(resp.Errors), resp.ImportState)
 			}
 
 			if resp.ImportState == ps.DataImportSwitchTrafficPending {
