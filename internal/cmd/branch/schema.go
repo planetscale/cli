@@ -81,7 +81,7 @@ func SchemaCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 
 	cmd.PersistentFlags().BoolVar(&flags.web, "web", false, "Open in your web browser")
-	cmd.Flags().StringVar(&flags.keyspace, "keyspace", "", "The keyspace whose schema you'd like to view")
+	cmd.Flags().StringVar(&flags.keyspace, "keyspace", "", "The keyspace in the branch")
 
 	return cmd
 }
