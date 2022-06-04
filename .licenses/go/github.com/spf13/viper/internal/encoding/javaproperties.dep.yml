@@ -1,9 +1,9 @@
 ---
-name: github.com/spf13/viper/internal/encoding/hcl
+name: github.com/spf13/viper/internal/encoding/javaproperties
 version: v1.11.0
 type: go
 summary:
-homepage: https://pkg.go.dev/github.com/spf13/viper/internal/encoding/hcl
+homepage: https://pkg.go.dev/github.com/spf13/viper/internal/encoding/javaproperties
 license: mit
 licenses:
 - sources: viper/LICENSE
