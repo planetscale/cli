@@ -335,15 +335,15 @@ func GetCurrentImportState(d ps.DataImportState) (string, bool) {
 	case ps.DataImportSwitchTrafficPending:
 		return BoldYellow("> 3. Running as Replica"), true
 	case ps.DataImportSwitchTrafficRunning:
-		return BoldYellow("> 3. Switching to primary"), true
+		return BoldYellow("> 3. Switching to Primary"), true
 	case ps.DataImportSwitchTrafficError:
-		return BoldRed("> 3. Failed switching to primary"), false
+		return BoldRed("> 3. Failed switching to Primary"), false
 	case ps.DataImportReverseTrafficRunning:
 		return BoldYellow("3. Switching to replica"), true
 	case ps.DataImportSwitchTrafficCompleted:
 		return BoldYellow("> 4. Running as Primary"), true
 	case ps.DataImportReverseTrafficError:
-		return BoldRed("> 3. Failed switching to primary"), false
+		return BoldRed("> 3. Failed switching to Primary"), false
 	case ps.DataImportDetachExternalDatabaseRunning:
 		return BoldYellow("> 4. detaching external database"), true
 	case ps.DataImportDetachExternalDatabaseError:

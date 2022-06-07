@@ -30,9 +30,6 @@ func GetDataImportCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
-			//end := ch.Printer.PrintProgress(fmt.Sprintf("Testing Compatibility of database %s with user %s...", printer.BoldBlue(flags.database), printer.BoldBlue(flags.username)))
-			//defer end()
-
 			resp, err := client.DataImports.GetDataImportStatus(ctx, getRequest)
 			if err != nil {
 				return err
@@ -50,7 +47,7 @@ func GetDataImportCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			if resp.ImportState == ps.DataImportSwitchTrafficPending {
 				ch.Printer.Printf("all data and schema has been copied from the external database and your PlanetScale database %s is running in replica mode\n", printer.BoldGreen(flags.name))
-				ch.Printer.Printf("you should now be able to switch your PlanetScale database %s into primary mode using the \"make-primary\" command \n", printer.BoldGreen(flags.name))
+				ch.Printer.Printf("you should now be able to switch your PlanetScale database %s into Primary mode using the \"make-primary\" command \n", printer.BoldGreen(flags.name))
 			}
 
 			if resp.ImportState == ps.DataImportSwitchTrafficCompleted {

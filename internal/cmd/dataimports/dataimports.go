@@ -5,7 +5,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// PasswordCmd handles branch passwords.
+// DataImportsCmd handles data imports into PlanetScale.
 func DataImportsCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "data-imports <command>",
