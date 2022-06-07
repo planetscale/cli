@@ -93,7 +93,8 @@ func StartDataImportCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			ch.Printer.Printf("database %s hosted at %s is being imported into PlanetScale database %s\n", flags.database, flags.host, flags.name)
-			ch.Printer.PrintDataImport(*dataImport)
+			PrintDataImport(ch.Printer, *dataImport)
+
 			return nil
 		},
 	}

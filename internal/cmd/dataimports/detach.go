@@ -67,7 +67,7 @@ func DetachExternalDatabaseCmd(ch *cmdutil.Helper) *cobra.Command {
 				}
 			}
 
-			ch.Printer.PrintDataImport(*dataImport)
+			PrintDataImport(ch.Printer, *dataImport)
 
 			return nil
 		},

@@ -35,7 +35,7 @@ func GetDataImportCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
-			ch.Printer.PrintDataImport(*resp)
+			PrintDataImport(ch.Printer, *resp)
 
 			if resp.ImportState == ps.DataImportPreparingDataCopyFailed ||
 				resp.ImportState == ps.DataImportCopyingDataFailed ||

@@ -84,7 +84,7 @@ func MakePlanetScalePrimaryCmd(ch *cmdutil.Helper) *cobra.Command {
 			end()
 
 			ch.Printer.Printf("Successfully switch PlanetScale database %s to Primary.\n", printer.BoldBlue(flags.name))
-			ch.Printer.PrintDataImport(*dataImport)
+			PrintDataImport(ch.Printer, *dataImport)
 
 			return nil
 		},
