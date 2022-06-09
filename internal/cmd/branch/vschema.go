@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// VSchemaCmd is the command for showing the schema of a branch.
+// VSchemaCmd is the command for showing the VSchema of a branch.
 func VSchemaCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
 		keyspace string
