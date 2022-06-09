@@ -1,6 +1,7 @@
 package printer
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -172,13 +173,7 @@ func (p *Printer) PrintResource(v interface{}) error {
 		fmt.Fprintln(out, b.String())
 		return nil
 	case JSON:
-		buf, err := json.MarshalIndent(v, "", "  ")
-		if err != nil {
-			return err
-		}
-
-		fmt.Fprintln(out, string(buf))
-		return nil
+		return p.PrintJSON(v)
 	case CSV:
 		type csvvaluer interface {
 			MarshalCSVValue() interface{}
@@ -197,6 +192,38 @@ func (p *Printer) PrintResource(v interface{}) error {
 	}
 
 	return fmt.Errorf("unknown printer.Format: %T", *p.format)
+}
+
+func (p *Printer) PrintJSON(v interface{}) error {
+	var out io.Writer = os.Stdout
+	if p.resourceOut != nil {
+		out = p.resourceOut
+	}
+
+	buf, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintln(out, string(buf))
+	return nil
+
+}
+
+func (p *Printer) PrettyPrintJSON(b []byte) error {
+	var out io.Writer = os.Stdout
+	if p.resourceOut != nil {
+		out = p.resourceOut
+	}
+
+	var buf bytes.Buffer
+	err := json.Indent(&buf, b, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintln(out, buf.String())
+	return nil
 }
 
 func GetMilliseconds(timestamp time.Time) int64 {

@@ -30,6 +30,7 @@ func BranchCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.AddCommand(SchemaCmd(ch))
 	cmd.AddCommand(RefreshSchemaCmd(ch))
 	cmd.AddCommand(PromoteCmd(ch))
+	cmd.AddCommand(VSchemaCmd(ch))
 
 	return cmd
 }
