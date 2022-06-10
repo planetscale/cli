@@ -41,7 +41,6 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			end := ch.Printer.PrintProgress("Fetching databases...")
 			defer end()
-
 			databases, err := client.Databases.List(ctx, &planetscale.ListDatabasesRequest{
 				Organization: ch.Config.Organization,
 			})

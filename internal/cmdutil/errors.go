@@ -8,8 +8,7 @@ import (
 	"github.com/planetscale/planetscale-go/planetscale"
 )
 
-var errExpiredAuthMessage = errors.New("the access token has expired. Please run 'pscale auth login' " +
-	"or create a service token with 'pscale service-token create'")
+var errExpiredAuthMessage = errors.New("the access token has expired. Please run 'pscale auth login'")
 
 // Error can be used by a command to change the exit status of the CLI.
 type Error struct {
@@ -46,7 +45,17 @@ func HandleError(err error) error {
 	}
 
 	perr, ok := err.(*planetscale.Error)
-	if ok && perr.Code == planetscale.ErrInternal {
+	if !ok {
+		return err
+	}
+
+	switch perr.Code {
+	case planetscale.ErrResponseMalformed:
+		const malformedWarning = "Unexpected API response received, the PlanetScale API might be down." +
+			" Please contact support with the following output"
+
+		return fmt.Errorf("%s:\n\n%s", malformedWarning, perr.Meta["body"])
+	case planetscale.ErrInternal:
 		// TODO(fatih): fix the return type in our API.
 		// authErrorResponse represents an error response from the API
 		type authErrorResponse struct {
@@ -60,7 +69,7 @@ func HandleError(err error) error {
 		if mErr != nil {
 			// return back original error (not *mErr*). Looks like the error is
 			// not an authentication error
-			return err
+			return fmt.Errorf("%s with the following output:\n\n%s", perr.Error(), perr.Meta["body"])
 		}
 
 		if errorRes.Error == "invalid_token" {
@@ -68,16 +77,6 @@ func HandleError(err error) error {
 		}
 
 		return err
-	}
-
-	switch perr.Code {
-	case planetscale.ErrResponseMalformed:
-		const malformedWarning = "Unexpected API response received, the PlanetScale API might be down." +
-			" Please contact support with the following output"
-
-		return fmt.Errorf("%s:\n\n%s", malformedWarning, perr.Meta["body"])
-	case planetscale.ErrInternal:
-		return fmt.Errorf("%s with the following output:\n\n%s", perr.Error(), perr.Meta["body"])
 	default:
 		return err
 	}
