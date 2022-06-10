@@ -19,7 +19,10 @@ import (
 	exec "golang.org/x/sys/execabs"
 )
 
-const WarnAuthMessage = "not authenticated yet. Please run 'pscale auth login'"
+const (
+	WarnAuthMessage = "not authenticated yet. Please run 'pscale auth login'" +
+		"or create a service token with 'pscale service-token create'"
+)
 
 type PasswordRole int
 
