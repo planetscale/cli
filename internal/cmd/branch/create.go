@@ -117,7 +117,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 					Database:     source,
 					Branch:       branch,
 				}
-				if err := waitUntilReady(ctx, client, getReq); err != nil {
+				if err := waitUntilReady(ctx, client, ch.Printer, ch.Debug(), getReq); err != nil {
 					return err
 				}
 				end()
@@ -165,7 +165,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 }
 
 // waitUntilReady waits until the given database branch is ready. It times out after 3 minutes.
-func waitUntilReady(ctx context.Context, client *ps.Client, getReq *ps.GetDatabaseBranchRequest) error {
+func waitUntilReady(ctx context.Context, client *ps.Client, printer *printer.Printer, debug bool, getReq *ps.GetDatabaseBranchRequest) error {
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Minute)
 	defer cancel()
 
@@ -178,7 +178,10 @@ func waitUntilReady(ctx context.Context, client *ps.Client, getReq *ps.GetDataba
 		case <-ticker.C:
 			resp, err := client.DatabaseBranches.Get(ctx, getReq)
 			if err != nil {
-				return err
+				if debug {
+					printer.Printf("fetching database branch %s/%s failed: %s", getReq.Database, getReq.Branch, err)
+				}
+				continue
 			}
 
 			if resp.Ready {
