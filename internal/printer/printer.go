@@ -1,16 +1,18 @@
 package printer
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/AlecAivazis/survey/v2"
-	"github.com/AlecAivazis/survey/v2/terminal"
 	"io"
 	"io/ioutil"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/AlecAivazis/survey/v2"
+	"github.com/AlecAivazis/survey/v2/terminal"
 
 	"github.com/briandowns/spinner"
 	"github.com/fatih/color"
@@ -174,13 +176,7 @@ func (p *Printer) PrintResource(v interface{}) error {
 		fmt.Fprintln(out, b.String())
 		return nil
 	case JSON:
-		buf, err := json.MarshalIndent(v, "", "  ")
-		if err != nil {
-			return err
-		}
-
-		fmt.Fprintln(out, string(buf))
-		return nil
+		return p.PrintJSON(v)
 	case CSV:
 		type csvvaluer interface {
 			MarshalCSVValue() interface{}
@@ -231,6 +227,38 @@ func (p *Printer) ConfirmCommand(confirmationName, commandShortName, confirmFail
 		return fmt.Errorf("incorrect value entered, skipping %s", commandShortName)
 	}
 
+	return nil
+}
+
+func (p *Printer) PrintJSON(v interface{}) error {
+	var out io.Writer = os.Stdout
+	if p.resourceOut != nil {
+		out = p.resourceOut
+	}
+
+	buf, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintln(out, string(buf))
+	return nil
+
+}
+
+func (p *Printer) PrettyPrintJSON(b []byte) error {
+	var out io.Writer = os.Stdout
+	if p.resourceOut != nil {
+		out = p.resourceOut
+	}
+
+	var buf bytes.Buffer
+	err := json.Indent(&buf, b, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintln(out, buf.String())
 	return nil
 }
 

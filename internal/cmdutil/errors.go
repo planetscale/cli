@@ -1,10 +1,14 @@
 package cmdutil
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/planetscale/planetscale-go/planetscale"
 )
+
+var errExpiredAuthMessage = errors.New("the access token has expired. Please run 'pscale auth login'")
 
 // Error can be used by a command to change the exit status of the CLI.
 type Error struct {
@@ -29,7 +33,6 @@ func ErrCode(err error) planetscale.ErrorCode {
 	}
 
 	return perr.Code
-
 }
 
 // HandleError checks whether the given err is an *planetscale.Error and
@@ -53,7 +56,27 @@ func HandleError(err error) error {
 
 		return fmt.Errorf("%s:\n\n%s", malformedWarning, perr.Meta["body"])
 	case planetscale.ErrInternal:
-		return fmt.Errorf("%s with the following output:\n\n%s", perr.Error(), perr.Meta["body"])
+		// TODO(fatih): fix the return type in our API.
+		// authErrorResponse represents an error response from the API
+		type authErrorResponse struct {
+			Error            string `json:"error"`
+			ErrorDescription string `json:"error_description"`
+			State            string `json:"state"`
+		}
+
+		errorRes := &authErrorResponse{}
+		mErr := json.Unmarshal([]byte(perr.Meta["body"]), errorRes)
+		if mErr != nil {
+			// return back original error (not *mErr*). Looks like the error is
+			// not an authentication error
+			return fmt.Errorf("%s with the following output:\n\n%s", perr.Error(), perr.Meta["body"])
+		}
+
+		if errorRes.Error == "invalid_token" {
+			return errExpiredAuthMessage
+		}
+
+		return err
 	default:
 		return err
 	}
