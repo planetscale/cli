@@ -33,7 +33,8 @@ func TestStart_LintDatabase_Success(t *testing.T) {
 	c.Assert(err, qt.IsNil)
 	expectedOut := []string{
 		fmt.Sprintf("Testing Compatibility of database %s with user %s...\n", externalDataSource.Database, externalDataSource.UserName),
-		fmt.Sprintf("database %s is compatible and can be imported into PlanetScale database ps-downstream-database\n", externalDataSource.Database),
+		fmt.Sprintf("Database %s is compatible and can be imported into PlanetScale database ps-downstream-database\n", externalDataSource.Database),
+		"Please run this command with --dry-run=false to start the import\n",
 	}
 
 	c.Assert(out, qt.Equals, strings.Join(expectedOut, ""))
