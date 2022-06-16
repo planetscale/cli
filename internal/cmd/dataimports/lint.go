@@ -17,6 +17,7 @@ func LintExternalDataSourceCmd(ch *cmdutil.Helper) *cobra.Command {
 		password string
 		database string
 		port     int
+		sslMode  string
 	}
 
 	testRequest := &ps.TestDataImportSourceRequest{}
@@ -27,7 +28,7 @@ func LintExternalDataSourceCmd(ch *cmdutil.Helper) *cobra.Command {
 		Aliases: []string{"l"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-
+			sslMode := cmdutil.ParseSSLMode(flags.sslMode)
 			testRequest.Organization = ch.Config.Organization
 			testRequest.Database = flags.database
 			testRequest.Connection = ps.DataImportSource{
@@ -36,7 +37,7 @@ func LintExternalDataSourceCmd(ch *cmdutil.Helper) *cobra.Command {
 				Password:            flags.password,
 				HostName:            flags.host,
 				Port:                flags.port,
-				SSLVerificationMode: ps.SSLModeDisabled,
+				SSLVerificationMode: sslMode,
 			}
 
 			client, err := ch.Client()
@@ -44,6 +45,9 @@ func LintExternalDataSourceCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
+			switch flags.sslMode {
+
+			}
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Testing Compatibility of database %s with user %s...", printer.BoldBlue(flags.database), printer.BoldBlue(flags.username)))
 			defer end()
 
@@ -86,12 +90,14 @@ func LintExternalDataSourceCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.PersistentFlags().StringVar(&flags.database, "database", "", "Name of the external database")
 	cmd.PersistentFlags().StringVar(&flags.username, "username", "", "Username to connect to external database.")
 	cmd.PersistentFlags().StringVar(&flags.password, "password", "", "Password to connect to external database.")
+	cmd.PersistentFlags().StringVar(&flags.sslMode, "ssl-mode", "", "SSL verification mode, allowed values : disabled, preferred, required, verify_ca, verify_identity")
 	cmd.PersistentFlags().IntVar(&flags.port, "port", 3306, "Port number to connect to external database")
 
 	cmd.MarkPersistentFlagRequired("host")
 	cmd.MarkPersistentFlagRequired("database")
 	cmd.MarkPersistentFlagRequired("username")
 	cmd.MarkPersistentFlagRequired("password")
+	cmd.MarkPersistentFlagRequired("ssl-mode")
 
 	return cmd
 }
