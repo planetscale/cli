@@ -217,3 +217,18 @@ func MySQLClientPath() (string, error) {
 
 	return "", fmt.Errorf("%s\nTo install, follow the instructions: %s", msg, installURL)
 }
+
+func ParseSSLMode(sslMode string) ps.ExternalDataSourceSSLVerificationMode {
+	switch sslMode {
+	case "disabled":
+		return ps.SSLModeDisabled
+	case "preferred":
+		return ps.SSLModePreferred
+	case "required":
+		return ps.SSLModeRequired
+	case "verify_ca":
+		return ps.SSLModeVerifyCA
+	default:
+		return ps.SSLModeVerifyIdentity
+	}
+}

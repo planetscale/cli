@@ -19,6 +19,7 @@ func StartDataImportCmd(ch *cmdutil.Helper) *cobra.Command {
 		database string
 		port     int
 		dryRun   bool
+		sslMode  string
 	}
 
 	startImportRequest := &ps.StartDataImportRequest{}
@@ -30,13 +31,15 @@ func StartDataImportCmd(ch *cmdutil.Helper) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			ctx := cmd.Context()
+			sslMode := cmdutil.ParseSSLMode(flags.sslMode)
+
 			dataSource := ps.DataImportSource{
 				Database:            flags.database,
 				UserName:            flags.username,
 				Password:            flags.password,
 				HostName:            flags.host,
 				Port:                flags.port,
-				SSLVerificationMode: ps.SSLModeDisabled,
+				SSLVerificationMode: sslMode,
 			}
 			startImportRequest.Organization = ch.Config.Organization
 			startImportRequest.Database = flags.name
@@ -119,12 +122,14 @@ func StartDataImportCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.PersistentFlags().StringVar(&flags.password, "password", "", "Password to connect to external database.")
 	cmd.PersistentFlags().IntVar(&flags.port, "port", 3306, "Port number to connect to external database")
 	cmd.PersistentFlags().BoolVar(&flags.dryRun, "dry-run", true, "Only run compatibility check, do not start import")
+	cmd.PersistentFlags().StringVar(&flags.sslMode, "ssl-mode", "", "SSL verification mode, allowed values: disabled, preferred, required, verify_ca, verify_identity")
 
 	cmd.MarkPersistentFlagRequired("name")
 	cmd.MarkPersistentFlagRequired("host")
 	cmd.MarkPersistentFlagRequired("database")
 	cmd.MarkPersistentFlagRequired("username")
 	cmd.MarkPersistentFlagRequired("password")
+	cmd.MarkPersistentFlagRequired("ssl-mode")
 
 	return cmd
 }

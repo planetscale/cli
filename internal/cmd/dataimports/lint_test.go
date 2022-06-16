@@ -19,11 +19,13 @@ func TestImports_LintDatabase_Success(t *testing.T) {
 
 	org := "planetscale"
 	externalDataSource := ps.DataImportSource{
-		Database: "aws-upstream-database",
-		Port:     3306,
-		HostName: "rds.amazonaws.com",
-		UserName: "aws-user",
-		Password: "aws-password",
+		Database:            "aws-upstream-database",
+		Port:                3306,
+		HostName:            "rds.amazonaws.com",
+		UserName:            "aws-user",
+		Password:            "aws-password",
+		SSLVerificationMode: ps.SSLModePreferred,
+		SSLMode:             ps.SSLModePreferred.String(),
 	}
 	res := &ps.TestDataImportSourceResponse{
 		CanConnect: true,
@@ -44,11 +46,13 @@ func TestImports_LintDatabase_CannotConnect(t *testing.T) {
 
 	org := "planetscale"
 	externalDataSource := ps.DataImportSource{
-		Database: "aws-upstream-database",
-		Port:     3306,
-		HostName: "rds.amazonaws.com",
-		UserName: "aws-user",
-		Password: "aws-password",
+		Database:            "aws-upstream-database",
+		Port:                3306,
+		HostName:            "rds.amazonaws.com",
+		UserName:            "aws-user",
+		Password:            "aws-password",
+		SSLVerificationMode: ps.SSLModePreferred,
+		SSLMode:             ps.SSLModePreferred.String(),
 	}
 
 	res := &ps.TestDataImportSourceResponse{
@@ -71,11 +75,13 @@ func TestImports_LintDatabase_SchemaIncompatible(t *testing.T) {
 
 	org := "planetscale"
 	externalDataSource := ps.DataImportSource{
-		Database: "aws-upstream-database",
-		Port:     3306,
-		HostName: "rds.amazonaws.com",
-		UserName: "aws-user",
-		Password: "aws-password",
+		Database:            "aws-upstream-database",
+		Port:                3306,
+		HostName:            "rds.amazonaws.com",
+		UserName:            "aws-user",
+		Password:            "aws-password",
+		SSLVerificationMode: ps.SSLModePreferred,
+		SSLMode:             ps.SSLModePreferred.String(),
 	}
 
 	res := &ps.TestDataImportSourceResponse{
@@ -110,6 +116,7 @@ Please fix the following errors and then try again:
 func invokeLintDatabase(externalDataSource *ps.DataImportSource, org string, c *qt.C, response *ps.TestDataImportSourceResponse) (string, error) {
 	svc := &mock.DataImportsService{
 		TestDataImportSourceFn: func(ctx context.Context, req *ps.TestDataImportSourceRequest) (*ps.TestDataImportSourceResponse, error) {
+			req.Connection.SSLMode = req.Connection.SSLVerificationMode.String()
 			c.Assert(req.Organization, qt.Equals, org)
 			c.Assert(req.Connection, qt.Equals, *externalDataSource)
 			return response, nil
@@ -142,6 +149,7 @@ func invokeLintDatabase(externalDataSource *ps.DataImportSource, org string, c *
 		"--host", externalDataSource.HostName,
 		"--username", externalDataSource.UserName,
 		"--password", externalDataSource.Password,
+		"--ssl-mode", "preferred",
 	})
 	cmd.SilenceUsage = true
 	err := cmd.Execute()
