@@ -122,7 +122,7 @@ func StartDataImportCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.PersistentFlags().StringVar(&flags.password, "password", "", "Password to connect to external database.")
 	cmd.PersistentFlags().IntVar(&flags.port, "port", 3306, "Port number to connect to external database")
 	cmd.PersistentFlags().BoolVar(&flags.dryRun, "dry-run", true, "Only run compatibility check, do not start import")
-	cmd.PersistentFlags().StringVar(&flags.sslMode, "ssl-mode", "", "SSL verification mode, allowed values : disabled, preferred, required, verify_ca, verify_identity")
+	cmd.PersistentFlags().StringVar(&flags.sslMode, "ssl-mode", "", "SSL verification mode, allowed values: disabled, preferred, required, verify_ca, verify_identity")
 
 	cmd.MarkPersistentFlagRequired("name")
 	cmd.MarkPersistentFlagRequired("host")

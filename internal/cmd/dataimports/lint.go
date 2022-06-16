@@ -87,7 +87,7 @@ func LintExternalDataSourceCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.PersistentFlags().StringVar(&flags.database, "database", "", "Name of the external database")
 	cmd.PersistentFlags().StringVar(&flags.username, "username", "", "Username to connect to external database.")
 	cmd.PersistentFlags().StringVar(&flags.password, "password", "", "Password to connect to external database.")
-	cmd.PersistentFlags().StringVar(&flags.sslMode, "ssl-mode", "", "SSL verification mode, allowed values : disabled, preferred, required, verify_ca, verify_identity")
+	cmd.PersistentFlags().StringVar(&flags.sslMode, "ssl-mode", "", "SSL verification mode, allowed values: disabled, preferred, required, verify_ca, verify_identity")
 	cmd.PersistentFlags().IntVar(&flags.port, "port", 3306, "Port number to connect to external database")
 
 	cmd.MarkPersistentFlagRequired("host")
