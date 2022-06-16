@@ -74,7 +74,10 @@ func LintExternalDataSourceCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 			end()
 
-			ch.Printer.Printf("database %s hosted at %s is compatible and can be imported into PlanetScale!!\n", flags.database, flags.host)
+			ch.Printer.Printf("Database %s hosted at %s is compatible and can be imported into PlanetScale!\n", flags.database, flags.host)
+			if resp.SuggestedBillingPlan == ps.ScalerPlan {
+				ch.Printer.Printf("\nIf you choose to continue, the imported database will be on Scaler plan. The monthly cost is %v.\n", printer.BoldYellow("$29"))
+			}
 			return nil
 		},
 	}
