@@ -11,6 +11,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/AlecAivazis/survey/v2"
+	"github.com/AlecAivazis/survey/v2/terminal"
+
 	"github.com/briandowns/spinner"
 	"github.com/fatih/color"
 	"github.com/gocarina/gocsv"
@@ -194,6 +197,39 @@ func (p *Printer) PrintResource(v interface{}) error {
 	return fmt.Errorf("unknown printer.Format: %T", *p.format)
 }
 
+func (p *Printer) ConfirmCommand(confirmationName, commandShortName, confirmFailedName string) error {
+	if p.Format() != Human {
+		return fmt.Errorf("cannot %s with the output format %q (run with -force to override)", commandShortName, p.Format())
+	}
+
+	if !IsTTY {
+		return fmt.Errorf("cannot confirm %s %q (run with -force to override)", confirmFailedName, confirmationName)
+	}
+
+	confirmationMessage := fmt.Sprintf("%s %s %s", Bold("Please type"), BoldBlue(confirmationName), Bold("to confirm:"))
+
+	prompt := &survey.Input{
+		Message: confirmationMessage,
+	}
+
+	var userInput string
+	err := survey.AskOne(prompt, &userInput)
+	if err != nil {
+		if err == terminal.InterruptErr {
+			os.Exit(0)
+		} else {
+			return err
+		}
+	}
+
+	// If the confirmations don't match up, let's return an error.
+	if userInput != confirmationName {
+		return fmt.Errorf("incorrect value entered, skipping %s", commandShortName)
+	}
+
+	return nil
+}
+
 func (p *Printer) PrintJSON(v interface{}) error {
 	var out io.Writer = os.Stdout
 	if p.resourceOut != nil {
@@ -263,6 +299,21 @@ func BoldBlue(msg interface{}) string {
 // BoldRed returns a string formatted with red and bold.
 func BoldRed(msg interface{}) string {
 	return color.New(color.FgRed).Add(color.Bold).Sprint(msg)
+}
+
+// BoldGreen returns a string formatted with green and bold.
+func BoldGreen(msg interface{}) string {
+	return color.New(color.FgGreen).Add(color.Bold).Sprint(msg)
+}
+
+// BoldBlack returns a string formatted with Black and bold.
+func BoldBlack(msg interface{}) string {
+	return color.New(color.FgBlack).Add(color.Bold).Sprint(msg)
+}
+
+// BoldYellow returns a string formatted with yellow and bold.
+func BoldYellow(msg interface{}) string {
+	return color.New(color.FgYellow).Add(color.Bold).Sprint(msg)
 }
 
 // Red returns a string formatted with red and bold.

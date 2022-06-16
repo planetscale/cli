@@ -155,7 +155,7 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 			m := make(map[string]string)
 			tables := strings.Split(flags.tables, ",")
 			wheres := strings.Split(flags.wheres, ",")
-			for i := range(wheres) {
+			for i := range wheres {
 				m[tables[i]] = wheres[i]
 			}
 			cfg.Wheres = m
