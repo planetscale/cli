@@ -45,9 +45,6 @@ func LintExternalDataSourceCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
-			switch flags.sslMode {
-
-			}
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Testing Compatibility of database %s with user %s...", printer.BoldBlue(flags.database), printer.BoldBlue(flags.username)))
 			defer end()
 
