@@ -28,6 +28,7 @@ func DeployRequestCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.AddCommand(ReviewCmd(ch))
 	cmd.AddCommand(ShowCmd(ch))
 	cmd.AddCommand(RevertCmd(ch))
+	cmd.AddCommand(SkipRevertCmd(ch))
 
 	return cmd
 }
