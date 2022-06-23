@@ -29,7 +29,7 @@ func SkipRevertCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			n, err := strconv.ParseUint(number, 10, 64)
 			if err != nil {
-				return fmt.Errorf("the argument <number> is invalid: %s", err)
+				return fmt.Errorf("the argument <number> %q is invalid: %s", number, err)
 			}
 
 			dr, err := client.DeployRequests.SkipRevertDeploy(ctx, &planetscale.SkipRevertDeployRequestRequest{
