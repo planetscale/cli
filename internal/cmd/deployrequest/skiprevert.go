@@ -48,7 +48,7 @@ func SkipRevertCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			if ch.Printer.Format() == printer.Human {
-				ch.Printer.Printf("Successfully skipped the deploy request started deploy request revert for '%s/%s'.\n",
+				ch.Printer.Printf("Successfully skipped the pending revert for deploy request '%s/%s'.\n",
 					printer.BoldBlue(database),
 					printer.BoldBlue(dr.Number))
 				return nil
