@@ -217,6 +217,8 @@ github.com/planetscale/planetscale-go v0.61.0 h1:5ifxFnKJhomE1IXfunZDZeSX7g0O7uN
 github.com/planetscale/planetscale-go v0.61.0/go.mod h1:T9yNcF+t12+GCxgH7ehIi9Qx36zRSrE5i3PP98etWTA=
 github.com/planetscale/planetscale-go v0.62.0 h1:7s1S4MupNk7t5pZ4FI9TdyCTj36w1KBO2J+tJcg0iQ0=
 github.com/planetscale/planetscale-go v0.62.0/go.mod h1:T9yNcF+t12+GCxgH7ehIi9Qx36zRSrE5i3PP98etWTA=
+github.com/planetscale/planetscale-go v0.64.0 h1:+9gmZXlMHDda9tgw2OyeOEhdZlrxqgAzU2QdgRpWbhM=
+github.com/planetscale/planetscale-go v0.64.0/go.mod h1:T9yNcF+t12+GCxgH7ehIi9Qx36zRSrE5i3PP98etWTA=
 github.com/planetscale/sql-proxy v0.12.0 h1:eFmpsI0xhhhMgSqxei1Z9BGoJ0iS4lcuFXpzz+JgmGk=
 github.com/planetscale/sql-proxy v0.12.0/go.mod h1:4Sk6JdoBqQhHv9V4FCOC27YIM3EjU8cLIsw5HqxN8x4=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
