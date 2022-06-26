@@ -25,18 +25,10 @@ echo \
 apt-get update
 apt-get install -y docker-ce-cli 
 
-echo "--- installing goreleaser"
-
-curl -L -o /tmp/goreleaser_Linux_x86_64.tar.gz https://github.com/goreleaser/goreleaser/releases/download/v1.6.3/goreleaser_Linux_x86_64.tar.gz
-
-cd /tmp && tar -zxvf goreleaser_Linux_x86_64.tar.gz
-
-echo "--- running goreleaser"
-
 echo "Login to the docker..."
 echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
 
 export GORELEASER_CURRENT_TAG=$(buildkite-agent meta-data get "release-version")
 
 cd $WORKDIR
-/tmp/goreleaser release --rm-dist 
+make release
