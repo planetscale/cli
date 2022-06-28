@@ -71,10 +71,6 @@ func TestDatabase_DeleteCmdWithDeletionRequest(t *testing.T) {
 	org := "planetscale"
 	db := "planetscale"
 
-	res := map[string]string{
-		"ID": "test-planetscale-id",
-	}
-
 	svc := &mock.DatabaseService{
 		DeleteFn: func(ctx context.Context, req *ps.DeleteDatabaseRequest) (*ps.DatabaseDeletionRequest, error) {
 			c.Assert(req.Organization, qt.Equals, org)
@@ -103,6 +99,5 @@ func TestDatabase_DeleteCmdWithDeletionRequest(t *testing.T) {
 	err := cmd.Execute()
 
 	c.Assert(svc.DeleteFnInvoked, qt.IsTrue)
-	c.Assert(err, qt.IsNil)
-	c.Assert(buf.String(), qt.JSONEquals, res)
+	c.Assert(err.Error(), qt.Equals, "A deletion request for database planetscale was successfully created. Database will be deleted after another database administrator also requests deletion.")
 }

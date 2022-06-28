@@ -97,31 +97,27 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			end()
 
-			if ch.Printer.Format() == printer.Human {
-				if dbr == nil {
-					ch.Printer.Printf("Database %s was successfully deleted.\n", printer.BoldBlue(name))
-				} else {
-					return &cmdutil.Error{
-						Msg:      fmt.Sprintf("A deletion request for database %s was successfully created. Database will be deleted after another database administrator also requests deletion.", printer.BoldBlue(name)),
-						ExitCode: 1,
-					}
+			if dbr != nil {
+				return &cmdutil.Error{
+					Msg:      fmt.Sprintf("A deletion request for database %s was successfully created. Database will be deleted after another database administrator also requests deletion.", printer.BoldBlue(name)),
+					ExitCode: 1,
 				}
+			}
+
+			if ch.Printer.Format() == printer.Human {
+				ch.Printer.Printf("Database %s was successfully deleted.\n", printer.BoldBlue(name))
 				return nil
 			}
 
-			if dbr == nil {
-				return ch.Printer.PrintResource(
-					map[string]string{
-						"result":   "database deleted",
-						"database": name,
-					},
-				)
-			}
-
-			return ch.Printer.PrintResource(dbr)
+			return ch.Printer.PrintResource(
+				map[string]string{
+					"result":   "database deleted",
+					"database": name,
+				},
+			)
 		},
 	}
 
-	cmd.Flags().BoolVar(&force, "force", false, "Delete a databse without confirmation")
+	cmd.Flags().BoolVar(&force, "force", false, "Delete a database without confirmation")
 	return cmd
 }
