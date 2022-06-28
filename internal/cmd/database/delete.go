@@ -109,12 +109,16 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 				return nil
 			}
 
-			return ch.Printer.PrintResource(
-				map[string]string{
-					"result":   "database deleted",
-					"database": name,
-				},
-			)
+			if dbr == nil {
+				return ch.Printer.PrintResource(
+					map[string]string{
+						"result":   "database deleted",
+						"database": name,
+					},
+				)
+			}
+
+			return ch.Printer.PrintResource(dbr)
 		},
 	}
 

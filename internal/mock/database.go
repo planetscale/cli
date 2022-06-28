@@ -16,7 +16,7 @@ type DatabaseService struct {
 	ListFn        func(context.Context, *ps.ListDatabasesRequest) ([]*ps.Database, error)
 	ListFnInvoked bool
 
-	DeleteFn        func(context.Context, *ps.DeleteDatabaseRequest) error
+	DeleteFn        func(context.Context, *ps.DeleteDatabaseRequest) (*ps.DatabaseDeletionRequest, error)
 	DeleteFnInvoked bool
 }
 
@@ -35,7 +35,7 @@ func (d *DatabaseService) List(ctx context.Context, req *ps.ListDatabasesRequest
 	return d.ListFn(ctx, req)
 }
 
-func (d *DatabaseService) Delete(ctx context.Context, req *ps.DeleteDatabaseRequest) error {
+func (d *DatabaseService) Delete(ctx context.Context, req *ps.DeleteDatabaseRequest) (*ps.DatabaseDeletionRequest, error) {
 	d.DeleteFnInvoked = true
 	return d.DeleteFn(ctx, req)
 }
