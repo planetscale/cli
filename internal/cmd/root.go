@@ -101,7 +101,7 @@ func Execute(ctx context.Context, ver, commit, buildDate string) int {
 		return cmdErr.ExitCode
 	}
 
-	return 2
+	return cmdutil.FatalErrExitCode
 }
 
 // runCmd adds all child commands to the root command, sets flags
@@ -206,7 +206,7 @@ func initConfig() {
 		defaultConfigDir, err := config.ConfigDir()
 		if err != nil {
 			fmt.Println(err)
-			os.Exit(2)
+			os.Exit(cmdutil.FatalErrExitCode)
 		}
 
 		// Order of preference for configuration files:
@@ -226,7 +226,7 @@ func initConfig() {
 			// Only handle errors when it's something unrelated to the config file not
 			// existing.
 			fmt.Println(err)
-			os.Exit(2)
+			os.Exit(cmdutil.FatalErrExitCode)
 		}
 	}
 

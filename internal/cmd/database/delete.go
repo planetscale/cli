@@ -100,7 +100,7 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 			if dbr != nil {
 				return &cmdutil.Error{
 					Msg:      fmt.Sprintf("A deletion request for database %s was successfully created. Database will be deleted after another database administrator also requests deletion.", printer.BoldBlue(name)),
-					ExitCode: 1,
+					ExitCode: cmdutil.ActionRequestedExitCode,
 				}
 			}
 
