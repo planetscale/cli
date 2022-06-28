@@ -12,7 +12,7 @@ import (
 func DeployRequestCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "deploy-request <command>",
-		Short:             "Create, review, diff, and manage deploy requests",
+		Short:             "Create, review, diff, revert, and manage deploy requests",
 		Aliases:           []string{"dr"},
 		PersistentPreRunE: cmdutil.CheckAuthentication(ch.Config),
 	}
@@ -27,6 +27,8 @@ func DeployRequestCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.AddCommand(ListCmd(ch))
 	cmd.AddCommand(ReviewCmd(ch))
 	cmd.AddCommand(ShowCmd(ch))
+	cmd.AddCommand(RevertCmd(ch))
+	cmd.AddCommand(SkipRevertCmd(ch))
 
 	return cmd
 }
