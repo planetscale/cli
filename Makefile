@@ -60,6 +60,7 @@ clean:
 release:
 	@docker run \
 		--rm \
+		-e GITHUB_TOKEN=${GITHUB_TOKEN} \
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		-v `pwd`:/go/src/${REPO}/${NAME} \
 		-w /go/src/${REPO}/${NAME} \
