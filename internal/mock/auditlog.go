@@ -7,11 +7,11 @@ import (
 )
 
 type AuditLogService struct {
-	ListFn        func(context.Context, *ps.ListAuditLogsRequest) ([]*ps.AuditLog, error)
+	ListFn        func(context.Context, *ps.ListAuditLogsRequest, ...ps.ListOption) (*ps.CursorPaginatedResponse[*ps.AuditLog], error)
 	ListFnInvoked bool
 }
 
-func (a *AuditLogService) List(ctx context.Context, req *ps.ListAuditLogsRequest) ([]*ps.AuditLog, error) {
+func (a *AuditLogService) List(ctx context.Context, req *ps.ListAuditLogsRequest, opts ...ps.ListOption) (*ps.CursorPaginatedResponse[*ps.AuditLog], error) {
 	a.ListFnInvoked = true
-	return a.ListFn(ctx, req)
+	return a.ListFn(ctx, req, opts...)
 }
