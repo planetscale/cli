@@ -41,9 +41,9 @@ var auditLogEvents = map[string]ps.AuditLogEvent{
 // ListCmd encapsulates the command for listing audit logs for an organization.
 func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
-		action   []string
-		nextPage string
-		limit    int
+		action        []string
+		startingAfter string
+		limit         int
 	}
 
 	cmd := &cobra.Command{
@@ -91,7 +91,7 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 			paginatedRes, err := client.AuditLogs.List(ctx, &ps.ListAuditLogsRequest{
 				Organization: ch.Config.Organization,
 				Events:       toAuditLogEvents(flags.action),
-			}, ps.WithStartingAfter(flags.nextPage), ps.WithLimit(flags.limit))
+			}, ps.WithStartingAfter(flags.startingAfter), ps.WithLimit(flags.limit))
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case ps.ErrNotFound:
@@ -117,7 +117,7 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	cmd.Flags().BoolP("web", "w", false, "List audit logs in your web browser.")
 	cmd.Flags().StringSliceVar(&flags.action, "action", nil, "Filter based on the action type")
-	cmd.Flags().StringVar(&flags.nextPage, "next-page", "", "Public ID to start after for the next page")
+	cmd.Flags().StringVar(&flags.startingAfter, "starting-after", "", "Public ID to start after (for pagination)")
 	cmd.Flags().IntVar(&flags.limit, "limit", 0, "The number of audit log events to return")
 
 	cmd.RegisterFlagCompletionFunc("action", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
