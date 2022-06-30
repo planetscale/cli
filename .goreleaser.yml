@@ -17,7 +17,9 @@ builds:
       - CGO_ENABLED=1
     main: ./cmd/pscale/main.go
     ldflags:
-     - -s -w -X main.version={{.Version}} -X main.commit={{.ShortCommit}} -X main.date={{.Date}}
+      - -s -w -X main.version={{.Version}} -X main.commit={{.ShortCommit}} -X main.date={{.Date}}
+    flags:
+      - -trimpath
     binary: "pscale"
   - id: darwin-arm64
     goos:
@@ -30,7 +32,9 @@ builds:
       - CGO_ENABLED=1
     main: ./cmd/pscale/main.go
     ldflags:
-     - -s -w -X main.version={{.Version}} -X main.commit={{.ShortCommit}} -X main.date={{.Date}}
+      - -s -w -X main.version={{.Version}} -X main.commit={{.ShortCommit}} -X main.date={{.Date}}
+    flags:
+      - -trimpath
     binary: "pscale"
   - env:
       - CGO_ENABLED=0
@@ -44,7 +48,9 @@ builds:
       - arm64
     main: ./cmd/pscale/main.go
     ldflags:
-     - -s -w -X main.version={{.Version}} -X main.commit={{.ShortCommit}} -X main.date={{.Date}}
+      - -s -w -X main.version={{.Version}} -X main.commit={{.ShortCommit}} -X main.date={{.Date}}
+    flags:
+      - -trimpath
     binary: "pscale"   
 dockers:
   - image_templates:
