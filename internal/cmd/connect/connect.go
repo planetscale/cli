@@ -57,7 +57,7 @@ argument:
 
 			database := args[0]
 
-			client, err := ch.Config.NewClientFromConfig()
+			client, err := ch.Client()
 			if err != nil {
 				return err
 			}

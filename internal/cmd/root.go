@@ -148,7 +148,12 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 		Config:   cfg,
 		ConfigFS: config.NewConfigFS(osFS{}),
 		Client: func() (*ps.Client, error) {
-			return cfg.NewClientFromConfig()
+			userAgent := "pscale-cli/" + ver
+
+			headers := map[string]string{
+				"pscale-cli-version": ver,
+			}
+			return cfg.NewClientFromConfig(ps.WithUserAgent(userAgent), ps.WithRequestHeaders(headers))
 		},
 	}
 	ch.SetDebug(debug)

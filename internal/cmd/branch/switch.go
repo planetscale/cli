@@ -26,7 +26,7 @@ func SwitchCmd(ch *cmdutil.Helper) *cobra.Command {
 			ctx := cmd.Context()
 			branch := args[0]
 
-			client, err := ch.Config.NewClientFromConfig()
+			client, err := ch.Client()
 			if err != nil {
 				return err
 			}
