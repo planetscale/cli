@@ -19,6 +19,7 @@ import (
 type restoreFlags struct {
 	localAddr string
 	dir       string
+	overwrite bool
 }
 
 // RestoreCmd encapsulates the commands for restore a database
@@ -35,6 +36,7 @@ func RestoreCmd(ch *cmdutil.Helper) *cobra.Command {
 		"", "Local address to bind and listen for connections. By default the proxy binds to 127.0.0.1 with a random port.")
 	cmd.PersistentFlags().StringVar(&f.dir, "dir", "",
 		"Directory containing the files to be used for the restore (required)")
+	cmd.PersistentFlags().BoolVar(&f.overwrite, "overwrite-tables", false, "If true, will attempt to DROP TABLE before restoring.")
 
 	return cmd
 }
@@ -112,6 +114,7 @@ func restore(ch *cmdutil.Helper, cmd *cobra.Command, flags *restoreFlags, args [
 	cfg.Debug = ch.Debug()
 	cfg.IntervalMs = 10 * 1000
 	cfg.Outdir = flags.dir
+	cfg.OverwriteTables = flags.overwrite
 
 	loader, err := dumper.NewLoader(cfg)
 	if err != nil {
