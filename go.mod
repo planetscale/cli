@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/AlecAivazis/survey/v2 v2.3.5
 	github.com/benbjohnson/clock v1.3.0
-	github.com/briandowns/spinner v1.18.1
+	github.com/briandowns/spinner v1.19.0
 	github.com/fatih/color v1.13.0
 	github.com/frankban/quicktest v1.14.3
 	github.com/go-sql-driver/mysql v1.6.0
