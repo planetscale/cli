@@ -72,6 +72,10 @@ func (c *Config) IsAuthenticated() error {
 		return errors.New("both --service-token and --service-token-id are required for service token authentication")
 	}
 
+	if c.ServiceToken != "" && c.ServiceTokenID != "" {
+		return nil
+	}
+
 	if c.AccessToken == "" {
 		return errors.New("--access-token is required for access token authentication")
 	}
