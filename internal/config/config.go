@@ -19,7 +19,7 @@ const (
 	defaultConfigPath = "~/.config/planetscale"
 	projectConfigName = ".pscale.yml"
 	configName        = "pscale.yml"
-	TokenFileMode     = 0600
+	TokenFileMode     = 0o600
 )
 
 // Config is dynamically sourced from various files and environment variables.
@@ -67,8 +67,16 @@ func New() (*Config, error) {
 	}, nil
 }
 
-func (c *Config) IsAuthenticated() bool {
-	return (c.ServiceToken != "" && c.ServiceTokenID != "") || c.AccessToken != ""
+func (c *Config) IsAuthenticated() error {
+	if (c.ServiceToken == "" && c.ServiceTokenID != "") || (c.ServiceToken != "" && c.ServiceTokenID == "") {
+		return errors.New("both --service-token and --service-token-id are required for service token authentication")
+	}
+
+	if c.AccessToken == "" {
+		return errors.New("--access-token is required for access token authentication")
+	}
+
+	return nil
 }
 
 // NewClientFromConfig creates a PlaentScale API client from our configuration
@@ -122,7 +130,7 @@ func ProjectConfigPath() (string, error) {
 }
 
 func RootGitRepoDir() (string, error) {
-	var tl = []string{"rev-parse", "--show-toplevel"}
+	tl := []string{"rev-parse", "--show-toplevel"}
 	out, err := exec.Command("git", tl...).CombinedOutput()
 	if err != nil {
 		return "", errors.New("unable to find git root directory")
