@@ -1,7 +1,6 @@
 package cmdutil
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -107,11 +106,11 @@ func RequiredArgs(reqArgs ...string) cobra.PositionalArgs {
 // actionable error message.
 func CheckAuthentication(cfg *config.Config) func(cmd *cobra.Command, args []string) error {
 	return func(cmd *cobra.Command, args []string) error {
-		if cfg.IsAuthenticated() {
-			return nil
+		if err := cfg.IsAuthenticated(); err != nil {
+			return fmt.Errorf("%s\nError: %s", WarnAuthMessage, err.Error())
 		}
 
-		return errors.New(WarnAuthMessage)
+		return nil
 	}
 }
 
