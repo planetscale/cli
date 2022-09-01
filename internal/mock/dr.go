@@ -10,6 +10,9 @@ type DeployRequestsService struct {
 	ApplyFn        func(context.Context, *ps.ApplyDeployRequestRequest) (*ps.DeployRequest, error)
 	ApplyFnInvoked bool
 
+	AutoApplyFn        func(context.Context, *ps.AutoApplyDeployRequestRequest) (*ps.DeployRequest, error)
+	AutoApplyFnInvoked bool
+
 	CancelFn        func(context.Context, *ps.CancelDeployRequestRequest) (*ps.DeployRequest, error)
 	CancelFnInvoked bool
 
@@ -44,6 +47,11 @@ type DeployRequestsService struct {
 func (d *DeployRequestsService) ApplyDeploy(ctx context.Context, req *ps.ApplyDeployRequestRequest) (*ps.DeployRequest, error) {
 	d.ApplyFnInvoked = true
 	return d.ApplyFn(ctx, req)
+}
+
+func (d *DeployRequestsService) AutoApplyDeploy(ctx context.Context, req *ps.AutoApplyDeployRequestRequest) (*ps.DeployRequest, error) {
+	d.AutoApplyFnInvoked = true
+	return d.AutoApplyFn(ctx, req)
 }
 
 func (d *DeployRequestsService) CancelDeploy(ctx context.Context, req *ps.CancelDeployRequestRequest) (*ps.DeployRequest, error) {
