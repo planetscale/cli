@@ -7,6 +7,9 @@ import (
 )
 
 type DeployRequestsService struct {
+	ApplyFn        func(context.Context, *ps.ApplyDeployRequestRequest) (*ps.DeployRequest, error)
+	ApplyFnInvoked bool
+
 	CancelFn        func(context.Context, *ps.CancelDeployRequestRequest) (*ps.DeployRequest, error)
 	CancelFnInvoked bool
 
@@ -36,6 +39,11 @@ type DeployRequestsService struct {
 
 	SkipRevertDeployFn        func(context.Context, *ps.SkipRevertDeployRequestRequest) (*ps.DeployRequest, error)
 	SkipRevertDeployFnInvoked bool
+}
+
+func (d *DeployRequestsService) ApplyDeploy(ctx context.Context, req *ps.ApplyDeployRequestRequest) (*ps.DeployRequest, error) {
+	d.ApplyFnInvoked = true
+	return d.ApplyFn(ctx, req)
 }
 
 func (d *DeployRequestsService) CancelDeploy(ctx context.Context, req *ps.CancelDeployRequestRequest) (*ps.DeployRequest, error) {
