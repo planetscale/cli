@@ -20,6 +20,7 @@ func DeployRequestCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.PersistentFlags().StringVar(&ch.Config.Organization, "org", ch.Config.Organization, "The organization for the current user")
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
 
+	cmd.AddCommand(CancelCmd(ch))
 	cmd.AddCommand(CloseCmd(ch))
 	cmd.AddCommand(CreateCmd(ch))
 	cmd.AddCommand(DeployCmd(ch))
