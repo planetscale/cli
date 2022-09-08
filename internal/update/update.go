@@ -8,7 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -174,7 +174,7 @@ func latestVersion(ctx context.Context, addr string) (*ReleaseInfo, error) {
 	}
 	defer resp.Body.Close()
 
-	out, err := ioutil.ReadAll(resp.Body)
+	out, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -194,7 +194,7 @@ func latestVersion(ctx context.Context, addr string) (*ReleaseInfo, error) {
 }
 
 func getStateEntry(stateFilePath string) (*StateEntry, error) {
-	content, err := ioutil.ReadFile(stateFilePath)
+	content, err := os.ReadFile(stateFilePath)
 	if err != nil {
 		return nil, err
 	}
@@ -218,7 +218,7 @@ func setStateEntry(stateFilePath string, t time.Time, r ReleaseInfo) error {
 	if err != nil {
 		return err
 	}
-	_ = ioutil.WriteFile(stateFilePath, content, 0600)
+	_ = os.WriteFile(stateFilePath, content, 0600)
 
 	return nil
 }

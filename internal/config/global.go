@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"io/ioutil"
+	"os"
 	"path"
 
 	"gopkg.in/yaml.v2"
@@ -77,7 +77,7 @@ func (f *FileConfig) Write(path string) error {
 		return fmt.Errorf("can't marshal file config: %s", err)
 	}
 
-	return ioutil.WriteFile(path, d, 0644)
+	return os.WriteFile(path, d, 0644)
 }
 
 // WriteDefault persists the file config to the default global path.

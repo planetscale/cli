@@ -3,7 +3,6 @@ package config
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"path"
@@ -55,7 +54,7 @@ func New() (*Config, error) {
 				log.Printf("Unable to change %v file mode to 0%o: %v", tokenPath, TokenFileMode, err)
 			}
 		}
-		accessToken, err = ioutil.ReadFile(tokenPath)
+		accessToken, err = os.ReadFile(tokenPath)
 		if err != nil {
 			log.Fatal(err)
 		}
