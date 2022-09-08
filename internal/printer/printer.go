@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"strings"
 	"time"
@@ -107,7 +106,7 @@ func (p *Printer) Print(i ...interface{}) {
 }
 
 // out defines the output to write human readable text. If format is not set to
-// human, out returns ioutil.Discard, which means that any output will be
+// human, out returns io.Discard, which means that any output will be
 // discarded
 func (p *Printer) out() io.Writer {
 	if p.humanOut != nil {
@@ -118,7 +117,7 @@ func (p *Printer) out() io.Writer {
 		return color.Output
 	}
 
-	return ioutil.Discard // /dev/nullj
+	return io.Discard // /dev/nullj
 }
 
 // PrintProgress starts a spinner with the relevant message. The returned

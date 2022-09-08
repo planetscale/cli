@@ -2,7 +2,6 @@ package auth
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"runtime"
 
@@ -143,7 +142,7 @@ func writeAccessToken(ctx context.Context, accessToken string) error {
 	}
 
 	tokenBytes := []byte(accessToken)
-	err = ioutil.WriteFile(tokenPath, tokenBytes, config.TokenFileMode)
+	err = os.WriteFile(tokenPath, tokenBytes, config.TokenFileMode)
 	if err != nil {
 		return errors.Wrap(err, "error writing token")
 	}

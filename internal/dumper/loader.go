@@ -3,7 +3,6 @@ package dumper
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -42,7 +41,7 @@ func NewLoader(cfg *Config) (*Loader, error) {
 	}, nil
 }
 
-// Loader used to start the loader worker.
+// Run used to start the loader worker.
 func (l *Loader) Run(ctx context.Context) error {
 	pool, err := NewPool(l.log, l.cfg.Threads, l.cfg.Address, l.cfg.User, l.cfg.Password, l.cfg.SessionVars, "")
 	if err != nil {
@@ -154,7 +153,7 @@ func (l *Loader) restoreDatabaseSchema(dbs []string, conn *Connection) error {
 		base := filepath.Base(db)
 		name := strings.TrimSuffix(base, dbSuffix)
 
-		data, err := ioutil.ReadFile(db)
+		data, err := os.ReadFile(db)
 		if err != nil {
 			return err
 		}
@@ -194,7 +193,7 @@ func (l *Loader) restoreTableSchema(overwrite bool, tables []string, conn *Conne
 			return err
 		}
 
-		data, err := ioutil.ReadFile(table)
+		data, err := os.ReadFile(table)
 		if err != nil {
 			return err
 		}
@@ -259,7 +258,7 @@ func (l *Loader) restoreTable(table string, conn *Connection) (int, error) {
 		return 0, err
 	}
 
-	data, err := ioutil.ReadFile(table)
+	data, err := os.ReadFile(table)
 
 	if err != nil {
 		return 0, err
