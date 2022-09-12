@@ -106,8 +106,3 @@ func (d *DeployRequestsService) SkipRevertDeploy(ctx context.Context, req *ps.Sk
 	d.SkipRevertDeployFnInvoked = true
 	return d.SkipRevertDeployFn(ctx, req)
 }
-
-func (d *DeployRequestsService) AutoApplyDeploy(ctx context.Context, req *ps.AutoApplyDeployRequestRequest) (*ps.DeployRequest, error) {
-	d.AutoApplyDeployFnInvoked = true
-	return d.AutoApplyDeployFn(ctx, req)
-}
