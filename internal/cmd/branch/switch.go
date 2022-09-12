@@ -16,6 +16,7 @@ import (
 func SwitchCmd(ch *cmdutil.Helper) *cobra.Command {
 	var parentBranch string
 	var autoCreate bool
+	var wait bool
 
 	cmd := &cobra.Command{
 		Use:   "switch <branch>",
@@ -25,7 +26,7 @@ func SwitchCmd(ch *cmdutil.Helper) *cobra.Command {
 			ctx := cmd.Context()
 			branch := args[0]
 
-			client, err := ch.Config.NewClientFromConfig()
+			client, err := ch.Client()
 			if err != nil {
 				return err
 			}
@@ -62,8 +63,22 @@ func SwitchCmd(ch *cmdutil.Helper) *cobra.Command {
 				if err != nil {
 					return err
 				}
-
 				end()
+
+				// wait and check until the DB is ready
+				if wait {
+					end := ch.Printer.PrintProgress(fmt.Sprintf("Waiting until branch %s is ready...", printer.BoldBlue(branch)))
+					defer end()
+					getReq := &ps.GetDatabaseBranchRequest{
+						Organization: ch.Config.Organization,
+						Database:     ch.Config.Database,
+						Branch:       branch,
+					}
+					if err := waitUntilReady(ctx, client, ch.Printer, ch.Debug(), getReq); err != nil {
+						return err
+					}
+					end()
+				}
 			}
 
 			cfg := config.FileConfig{
@@ -94,6 +109,7 @@ func SwitchCmd(ch *cmdutil.Helper) *cobra.Command {
 		"parent branch to inherit from if a new branch is being created")
 	cmd.Flags().BoolVar(&autoCreate, "create", false,
 		"if enabled, will automatically create the branch if it does not exist")
+	cmd.Flags().BoolVar(&wait, "wait", false, "wait until the branch is ready")
 
 	cmd.MarkPersistentFlagRequired("database") // nolint:errcheck
 	return cmd

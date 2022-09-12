@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -99,7 +99,7 @@ func SignupCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 			defer resp.Body.Close()
 
-			out, err := ioutil.ReadAll(resp.Body)
+			out, err := io.ReadAll(resp.Body)
 			if err != nil {
 				return err
 			}

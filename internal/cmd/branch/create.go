@@ -18,7 +18,8 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	createReq := &ps.CreateDatabaseBranchRequest{}
 
 	var flags struct {
-		wait bool
+		wait          bool
+		dataBranching bool
 	}
 
 	cmd := &cobra.Command{
@@ -66,6 +67,10 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			source := args[0]
 			branch := args[1]
+
+			if flags.dataBranching {
+				createReq.SeedData = "last_successful_backup"
+			}
 
 			createReq.Database = source
 			createReq.Name = branch
@@ -135,6 +140,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().StringVar(&createReq.ParentBranch, "from", "", "branch to be created from")
 	cmd.Flags().StringVar(&createReq.Region, "region", "", "region for the database")
 	cmd.Flags().StringVar(&createReq.BackupID, "restore", "", "backup to restore into the branch")
+	cmd.Flags().BoolVar(&flags.dataBranching, "seed-data", false, "add seed data using the Data Branching™ feature")
 	cmd.Flags().BoolVar(&flags.wait, "wait", false, "wait until the branch is ready")
 
 	cmd.RegisterFlagCompletionFunc("region", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {

@@ -11,6 +11,7 @@ endif
 REPO=planetscale
 NAME=pscale
 BUILD_PKG=github.com/planetscale/cli/cmd/pscale
+GORELEASE_CROSS_VERSION ?= v1.19.1
 
 .PHONY: all
 all: build test lint
@@ -21,7 +22,7 @@ test:
 
 .PHONY: build
 build:
-	@go build ./... 
+	@go build -trimpath ./...
 
 .PHONY: lint
 lint: 
@@ -54,3 +55,17 @@ push:
 clean:
 	@echo "==> Cleaning artifacts"
 	@rm ${NAME}
+
+.PHONY: release
+release:
+	@docker run \
+		--rm \
+		-e GITHUB_TOKEN=${GITHUB_TOKEN} \
+		-e DOCKER_USERNAME=${DOCKER_USERNAME} \
+		-e DOCKER_PASSWORD=${DOCKER_PASSWORD} \
+		-e GORELEASER_CURRENT_TAG=${GORELEASER_CURRENT_TAG} \
+		-v /var/run/docker.sock:/var/run/docker.sock \
+		-v `pwd`:/go/src/${REPO}/${NAME} \
+		-w /go/src/${REPO}/${NAME} \
+		goreleaser/goreleaser-cross:${GORELEASE_CROSS_VERSION} \
+		release --rm-dist

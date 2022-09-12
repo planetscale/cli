@@ -34,6 +34,7 @@ func AuditLogCmd(ch *cmdutil.Helper) *cobra.Command {
 type AuditLogs []*AuditLog
 
 type AuditLog struct {
+	ID        string `header:"id" json:"id"`
 	Actor     string `header:"actor" json:"actor"`
 	Action    string `header:"action" json:"action"`
 	Event     string `header:"event" json:"type"`
@@ -61,6 +62,7 @@ func (a AuditLogs) String() string {
 // toAuditLog Returns a struct that prints out the various fields of a branch model.
 func toAuditLog(a *ps.AuditLog) *AuditLog {
 	return &AuditLog{
+		ID:        a.ID,
 		Actor:     a.ActorDisplayName,
 		Action:    fmt.Sprintf("%s %s", cases.Title(language.English).String(a.Action), a.AuditableDisplayName),
 		Event:     a.AuditAction,

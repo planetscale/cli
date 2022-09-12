@@ -81,7 +81,7 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Deleting database %s...", printer.BoldBlue(name)))
 			defer end()
 
-			err = client.Databases.Delete(ctx, &planetscale.DeleteDatabaseRequest{
+			dbr, err := client.Databases.Delete(ctx, &planetscale.DeleteDatabaseRequest{
 				Organization: ch.Config.Organization,
 				Database:     name,
 			})
@@ -97,6 +97,13 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			end()
 
+			if dbr != nil {
+				return &cmdutil.Error{
+					Msg:      fmt.Sprintf("A deletion request for database %s was successfully created. Database will be deleted after another database administrator also requests deletion.", printer.BoldBlue(name)),
+					ExitCode: cmdutil.ActionRequestedExitCode,
+				}
+			}
+
 			if ch.Printer.Format() == printer.Human {
 				ch.Printer.Printf("Database %s was successfully deleted.\n", printer.BoldBlue(name))
 				return nil
@@ -111,6 +118,6 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().BoolVar(&force, "force", false, "Delete a databse without confirmation")
+	cmd.Flags().BoolVar(&force, "force", false, "Delete a database without confirmation")
 	return cmd
 }

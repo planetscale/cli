@@ -66,7 +66,7 @@ second argument:
 				return err
 			}
 
-			client, err := ch.Config.NewClientFromConfig()
+			client, err := ch.Client()
 			if err != nil {
 				return err
 			}
@@ -200,7 +200,7 @@ second argument:
 	cmd.PersistentFlags().StringVar(&flags.role, "role",
 		"admin", "Role defines the access level, allowed values are : reader, writer, readwriter, admin. By default it is admin.")
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
-	cmd.PersistentFlags().MarkHidden("role")
+
 	return cmd
 }
 

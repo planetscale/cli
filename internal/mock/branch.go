@@ -28,6 +28,9 @@ type DatabaseBranchesService struct {
 	VSchemaFn        func(context.Context, *ps.BranchVSchemaRequest) (*ps.VSchemaDiff, error)
 	VSchemaFnInvoked bool
 
+	KeyspacesFn        func(context.Context, *ps.BranchKeyspacesRequest) ([]*ps.Keyspace, error)
+	KeyspacesFnInvoked bool
+
 	RefreshSchemaFn        func(context.Context, *ps.RefreshSchemaRequest) error
 	RefreshSchemaFnInvoked bool
 
@@ -71,6 +74,11 @@ func (d *DatabaseBranchesService) Schema(ctx context.Context, req *ps.BranchSche
 func (d *DatabaseBranchesService) VSchema(ctx context.Context, req *ps.BranchVSchemaRequest) (*ps.VSchemaDiff, error) {
 	d.VSchemaFnInvoked = true
 	return d.VSchemaFn(ctx, req)
+}
+
+func (d *DatabaseBranchesService) Keyspaces(ctx context.Context, req *ps.BranchKeyspacesRequest) ([]*ps.Keyspace, error) {
+	d.KeyspacesFnInvoked = true
+	return d.KeyspacesFn(ctx, req)
 }
 
 func (d *DatabaseBranchesService) RefreshSchema(ctx context.Context, req *ps.RefreshSchemaRequest) error {
