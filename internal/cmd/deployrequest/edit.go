@@ -59,7 +59,7 @@ func EditCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			if ch.Printer.Format() == printer.Human {
-				ch.Printer.Printf("Successfully enabled auto-apply changes for '%s/%s'.\n",
+				ch.Printer.Printf("Successfully updated auto-apply changes for '%s/%s'.\n",
 					printer.BoldBlue(database),
 					printer.BoldBlue(dr.Number))
 				return nil
