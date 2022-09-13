@@ -21,12 +21,12 @@ func DeployRequestCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
 
 	cmd.AddCommand(ApplyCmd(ch))
-	cmd.AddCommand(EditCmd(ch))
 	cmd.AddCommand(CancelCmd(ch))
 	cmd.AddCommand(CloseCmd(ch))
 	cmd.AddCommand(CreateCmd(ch))
 	cmd.AddCommand(DeployCmd(ch))
 	cmd.AddCommand(DiffCmd(ch))
+	cmd.AddCommand(EditCmd(ch))
 	cmd.AddCommand(ListCmd(ch))
 	cmd.AddCommand(ReviewCmd(ch))
 	cmd.AddCommand(ShowCmd(ch))
