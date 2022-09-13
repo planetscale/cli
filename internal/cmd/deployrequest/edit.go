@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// AutoApplyCmd is the command for enabling/disabling auto applying a gated deploy requests.
+// EditCmd is the command for editing preferences on deploy requests.
 func EditCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
 		autoApply string
