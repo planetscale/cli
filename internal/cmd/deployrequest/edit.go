@@ -37,16 +37,16 @@ func EditCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			switch flags.autoApply {
-			case "enabled", "disabled":
+			case "enable", "disable":
 			default:
-				return fmt.Errorf("--auto-apply accepts only \"enabled\" or \"disabled\" but got %q", flags.autoApply)
+				return fmt.Errorf("--auto-apply accepts only \"enable\" or \"disable\" but got %q", flags.autoApply)
 			}
 
 			dr, err := client.DeployRequests.AutoApplyDeploy(ctx, &planetscale.AutoApplyDeployRequestRequest{
 				Organization: ch.Config.Organization,
 				Database:     database,
 				Number:       n,
-				Enable:       flags.autoApply == "enabled",
+				Enable:       flags.autoApply == "enable",
 			})
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
@@ -69,6 +69,6 @@ func EditCmd(ch *cmdutil.Helper) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&flags.autoApply, "auto-apply", "enabled", "Update the auto apply setting for a deploy request. Possible values: [enabled,disabled]")
+	cmd.Flags().StringVar(&flags.autoApply, "auto-apply", "enable", "Update the auto apply setting for a deploy request. Possible values: [enable,disable]")
 	return cmd
 }
