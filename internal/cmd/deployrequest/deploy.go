@@ -1,8 +1,11 @@
 package deployrequest
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
@@ -13,6 +16,10 @@ import (
 
 // DeployCmd is the command for deploying deploy requests.
 func DeployCmd(ch *cmdutil.Helper) *cobra.Command {
+	var flags struct {
+		wait bool
+	}
+
 	cmd := &cobra.Command{
 		Use:   "deploy <database> <number>",
 		Short: "Deploy a specific deploy request",
@@ -47,15 +54,64 @@ func DeployCmd(ch *cmdutil.Helper) *cobra.Command {
 				}
 			}
 
-			if ch.Printer.Format() == printer.Human {
-				ch.Printer.Printf("Successfully queued %s from %s for deployment to %s.\n",
-					dr.ID, dr.Branch, dr.IntoBranch)
-				return nil
+			// wait and check until the deploy request is deployed
+			if flags.wait {
+				end := ch.Printer.PrintProgress(fmt.Sprintf("Waiting until deploy request %s/%s is deployed...",
+					printer.BoldBlue(database), printer.BoldBlue(number)))
+				defer end()
+				getReq := &planetscale.GetDeployRequestRequest{
+					Organization: ch.Config.Organization,
+					Database:     database,
+					Number:       n,
+				}
+				if err := waitUntilReady(ctx, client, ch.Printer, ch.Debug(), getReq); err != nil {
+					return err
+				}
+				end()
+
+				ch.Printer.Printf("Deploy request %s/%s is successfully deployed.",
+					printer.BoldBlue(database), printer.BoldBlue(number))
+
+			} else {
+				if ch.Printer.Format() == printer.Human {
+					ch.Printer.Printf("Successfully queued %s from %s for deployment to %s.\n",
+						dr.ID, dr.Branch, dr.IntoBranch)
+					return nil
+				}
 			}
 
 			return ch.Printer.PrintResource(toDeployRequest(dr))
 		},
 	}
 
+	cmd.Flags().BoolVar(&flags.wait, "wait", false, "wait until the branch is ready")
+
 	return cmd
+}
+
+// waitUntilReady waits until the given deploy request has been deployed. It times out after 3 minutes.
+func waitUntilReady(ctx context.Context, client *planetscale.Client, printer *printer.Printer, debug bool, getReq *planetscale.GetDeployRequestRequest) error {
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Minute)
+	defer cancel()
+
+	ticker := time.NewTicker(time.Second)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return errors.New("deploy request queueing timed out")
+		case <-ticker.C:
+			resp, err := client.DeployRequests.Get(ctx, getReq)
+			if err != nil {
+				if debug {
+					printer.Printf("fetching deploy request %s/%d failed: %s", getReq.Database, getReq.Number, err)
+				}
+				continue
+			}
+
+			if resp.State == "complete" {
+				return nil
+			}
+		}
+	}
 }
