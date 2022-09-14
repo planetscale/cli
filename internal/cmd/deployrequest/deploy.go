@@ -84,7 +84,7 @@ func DeployCmd(ch *cmdutil.Helper) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().BoolVar(&flags.wait, "wait", false, "wait until the branch is ready")
+	cmd.Flags().BoolVar(&flags.wait, "wait", false, "wait until the branch is deployed")
 
 	return cmd
 }
@@ -109,7 +109,7 @@ func waitUntilReady(ctx context.Context, client *planetscale.Client, printer *pr
 				continue
 			}
 
-			if resp.State == "complete" {
+			if resp.State == "complete_pending_revert" {
 				return nil
 			}
 		}
