@@ -86,4 +86,4 @@ If you need a more advanced example that works with service tokens and different
 
 ## Documentation
 
-Please checkout our Documentation page: [docs.planetscale.com](https://docs.planetscale.com/reference/planetscale-cli/)
+Please checkout our Documentation page: [planetscale.com/docs](https://planetscale.com/docs/reference/planetscale-cli)
