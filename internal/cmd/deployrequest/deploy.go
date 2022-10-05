@@ -119,7 +119,7 @@ func waitUntilReady(ctx context.Context, client *planetscale.Client, printer *pr
 				continue
 			}
 
-			if resp.Deployment.State == "complete_pending_revert" || resp.Deployment.State == "pending_cutover" {
+			if resp.Deployment.State == "complete" || resp.Deployment.State == "complete_pending_revert" || resp.Deployment.State == "pending_cutover" {
 				return resp.Deployment.State, nil
 			}
 		}
