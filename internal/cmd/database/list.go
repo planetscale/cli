@@ -14,6 +14,11 @@ import (
 
 // ListCmd is the command for listing all databases for an authenticated user.
 func ListCmd(ch *cmdutil.Helper) *cobra.Command {
+	var flags struct {
+		page    int
+		perPage int
+	}
+
 	cmd := &cobra.Command{
 		Use:     "list",
 		Short:   "List databases",
@@ -43,7 +48,7 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 			defer end()
 			databases, err := client.Databases.List(ctx, &planetscale.ListDatabasesRequest{
 				Organization: ch.Config.Organization,
-			})
+			}, planetscale.WithPage(flags.page), planetscale.WithPerPage(flags.perPage))
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
@@ -56,7 +61,12 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 			end()
 
 			if len(databases) == 0 && ch.Printer.Format() == printer.Human {
-				ch.Printer.Println("No databases have been created yet.")
+				if flags.page == 0 {
+					ch.Printer.Println("No databases have been created yet.")
+				} else {
+					ch.Printer.Println("No databases found on this page.")
+				}
+
 				return nil
 			}
 
@@ -66,6 +76,8 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 
 	cmd.Flags().BoolP("web", "w", false, "Open in your web browser")
+	cmd.Flags().IntVar(&flags.page, "page", 0, "Page number to fetch")
+	cmd.Flags().IntVar(&flags.perPage, "per-page", 100, "Number of results per page")
 
 	return cmd
 }
