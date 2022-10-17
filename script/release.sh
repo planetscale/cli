@@ -14,7 +14,7 @@ cat >"$tmpdir/docker.json" <<EOF
     {
       "user" : "$DOCKER_USERNAME",
       "pass" : "$DOCKER_PASSWORD",
-      "registry" : "hub.docker.io"
+      "registry" : ""
     }
   ]
 }
