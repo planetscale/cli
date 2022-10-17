@@ -28,7 +28,7 @@ require (
 	github.com/xelabs/go-mysqlstack v1.0.0
 	go.uber.org/zap v1.23.0
 	golang.org/x/sys v0.0.0-20220811171246-fbc7d0a398ab
-	golang.org/x/text v0.3.7
+	golang.org/x/text v0.3.8
 	gopkg.in/yaml.v2 v2.4.0
 )
 
