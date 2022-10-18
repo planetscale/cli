@@ -1,17 +1,14 @@
 ---
-name: github.com/mitchellh/mapstructure
-version: v1.5.0
+name: go.uber.org/zap/internal
+version: v1.23.0
 type: go
-summary: Package mapstructure exposes functionality to convert one arbitrary Go type
-  into another, typically to convert a map[string]interface{} into a native Go structure.
-homepage: https://pkg.go.dev/github.com/mitchellh/mapstructure
+summary: 
+homepage: https://pkg.go.dev/go.uber.org/zap/internal
 license: mit
 licenses:
-- sources: LICENSE
+- sources: zap@v1.23.0/LICENSE.txt
   text: |
-    The MIT License (MIT)
-
-    Copyright (c) 2013 Mitchell Hashimoto
+    Copyright (c) 2016-2017 Uber Technologies, Inc.
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to deal

@@ -1,10 +1,10 @@
 ---
 name: github.com/fsnotify/fsnotify
-version: v1.5.1
+version: v1.5.4
 type: go
 summary: Package fsnotify provides a platform-independent interface for file system
   notifications.
-homepage: https://godoc.org/github.com/fsnotify/fsnotify
+homepage: https://pkg.go.dev/github.com/fsnotify/fsnotify
 license: bsd-3-clause
 licenses:
 - sources: LICENSE
@@ -44,7 +44,7 @@ notices:
     list using the following command:\n#\n#   $ (head -n10 AUTHORS && git shortlog
     -se | sed -E 's/^\\s+[0-9]+\\t//') | tee AUTHORS\n\n# Please keep the list sorted.\n\nAaron
     L <aaron@bettercoder.net>\nAdrien Bustany <adrien@bustany.org>\nAlexey Kazakov
-    <alkazako@redhat.com>\nAmit Krishnan <amit.krishnan@oracle.com>\nAnmol Sethi <me@anmol.io>\nBjørn
+    <alkazako@redhat.com>\nAmit Krishnan <amit.krishnan@oracle.com>\nAnmol Sethi <me@anmol.io>\nBj??rn
     Erik Pedersen <bjorn.erik.pedersen@gmail.com>\nBrian Goff <cpuguy83@gmail.com>\nBruno
     Bigras <bigras.bruno@gmail.com>\nCaleb Spare <cespare@gmail.com>\nCase Nelson
     <case@teammating.com>\nChris Howey <howeyc@gmail.com>\nChristoffer Buchholz <christoffer.buchholz@gmail.com>\nDaniel
@@ -63,4 +63,5 @@ notices:
     Sharma <tilaks@google.com>\nTobias Klauser <tobias.klauser@gmail.com>\nTom Payne
     <twpayne@gmail.com>\nTravis Cline <travis.cline@gmail.com>\nTudor Golubenco <tudor.g@gmail.com>\nVahe
     Khachikyan <vahe@live.ca>\nYukang <moorekang@gmail.com>\nbronze1man <bronze1man@gmail.com>\ndebrando
-    <denis.brandolini@gmail.com>\nhenrikedwards <henrik.edwards@gmail.com>\n铁哥 <guotie.9@gmail.com>"
+    <denis.brandolini@gmail.com>\nhenrikedwards <henrik.edwards@gmail.com>\n??????
+    <guotie.9@gmail.com>"
