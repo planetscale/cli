@@ -1,8 +1,8 @@
 ---
 name: github.com/spf13/viper
-version: v1.11.0
+version: v1.13.0
 type: go
-summary:
+summary: 
 homepage: https://pkg.go.dev/github.com/spf13/viper
 license: mit
 licenses:

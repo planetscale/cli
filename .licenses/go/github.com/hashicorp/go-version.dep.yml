@@ -1,9 +1,9 @@
 ---
 name: github.com/hashicorp/go-version
-version: v1.4.0
+version: v1.6.0
 type: go
 summary: 
-homepage: https://godoc.org/github.com/hashicorp/go-version
+homepage: https://pkg.go.dev/github.com/hashicorp/go-version
 license: mpl-2.0
 licenses:
 - sources: LICENSE

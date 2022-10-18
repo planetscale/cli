@@ -1,12 +1,12 @@
 ---
 name: github.com/planetscale/planetscale-go/planetscale
-version: v0.59.0
+version: v0.74.0
 type: go
-summary:
+summary: 
 homepage: https://pkg.go.dev/github.com/planetscale/planetscale-go/planetscale
 license: apache-2.0
 licenses:
-- sources: planetscale-go/LICENSE
+- sources: planetscale-go@v0.74.0/LICENSE
   text: |2
 
                                      Apache License

@@ -1,13 +1,13 @@
 ---
 name: golang.org/x/sys/internal/unsafeheader
-version: v0.0.0-20220412211240-33da011f77ad
+version: v0.0.0-20220811171246-fbc7d0a398ab
 type: go
 summary: Package unsafeheader contains header declarations for the Go runtime's slice
   and string implementations.
 homepage: https://pkg.go.dev/golang.org/x/sys/internal/unsafeheader
 license: bsd-3-clause
 licenses:
-- sources: sys/LICENSE
+- sources: sys@v0.0.0-20220811171246-fbc7d0a398ab/LICENSE
   text: |
     Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -36,7 +36,7 @@ licenses:
     THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-- sources: sys/PATENTS
+- sources: sys@v0.0.0-20220811171246-fbc7d0a398ab/PATENTS
   text: |
     Additional IP Rights Grant (Patents)
 

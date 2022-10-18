@@ -11,7 +11,7 @@ endif
 REPO=planetscale
 NAME=pscale
 BUILD_PKG=github.com/planetscale/cli/cmd/pscale
-GORELEASE_CROSS_VERSION ?= v1.19.1
+GORELEASE_CROSS_VERSION ?= v1.19.2
 
 .PHONY: all
 all: build test lint
