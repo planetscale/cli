@@ -1,12 +1,12 @@
 ---
 name: github.com/spf13/viper/internal/encoding/yaml
-version: v1.13.0
+version: v1.14.0
 type: go
 summary: 
 homepage: https://pkg.go.dev/github.com/spf13/viper/internal/encoding/yaml
 license: mit
 licenses:
-- sources: viper@v1.13.0/LICENSE
+- sources: viper@v1.14.0/LICENSE
   text: |-
     The MIT License (MIT)
 
