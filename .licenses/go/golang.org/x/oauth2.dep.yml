@@ -1,6 +1,6 @@
 ---
 name: golang.org/x/oauth2
-version: v0.0.0-20221014153046-6fdb5e3db783
+version: v0.2.0
 type: go
 summary: Package oauth2 provides support for making OAuth2 authorized and authenticated
   HTTP requests, as specified in RFC 6749.
