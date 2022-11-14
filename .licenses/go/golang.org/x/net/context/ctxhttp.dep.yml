@@ -1,13 +1,13 @@
 ---
 name: golang.org/x/net/context/ctxhttp
-version: v0.0.0-20221014081412-f15817d10f9b
+version: v0.2.0
 type: go
 summary: Package ctxhttp provides helper functions for performing context-aware HTTP
   requests.
 homepage: https://pkg.go.dev/golang.org/x/net/context/ctxhttp
 license: bsd-3-clause
 licenses:
-- sources: net@v0.0.0-20221014081412-f15817d10f9b/LICENSE
+- sources: net@v0.2.0/LICENSE
   text: |
     Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -36,7 +36,7 @@ licenses:
     THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-- sources: net@v0.0.0-20221014081412-f15817d10f9b/PATENTS
+- sources: net@v0.2.0/PATENTS
   text: |
     Additional IP Rights Grant (Patents)
 
