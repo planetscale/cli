@@ -20,6 +20,7 @@ type restoreFlags struct {
 	localAddr string
 	dir       string
 	overwrite bool
+	threads   int
 }
 
 // RestoreCmd encapsulates the commands for restore a database
@@ -38,6 +39,7 @@ func RestoreCmd(ch *cmdutil.Helper) *cobra.Command {
 		"Directory containing the files to be used for the restore (required)")
 	cmd.PersistentFlags().BoolVar(&f.overwrite, "overwrite-tables", false, "If true, will attempt to DROP TABLE before restoring.")
 
+	cmd.PersistentFlags().IntVar(&f.threads, "threads", 1, "Number of concurrent threads to use to restore the database.")
 	return cmd
 }
 
@@ -107,6 +109,7 @@ func restore(ch *cmdutil.Helper, cmd *cobra.Command, flags *restoreFlags, args [
 	}
 
 	cfg := dumper.NewDefaultConfig()
+	cfg.Threads = flags.threads
 	cfg.User = "root"
 	// NOTE: the password is a placeholder, replace once we get rid of the proxy
 	cfg.Password = "root"
