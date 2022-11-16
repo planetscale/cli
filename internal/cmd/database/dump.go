@@ -48,7 +48,7 @@ func DumpCmd(ch *cmdutil.Helper) *cobra.Command {
 		"Comma separated string of WHERE clauses to filter the tables to dump. Only used when you specify tables to dump. Default is not to filter dumped tables.")
 	cmd.PersistentFlags().StringVar(&f.output, "output", "",
 		"Output directory of the dump. By default the dump is saved to a folder in the current directory.")
-	cmd.PersistentFlags().IntVar(&f.threads, "threads", 16, "Number of concurrent threads to use to restore the database.")
+	cmd.PersistentFlags().IntVar(&f.threads, "threads", 16, "Number of concurrent threads to use to dump the database.")
 
 	return cmd
 }
