@@ -51,7 +51,7 @@ type Config struct {
 
 func NewDefaultConfig() *Config {
 	return &Config{
-		Threads: 16,
+		Threads: 1,
 	}
 }
 
