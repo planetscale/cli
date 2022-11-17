@@ -22,25 +22,23 @@ func TestServiceToken_ShowAccess(t *testing.T) {
 	p.SetResourceOutput(&buf)
 
 	org := "planetscale"
-	db := "planetscale"
 	token := "123456"
-	accesses := []string{"read_branch", "delete_branch"}
 
-	orig := []*ps.ServiceTokenAccess{
+	orig := []*ps.ServiceTokenGrant{
 		{
-			ID:       "id-1",
-			Access:   "read_branch",
-			Resource: ps.Database{Name: db},
+			ID:           "id-1",
+			Accesses:     []string{"read_branch"},
+			ResourceName: "db1",
 		},
 		{
-			ID:       "id-2",
-			Access:   "delete_branch",
-			Resource: ps.Database{Name: db},
+			ID:           "id-2",
+			Accesses:     []string{"delete_branch"},
+			ResourceName: "db2",
 		},
 	}
 
 	svc := &mock.ServiceTokenService{
-		GetAccessFn: func(ctx context.Context, req *ps.GetServiceTokenAccessRequest) ([]*ps.ServiceTokenAccess, error) {
+		ListGrantsFn: func(ctx context.Context, req *ps.ListServiceTokenGrantsRequest) ([]*ps.ServiceTokenGrant, error) {
 			c.Assert(req.Organization, qt.Equals, org)
 			c.Assert(req.ID, qt.Equals, token)
 
@@ -68,12 +66,16 @@ func TestServiceToken_ShowAccess(t *testing.T) {
 	err := cmd.Execute()
 
 	c.Assert(err, qt.IsNil)
-	c.Assert(svc.GetAccessFnInvoked, qt.IsTrue)
+	c.Assert(svc.ListGrantsFnInvoked, qt.IsTrue)
 
-	res := []*ServiceTokenAccess{
+	res := []*ServiceTokenGrant{
 		{
-			Database: db,
-			Accesses: accesses,
+			Database: "db1",
+			Accesses: []string{"read_branch"},
+		},
+		{
+			Database: "db2",
+			Accesses: []string{"delete_branch"},
 		},
 	}
 	c.Assert(buf.String(), qt.JSONEquals, res)
