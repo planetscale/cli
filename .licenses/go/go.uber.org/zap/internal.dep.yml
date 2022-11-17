@@ -2,7 +2,7 @@
 name: go.uber.org/zap/internal
 version: v1.23.0
 type: go
-summary:
+summary: 
 homepage: https://pkg.go.dev/go.uber.org/zap/internal
 license: mit
 licenses:

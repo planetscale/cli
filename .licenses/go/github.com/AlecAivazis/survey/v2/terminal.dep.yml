@@ -1,12 +1,12 @@
 ---
 name: github.com/AlecAivazis/survey/v2/terminal
-version: v2.3.5
+version: v2.3.6
 type: go
-summary:
+summary: 
 homepage: https://pkg.go.dev/github.com/AlecAivazis/survey/v2/terminal
 license: mit
 licenses:
-- sources: v2@v2.3.5/LICENSE
+- sources: v2@v2.3.6/LICENSE
   text: |
     MIT License
 

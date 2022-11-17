@@ -27,6 +27,7 @@ type dumpFlags struct {
 	tables    string
 	wheres    string
 	output    string
+	threads   int
 }
 
 // DumpCmd encapsulates the commands for dumping a database
@@ -47,6 +48,7 @@ func DumpCmd(ch *cmdutil.Helper) *cobra.Command {
 		"Comma separated string of WHERE clauses to filter the tables to dump. Only used when you specify tables to dump. Default is not to filter dumped tables.")
 	cmd.PersistentFlags().StringVar(&f.output, "output", "",
 		"Output directory of the dump. By default the dump is saved to a folder in the current directory.")
+	cmd.PersistentFlags().IntVar(&f.threads, "threads", 16, "Number of concurrent threads to use to dump the database.")
 
 	return cmd
 }
@@ -137,6 +139,7 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 	}
 
 	cfg := dumper.NewDefaultConfig()
+	cfg.Threads = flags.threads
 	cfg.User = "root"
 	// NOTE(fatih): the password is a placeholder, replace once we get rid of the proxy
 	cfg.Password = "root"

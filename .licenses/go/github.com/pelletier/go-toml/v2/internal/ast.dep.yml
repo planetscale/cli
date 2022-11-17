@@ -2,7 +2,7 @@
 name: github.com/pelletier/go-toml/v2/internal/ast
 version: v2.0.5
 type: go
-summary:
+summary: 
 homepage: https://pkg.go.dev/github.com/pelletier/go-toml/v2/internal/ast
 license: mit
 licenses:

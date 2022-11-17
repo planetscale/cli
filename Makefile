@@ -11,7 +11,7 @@ endif
 REPO=planetscale
 NAME=pscale
 BUILD_PKG=github.com/planetscale/cli/cmd/pscale
-GORELEASE_CROSS_VERSION ?= v1.19.1
+GORELEASE_CROSS_VERSION ?= v1.19.2
 
 .PHONY: all
 all: build test lint
@@ -25,7 +25,7 @@ build:
 	@go build -trimpath ./...
 
 .PHONY: lint
-lint: 
+lint:
 	@go install honnef.co/go/tools/cmd/staticcheck@HEAD
 	@staticcheck ./...
 
@@ -35,7 +35,7 @@ licensed:
 	licensed status
 
 .PHONY: build-image
-build-image: 
+build-image:
 	@echo "==> Building docker image ${REPO}/${NAME}:$(VERSION)"
 	@# Permit building only if the Git tree is clean
 	@echo "${GIT_TREE_STATE}" | grep -Eq "^clean" || ( echo "Git tree state is not clean"; exit 1 )
@@ -61,11 +61,11 @@ release:
 	@docker run \
 		--rm \
 		-e GITHUB_TOKEN=${GITHUB_TOKEN} \
-		-e DOCKER_USERNAME=${DOCKER_USERNAME} \
-		-e DOCKER_PASSWORD=${DOCKER_PASSWORD} \
 		-e GORELEASER_CURRENT_TAG=${GORELEASER_CURRENT_TAG} \
+		-e DOCKER_CREDS_FILE=${DOCKER_CREDS_FILE} \
+		-v ${DOCKER_CREDS_FILE}:${DOCKER_CREDS_FILE} \
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		-v `pwd`:/go/src/${REPO}/${NAME} \
 		-w /go/src/${REPO}/${NAME} \
 		goreleaser/goreleaser-cross:${GORELEASE_CROSS_VERSION} \
-		release --rm-dist
+		release --rm-dist ${GORELEASER_EXTRA_ARGS}

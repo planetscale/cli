@@ -1,9 +1,9 @@
 ---
-name: golang.org/x/text/internal/language
+name: golang.org/x/text/runes
 version: v0.4.0
 type: go
-summary: 
-homepage: https://pkg.go.dev/golang.org/x/text/internal/language
+summary: Package runes provide transforms for UTF-8 encoded text.
+homepage: https://pkg.go.dev/golang.org/x/text/runes
 license: bsd-3-clause
 licenses:
 - sources: text@v0.4.0/LICENSE
