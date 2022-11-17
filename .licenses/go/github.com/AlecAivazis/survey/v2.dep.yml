@@ -1,9 +1,9 @@
 ---
 name: github.com/AlecAivazis/survey/v2
-version: v2.3.4
+version: v2.3.5
 type: go
-summary: 
-homepage: https://godoc.org/github.com/AlecAivazis/survey/v2
+summary:
+homepage: https://pkg.go.dev/github.com/AlecAivazis/survey/v2
 license: mit
 licenses:
 - sources: LICENSE

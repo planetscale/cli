@@ -1,10 +1,10 @@
 ---
 name: github.com/fsnotify/fsnotify
-version: v1.5.1
+version: v1.5.4
 type: go
 summary: Package fsnotify provides a platform-independent interface for file system
   notifications.
-homepage: https://godoc.org/github.com/fsnotify/fsnotify
+homepage: https://pkg.go.dev/github.com/fsnotify/fsnotify
 license: bsd-3-clause
 licenses:
 - sources: LICENSE

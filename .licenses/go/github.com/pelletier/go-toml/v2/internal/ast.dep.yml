@@ -1,16 +1,16 @@
 ---
-name: github.com/spf13/viper/internal/encoding/json
-version: v1.13.0
+name: github.com/pelletier/go-toml/v2/internal/ast
+version: v2.0.5
 type: go
 summary:
-homepage: https://pkg.go.dev/github.com/spf13/viper/internal/encoding/json
+homepage: https://pkg.go.dev/github.com/pelletier/go-toml/v2/internal/ast
 license: mit
 licenses:
-- sources: viper@v1.13.0/LICENSE
-  text: |-
+- sources: v2@v2.0.5/LICENSE
+  text: |
     The MIT License (MIT)
 
-    Copyright (c) 2014 Steve Francia
+    Copyright (c) 2013 - 2022 Thomas Pelletier, Eric Anderton
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to deal
@@ -29,4 +29,6 @@ licenses:
     LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
+- sources: v2@v2.0.5/README.md
+  text: The MIT License (MIT). Read [LICENSE](LICENSE).
 notices: []
