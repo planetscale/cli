@@ -59,7 +59,7 @@ func toServiceTokens(serviceTokens []*ps.ServiceToken) []*ServiceToken {
 	return snapshots
 }
 
-// ServiceTokenAccess returns a table and json serializable schema snapshot.
+// ServiceTokenAccess returns a table and json serializiable service token
 type ServiceTokenAccess struct {
 	Database string   `header:"database" json:"database"`
 	Accesses []string `header:"accesses" json:"accesses"`
@@ -82,5 +82,23 @@ func toServiceTokenAccesses(st []*ps.ServiceTokenAccess) []*ServiceTokenAccess {
 	for _, v := range data {
 		out = append(out, v)
 	}
+	return out
+}
+
+// ServiceTokenGrant erturns a table and json serializable service token grant
+type ServiceTokenGrant struct {
+	Database string   `header:"database" json:"database"`
+	Accesses []string `header:"accesses" json:"accesses"`
+}
+
+func toServiceTokenGrants(st []*ps.ServiceTokenGrant) []*ServiceTokenGrant {
+	out := make([]*ServiceTokenGrant, 0, len(st))
+	for _, v := range st {
+		out = append(out, &ServiceTokenGrant{
+			Database: v.ResourceName,
+			Accesses: v.Accesses,
+		})
+	}
+
 	return out
 }
