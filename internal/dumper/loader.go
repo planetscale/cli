@@ -74,6 +74,8 @@ func (l *Loader) Run(ctx context.Context) error {
 		files.tables[i], files.tables[j] = files.tables[j], files.tables[i]
 	}
 
+	errs := make(chan error, len(files.tables)) // errors from table inserts
+
 	var wg sync.WaitGroup
 	var bytes uint64
 	t := time.Now()
@@ -87,8 +89,7 @@ func (l *Loader) Run(ctx context.Context) error {
 			}()
 			r, err := l.restoreTable(table, conn)
 			if err != nil {
-				fmt.Printf("err = %+v\n", err)
-				// TODO(fatih) log error via logger
+				errs <- err
 			}
 
 			atomic.AddUint64(&bytes, uint64(r))
@@ -113,6 +114,15 @@ func (l *Loader) Run(ctx context.Context) error {
 
 	wg.Wait()
 	elapsed := time.Since(t)
+
+	select {
+	case err := <-errs:
+		l.log.Error("error restoring", zap.Error(err))
+		return err
+	default:
+		// nothing on the error channel
+	}
+
 	l.log.Info(
 		"restoring all done",
 		zap.Duration("elapsed_time", elapsed),
