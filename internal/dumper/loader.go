@@ -7,11 +7,11 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/planetscale/cli/internal/cmdutil"
+	"golang.org/x/sync/errgroup"
 
 	"go.uber.org/zap"
 )
@@ -74,26 +74,25 @@ func (l *Loader) Run(ctx context.Context) error {
 		files.tables[i], files.tables[j] = files.tables[j], files.tables[i]
 	}
 
-	errs := make(chan error, len(files.tables)) // errors from table inserts
-
-	var wg sync.WaitGroup
+	var eg errgroup.Group
 	var bytes uint64
 	t := time.Now()
+
 	for _, table := range files.tables {
+		table := table
 		conn := pool.Get()
-		wg.Add(1)
-		go func(conn *Connection, table string) {
-			defer func() {
-				wg.Done()
-				pool.Put(conn)
-			}()
+
+		eg.Go(func() error {
+			defer pool.Put(conn)
+
 			r, err := l.restoreTable(table, conn)
 			if err != nil {
-				errs <- err
+				return err
 			}
 
 			atomic.AddUint64(&bytes, uint64(r))
-		}(conn, table)
+			return nil
+		})
 	}
 
 	tick := time.NewTicker(time.Millisecond * time.Duration(l.cfg.IntervalMs))
@@ -112,15 +111,11 @@ func (l *Loader) Run(ctx context.Context) error {
 		}
 	}()
 
-	wg.Wait()
 	elapsed := time.Since(t)
 
-	select {
-	case err := <-errs:
+	if err := eg.Wait(); err != nil {
 		l.log.Error("error restoring", zap.Error(err))
 		return err
-	default:
-		// nothing on the error channel
 	}
 
 	l.log.Info(
@@ -269,7 +264,6 @@ func (l *Loader) restoreTable(table string, conn *Connection) (int, error) {
 	}
 
 	data, err := os.ReadFile(table)
-
 	if err != nil {
 		return 0, err
 	}
