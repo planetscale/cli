@@ -1,12 +1,12 @@
 ---
 name: go.uber.org/zap/internal
-version: v1.23.0
+version: v1.24.0
 type: go
 summary: 
 homepage: https://pkg.go.dev/go.uber.org/zap/internal
 license: mit
 licenses:
-- sources: zap@v1.23.0/LICENSE.txt
+- sources: zap@v1.24.0/LICENSE.txt
   text: |
     Copyright (c) 2016-2017 Uber Technologies, Inc.
 

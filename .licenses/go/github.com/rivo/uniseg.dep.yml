@@ -1,6 +1,6 @@
 ---
 name: github.com/rivo/uniseg
-version: v0.4.2
+version: v0.4.3
 type: go
 summary: Package uniseg implements Unicode Text Segmentation, Unicode Line Breaking,
   and string width calculation for monospace fonts.
