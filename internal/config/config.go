@@ -21,6 +21,7 @@ const (
 	configName        = "pscale.yml"
 	keyringService    = "pscale"
 	keyringKey        = "access-token"
+	keyringLabel      = "PlanetScale CLI Access Token"
 	tokenFileMode     = 0o600
 )
 
@@ -134,6 +135,19 @@ func readAccessToken() (string, error) {
 
 	item, err := ring.Get(keyringKey)
 	if err == nil {
+		// We're shipping this first without removing the
+		// existing token file. Once we're confident that
+		// the keyring works well, we can remove the token
+		// from disk here.
+		//path, err := accessTokenPath()
+		//if err != nil {
+		//	return "", err
+		//}
+		//err = os.Remove(path)
+		//if err != nil {
+		//	return "", err
+		//}
+
 		return string(item.Data), nil
 	}
 
@@ -155,20 +169,21 @@ func readAccessToken() (string, error) {
 
 func migrateAccessToken(ring keyring.Keyring, accessToken []byte) (string, error) {
 	err := ring.Set(keyring.Item{
-		Key:  keyringKey,
-		Data: accessToken,
+		Key:   keyringKey,
+		Data:  accessToken,
+		Label: keyringLabel,
 	})
 	if err != nil {
 		return "", err
 	}
+
 	path, err := accessTokenPath()
-	if err != nil {
-		return "", err
+	if err == nil {
+		fmt.Fprintf(os.Stderr, "Your access token has been migrated to your keyring.\n"+
+			"In a future version we will remove the existing token located at: \n\n%s\n\n"+
+			"If you want, you can manually delete the token file to complete the migration.\n\n", path)
 	}
-	err = os.Remove(path)
-	if err != nil {
-		return "", err
-	}
+
 	return string(accessToken), nil
 }
 
@@ -180,8 +195,9 @@ func WriteAccessToken(accessToken string) error {
 	}
 
 	return ring.Set(keyring.Item{
-		Key:  keyringKey,
-		Data: []byte(accessToken),
+		Key:   keyringKey,
+		Data:  []byte(accessToken),
+		Label: keyringLabel,
 	})
 }
 
