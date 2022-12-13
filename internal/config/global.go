@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
-	"path"
+	"path/filepath"
 
 	"gopkg.in/yaml.v2"
 )
@@ -108,5 +108,5 @@ func DefaultConfigPath() (string, error) {
 		return "", err
 	}
 
-	return path.Join(dir, configName), nil
+	return filepath.Join(dir, configName), nil
 }
