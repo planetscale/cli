@@ -290,22 +290,7 @@ func deleteAccessTokenPath() error {
 	return nil
 }
 
-func writeAccessTokenPath(accessToken string) error {
-	configDir, err := ConfigDir()
-	if err != nil {
-		return err
-	}
-
-	_, err = os.Stat(configDir)
-	if os.IsNotExist(err) {
-		err := os.MkdirAll(configDir, 0771)
-		if err != nil {
-			return errors.Wrap(err, "error creating config directory")
-		}
-	} else if err != nil {
-		return err
-	}
-
+func writeAccessTokenPath(accessToken string) error {	
 	tokenPath, err := accessTokenPath()
 	if err != nil {
 		return err
