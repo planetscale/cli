@@ -80,7 +80,8 @@ func (f *FileConfig) Write(path string) error {
 	return os.WriteFile(path, d, 0644)
 }
 
-// WriteDefault persists the file config to the default global path.
+// WriteDefault creates the config directory and persists the file config
+// to the default global path.
 func (f *FileConfig) WriteDefault() error {
 	configDir, err := ConfigDir()
 	if err != nil {
