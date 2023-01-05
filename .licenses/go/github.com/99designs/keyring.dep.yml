@@ -1,6 +1,6 @@
 ---
 name: github.com/99designs/keyring
-version: v1.2.1
+version: v1.2.2
 type: go
 summary: Package keyring provides a uniform API over a range of desktop credential
   storage engines.
@@ -32,4 +32,3 @@ licenses:
     SOFTWARE.
 
 notices: []
-...
