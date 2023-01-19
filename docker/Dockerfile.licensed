@@ -1,4 +1,4 @@
-FROM golang:1.19.4-bullseye
+FROM golang:1.19.5-bullseye
 
 RUN apt-get update && apt-get upgrade -y
 RUN apt-get install -y ruby-dev rubygems ruby cmake pkg-config git-core libgit2-dev
