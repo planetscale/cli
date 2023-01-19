@@ -15,7 +15,7 @@ import (
 )
 
 func PromoteCmd(ch *cmdutil.Helper) *cobra.Command {
-	promoteReq := &ps.PromoteRequest{}
+	promoteReq := &ps.RequestPromotionRequest{}
 
 	cmd := &cobra.Command{
 		Use:     "promote <database> <branch> [options]",
@@ -71,7 +71,7 @@ func PromoteCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Promoting %s branch in %s to production...", printer.BoldBlue(branch), printer.BoldBlue(source)))
 			defer end()
-			promotionRequest, err := client.DatabaseBranches.Promote(cmd.Context(), promoteReq)
+			promotionRequest, err := client.DatabaseBranches.RequestPromotion(cmd.Context(), promoteReq)
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case ps.ErrNotFound:

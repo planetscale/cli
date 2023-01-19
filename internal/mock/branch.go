@@ -34,8 +34,8 @@ type DatabaseBranchesService struct {
 	RefreshSchemaFn        func(context.Context, *ps.RefreshSchemaRequest) error
 	RefreshSchemaFnInvoked bool
 
-	PromoteFn        func(context.Context, *ps.PromoteRequest) (*ps.BranchPromotionRequest, error)
-	PromoteFnInvoked bool
+	RequestPromotionFn        func(context.Context, *ps.RequestPromotionRequest) (*ps.BranchPromotionRequest, error)
+	RequestPromotionFnInvoked bool
 
 	GetPromotionRequestFn        func(context.Context, *ps.GetPromotionRequestRequest) (*ps.BranchPromotionRequest, error)
 	GetPromotionRequestFnInvoked bool
@@ -86,9 +86,9 @@ func (d *DatabaseBranchesService) RefreshSchema(ctx context.Context, req *ps.Ref
 	return d.RefreshSchemaFn(ctx, req)
 }
 
-func (d *DatabaseBranchesService) Promote(ctx context.Context, req *ps.PromoteRequest) (*ps.BranchPromotionRequest, error) {
-	d.PromoteFnInvoked = true
-	return d.PromoteFn(ctx, req)
+func (d *DatabaseBranchesService) RequestPromotion(ctx context.Context, req *ps.RequestPromotionRequest) (*ps.BranchPromotionRequest, error) {
+	d.RequestPromotionFnInvoked = true
+	return d.RequestPromotionFn(ctx, req)
 }
 
 func (d *DatabaseBranchesService) GetPromotionRequest(ctx context.Context, req *ps.GetPromotionRequestRequest) (*ps.BranchPromotionRequest, error) {
