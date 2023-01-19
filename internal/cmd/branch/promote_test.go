@@ -30,7 +30,7 @@ func TestBranch_PromoteCmd(t *testing.T) {
 	}
 
 	svc := &mock.DatabaseBranchesService{
-		PromoteFn: func(ctx context.Context, req *ps.PromoteRequest) (*ps.BranchPromotionRequest, error) {
+		PromoteFn: func(ctx context.Context, req *ps.RequestPromotionRequest) (*ps.BranchPromotionRequest, error) {
 			c.Assert(req.Branch, qt.Equals, branch)
 			c.Assert(req.Database, qt.Equals, db)
 			c.Assert(req.Organization, qt.Equals, org)
