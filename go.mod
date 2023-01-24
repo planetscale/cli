@@ -7,7 +7,7 @@ require (
 	github.com/AlecAivazis/survey/v2 v2.3.6
 	github.com/benbjohnson/clock v1.3.0
 	github.com/briandowns/spinner v1.20.0
-	github.com/fatih/color v1.14.0
+	github.com/fatih/color v1.14.1
 	github.com/frankban/quicktest v1.14.4
 	github.com/go-sql-driver/mysql v1.7.0
 	github.com/gocarina/gocsv v0.0.0-20221105105431-c8ef78125b99
