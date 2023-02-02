@@ -30,6 +30,7 @@ func TestServiceToken_ShowAccess(t *testing.T) {
 			Accesses: []*ps.ServiceTokenGrantAccess{
 				{Access: "read_branch", Description: "Read database branch info"},
 			},
+			ResourceType: "Database",
 			ResourceName: "db1",
 		},
 		{
@@ -37,6 +38,7 @@ func TestServiceToken_ShowAccess(t *testing.T) {
 			Accesses: []*ps.ServiceTokenGrantAccess{
 				{Access: "delete_branch", Description: "Delete a database branch"},
 			},
+			ResourceType: "Database",
 			ResourceName: "db2",
 		},
 	}
