@@ -26,13 +26,17 @@ func TestServiceToken_ShowAccess(t *testing.T) {
 
 	orig := []*ps.ServiceTokenGrant{
 		{
-			ID:           "id-1",
-			Accesses:     []string{"read_branch"},
+			ID: "id-1",
+			Accesses: []*ps.ServiceTokenGrantAccess{
+				{Access: "read_branch", Description: "Read database branch info"},
+			},
 			ResourceName: "db1",
 		},
 		{
-			ID:           "id-2",
-			Accesses:     []string{"delete_branch"},
+			ID: "id-2",
+			Accesses: []*ps.ServiceTokenGrantAccess{
+				{Access: "delete_branch", Description: "Delete a database branch"},
+			},
 			ResourceName: "db2",
 		},
 	}
@@ -70,12 +74,14 @@ func TestServiceToken_ShowAccess(t *testing.T) {
 
 	res := []*ServiceTokenGrant{
 		{
-			Database: "db1",
-			Accesses: []string{"read_branch"},
+			ResourceName: "db1",
+			ResourceType: "Database",
+			Accesses:     []string{"read_branch"},
 		},
 		{
-			Database: "db2",
-			Accesses: []string{"delete_branch"},
+			ResourceName: "db2",
+			ResourceType: "Database",
+			Accesses:     []string{"delete_branch"},
 		},
 	}
 	c.Assert(buf.String(), qt.JSONEquals, res)
