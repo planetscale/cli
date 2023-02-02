@@ -34,7 +34,7 @@ func TestPassword_CreateCmd(t *testing.T) {
 			c.Assert(req.Organization, qt.Equals, org)
 			c.Assert(req.Database, qt.Equals, db)
 			c.Assert(req.Branch, qt.Equals, branch)
-			c.Assert(req.DisplayName, qt.Equals, name)
+			c.Assert(req.Name, qt.Equals, name)
 			c.Assert(req.Role, qt.Equals, role)
 
 			return res, nil
@@ -82,7 +82,7 @@ func TestPassword_CreateCmd_InvalidRole(t *testing.T) {
 			c.Assert(req.Organization, qt.Equals, org)
 			c.Assert(req.Database, qt.Equals, db)
 			c.Assert(req.Branch, qt.Equals, branch)
-			c.Assert(req.DisplayName, qt.Equals, name)
+			c.Assert(req.Name, qt.Equals, name)
 			c.Assert(req.Role, qt.Equals, "")
 
 			return res, nil
@@ -130,7 +130,7 @@ func TestPassword_CreateCmd_DefaultRoleAdmin(t *testing.T) {
 			c.Assert(req.Organization, qt.Equals, org)
 			c.Assert(req.Database, qt.Equals, db)
 			c.Assert(req.Branch, qt.Equals, branch)
-			c.Assert(req.DisplayName, qt.Equals, name)
+			c.Assert(req.Name, qt.Equals, name)
 			c.Assert(req.Role, qt.Equals, "admin")
 
 			return res, nil

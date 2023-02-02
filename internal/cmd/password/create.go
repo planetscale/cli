@@ -37,7 +37,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			createReq.Database = database
 			createReq.Branch = branch
 			createReq.Organization = ch.Config.Organization
-			createReq.DisplayName = name
+			createReq.Name = name
 			createReq.Role = flags.role
 
 			client, err := ch.Client()
