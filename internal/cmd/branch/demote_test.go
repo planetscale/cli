@@ -13,7 +13,7 @@ import (
 	ps "github.com/planetscale/planetscale-go/planetscale"
 )
 
-func TestBranch_PromoteCmd(t *testing.T) {
+func TestBranch_DemoteCmd(t *testing.T) {
 	c := qt.New(t)
 
 	var buf bytes.Buffer
@@ -30,21 +30,12 @@ func TestBranch_PromoteCmd(t *testing.T) {
 	}
 
 	svc := &mock.DatabaseBranchesService{
-		RequestPromotionFn: func(ctx context.Context, req *ps.RequestPromotionRequest) (*ps.BranchPromotionRequest, error) {
+		DemoteFn: func(ctx context.Context, req *ps.DemoteRequest) (*ps.BranchDemotionRequest, error) {
 			c.Assert(req.Branch, qt.Equals, branch)
 			c.Assert(req.Database, qt.Equals, db)
 			c.Assert(req.Organization, qt.Equals, org)
 
-			return &ps.BranchPromotionRequest{
-				Branch: branch,
-				State:  "pending",
-			}, nil
-		},
-		GetPromotionRequestFn: func(ctx context.Context, req *ps.GetPromotionRequestRequest) (*ps.BranchPromotionRequest, error) {
-			return &ps.BranchPromotionRequest{
-				Branch: branch,
-				State:  "promoted",
-			}, nil
+			return nil, nil
 		},
 		GetFn: func(ctx context.Context, req *ps.GetDatabaseBranchRequest) (*ps.DatabaseBranch, error) {
 			c.Assert(req.Branch, qt.Equals, branch)
@@ -68,13 +59,64 @@ func TestBranch_PromoteCmd(t *testing.T) {
 		},
 	}
 
-	cmd := PromoteCmd(ch)
+	cmd := DemoteCmd(ch)
 	cmd.SetArgs([]string{db, branch})
 	err := cmd.Execute()
 
 	c.Assert(err, qt.IsNil)
-	c.Assert(svc.RequestPromotionFnInvoked, qt.IsTrue)
+	c.Assert(svc.DemoteFnInvoked, qt.IsTrue)
 	c.Assert(svc.GetFnInvoked, qt.IsTrue)
-	c.Assert(svc.GetPromotionRequestFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.JSONEquals, res)
+}
+
+func TestBranch_DemoteCmdWithDemotionRequest(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	db := "planetscale"
+	branch := "development"
+
+	res := &ps.BranchDemotionRequest{
+		ID:    "test",
+		State: "pending",
+		Actor: &ps.Actor{
+			Name: "Test User",
+		},
+	}
+
+	svc := &mock.DatabaseBranchesService{
+		DemoteFn: func(ctx context.Context, req *ps.DemoteRequest) (*ps.BranchDemotionRequest, error) {
+			c.Assert(req.Branch, qt.Equals, branch)
+			c.Assert(req.Database, qt.Equals, db)
+			c.Assert(req.Organization, qt.Equals, org)
+
+			return res, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: org,
+		},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{
+				DatabaseBranches: svc,
+			}, nil
+
+		},
+	}
+
+	cmd := DemoteCmd(ch)
+	cmd.SetArgs([]string{db, branch})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.DemoteFnInvoked, qt.IsTrue)
 	c.Assert(buf.String(), qt.JSONEquals, res)
 }

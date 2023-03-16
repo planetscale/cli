@@ -30,6 +30,7 @@ func BranchCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.AddCommand(SchemaCmd(ch))
 	cmd.AddCommand(RefreshSchemaCmd(ch))
 	cmd.AddCommand(PromoteCmd(ch))
+	cmd.AddCommand(DemoteCmd(ch))
 	cmd.AddCommand(VSchemaCmd(ch))
 	cmd.AddCommand(KeyspaceCmd(ch))
 
@@ -53,6 +54,47 @@ func (d *DatabaseBranch) MarshalJSON() ([]byte, error) {
 
 func (d *DatabaseBranch) MarshalCSVValue() interface{} {
 	return []*DatabaseBranch{d}
+}
+
+// Actor represents an actor for an action
+type Actor struct {
+	Name string `header:"name"`
+}
+
+type BranchDemotionRequest struct {
+	ID        string `header:"id" json:"id"`
+	Actor     *Actor `header:"actor" json:"actor"`
+	State     string `header:"state" json:"state"`
+	CreatedAt int64  `header:"created_at,timestamp(ms|utc|human)" json:"created_at"`
+	UpdatedAt int64  `header:"updated_at,timestamp(ms|utc|human)" json:"updated_at"`
+
+	orig *ps.BranchDemotionRequest
+}
+
+func ToBranchDemotionRequest(dr *ps.BranchDemotionRequest) *BranchDemotionRequest {
+	newDR := &BranchDemotionRequest{
+		ID:        dr.ID,
+		State:     dr.State,
+		CreatedAt: cmdutil.TimeToMilliseconds(dr.CreatedAt),
+		UpdatedAt: cmdutil.TimeToMilliseconds(dr.UpdatedAt),
+		orig:      dr,
+	}
+
+	if dr.Actor != nil {
+		newDR.Actor = &Actor{
+			Name: dr.Actor.Name,
+		}
+	}
+
+	return newDR
+}
+
+func (d *BranchDemotionRequest) MarshalJSON() ([]byte, error) {
+	return json.MarshalIndent(d.orig, "", "  ")
+}
+
+func (d *BranchDemotionRequest) MarshalCSVValue() interface{} {
+	return []*BranchDemotionRequest{d}
 }
 
 // ToDatabaseBranch returns a struct that prints out the various fields of a

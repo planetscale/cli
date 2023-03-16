@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/planetscale/cli/internal/config"
 	"github.com/planetscale/cli/internal/printer"
@@ -230,4 +231,8 @@ func ParseSSLMode(sslMode string) ps.ExternalDataSourceSSLVerificationMode {
 	default:
 		return ps.SSLModeVerifyIdentity
 	}
+}
+
+func TimeToMilliseconds(t time.Time) int64 {
+	return t.UTC().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond))
 }
