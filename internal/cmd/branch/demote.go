@@ -65,7 +65,12 @@ func DemoteCmd(ch *cmdutil.Helper) *cobra.Command {
 				}
 			}
 
-			return nil
+			if ch.Printer.Format() == printer.Human {
+				ch.Printer.Printf("Successfully requested to demote %s branch to development, requires admin approval.\n", printer.BoldBlue(branch))
+				return nil
+			} else {
+				return ch.Printer.PrintResource(ToBranchDemotionRequest(demotionRequest))
+			}
 		},
 	}
 
