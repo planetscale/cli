@@ -18,10 +18,9 @@ func PromoteCmd(ch *cmdutil.Helper) *cobra.Command {
 	promoteReq := &ps.RequestPromotionRequest{}
 
 	cmd := &cobra.Command{
-		Use:     "promote <database> <branch> [options]",
-		Short:   "Promote a new branch from a database",
-		Args:    cmdutil.RequiredArgs("source-database", "branch"),
-		Aliases: []string{"b"},
+		Use:   "promote <database> <branch> [options]",
+		Short: "Promote a new branch from a database",
+		Args:  cmdutil.RequiredArgs("database", "branch"),
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			if len(args) != 0 {
 				return nil, cobra.ShellCompDirectiveNoFileComp
