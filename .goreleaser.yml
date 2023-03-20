@@ -117,6 +117,11 @@ archives:
       - README.md
       - LICENSE
       - completions/*
+sboms:
+  -
+    id: spdx-default
+    documents: ["${artifact}.spdx.sbom"]
+    args: ["$artifact", "--file", "$sbom", "--output", "spdx-json"]
 snapshot:
   name_template: "{{ .Tag }}-next"
 changelog:
