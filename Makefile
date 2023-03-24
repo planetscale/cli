@@ -11,7 +11,8 @@ endif
 REPO=planetscale
 NAME=pscale
 BUILD_PKG=github.com/planetscale/cli/cmd/pscale
-GORELEASE_CROSS_VERSION ?= v1.20.1
+GORELEASE_CROSS_VERSION ?= v1.20.2
+SYFT_VERSION ?= 0.75.0
 
 .PHONY: all
 all: build test lint
@@ -58,6 +59,7 @@ clean:
 
 .PHONY: release
 release:
+	@docker build --build-arg GORELEASE_CROSS_VERSION=$(GORELEASE_CROSS_VERSION) --build-arg SYFT_VERSION=$(SYFT_VERSION) -t releaser -f docker/Dockerfile.goreleaser .
 	@docker run \
 		--rm \
 		-e GITHUB_TOKEN=${GITHUB_TOKEN} \
@@ -67,5 +69,5 @@ release:
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		-v `pwd`:/go/src/${REPO}/${NAME} \
 		-w /go/src/${REPO}/${NAME} \
-		ghcr.io/goreleaser/goreleaser-cross:${GORELEASE_CROSS_VERSION} \
+		releaser \
 		release --rm-dist ${GORELEASER_EXTRA_ARGS}
