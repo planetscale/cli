@@ -48,6 +48,15 @@ type DatabaseBranchesService struct {
 
 	DenyDemotionRequestFn        func(context.Context, *ps.DenyDemotionRequestRequest) error
 	DenyDemotionRequestFnInvoked bool
+
+	EnableSafeMigrationsFn        func(context.Context, *ps.EnableSafeMigrationsRequest) (*ps.DatabaseBranch, error)
+	EnableSafeMigrationsFnInvoked bool
+
+	DisableSafeMigrationsFn        func(context.Context, *ps.DisableSafeMigrationsRequest) (*ps.DatabaseBranch, error)
+	DisableSafeMigrationsFnInvoked bool
+
+	PromoteFn        func(context.Context, *ps.PromoteRequest) (*ps.DatabaseBranch, error)
+	PromoteFnInvoked bool
 }
 
 func (d *DatabaseBranchesService) Create(ctx context.Context, req *ps.CreateDatabaseBranchRequest) (*ps.DatabaseBranch, error) {
@@ -118,4 +127,19 @@ func (d *DatabaseBranchesService) GetDemotionRequest(ctx context.Context, req *p
 func (d *DatabaseBranchesService) DenyDemotionRequest(ctx context.Context, req *ps.DenyDemotionRequestRequest) error {
 	d.DenyDemotionRequestFnInvoked = true
 	return d.DenyDemotionRequestFn(ctx, req)
+}
+
+func (d *DatabaseBranchesService) EnableSafeMigrations(ctx context.Context, req *ps.EnableSafeMigrationsRequest) (*ps.DatabaseBranch, error) {
+	d.EnableSafeMigrationsFnInvoked = true
+	return d.EnableSafeMigrationsFn(ctx, req)
+}
+
+func (d *DatabaseBranchesService) DisableSafeMigrations(ctx context.Context, req *ps.DisableSafeMigrationsRequest) (*ps.DatabaseBranch, error) {
+	d.DisableSafeMigrationsFnInvoked = true
+	return d.DisableSafeMigrationsFn(ctx, req)
+}
+
+func (d *DatabaseBranchesService) Promote(ctx context.Context, req *ps.PromoteRequest) (*ps.DatabaseBranch, error) {
+	d.PromoteFnInvoked = true
+	return d.PromoteFn(ctx, req)
 }
