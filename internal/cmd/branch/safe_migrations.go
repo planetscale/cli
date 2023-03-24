@@ -12,8 +12,9 @@ import (
 
 func SafeMigrationsCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "safe-migrations <command>",
-		Short: "Enable or disable safe migrations on a branch",
+		Use:    "safe-migrations <command>",
+		Short:  "Enable or disable safe migrations on a branch",
+		Hidden: true,
 	}
 
 	cmd.AddCommand(EnableSafeMigrationsCmd(ch))
