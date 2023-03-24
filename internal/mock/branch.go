@@ -141,5 +141,5 @@ func (d *DatabaseBranchesService) DisableSafeMigrations(ctx context.Context, req
 
 func (d *DatabaseBranchesService) Promote(ctx context.Context, req *ps.PromoteRequest) (*ps.DatabaseBranch, error) {
 	d.PromoteFnInvoked = true
-	return d.Promote(ctx, req)
+	return d.PromoteFn(ctx, req)
 }
