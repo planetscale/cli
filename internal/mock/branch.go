@@ -57,6 +57,9 @@ type DatabaseBranchesService struct {
 
 	PromoteFn        func(context.Context, *ps.PromoteRequest) (*ps.DatabaseBranch, error)
 	PromoteFnInvoked bool
+
+	LintSchemaFn        func(context.Context, *ps.LintSchemaRequest) ([]*ps.SchemaLintError, error)
+	LintSchemaFnInvoked bool
 }
 
 func (d *DatabaseBranchesService) Create(ctx context.Context, req *ps.CreateDatabaseBranchRequest) (*ps.DatabaseBranch, error) {
@@ -142,4 +145,9 @@ func (d *DatabaseBranchesService) DisableSafeMigrations(ctx context.Context, req
 func (d *DatabaseBranchesService) Promote(ctx context.Context, req *ps.PromoteRequest) (*ps.DatabaseBranch, error) {
 	d.PromoteFnInvoked = true
 	return d.PromoteFn(ctx, req)
+}
+
+func (d *DatabaseBranchesService) LintSchema(ctx context.Context, req *ps.LintSchemaRequest) ([]*ps.SchemaLintError, error) {
+	d.LintSchemaFnInvoked = true
+	return d.LintSchemaFn(ctx, req)
 }
