@@ -55,7 +55,7 @@ func LintCmd(ch *cmdutil.Helper) *cobra.Command {
 			if ch.Printer.Format() == printer.Human {
 				if len(lintErrors) > 0 {
 					var sb strings.Builder
-					sb.WriteString(printer.Red("Detected errors within the schema:\n\n"))
+					sb.WriteString(printer.Red("Detected schema errors:\n\n"))
 					for _, lintError := range lintErrors {
 						fmt.Fprintf(&sb, "• %s\n", lintError.ErrorDescription)
 					}
