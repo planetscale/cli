@@ -80,7 +80,7 @@ func PromoteCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			if ch.Printer.Format() == printer.Human {
-				ch.Printer.Printf("Branch %s in %s was successfully promoted.\n", printer.BoldBlue(branch), printer.BoldBlue(db))
+				ch.Printer.Printf("Branch %s in %s was successfully promoted to production. Note: In order to use deploy requests to deploy schema changes to this branch, safe migrations must also be enabled.\n", printer.BoldBlue(branch), printer.BoldBlue(db))
 				return nil
 			}
 

@@ -26,27 +26,13 @@ func TestBranch_PromoteCmd(t *testing.T) {
 	branch := "development"
 
 	res := &ps.DatabaseBranch{
-		Name: branch,
+		Name:           branch,
+		Production:     true,
+		SafeMigrations: false,
 	}
 
 	svc := &mock.DatabaseBranchesService{
-		RequestPromotionFn: func(ctx context.Context, req *ps.RequestPromotionRequest) (*ps.BranchPromotionRequest, error) {
-			c.Assert(req.Branch, qt.Equals, branch)
-			c.Assert(req.Database, qt.Equals, db)
-			c.Assert(req.Organization, qt.Equals, org)
-
-			return &ps.BranchPromotionRequest{
-				Branch: branch,
-				State:  "pending",
-			}, nil
-		},
-		GetPromotionRequestFn: func(ctx context.Context, req *ps.GetPromotionRequestRequest) (*ps.BranchPromotionRequest, error) {
-			return &ps.BranchPromotionRequest{
-				Branch: branch,
-				State:  "promoted",
-			}, nil
-		},
-		GetFn: func(ctx context.Context, req *ps.GetDatabaseBranchRequest) (*ps.DatabaseBranch, error) {
+		PromoteFn: func(ctx context.Context, req *ps.PromoteRequest) (*ps.DatabaseBranch, error) {
 			c.Assert(req.Branch, qt.Equals, branch)
 			c.Assert(req.Database, qt.Equals, db)
 			c.Assert(req.Organization, qt.Equals, org)
@@ -73,8 +59,6 @@ func TestBranch_PromoteCmd(t *testing.T) {
 	err := cmd.Execute()
 
 	c.Assert(err, qt.IsNil)
-	c.Assert(svc.RequestPromotionFnInvoked, qt.IsTrue)
-	c.Assert(svc.GetFnInvoked, qt.IsTrue)
-	c.Assert(svc.GetPromotionRequestFnInvoked, qt.IsTrue)
+	c.Assert(svc.PromoteFnInvoked, qt.IsTrue)
 	c.Assert(buf.String(), qt.JSONEquals, res)
 }
