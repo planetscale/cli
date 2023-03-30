@@ -1,7 +1,9 @@
 package branch
 
 import (
+	"errors"
 	"fmt"
+	"strings"
 
 	ps "github.com/planetscale/planetscale-go/planetscale"
 
@@ -46,7 +48,37 @@ func EnableSafeMigrationsCmd(ch *cmdutil.Helper) *cobra.Command {
 				Branch:       branch,
 			})
 			if err != nil {
-				return cmdutil.HandleError(err)
+				switch cmdutil.ErrCode(err) {
+				case ps.ErrNotFound:
+					return fmt.Errorf("branch %s does not exist in database %s", printer.BoldBlue(branch), printer.BoldBlue(db))
+				case ps.ErrRetry:
+					if ch.Printer.Format() == printer.Human {
+						lintErrors, err := client.DatabaseBranches.LintSchema(ctx, &ps.LintSchemaRequest{
+							Organization: ch.Config.Organization,
+							Database:     db,
+							Branch:       branch,
+						})
+						if err != nil {
+							return cmdutil.HandleError(err)
+						}
+
+						if len(lintErrors) > 0 {
+							var sb strings.Builder
+							sb.WriteString(printer.Red("Enabling safe migrations failed. "))
+							sb.WriteString("Fix the following errors and then try again:\n\n")
+							for _, lintError := range lintErrors {
+								fmt.Fprintf(&sb, "• %s\n", lintError.ErrorDescription)
+							}
+
+							return errors.New(sb.String())
+						}
+					}
+
+					return cmdutil.HandleError(err)
+				default:
+					return cmdutil.HandleError(err)
+				}
+
 			}
 
 			end()
