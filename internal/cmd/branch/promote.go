@@ -1,10 +1,7 @@
 package branch
 
 import (
-	"context"
-	"errors"
 	"fmt"
-	"time"
 
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
@@ -89,29 +86,4 @@ func PromoteCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 
 	return cmd
-}
-
-func waitPromoteState(ctx context.Context, client *ps.Client, getReq *ps.GetPromotionRequestRequest) (*ps.BranchPromotionRequest, error) {
-	ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
-	defer cancel()
-
-	ticker := time.NewTicker(time.Second)
-
-	var promotionRequest *ps.BranchPromotionRequest
-	var err error
-	for {
-		select {
-		case <-ctx.Done():
-			return nil, errors.New("branch promotion timed out")
-		case <-ticker.C:
-			promotionRequest, err = client.DatabaseBranches.GetPromotionRequest(ctx, getReq)
-			if err != nil {
-				return nil, err
-			}
-
-			if promotionRequest.State != "pending" {
-				return promotionRequest, nil
-			}
-		}
-	}
 }
