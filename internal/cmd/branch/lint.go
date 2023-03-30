@@ -63,7 +63,7 @@ func LintCmd(ch *cmdutil.Helper) *cobra.Command {
 					return errors.New(sb.String())
 				}
 
-				ch.Printer.Println(printer.BoldGreen("No errors detected within the schema."))
+				ch.Printer.Println(printer.BoldGreen("No schema errors detected"))
 				return nil
 			} else {
 				return ch.Printer.PrintResource(toSchemaLintErrors(lintErrors))
