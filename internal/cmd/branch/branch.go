@@ -34,6 +34,7 @@ func BranchCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.AddCommand(VSchemaCmd(ch))
 	cmd.AddCommand(KeyspaceCmd(ch))
 	cmd.AddCommand(SafeMigrationsCmd(ch))
+	cmd.AddCommand(LintCmd(ch))
 
 	return cmd
 }
