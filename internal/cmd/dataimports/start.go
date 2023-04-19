@@ -14,6 +14,7 @@ func StartDataImportCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
 		name     string
 		host     string
+		region   string
 		username string
 		password string
 		database string
@@ -44,6 +45,7 @@ func StartDataImportCmd(ch *cmdutil.Helper) *cobra.Command {
 			startImportRequest.Organization = ch.Config.Organization
 			startImportRequest.Database = flags.name
 			startImportRequest.Connection = dataSource
+			startImportRequest.Region = flags.region
 
 			testRequest.Organization = ch.Config.Organization
 			testRequest.Database = flags.database
@@ -116,6 +118,7 @@ func StartDataImportCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 
 	cmd.PersistentFlags().StringVar(&flags.name, "name", "", "")
+	cmd.PersistentFlags().StringVar(&flags.region, "region", "", "region for the PlanetScale database.")
 	cmd.PersistentFlags().StringVar(&flags.host, "host", "", "Host name of the external database.")
 	cmd.PersistentFlags().StringVar(&flags.database, "database", "", "Name of the external database")
 	cmd.PersistentFlags().StringVar(&flags.username, "username", "", "Username to connect to external database.")
