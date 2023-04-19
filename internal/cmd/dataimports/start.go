@@ -12,14 +12,19 @@ import (
 
 func StartDataImportCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
-		name     string
-		host     string
-		username string
-		password string
-		database string
-		port     int
-		dryRun   bool
-		sslMode  string
+		name           string
+		host           string
+		region         string
+		username       string
+		password       string
+		database       string
+		port           int
+		dryRun         bool
+		sslMode        string
+		sslCA          string
+		sslKey         string
+		sslCertificate string
+		sslServerName  string
 	}
 
 	startImportRequest := &ps.StartDataImportRequest{}
@@ -40,10 +45,15 @@ func StartDataImportCmd(ch *cmdutil.Helper) *cobra.Command {
 				HostName:            flags.host,
 				Port:                flags.port,
 				SSLVerificationMode: sslMode,
+				SSLKey:              flags.sslKey,
+				SSLCertificate:      flags.sslCertificate,
+				SSLCA:               flags.sslCA,
+				SSLServerName:       flags.sslServerName,
 			}
 			startImportRequest.Organization = ch.Config.Organization
 			startImportRequest.Database = flags.name
 			startImportRequest.Connection = dataSource
+			startImportRequest.Region = flags.region
 
 			testRequest.Organization = ch.Config.Organization
 			testRequest.Database = flags.database
@@ -96,6 +106,7 @@ func StartDataImportCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			startImportRequest.Plan = resp.SuggestedPlan
+			startImportRequest.MaxPoolSize = resp.MaxPoolSize
 
 			ch.Printer.Println(fmt.Sprintf("starting import of schema and data from external database %s to PlanetScale database %s", printer.BoldBlue(flags.database), printer.BoldGreen(flags.name)))
 			dataImport, err := client.DataImports.StartDataImport(ctx, startImportRequest)
@@ -116,6 +127,7 @@ func StartDataImportCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 
 	cmd.PersistentFlags().StringVar(&flags.name, "name", "", "")
+	cmd.PersistentFlags().StringVar(&flags.region, "region", "", "region for the PlanetScale database.")
 	cmd.PersistentFlags().StringVar(&flags.host, "host", "", "Host name of the external database.")
 	cmd.PersistentFlags().StringVar(&flags.database, "database", "", "Name of the external database")
 	cmd.PersistentFlags().StringVar(&flags.username, "username", "", "Username to connect to external database.")
@@ -123,6 +135,10 @@ func StartDataImportCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.PersistentFlags().IntVar(&flags.port, "port", 3306, "Port number to connect to external database")
 	cmd.PersistentFlags().BoolVar(&flags.dryRun, "dry-run", true, "Only run compatibility check, do not start import")
 	cmd.PersistentFlags().StringVar(&flags.sslMode, "ssl-mode", "", "SSL verification mode, allowed values: disabled, preferred, required, verify_ca, verify_identity")
+	cmd.PersistentFlags().StringVar(&flags.sslServerName, "ssl-server-name", "", "SSL server name override")
+	cmd.PersistentFlags().StringVar(&flags.sslCA, "ssl-certificate-authority", "", "Provide the full CA certificate chain here")
+	cmd.PersistentFlags().StringVar(&flags.sslKey, "ssl-client-key", "", "Private key for the client certificate")
+	cmd.PersistentFlags().StringVar(&flags.sslKey, "ssl-client-certificate", "", "Client Certificate to authenticate PlanetScale with your database server")
 
 	cmd.MarkPersistentFlagRequired("name")
 	cmd.MarkPersistentFlagRequired("host")
