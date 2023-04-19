@@ -12,12 +12,16 @@ import (
 
 func LintExternalDataSourceCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
-		host     string
-		username string
-		password string
-		database string
-		port     int
-		sslMode  string
+		host           string
+		username       string
+		password       string
+		database       string
+		port           int
+		sslMode        string
+		sslCA          string
+		sslKey         string
+		sslCertificate string
+		sslServerName  string
 	}
 
 	testRequest := &ps.TestDataImportSourceRequest{}
@@ -38,6 +42,10 @@ func LintExternalDataSourceCmd(ch *cmdutil.Helper) *cobra.Command {
 				HostName:            flags.host,
 				Port:                flags.port,
 				SSLVerificationMode: sslMode,
+				SSLKey:              flags.sslKey,
+				SSLCertificate:      flags.sslCertificate,
+				SSLCA:               flags.sslCA,
+				SSLServerName:       flags.sslServerName,
 			}
 
 			client, err := ch.Client()
@@ -88,6 +96,10 @@ func LintExternalDataSourceCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.PersistentFlags().StringVar(&flags.username, "username", "", "Username to connect to external database.")
 	cmd.PersistentFlags().StringVar(&flags.password, "password", "", "Password to connect to external database.")
 	cmd.PersistentFlags().StringVar(&flags.sslMode, "ssl-mode", "", "SSL verification mode, allowed values: disabled, preferred, required, verify_ca, verify_identity")
+	cmd.PersistentFlags().StringVar(&flags.sslServerName, "ssl-server-name", "", "SSL server name override")
+	cmd.PersistentFlags().StringVar(&flags.sslCA, "ssl-certificate-authority", "", "Provide the full CA certificate chain here")
+	cmd.PersistentFlags().StringVar(&flags.sslKey, "ssl-client-key", "", "Private key for the client certificate")
+	cmd.PersistentFlags().StringVar(&flags.sslKey, "ssl-client-certificate", "", "Client Certificate to authenticate PlanetScale with your database server")
 	cmd.PersistentFlags().IntVar(&flags.port, "port", 3306, "Port number to connect to external database")
 
 	cmd.MarkPersistentFlagRequired("host")
