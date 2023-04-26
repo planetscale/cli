@@ -86,15 +86,21 @@ If you need a more advanced example that works with service tokens and different
 
 ## Local Development
 
-To build `pscale` for local testing, run:
+To run a command:
+```
+go run cmd/pscale/main.go <command>
+```
+
+Alternatively, you can build `pscale`:
 ```
 go build cmd/pscale/main.go
 ```
 
-You'll now have a `pscale` binary built in `cmd/pscale/`.
+And then use the `pscale` binary built in `cmd/pscale/` for testing:
 ```
-./cmd/pscale/pscale auth
+./cmd/pscale/pscale <command>
 ```
+
 ## Documentation
 
 Please checkout our Documentation page: [planetscale.com/docs](https://planetscale.com/docs/reference/planetscale-cli)
