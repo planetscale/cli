@@ -84,6 +84,17 @@ alias pscale="docker run -e HOME=/tmp -v $HOME/.config/planetscale:/tmp/.config/
 
 If you need a more advanced example that works with service tokens and differentiates between commands that need a pseudo terminal or non-interactive mode, [have a look at this shell function](https://github.com/jonico/pscale-cli-helper-scripts/blob/main/.pscale/cli-helper-scripts/use-pscale-docker-image.sh).
 
+## Local Development
+
+To build `pscale` for local testing, run:
+```
+go build cmd/pscale/main.go
+```
+
+You'll now have a `pscale` binary built in `cmd/pscale/`.
+```
+./cmd/pscale/pscale auth
+```
 ## Documentation
 
 Please checkout our Documentation page: [planetscale.com/docs](https://planetscale.com/docs/reference/planetscale-cli)
