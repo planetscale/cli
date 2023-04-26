@@ -196,7 +196,7 @@ second argument:
 	cmd.PersistentFlags().StringVar(&flags.localAddr, "local-addr",
 		"", "Local address to bind and listen for connections. By default the proxy binds to 127.0.0.1 with a random port.")
 	cmd.PersistentFlags().StringVar(&flags.remoteAddr, "remote-addr", "",
-		"PlanetScale Database remote network address. By default the remote address is populated automatically from the PlanetScale API.")
+		"PlanetScale Database remote network address. By default the remote address is populated automatically from the PlanetScale API. (format: `hostname:port`)")
 	cmd.PersistentFlags().StringVar(&flags.role, "role",
 		"admin", "Role defines the access level, allowed values are : reader, writer, readwriter, admin. By default it is admin.")
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
