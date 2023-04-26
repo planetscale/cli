@@ -52,7 +52,7 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
-					return fmt.Errorf("organization %s does not exist", printer.BoldBlue(ch.Config.Organization))
+					return fmt.Errorf("organization %s does not exist or your account is not authorized to access it", printer.BoldBlue(ch.Config.Organization))
 				default:
 					return cmdutil.HandleError(err)
 				}
