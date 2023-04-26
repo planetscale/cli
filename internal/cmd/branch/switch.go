@@ -40,7 +40,7 @@ func SwitchCmd(ch *cmdutil.Helper) *cobra.Command {
 				Branch:       branch,
 			})
 			if err != nil && !errorIsNotFound(err) {
-				return err
+				return cmdutil.HandleError(err)
 			}
 
 			if errorIsNotFound(err) {
