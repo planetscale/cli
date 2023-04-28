@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"fmt"
 	"github.com/planetscale/cli/internal/auth"
 	"github.com/planetscale/cli/internal/cmdutil"
 
