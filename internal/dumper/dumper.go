@@ -408,9 +408,9 @@ func (d *Dumper) dumpableFieldNames(conn *Connection, table string) ([]string, e
 		name := t[0].String()
 		extra := t[5].String()
 
-		// Can be either "VIRTUAL GENERATED" or "VIRTUAL STORED"
+		// Can be either "VIRTUAL GENERATED" or "STORED GENERATED"
 		// https://dev.mysql.com/doc/refman/8.0/en/show-columns.html
-		if strings.Contains(extra, "VIRTUAL") {
+		if strings.Contains(extra, "GENERATED") {
 			// Skip generated columns
 			continue
 		} else {
