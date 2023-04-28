@@ -18,6 +18,8 @@ import (
 	"go.uber.org/zap"
 )
 
+const VITESS_GHOST_TABLE_REGEX = "_vt_EVAC_.*|_vt_DROP_.*|_vt_PURGE_.*|_vt_HOLD_.*|_[0-9a-zA-Z]{8}_[0-9a-zA-Z]{4}_[0-9a-zA-Z]{4}_.*"
+
 // Config describes the settings to dump from a database.
 type Config struct {
 	User                 string
@@ -124,6 +126,11 @@ func (d *Dumper) Run(ctx context.Context) error {
 
 		defer pool.Close()
 		for _, table := range tables[i] {
+			// Skip vitess ghost tables
+			if regexp.MustCompile(VITESS_GHOST_TABLE_REGEX).MatchString(table) {
+				continue
+			}
+
 			conn := initPool.Get()
 			err := d.dumpTableSchema(conn, database, table)
 			if err != nil {
