@@ -169,6 +169,7 @@ second argument:
 				"-t", // the -s (silent) flag disables tabular output, re-enable it.
 				"-h", host,
 				"-P", port,
+				"-D", database,
 			}
 
 			historyFile, err := historyFilePath(ch.Config.Organization, database, branch)
