@@ -14,6 +14,17 @@ import (
 	qt "github.com/frankban/quicktest"
 )
 
+func createFieldRow(name, extra string) []sqltypes.Value {
+	return []sqltypes.Value{
+		sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte(name)),
+		sqltypes.MakeTrusted(querypb.Type_BLOB, []byte("varchar(255)")),
+		sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("YES")),
+		sqltypes.MakeTrusted(querypb.Type_BINARY, []byte("")),
+		sqltypes.MakeTrusted(querypb.Type_NULL_TYPE, []byte("NULL")),
+		sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte(extra)),
+	}
+}
+
 func TestDumper(t *testing.T) {
 	c := qt.New(t)
 
@@ -114,14 +125,13 @@ func TestDumper(t *testing.T) {
 			{Name: "Extra", Type: querypb.Type_VARCHAR},
 		},
 		Rows: [][]sqltypes.Value{
-			{
-				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("not_deleted")),
-				sqltypes.MakeTrusted(querypb.Type_BLOB, []byte("int")),
-				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("YES")),
-				sqltypes.MakeTrusted(querypb.Type_BINARY, []byte("")),
-				sqltypes.MakeTrusted(querypb.Type_NULL_TYPE, []byte("NULL")),
-				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("VIRTUAL GENERATED")),
-			},
+			createFieldRow("id", ""),
+			createFieldRow("name", ""),
+			createFieldRow("namei1", ""),
+			createFieldRow("null", ""),
+			createFieldRow("decimal", ""),
+			createFieldRow("datetime", ""),
+			createFieldRow("not_deleted", "virtual generated"),
 		},
 	}
 
@@ -261,14 +271,13 @@ func TestDumperGeneratedFields(t *testing.T) {
 			{Name: "Extra", Type: querypb.Type_VARCHAR},
 		},
 		Rows: [][]sqltypes.Value{
-			{
-				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("name")),
-				sqltypes.MakeTrusted(querypb.Type_BLOB, []byte("varchar(255)")),
-				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("YES")),
-				sqltypes.MakeTrusted(querypb.Type_BINARY, []byte("")),
-				sqltypes.MakeTrusted(querypb.Type_NULL_TYPE, []byte("NULL")),
-				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("VIRTUAL GENERATED")),
-			},
+			createFieldRow("id", ""),
+			createFieldRow("name", "VIRTUAL GENERATED"),
+			createFieldRow("namei1", ""),
+			createFieldRow("null", ""),
+			createFieldRow("decimal", ""),
+			createFieldRow("datetime", ""),
+			createFieldRow("not_deleted", "VIRTUAL GENERATED"),
 		},
 	}
 
@@ -442,14 +451,13 @@ func TestDumperAll(t *testing.T) {
 			{Name: "Extra", Type: querypb.Type_VARCHAR},
 		},
 		Rows: [][]sqltypes.Value{
-			{
-				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("not_deleted")),
-				sqltypes.MakeTrusted(querypb.Type_BLOB, []byte("int")),
-				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("YES")),
-				sqltypes.MakeTrusted(querypb.Type_BINARY, []byte("")),
-				sqltypes.MakeTrusted(querypb.Type_NULL_TYPE, []byte("NULL")),
-				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("VIRTUAL GENERATED")),
-			},
+			createFieldRow("id", ""),
+			createFieldRow("name", ""),
+			createFieldRow("namei1", ""),
+			createFieldRow("null", ""),
+			createFieldRow("decimal", ""),
+			createFieldRow("datetime", ""),
+			createFieldRow("not_deleted", "virtual generated"),
 		},
 	}
 
@@ -630,14 +638,13 @@ func TestDumperMultiple(t *testing.T) {
 			{Name: "Extra", Type: querypb.Type_VARCHAR},
 		},
 		Rows: [][]sqltypes.Value{
-			{
-				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("not_deleted")),
-				sqltypes.MakeTrusted(querypb.Type_BLOB, []byte("int")),
-				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("YES")),
-				sqltypes.MakeTrusted(querypb.Type_BINARY, []byte("")),
-				sqltypes.MakeTrusted(querypb.Type_NULL_TYPE, []byte("NULL")),
-				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("VIRTUAL GENERATED")),
-			},
+			createFieldRow("id", ""),
+			createFieldRow("name", ""),
+			createFieldRow("namei1", ""),
+			createFieldRow("null", ""),
+			createFieldRow("decimal", ""),
+			createFieldRow("datetime", ""),
+			createFieldRow("not_deleted", "virtual generated"),
 		},
 	}
 
@@ -828,14 +835,13 @@ func TestDumperSimpleRegexp(t *testing.T) {
 			{Name: "Extra", Type: querypb.Type_VARCHAR},
 		},
 		Rows: [][]sqltypes.Value{
-			{
-				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("not_deleted")),
-				sqltypes.MakeTrusted(querypb.Type_BLOB, []byte("int")),
-				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("YES")),
-				sqltypes.MakeTrusted(querypb.Type_BINARY, []byte("")),
-				sqltypes.MakeTrusted(querypb.Type_NULL_TYPE, []byte("NULL")),
-				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("VIRTUAL GENERATED")),
-			},
+			createFieldRow("id", ""),
+			createFieldRow("name", ""),
+			createFieldRow("namei1", ""),
+			createFieldRow("null", ""),
+			createFieldRow("decimal", ""),
+			createFieldRow("datetime", ""),
+			createFieldRow("not_deleted", "virtual generated"),
 		},
 	}
 
@@ -1026,14 +1032,13 @@ func TestDumperComplexRegexp(t *testing.T) {
 			{Name: "Extra", Type: querypb.Type_VARCHAR},
 		},
 		Rows: [][]sqltypes.Value{
-			{
-				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("not_deleted")),
-				sqltypes.MakeTrusted(querypb.Type_BLOB, []byte("int")),
-				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("YES")),
-				sqltypes.MakeTrusted(querypb.Type_BINARY, []byte("")),
-				sqltypes.MakeTrusted(querypb.Type_NULL_TYPE, []byte("NULL")),
-				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("VIRTUAL GENERATED")),
-			},
+			createFieldRow("id", ""),
+			createFieldRow("name", ""),
+			createFieldRow("namei1", ""),
+			createFieldRow("null", ""),
+			createFieldRow("decimal", ""),
+			createFieldRow("datetime", ""),
+			createFieldRow("not_deleted", "virtual generated"),
 		},
 	}
 
