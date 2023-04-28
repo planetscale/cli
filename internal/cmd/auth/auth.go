@@ -15,5 +15,6 @@ func AuthCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	cmd.AddCommand(LoginCmd(ch))
 	cmd.AddCommand(LogoutCmd(ch))
+	cmd.AddCommand(CheckCmd(ch))
 	return cmd
 }
