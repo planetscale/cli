@@ -90,6 +90,28 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 		}
 	}()
 
+	db, err := client.Databases.Get(ctx, &ps.GetDatabaseRequest{
+		Organization: ch.Config.Organization,
+		Database:     database,
+	})
+	if err != nil {
+		switch cmdutil.ErrCode(err) {
+		case ps.ErrNotFound:
+			return fmt.Errorf("database %s does not exist in organization: %s",
+				printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
+		default:
+			return cmdutil.HandleError(err)
+		}
+	}
+
+	if db.State == ps.DatabaseSleeping {
+		return fmt.Errorf("database %s is sleeping, please wake the database and retry this command", printer.BoldBlue(database))
+	}
+
+	if db.State == ps.DatabaseAwakening {
+		return fmt.Errorf("database %s is waking from sleep, please wait until it's ready and retry this command", printer.BoldBlue(database))
+	}
+
 	dbBranch, err := client.DatabaseBranches.Get(ctx, &ps.GetDatabaseBranchRequest{
 		Organization: ch.Config.Organization,
 		Database:     database,
