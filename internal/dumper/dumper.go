@@ -223,42 +223,27 @@ func (d *Dumper) dumpTable(conn *Connection, database string, table string) erro
 	var where string
 	var selfields []string
 
-	isGenerated, err := d.generatedFields(conn, table)
-	if err != nil {
-		return err
-	}
-
 	fields := make([]string, 0)
 	{
-		cursor, err := conn.StreamFetch(fmt.Sprintf("SELECT * FROM `%s`.`%s` LIMIT 1", database, table))
+		flds, err := d.dumpableFieldNames(conn, table)
 		if err != nil {
 			return err
 		}
 
-		flds := cursor.Fields()
 		for _, fld := range flds {
-			d.log.Debug("dump", zap.Any("filters", d.cfg.Filters), zap.String("table", table), zap.String("field_name", fld.Name))
+			d.log.Debug("dump", zap.Any("filters", d.cfg.Filters), zap.String("table", table), zap.String("field_name", fld))
 
-			if _, ok := d.cfg.Filters[table][fld.Name]; ok {
+			if _, ok := d.cfg.Filters[table][fld]; ok {
 				continue
 			}
 
-			if isGenerated[fld.Name] {
-				continue
-			}
-
-			fields = append(fields, fmt.Sprintf("`%s`", fld.Name))
-			replacement, ok := d.cfg.Selects[table][fld.Name]
+			fields = append(fields, fmt.Sprintf("`%s`", fld))
+			replacement, ok := d.cfg.Selects[table][fld]
 			if ok {
-				selfields = append(selfields, fmt.Sprintf("%s AS `%s`", replacement, fld.Name))
+				selfields = append(selfields, fmt.Sprintf("%s AS `%s`", replacement, fld))
 			} else {
-				selfields = append(selfields, fmt.Sprintf("`%s`", fld.Name))
+				selfields = append(selfields, fmt.Sprintf("`%s`", fld))
 			}
-		}
-
-		err = cursor.Close()
-		if err != nil {
-			return err
 		}
 	}
 
@@ -406,16 +391,15 @@ func (d *Dumper) filterDatabases(conn *Connection, filter *regexp.Regexp, invert
 	return databases, nil
 }
 
-// generatedFields returns a map that contains fields that are virtually
-// generated.
-func (d *Dumper) generatedFields(conn *Connection, table string) (map[string]bool, error) {
+// dumpableFieldNames returns a map that contains valid field names for the dump
+func (d *Dumper) dumpableFieldNames(conn *Connection, table string) ([]string, error) {
 	qr, err := conn.Fetch(fmt.Sprintf("SHOW FIELDS FROM `%s`", table))
 	if err != nil {
 		return nil, err
 
 	}
 
-	fields := map[string]bool{}
+	fields := make([]string, 0, len(qr.Rows))
 	for _, t := range qr.Rows {
 		if len(t) != 6 {
 			return nil, fmt.Errorf("error fetching fields, expecting to have 6 columns, have: %d", len(t))
@@ -427,7 +411,10 @@ func (d *Dumper) generatedFields(conn *Connection, table string) (map[string]boo
 		// Can be either "VIRTUAL GENERATED" or "VIRTUAL STORED"
 		// https://dev.mysql.com/doc/refman/8.0/en/show-columns.html
 		if strings.Contains(extra, "VIRTUAL") {
-			fields[name] = true
+			// Skip generated columns
+			continue
+		} else {
+			fields = append(fields, name)
 		}
 	}
 
