@@ -391,7 +391,7 @@ func (d *Dumper) filterDatabases(conn *Connection, filter *regexp.Regexp, invert
 	return databases, nil
 }
 
-// dumpableFieldNames returns a map that contains valid field names for the dump
+// dumpableFieldNames returns a slice that contains valid field names for the dump.
 func (d *Dumper) dumpableFieldNames(conn *Connection, table string) ([]string, error) {
 	qr, err := conn.Fetch(fmt.Sprintf("SHOW FIELDS FROM `%s`", table))
 	if err != nil {
