@@ -230,19 +230,19 @@ func (d *Dumper) dumpTable(conn *Connection, database string, table string) erro
 			return err
 		}
 
-		for _, fld := range flds {
-			d.log.Debug("dump", zap.Any("filters", d.cfg.Filters), zap.String("table", table), zap.String("field_name", fld))
+		for _, name := range flds {
+			d.log.Debug("dump", zap.Any("filters", d.cfg.Filters), zap.String("table", table), zap.String("field_name", name))
 
-			if _, ok := d.cfg.Filters[table][fld]; ok {
+			if _, ok := d.cfg.Filters[table][name]; ok {
 				continue
 			}
 
-			fields = append(fields, fmt.Sprintf("`%s`", fld))
-			replacement, ok := d.cfg.Selects[table][fld]
+			fields = append(fields, fmt.Sprintf("`%s`", name))
+			replacement, ok := d.cfg.Selects[table][name]
 			if ok {
-				selfields = append(selfields, fmt.Sprintf("%s AS `%s`", replacement, fld))
+				selfields = append(selfields, fmt.Sprintf("%s AS `%s`", replacement, name))
 			} else {
-				selfields = append(selfields, fmt.Sprintf("`%s`", fld))
+				selfields = append(selfields, fmt.Sprintf("`%s`", name))
 			}
 		}
 	}
