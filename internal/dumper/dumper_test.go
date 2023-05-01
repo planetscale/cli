@@ -14,7 +14,7 @@ import (
 	qt "github.com/frankban/quicktest"
 )
 
-func createFieldRow(name, extra string) []sqltypes.Value {
+func testRow(name, extra string) []sqltypes.Value {
 	return []sqltypes.Value{
 		sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte(name)),
 		sqltypes.MakeTrusted(querypb.Type_BLOB, []byte("varchar(255)")),
@@ -125,13 +125,13 @@ func TestDumper(t *testing.T) {
 			{Name: "Extra", Type: querypb.Type_VARCHAR},
 		},
 		Rows: [][]sqltypes.Value{
-			createFieldRow("id", ""),
-			createFieldRow("name", ""),
-			createFieldRow("namei1", ""),
-			createFieldRow("null", ""),
-			createFieldRow("decimal", ""),
-			createFieldRow("datetime", ""),
-			createFieldRow("not_deleted", "virtual generated"),
+			testRow("id", ""),
+			testRow("name", ""),
+			testRow("namei1", ""),
+			testRow("null", ""),
+			testRow("decimal", ""),
+			testRow("datetime", ""),
+			testRow("not_deleted", "virtual generated"),
 		},
 	}
 
@@ -271,13 +271,13 @@ func TestDumperGeneratedFields(t *testing.T) {
 			{Name: "Extra", Type: querypb.Type_VARCHAR},
 		},
 		Rows: [][]sqltypes.Value{
-			createFieldRow("id", ""),
-			createFieldRow("name", "VIRTUAL GENERATED"),
-			createFieldRow("namei1", ""),
-			createFieldRow("null", ""),
-			createFieldRow("decimal", ""),
-			createFieldRow("datetime", ""),
-			createFieldRow("not_deleted", "VIRTUAL GENERATED"),
+			testRow("id", ""),
+			testRow("name", "VIRTUAL GENERATED"),
+			testRow("namei1", ""),
+			testRow("null", ""),
+			testRow("decimal", ""),
+			testRow("datetime", ""),
+			testRow("not_deleted", "VIRTUAL GENERATED"),
 		},
 	}
 
@@ -451,13 +451,13 @@ func TestDumperAll(t *testing.T) {
 			{Name: "Extra", Type: querypb.Type_VARCHAR},
 		},
 		Rows: [][]sqltypes.Value{
-			createFieldRow("id", ""),
-			createFieldRow("name", ""),
-			createFieldRow("namei1", ""),
-			createFieldRow("null", ""),
-			createFieldRow("decimal", ""),
-			createFieldRow("datetime", ""),
-			createFieldRow("not_deleted", "virtual generated"),
+			testRow("id", ""),
+			testRow("name", ""),
+			testRow("namei1", ""),
+			testRow("null", ""),
+			testRow("decimal", ""),
+			testRow("datetime", ""),
+			testRow("not_deleted", "virtual generated"),
 		},
 	}
 
@@ -638,13 +638,13 @@ func TestDumperMultiple(t *testing.T) {
 			{Name: "Extra", Type: querypb.Type_VARCHAR},
 		},
 		Rows: [][]sqltypes.Value{
-			createFieldRow("id", ""),
-			createFieldRow("name", ""),
-			createFieldRow("namei1", ""),
-			createFieldRow("null", ""),
-			createFieldRow("decimal", ""),
-			createFieldRow("datetime", ""),
-			createFieldRow("not_deleted", "virtual generated"),
+			testRow("id", ""),
+			testRow("name", ""),
+			testRow("namei1", ""),
+			testRow("null", ""),
+			testRow("decimal", ""),
+			testRow("datetime", ""),
+			testRow("not_deleted", "virtual generated"),
 		},
 	}
 
@@ -835,13 +835,13 @@ func TestDumperSimpleRegexp(t *testing.T) {
 			{Name: "Extra", Type: querypb.Type_VARCHAR},
 		},
 		Rows: [][]sqltypes.Value{
-			createFieldRow("id", ""),
-			createFieldRow("name", ""),
-			createFieldRow("namei1", ""),
-			createFieldRow("null", ""),
-			createFieldRow("decimal", ""),
-			createFieldRow("datetime", ""),
-			createFieldRow("not_deleted", "virtual generated"),
+			testRow("id", ""),
+			testRow("name", ""),
+			testRow("namei1", ""),
+			testRow("null", ""),
+			testRow("decimal", ""),
+			testRow("datetime", ""),
+			testRow("not_deleted", "virtual generated"),
 		},
 	}
 
@@ -1032,13 +1032,13 @@ func TestDumperComplexRegexp(t *testing.T) {
 			{Name: "Extra", Type: querypb.Type_VARCHAR},
 		},
 		Rows: [][]sqltypes.Value{
-			createFieldRow("id", ""),
-			createFieldRow("name", ""),
-			createFieldRow("namei1", ""),
-			createFieldRow("null", ""),
-			createFieldRow("decimal", ""),
-			createFieldRow("datetime", ""),
-			createFieldRow("not_deleted", "virtual generated"),
+			testRow("id", ""),
+			testRow("name", ""),
+			testRow("namei1", ""),
+			testRow("null", ""),
+			testRow("decimal", ""),
+			testRow("datetime", ""),
+			testRow("not_deleted", "virtual generated"),
 		},
 	}
 
