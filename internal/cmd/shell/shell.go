@@ -5,8 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"github.com/adrg/xdg"
+	"github.com/mitchellh/go-homedir"
 	"net"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/planetscale/cli/internal/cmdutil"
@@ -265,7 +267,32 @@ func formatMySQLBranch(database string, branch *ps.DatabaseBranch) string {
 	return fmt.Sprintf("%s/%s> ", database, branchStr)
 }
 
+// Originally we wrote history to the home directory, if present, keep using it
+func legacyHistoryFilePath(org, db, branch string) string {
+	dir, err := homedir.Dir()
+	if err != nil {
+		return ""
+	}
+
+	historyDir := filepath.Join(dir, ".pscale", "history")
+
+	_, err = os.Stat(historyDir)
+	if os.IsNotExist(err) {
+		return ""
+	}
+
+	historyFilename := fmt.Sprintf("%s.%s.%s", org, db, branch)
+	historyFile := filepath.Join(historyDir, historyFilename)
+
+	return historyFile
+}
+
 func historyFilePath(org, db, branch string) (string, error) {
+	legacyHistoryFile := legacyHistoryFilePath(org, db, branch)
+	if legacyHistoryFile != "" {
+		return legacyHistoryFile, nil
+	}
+
 	historyFilePath := fmt.Sprintf(".pscale/history/%s.%s.%s", org, db, branch)
 
 	historyFile, err := xdg.DataFile(historyFilePath)
