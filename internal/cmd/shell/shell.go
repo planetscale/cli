@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/adrg/xdg"
 	"net"
 	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/planetscale/cli/internal/cmdutil"
@@ -18,7 +18,6 @@ import (
 
 	ps "github.com/planetscale/planetscale-go/planetscale"
 
-	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	exec "golang.org/x/sys/execabs"
 )
@@ -267,23 +266,12 @@ func formatMySQLBranch(database string, branch *ps.DatabaseBranch) string {
 }
 
 func historyFilePath(org, db, branch string) (string, error) {
-	dir, err := homedir.Dir()
+	historyFilePath := fmt.Sprintf(".pscale/history/%s.%s.%s", org, db, branch)
+
+	historyFile, err := xdg.DataFile(historyFilePath)
 	if err != nil {
 		return "", err
 	}
-
-	historyDir := filepath.Join(dir, ".pscale", "history")
-
-	_, err = os.Stat(historyDir)
-	if os.IsNotExist(err) {
-		err := os.MkdirAll(historyDir, 0771)
-		if err != nil {
-			return "", err
-		}
-	}
-
-	historyFilename := fmt.Sprintf("%s.%s.%s", org, db, branch)
-	historyFile := filepath.Join(historyDir, historyFilename)
 
 	return historyFile, nil
 }
