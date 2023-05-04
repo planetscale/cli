@@ -173,11 +173,7 @@ second argument:
 				"-D", database,
 			}
 
-			historyFile, err := historyFilePath(ch.Config.Organization, database, branch)
-			if err != nil {
-				return err
-			}
-
+			historyFile := historyFilePath(ch.Config.Organization, database, branch)
 			styledBranch := formatMySQLBranch(database, dbBranch)
 
 			m := &mysql{
@@ -287,18 +283,18 @@ func legacyHistoryFilePath(org, db, branch string) string {
 	return historyFile
 }
 
-func historyFilePath(org, db, branch string) (string, error) {
+func historyFilePath(org, db, branch string) string {
 	legacyHistoryFile := legacyHistoryFilePath(org, db, branch)
 	if legacyHistoryFile != "" {
-		return legacyHistoryFile, nil
+		return legacyHistoryFile
 	}
 
 	historyFilePath := fmt.Sprintf(".pscale/history/%s.%s.%s", org, db, branch)
 
 	historyFile, err := xdg.DataFile(historyFilePath)
 	if err != nil {
-		return "", err
+		return ""
 	}
 
-	return historyFile, nil
+	return historyFile
 }
