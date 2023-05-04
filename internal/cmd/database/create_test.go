@@ -45,6 +45,14 @@ func TestDatabase_CreateCmd(t *testing.T) {
 		Client: func() (*ps.Client, error) {
 			return &ps.Client{
 				Databases: svc,
+				Organizations: &mock.OrganizationsService{
+					GetFn: func(ctx context.Context, request *ps.GetOrganizationRequest) (*ps.Organization, error) {
+						return &ps.Organization{
+							RemainingFreeDatabases: 1,
+							Name:                   request.Organization,
+						}, nil
+					},
+				},
 			}, nil
 
 		},
