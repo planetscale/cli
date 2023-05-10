@@ -5,7 +5,8 @@ go 1.19
 require (
 	github.com/99designs/keyring v1.2.2
 	github.com/AlecAivazis/survey/v2 v2.3.6
-	github.com/benbjohnson/clock v1.3.3
+	github.com/adrg/xdg v0.4.0
+	github.com/benbjohnson/clock v1.3.4
 	github.com/briandowns/spinner v1.23.0
 	github.com/fatih/color v1.15.0
 	github.com/frankban/quicktest v1.14.5
@@ -36,7 +37,6 @@ require (
 
 require (
 	github.com/99designs/go-keychain v0.0.0-20191008050251-8e49817e8af4 // indirect
-	github.com/adrg/xdg v0.4.0 // indirect
 	github.com/danieljoos/wincred v1.1.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
