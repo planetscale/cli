@@ -411,8 +411,13 @@ func (d *Dumper) dumpableFieldNames(conn *Connection, table string) ([]string, e
 		// Can be either "VIRTUAL GENERATED" or "STORED GENERATED"
 		// https://dev.mysql.com/doc/refman/8.0/en/show-columns.html
 		if strings.Contains(extra, "GENERATED") {
-			// Skip generated columns
-			continue
+			if strings.Contains(extra, "DEFAULT_GENERATED") {
+				// Keep DEFAULT_GENERATED columns
+				fields = append(fields, name)	
+			} else {
+				// Skip other generated columns
+				continue
+			}
 		} else {
 			fields = append(fields, name)
 		}
