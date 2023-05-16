@@ -276,8 +276,8 @@ func TestDumperGeneratedFields(t *testing.T) {
 			testRow("namei1", ""),
 			testRow("null", ""),
 			testRow("decimal", ""),
-			testRow("datetime", ""),
-			testRow("not_deleted", "VIRTUAL GENERATED"),
+			testRow("datetime", "DEFAULT_GENERATED"),
+			testRow("not_deleted", "STORED GENERATED"),
 		},
 	}
 
