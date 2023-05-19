@@ -24,6 +24,7 @@ import (
 
 type dumpFlags struct {
 	localAddr string
+	keyspace  string
 	tables    string
 	wheres    string
 	output    string
@@ -40,6 +41,8 @@ func DumpCmd(ch *cmdutil.Helper) *cobra.Command {
 		RunE:  func(cmd *cobra.Command, args []string) error { return dump(ch, cmd, f, args) },
 	}
 
+	cmd.PersistentFlags().StringVar(&f.keyspace, "keyspace",
+		"", "Keyspace to dump. By default the default keyspace is dumped.")
 	cmd.PersistentFlags().StringVar(&f.localAddr, "local-addr",
 		"", "Local address to bind and listen for connections. By default the proxy binds to 127.0.0.1 with a random port.")
 	cmd.PersistentFlags().StringVar(&f.tables, "tables", "",
@@ -59,6 +62,11 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 
 	database := args[0]
 	branch := args[1]
+	keyspace := flags.keyspace
+
+	if keyspace == "" {
+		keyspace = database
+	}
 
 	client, err := ch.Client()
 	if err != nil {
@@ -136,7 +144,7 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 		return err
 	}
 
-	dbName, err := getDatabaseName(database, addr.String())
+	ksName, err := getDatabaseName(keyspace, addr.String())
 	if err != nil {
 		return err
 	}
@@ -145,7 +153,12 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 	if err != nil {
 		return err
 	}
-	dir = filepath.Join(dir, fmt.Sprintf("pscale_dump_%s_%s", database, branch))
+
+	if ksName == database {
+		dir = filepath.Join(dir, fmt.Sprintf("pscale_dump_%s_%s", database, branch))
+	} else {
+		dir = filepath.Join(dir, fmt.Sprintf("pscale_dump_%s_%s_%s", database, branch, ksName))
+	}
 
 	if flags.output != "" {
 		dir = flags.output
@@ -166,7 +179,7 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 	// NOTE(fatih): the password is a placeholder, replace once we get rid of the proxy
 	cfg.Password = "root"
 	cfg.Address = addr.String()
-	cfg.Database = dbName
+	cfg.Database = ksName
 	cfg.Debug = ch.Debug()
 	cfg.StmtSize = 1000000
 	cfg.IntervalMs = 10 * 1000
