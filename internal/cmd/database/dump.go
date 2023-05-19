@@ -42,7 +42,7 @@ func DumpCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 
 	cmd.PersistentFlags().StringVar(&f.keyspace, "keyspace",
-		"", "Keyspace to dump. By default the default keyspace is dumped.")
+		"", "Optionally target a specific keyspace to be dumped. Useful for sharded databases.")
 	cmd.PersistentFlags().StringVar(&f.localAddr, "local-addr",
 		"", "Local address to bind and listen for connections. By default the proxy binds to 127.0.0.1 with a random port.")
 	cmd.PersistentFlags().StringVar(&f.tables, "tables", "",
