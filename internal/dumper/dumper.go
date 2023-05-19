@@ -306,7 +306,7 @@ func (d *Dumper) dumpTable(conn *Connection, database string, table string, useR
 
 		if (chunkbytes / 1024 / 1024) >= d.cfg.ChunksizeInMB {
 			query := strings.Join(inserts, ";\n") + ";\n"
-			file := fmt.Sprintf("%s/%s.%s.%05d.sql", d.cfg.Outdir, database, table, fileNo)
+			file := fmt.Sprintf("%s/%s.%s.%05d.sql", d.cfg.Outdir, databaseHandle, table, fileNo)
 			err = writeFile(file, query)
 			if err != nil {
 				return err
