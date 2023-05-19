@@ -24,6 +24,9 @@ type ServiceTokenService struct {
 
 	DeleteAccessFn        func(context.Context, *ps.DeleteServiceTokenAccessRequest) error
 	DeleteAccessFnInvoked bool
+
+	ListGrantsFn        func(context.Context, *ps.ListServiceTokenGrantsRequest) ([]*ps.ServiceTokenGrant, error)
+	ListGrantsFnInvoked bool
 }
 
 func (s *ServiceTokenService) Create(ctx context.Context, req *ps.CreateServiceTokenRequest) (*ps.ServiceToken, error) {
@@ -55,4 +58,9 @@ func (s *ServiceTokenService) DeleteAccess(ctx context.Context, req *ps.DeleteSe
 	s.DeleteAccessFnInvoked = true
 	return s.DeleteAccessFn(ctx, req)
 
+}
+
+func (s *ServiceTokenService) ListGrants(ctx context.Context, req *ps.ListServiceTokenGrantsRequest) ([]*ps.ServiceTokenGrant, error) {
+	s.ListGrantsFnInvoked = true
+	return s.ListGrantsFn(ctx, req)
 }

@@ -1,9 +1,9 @@
 ---
 name: github.com/gocarina/gocsv
-version: v0.0.0-20220310154401-d4df709ca055
+version: v0.0.0-20230226133904-70c27cb2918a
 type: go
 summary: 
-homepage: https://godoc.org/github.com/gocarina/gocsv
+homepage: https://pkg.go.dev/github.com/gocarina/gocsv
 license: mit
 licenses:
 - sources: LICENSE

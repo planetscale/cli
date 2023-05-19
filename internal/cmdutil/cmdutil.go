@@ -1,12 +1,12 @@
 package cmdutil
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/planetscale/cli/internal/config"
 	"github.com/planetscale/cli/internal/printer"
@@ -107,11 +107,11 @@ func RequiredArgs(reqArgs ...string) cobra.PositionalArgs {
 // actionable error message.
 func CheckAuthentication(cfg *config.Config) func(cmd *cobra.Command, args []string) error {
 	return func(cmd *cobra.Command, args []string) error {
-		if cfg.IsAuthenticated() {
-			return nil
+		if err := cfg.IsAuthenticated(); err != nil {
+			return fmt.Errorf("%s\nError: %s", WarnAuthMessage, err.Error())
 		}
 
-		return errors.New(WarnAuthMessage)
+		return nil
 	}
 }
 
@@ -200,7 +200,7 @@ func MySQLClientPath() (string, error) {
 	}
 
 	msg := "couldn't find the 'mysql' command-line tool required to run this command."
-	installURL := "https://docs.planetscale.com/reference/planetscale-environment-setup"
+	installURL := "https://planetscale.com/docs/reference/planetscale-environment-setup"
 
 	switch runtime.GOOS {
 	case "darwin":
@@ -208,12 +208,31 @@ func MySQLClientPath() (string, error) {
 			return "", fmt.Errorf("%s\nTo install, run: brew install mysql-client", msg)
 		}
 
-		installURL = "https://docs.planetscale.com/reference/planetscale-environment-setup#macos-instructions"
+		installURL = "https://planetscale.com/docs/reference/planetscale-environment-setup#macos-instructions"
 	case "linux":
-		installURL = "https://docs.planetscale.com/reference/planetscale-environment-setup#linux-instructions"
+		installURL = "https://planetscale.com/docs/reference/planetscale-environment-setup#linux-instructions"
 	case "windows":
-		installURL = "https://docs.planetscale.com/reference/planetscale-environment-setup#windows-instructions"
+		installURL = "https://planetscale.com/docs/reference/planetscale-environment-setup#windows-instructions"
 	}
 
 	return "", fmt.Errorf("%s\nTo install, follow the instructions: %s", msg, installURL)
+}
+
+func ParseSSLMode(sslMode string) ps.ExternalDataSourceSSLVerificationMode {
+	switch sslMode {
+	case "disabled":
+		return ps.SSLModeDisabled
+	case "preferred":
+		return ps.SSLModePreferred
+	case "required":
+		return ps.SSLModeRequired
+	case "verify_ca":
+		return ps.SSLModeVerifyCA
+	default:
+		return ps.SSLModeVerifyIdentity
+	}
+}
+
+func TimeToMilliseconds(t time.Time) int64 {
+	return t.UTC().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond))
 }

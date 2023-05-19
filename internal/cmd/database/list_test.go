@@ -30,7 +30,7 @@ func TestDatabase_ListCmd(t *testing.T) {
 	}
 
 	svc := &mock.DatabaseService{
-		ListFn: func(ctx context.Context, req *ps.ListDatabasesRequest) ([]*ps.Database, error) {
+		ListFn: func(ctx context.Context, req *ps.ListDatabasesRequest, opts ...ps.ListOption) ([]*ps.Database, error) {
 			c.Assert(req.Organization, qt.Equals, org)
 			return dbs, nil
 		},

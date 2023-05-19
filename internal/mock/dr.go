@@ -7,6 +7,12 @@ import (
 )
 
 type DeployRequestsService struct {
+	ApplyFn        func(context.Context, *ps.ApplyDeployRequestRequest) (*ps.DeployRequest, error)
+	ApplyFnInvoked bool
+
+	AutoApplyFn        func(context.Context, *ps.AutoApplyDeployRequestRequest) (*ps.DeployRequest, error)
+	AutoApplyFnInvoked bool
+
 	CancelFn        func(context.Context, *ps.CancelDeployRequestRequest) (*ps.DeployRequest, error)
 	CancelFnInvoked bool
 
@@ -30,6 +36,25 @@ type DeployRequestsService struct {
 
 	ListFn        func(context.Context, *ps.ListDeployRequestsRequest) ([]*ps.DeployRequest, error)
 	ListFnInvoked bool
+
+	RevertDeployFn        func(context.Context, *ps.RevertDeployRequestRequest) (*ps.DeployRequest, error)
+	RevertDeployFnInvoked bool
+
+	SkipRevertDeployFn        func(context.Context, *ps.SkipRevertDeployRequestRequest) (*ps.DeployRequest, error)
+	SkipRevertDeployFnInvoked bool
+
+	AutoApplyDeployFn        func(context.Context, *ps.AutoApplyDeployRequestRequest) (*ps.DeployRequest, error)
+	AutoApplyDeployFnInvoked bool
+}
+
+func (d *DeployRequestsService) ApplyDeploy(ctx context.Context, req *ps.ApplyDeployRequestRequest) (*ps.DeployRequest, error) {
+	d.ApplyFnInvoked = true
+	return d.ApplyFn(ctx, req)
+}
+
+func (d *DeployRequestsService) AutoApplyDeploy(ctx context.Context, req *ps.AutoApplyDeployRequestRequest) (*ps.DeployRequest, error) {
+	d.AutoApplyFnInvoked = true
+	return d.AutoApplyFn(ctx, req)
 }
 
 func (d *DeployRequestsService) CancelDeploy(ctx context.Context, req *ps.CancelDeployRequestRequest) (*ps.DeployRequest, error) {
@@ -70,4 +95,14 @@ func (d *DeployRequestsService) Get(ctx context.Context, req *ps.GetDeployReques
 func (d *DeployRequestsService) List(ctx context.Context, req *ps.ListDeployRequestsRequest) ([]*ps.DeployRequest, error) {
 	d.ListFnInvoked = true
 	return d.ListFn(ctx, req)
+}
+
+func (d *DeployRequestsService) RevertDeploy(ctx context.Context, req *ps.RevertDeployRequestRequest) (*ps.DeployRequest, error) {
+	d.RevertDeployFnInvoked = true
+	return d.RevertDeployFn(ctx, req)
+}
+
+func (d *DeployRequestsService) SkipRevertDeploy(ctx context.Context, req *ps.SkipRevertDeployRequestRequest) (*ps.DeployRequest, error) {
+	d.SkipRevertDeployFnInvoked = true
+	return d.SkipRevertDeployFn(ctx, req)
 }

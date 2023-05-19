@@ -2,7 +2,7 @@
 
 PlanetScale is more than a database and our CLI is more than a jumble of commands. The `pscale` command line tool brings branches, deploy requests, and other PlanetScale concepts to your fingertips.
 
-![PlanetScale CLI](https://user-images.githubusercontent.com/155044/118568235-66c8e380-b745-11eb-8124-5a72e17f7f7b.png)
+![PlanetScale CLI](https://user-images.githubusercontent.com/6104/191803574-be63da54-d255-4f5a-ab2d-2b49cdf7eb12.png)
 
 
 ## Installation
@@ -84,6 +84,23 @@ alias pscale="docker run -e HOME=/tmp -v $HOME/.config/planetscale:/tmp/.config/
 
 If you need a more advanced example that works with service tokens and differentiates between commands that need a pseudo terminal or non-interactive mode, [have a look at this shell function](https://github.com/jonico/pscale-cli-helper-scripts/blob/main/.pscale/cli-helper-scripts/use-pscale-docker-image.sh).
 
+## Local Development
+
+To run a command:
+```
+go run cmd/pscale/main.go <command>
+```
+
+Alternatively, you can build `pscale`:
+```
+go build cmd/pscale/main.go
+```
+
+And then use the `pscale` binary built in `cmd/pscale/` for testing:
+```
+./cmd/pscale/pscale <command>
+```
+
 ## Documentation
 
-Please checkout our Documentation page: [docs.planetscale.com](https://docs.planetscale.com/reference/planetscale-cli/)
+Please checkout our Documentation page: [planetscale.com/docs](https://planetscale.com/docs/reference/planetscale-cli)

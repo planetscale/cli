@@ -24,10 +24,12 @@ import (
 
 type dumpFlags struct {
 	localAddr string
+	keyspace  string
 	replica   bool
 	tables    string
 	wheres    string
 	output    string
+	threads   int
 }
 
 // DumpCmd encapsulates the commands for dumping a database
@@ -40,15 +42,18 @@ func DumpCmd(ch *cmdutil.Helper) *cobra.Command {
 		RunE:  func(cmd *cobra.Command, args []string) error { return dump(ch, cmd, f, args) },
 	}
 
+	cmd.PersistentFlags().StringVar(&f.keyspace, "keyspace",
+		"", "Optionally target a specific keyspace to be dumped. Useful for sharded databases.")
 	cmd.PersistentFlags().StringVar(&f.localAddr, "local-addr",
 		"", "Local address to bind and listen for connections. By default the proxy binds to 127.0.0.1 with a random port.")
+	cmd.PersistentFlags().BoolVar(&f.replica, "replica", false, "Dump from a replica (if available; will fail if not).")
 	cmd.PersistentFlags().StringVar(&f.tables, "tables", "",
 		"Comma separated string of tables to dump. By default all tables are dumped.")
 	cmd.PersistentFlags().StringVar(&f.wheres, "wheres", "",
 		"Comma separated string of WHERE clauses to filter the tables to dump. Only used when you specify tables to dump. Default is not to filter dumped tables.")
-	cmd.PersistentFlags().BoolVar(&f.replica, "replica", false, "Dump from a replica (if available; will fail if not).")
 	cmd.PersistentFlags().StringVar(&f.output, "output", "",
 		"Output directory of the dump. By default the dump is saved to a folder in the current directory.")
+	cmd.PersistentFlags().IntVar(&f.threads, "threads", 16, "Number of concurrent threads to use to dump the database.")
 
 	return cmd
 }
@@ -59,6 +64,11 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 
 	database := args[0]
 	branch := args[1]
+	keyspace := flags.keyspace
+
+	if keyspace == "" {
+		keyspace = database
+	}
 
 	client, err := ch.Client()
 	if err != nil {
@@ -72,7 +82,7 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 	}
 
 	proxyOpts := proxy.Options{
-		CertSource: proxyutil.NewRemoteCertSource(client, cmdutil.ReaderRole),
+		CertSource: proxyutil.NewRemoteCertSource(client, cmdutil.AdministratorRole),
 		LocalAddr:  localAddr,
 		Instance:   fmt.Sprintf("%s/%s/%s", ch.Config.Organization, database, branch),
 		Logger:     cmdutil.NewZapLogger(ch.Debug()),
@@ -89,6 +99,28 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 			ch.Printer.Println("proxy error: ", err)
 		}
 	}()
+
+	db, err := client.Databases.Get(ctx, &ps.GetDatabaseRequest{
+		Organization: ch.Config.Organization,
+		Database:     database,
+	})
+	if err != nil {
+		switch cmdutil.ErrCode(err) {
+		case ps.ErrNotFound:
+			return fmt.Errorf("database %s does not exist in organization: %s",
+				printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
+		default:
+			return cmdutil.HandleError(err)
+		}
+	}
+
+	if db.State == ps.DatabaseSleeping {
+		return fmt.Errorf("database %s is sleeping, please wake the database and retry this command", printer.BoldBlue(database))
+	}
+
+	if db.State == ps.DatabaseAwakening {
+		return fmt.Errorf("database %s is waking from sleep, please wait until it's ready and retry this command", printer.BoldBlue(database))
+	}
 
 	dbBranch, err := client.DatabaseBranches.Get(ctx, &ps.GetDatabaseBranchRequest{
 		Organization: ch.Config.Organization,
@@ -114,7 +146,7 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 		return err
 	}
 
-	dbName, err := getDatabaseName(database, addr.String())
+	dbName, err := getDatabaseName(keyspace, addr.String())
 	if err != nil {
 		return err
 	}
@@ -123,7 +155,12 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 	if err != nil {
 		return err
 	}
-	dir = filepath.Join(dir, fmt.Sprintf("pscale_dump_%s_%s", database, branch))
+
+	if dbName == database {
+		dir = filepath.Join(dir, fmt.Sprintf("pscale_dump_%s_%s", database, branch))
+	} else {
+		dir = filepath.Join(dir, fmt.Sprintf("pscale_dump_%s_%s_%s", database, branch, dbName))
+	}
 
 	if flags.output != "" {
 		dir = flags.output
@@ -139,6 +176,7 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 	}
 
 	cfg := dumper.NewDefaultConfig()
+	cfg.Threads = flags.threads
 	cfg.User = "root"
 	// NOTE(fatih): the password is a placeholder, replace once we get rid of the proxy
 	cfg.Password = "root"
@@ -161,7 +199,7 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 			m := make(map[string]string)
 			tables := strings.Split(flags.tables, ",")
 			wheres := strings.Split(flags.wheres, ",")
-			for i := range(wheres) {
+			for i := range wheres {
 				m[tables[i]] = wheres[i]
 			}
 			cfg.Wheres = m

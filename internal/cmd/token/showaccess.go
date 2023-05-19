@@ -26,7 +26,7 @@ func ShowAccessCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			name := args[0]
 
-			req := &planetscale.GetServiceTokenAccessRequest{
+			req := &planetscale.ListServiceTokenGrantsRequest{
 				ID:           name,
 				Organization: ch.Config.Organization,
 			}
@@ -34,11 +34,11 @@ func ShowAccessCmd(ch *cmdutil.Helper) *cobra.Command {
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Fetching service token from org %s", printer.BoldBlue(ch.Config.Organization)))
 			defer end()
 
-			accesses, err := client.ServiceTokens.GetAccess(ctx, req)
+			grants, err := client.ServiceTokens.ListGrants(ctx, req)
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
-					return fmt.Errorf("access %s does not exist in organization %s",
+					return fmt.Errorf("service token %s does not exist in organization %s",
 						printer.BoldBlue(name), printer.BoldBlue(ch.Config.Organization))
 				default:
 					return cmdutil.HandleError(err)
@@ -47,7 +47,7 @@ func ShowAccessCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			end()
 
-			return ch.Printer.PrintResource(toServiceTokenAccesses(accesses))
+			return ch.Printer.PrintResource(toServiceTokenGrants(grants))
 		},
 	}
 

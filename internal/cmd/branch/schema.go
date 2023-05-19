@@ -16,7 +16,8 @@ import (
 // SchemaCmd is the command for showing the schema of a branch.
 func SchemaCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
-		web bool
+		web      bool
+		keyspace string
 	}
 
 	cmd := &cobra.Command{
@@ -40,6 +41,7 @@ func SchemaCmd(ch *cmdutil.Helper) *cobra.Command {
 				Organization: ch.Config.Organization,
 				Database:     database,
 				Branch:       branch,
+				Keyspace:     flags.keyspace,
 			})
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
@@ -79,6 +81,8 @@ func SchemaCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 
 	cmd.PersistentFlags().BoolVar(&flags.web, "web", false, "Open in your web browser")
+	cmd.Flags().StringVar(&flags.keyspace, "keyspace", "", "The keyspace in the branch")
+	cmd.Flags().MarkHidden("keyspace")
 
 	return cmd
 }

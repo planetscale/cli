@@ -2,10 +2,9 @@ package auth
 
 import (
 	"context"
-	"io/ioutil"
-	"os"
 	"runtime"
 
+	"github.com/hashicorp/go-cleanhttp"
 	"github.com/planetscale/cli/internal/auth"
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/config"
@@ -13,7 +12,6 @@ import (
 	"github.com/planetscale/planetscale-go/planetscale"
 
 	"github.com/fatih/color"
-	"github.com/hashicorp/go-cleanhttp"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
@@ -65,7 +63,7 @@ func LoginCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
-			err = writeAccessToken(ctx, accessToken)
+			err = config.WriteAccessToken(accessToken)
 			if err != nil {
 				return errors.Wrap(err, "error logging in")
 			}
@@ -116,36 +114,6 @@ func writeDefaultOrganization(ctx context.Context, accessToken, authURL string) 
 		if err != nil {
 			return err
 		}
-	}
-
-	return nil
-}
-
-func writeAccessToken(ctx context.Context, accessToken string) error {
-	configDir, err := config.ConfigDir()
-	if err != nil {
-		return err
-	}
-
-	_, err = os.Stat(configDir)
-	if os.IsNotExist(err) {
-		err := os.MkdirAll(configDir, 0771)
-		if err != nil {
-			return errors.Wrap(err, "error creating config directory")
-		}
-	} else if err != nil {
-		return err
-	}
-
-	tokenPath, err := config.AccessTokenPath()
-	if err != nil {
-		return err
-	}
-
-	tokenBytes := []byte(accessToken)
-	err = ioutil.WriteFile(tokenPath, tokenBytes, config.TokenFileMode)
-	if err != nil {
-		return errors.Wrap(err, "error writing token")
 	}
 
 	return nil

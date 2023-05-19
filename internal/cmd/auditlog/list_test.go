@@ -26,14 +26,19 @@ func TestAuditLog_List(t *testing.T) {
 	db := "planetscale"
 	branch := "development"
 
-	resp := []*ps.AuditLog{
+	auditLogs := []*ps.AuditLog{
 		{ActorDisplayName: "foo"},
 		{ActorDisplayName: "bar"},
 	}
 
+	resp := &ps.CursorPaginatedResponse[*ps.AuditLog]{
+		Data: auditLogs,
+	}
+
 	svc := &mock.AuditLogService{
-		ListFn: func(ctx context.Context, req *ps.ListAuditLogsRequest) ([]*ps.AuditLog, error) {
+		ListFn: func(ctx context.Context, req *ps.ListAuditLogsRequest, opts ...ps.ListOption) (*ps.CursorPaginatedResponse[*ps.AuditLog], error) {
 			c.Assert(req.Organization, qt.Equals, org)
+			c.Assert(len(opts), qt.Equals, 2)
 
 			return resp, nil
 		},
@@ -62,11 +67,11 @@ func TestAuditLog_List(t *testing.T) {
 	backups := []*AuditLog{
 		{
 			Actor: "foo",
-			orig:  resp[0],
+			orig:  resp.Data[0],
 		},
 		{
 			Actor: "bar",
-			orig:  resp[1],
+			orig:  resp.Data[1],
 		},
 	}
 

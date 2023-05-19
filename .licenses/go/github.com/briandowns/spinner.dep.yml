@@ -1,10 +1,10 @@
 ---
 name: github.com/briandowns/spinner
-version: v1.18.1
+version: v1.22.0
 type: go
 summary: Package spinner is a simple package to add a spinner / progress indicator
   to any terminal application.
-homepage: https://godoc.org/github.com/briandowns/spinner
+homepage: https://pkg.go.dev/github.com/briandowns/spinner
 license: apache-2.0
 licenses:
 - sources: LICENSE

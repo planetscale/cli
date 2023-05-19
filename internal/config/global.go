@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"io/ioutil"
-	"path"
+	"os"
+	"path/filepath"
 
 	"gopkg.in/yaml.v2"
 )
@@ -77,11 +77,27 @@ func (f *FileConfig) Write(path string) error {
 		return fmt.Errorf("can't marshal file config: %s", err)
 	}
 
-	return ioutil.WriteFile(path, d, 0644)
+	return os.WriteFile(path, d, 0644)
 }
 
-// WriteDefault persists the file config to the default global path.
+// WriteDefault creates the config directory and persists the file config
+// to the default global path.
 func (f *FileConfig) WriteDefault() error {
+	configDir, err := ConfigDir()
+	if err != nil {
+		return err
+	}
+
+	_, err = os.Stat(configDir)
+	if os.IsNotExist(err) {
+		err := os.MkdirAll(configDir, 0771)
+		if err != nil {
+			return errors.New("error creating config directory")
+		}
+	} else if err != nil {
+		return err
+	}
+
 	configFile, err := DefaultConfigPath()
 	if err != nil {
 		return err
@@ -108,5 +124,5 @@ func DefaultConfigPath() (string, error) {
 		return "", err
 	}
 
-	return path.Join(dir, configName), nil
+	return filepath.Join(dir, configName), nil
 }

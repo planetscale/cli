@@ -1,10 +1,10 @@
 ---
 name: github.com/rivo/uniseg
-version: v0.2.0
+version: v0.4.4
 type: go
-summary: 'Package uniseg implements Unicode Text Segmentation according to Unicode
-  Standard Annex #29 (http://unicode.org/reports/tr29/).'
-homepage: https://godoc.org/github.com/rivo/uniseg
+summary: Package uniseg implements Unicode Text Segmentation, Unicode Line Breaking,
+  and string width calculation for monospace fonts.
+homepage: https://pkg.go.dev/github.com/rivo/uniseg
 license: mit
 licenses:
 - sources: LICENSE.txt

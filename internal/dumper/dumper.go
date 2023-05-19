@@ -18,6 +18,8 @@ import (
 	"go.uber.org/zap"
 )
 
+const VITESS_GHOST_TABLE_REGEX = "_vt_EVAC_.*|_vt_DROP_.*|_vt_PURGE_.*|_vt_HOLD_.*|_[0-9a-zA-Z]{8}_[0-9a-zA-Z]{4}_[0-9a-zA-Z]{4}_.*"
+
 // Config describes the settings to dump from a database.
 type Config struct {
 	User                 string
@@ -52,7 +54,7 @@ type Config struct {
 
 func NewDefaultConfig() *Config {
 	return &Config{
-		Threads: 16,
+		Threads: 1,
 	}
 }
 
@@ -125,6 +127,11 @@ func (d *Dumper) Run(ctx context.Context) error {
 
 		defer pool.Close()
 		for _, table := range tables[i] {
+			// Skip vitess ghost tables
+			if regexp.MustCompile(VITESS_GHOST_TABLE_REGEX).MatchString(table) {
+				continue
+			}
+
 			conn := initPool.Get()
 			err := d.dumpTableSchema(conn, database, table)
 			if err != nil {
@@ -222,42 +229,27 @@ func (d *Dumper) dumpTable(conn *Connection, database string, table string, useR
 		databaseHandle += "@replica"
 	}
 
-	isGenerated, err := d.generatedFields(conn, table)
-	if err != nil {
-		return err
-	}
-
 	fields := make([]string, 0)
 	{
-		cursor, err := conn.StreamFetch(fmt.Sprintf("SELECT * FROM `%s`.`%s` LIMIT 1", databaseHandle, table))
+		flds, err := d.dumpableFieldNames(conn, table)
 		if err != nil {
 			return err
 		}
 
-		flds := cursor.Fields()
-		for _, fld := range flds {
-			d.log.Debug("dump", zap.Any("filters", d.cfg.Filters), zap.String("table", table), zap.String("field_name", fld.Name))
+		for _, name := range flds {
+			d.log.Debug("dump", zap.Any("filters", d.cfg.Filters), zap.String("table", table), zap.String("field_name", name))
 
-			if _, ok := d.cfg.Filters[table][fld.Name]; ok {
+			if _, ok := d.cfg.Filters[table][name]; ok {
 				continue
 			}
 
-			if isGenerated[fld.Name] {
-				continue
-			}
-
-			fields = append(fields, fmt.Sprintf("`%s`", fld.Name))
-			replacement, ok := d.cfg.Selects[table][fld.Name]
+			fields = append(fields, fmt.Sprintf("`%s`", name))
+			replacement, ok := d.cfg.Selects[table][name]
 			if ok {
-				selfields = append(selfields, fmt.Sprintf("%s AS `%s`", replacement, fld.Name))
+				selfields = append(selfields, fmt.Sprintf("%s AS `%s`", replacement, name))
 			} else {
-				selfields = append(selfields, fmt.Sprintf("`%s`", fld.Name))
+				selfields = append(selfields, fmt.Sprintf("`%s`", name))
 			}
-		}
-
-		err = cursor.Close()
-		if err != nil {
-			return err
 		}
 	}
 
@@ -405,16 +397,15 @@ func (d *Dumper) filterDatabases(conn *Connection, filter *regexp.Regexp, invert
 	return databases, nil
 }
 
-// generatedFields returns a map that contains fields that are virtually
-// generated.
-func (d *Dumper) generatedFields(conn *Connection, table string) (map[string]bool, error) {
+// dumpableFieldNames returns a slice that contains valid field names for the dump.
+func (d *Dumper) dumpableFieldNames(conn *Connection, table string) ([]string, error) {
 	qr, err := conn.Fetch(fmt.Sprintf("SHOW FIELDS FROM `%s`", table))
 	if err != nil {
 		return nil, err
 
 	}
 
-	fields := map[string]bool{}
+	fields := make([]string, 0, len(qr.Rows))
 	for _, t := range qr.Rows {
 		if len(t) != 6 {
 			return nil, fmt.Errorf("error fetching fields, expecting to have 6 columns, have: %d", len(t))
@@ -423,10 +414,13 @@ func (d *Dumper) generatedFields(conn *Connection, table string) (map[string]boo
 		name := t[0].String()
 		extra := t[5].String()
 
-		// Can be either "VIRTUAL GENERATED" or "VIRTUAL STORED"
+		// Can be either "VIRTUAL GENERATED" or "STORED GENERATED"
 		// https://dev.mysql.com/doc/refman/8.0/en/show-columns.html
-		if strings.Contains(extra, "VIRTUAL") {
-			fields[name] = true
+		if strings.Contains(extra, "VIRTUAL GENERATED") || strings.Contains(extra, "STORED GENERATED") {
+			// Skip generated columns
+			continue
+		} else {
+			fields = append(fields, name)
 		}
 	}
 

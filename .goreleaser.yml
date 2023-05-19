@@ -6,12 +6,41 @@ before:
     - go mod tidy
     - ./script/completions
 builds:
+  - id: darwin-amd64
+    goos:
+      - darwin
+    goarch:
+      - amd64
+    env:
+      - CC=o64-clang
+      - CXX=o64-clang++
+      - CGO_ENABLED=1
+    main: ./cmd/pscale/main.go
+    ldflags:
+      - -s -w -X main.version={{.Version}} -X main.commit={{.ShortCommit}} -X main.date={{.Date}}
+    flags:
+      - -trimpath
+    binary: "pscale"
+  - id: darwin-arm64
+    goos:
+      - darwin
+    goarch:
+      - arm64
+    env:
+      - CC=oa64-clang
+      - CXX=oa64-clang++
+      - CGO_ENABLED=1
+    main: ./cmd/pscale/main.go
+    ldflags:
+      - -s -w -X main.version={{.Version}} -X main.commit={{.ShortCommit}} -X main.date={{.Date}}
+    flags:
+      - -trimpath
+    binary: "pscale"
   - env:
       - CGO_ENABLED=0
     goos:
       - linux
       - windows
-      - darwin
     goarch:
       - 386
       - amd64
@@ -19,7 +48,9 @@ builds:
       - arm64
     main: ./cmd/pscale/main.go
     ldflags:
-     - -s -w -X main.version={{.Version}} -X main.commit={{.ShortCommit}} -X main.date={{.Date}}
+      - -s -w -X main.version={{.Version}} -X main.commit={{.ShortCommit}} -X main.date={{.Date}}
+    flags:
+      - -trimpath
     binary: "pscale"   
 dockers:
   - image_templates:
@@ -86,6 +117,11 @@ archives:
       - README.md
       - LICENSE
       - completions/*
+sboms:
+  -
+    id: spdx-default
+    documents: ["${artifact}.spdx.sbom"]
+    args: ["$artifact", "--file", "$sbom", "--output", "spdx-json"]
 snapshot:
   name_template: "{{ .Tag }}-next"
 changelog:

@@ -57,7 +57,7 @@ argument:
 
 			database := args[0]
 
-			client, err := ch.Config.NewClientFromConfig()
+			client, err := ch.Client()
 			if err != nil {
 				return err
 			}
@@ -70,7 +70,13 @@ argument:
 			if branch == "" {
 				branch, err = promptutil.GetBranch(ctx, client, ch.Config.Organization, database)
 				if err != nil {
-					return err
+					switch cmdutil.ErrCode(err) {
+					case planetscale.ErrNotFound:
+						return fmt.Errorf("database %s does not exist in organization %s",
+							printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
+					default:
+						return cmdutil.HandleError(err)
+					}
 				}
 			}
 
@@ -170,7 +176,6 @@ argument:
 	cmd.PersistentFlags().StringVar(&flags.role, "role",
 		"admin", "Role defines the access level, allowed values are : reader, writer, readwriter, admin. By default it is admin.")
 
-	cmd.PersistentFlags().MarkHidden("role")
 	return cmd
 }
 

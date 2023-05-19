@@ -1,14 +1,14 @@
 package config
 
 import (
-	"errors"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 
+	"github.com/99designs/keyring"
+	"github.com/pkg/errors"
 	ps "github.com/planetscale/planetscale-go/planetscale"
 
 	"github.com/mitchellh/go-homedir"
@@ -19,7 +19,10 @@ const (
 	defaultConfigPath = "~/.config/planetscale"
 	projectConfigName = ".pscale.yml"
 	configName        = "pscale.yml"
-	TokenFileMode     = 0600
+	keyringService    = "pscale"
+	keyringKey        = "access-token"
+	keyringLabel      = "PlanetScale CLI Access Token"
+	tokenFileMode     = 0o600
 )
 
 // Config is dynamically sourced from various files and environment variables.
@@ -37,38 +40,31 @@ type Config struct {
 }
 
 func New() (*Config, error) {
-	var accessToken []byte
-	tokenPath, err := AccessTokenPath()
+	accessToken, err := readAccessToken()
 	if err != nil {
 		return nil, err
 	}
 
-	stat, err := os.Stat(tokenPath)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			log.Fatal(err)
-		}
-	} else {
-		if stat.Mode()&^TokenFileMode != 0 {
-			err = os.Chmod(tokenPath, TokenFileMode)
-			if err != nil {
-				log.Printf("Unable to change %v file mode to 0%o: %v", tokenPath, TokenFileMode, err)
-			}
-		}
-		accessToken, err = ioutil.ReadFile(tokenPath)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
-
 	return &Config{
-		AccessToken: string(accessToken),
+		AccessToken: accessToken,
 		BaseURL:     ps.DefaultBaseURL,
 	}, nil
 }
 
-func (c *Config) IsAuthenticated() bool {
-	return (c.ServiceToken != "" && c.ServiceTokenID != "") || c.AccessToken != ""
+func (c *Config) IsAuthenticated() error {
+	if (c.ServiceToken == "" && c.ServiceTokenID != "") || (c.ServiceToken != "" && c.ServiceTokenID == "") {
+		return errors.New("both --service-token and --service-token-id are required for service token authentication")
+	}
+
+	if c.ServiceToken != "" && c.ServiceTokenID != "" {
+		return nil
+	}
+
+	if c.AccessToken == "" {
+		return errors.New("--access-token is required for access token authentication")
+	}
+
+	return nil
 }
 
 // NewClientFromConfig creates a PlaentScale API client from our configuration
@@ -101,36 +97,222 @@ func ConfigDir() (string, error) {
 	return dir, nil
 }
 
-// AccessTokenPath is the path for the access token file
-func AccessTokenPath() (string, error) {
-	dir, err := ConfigDir()
-	if err != nil {
-		return "", err
-	}
-
-	return path.Join(dir, "access-token"), nil
-}
-
 // ProjectConfigPath returns the path of a configuration inside a Git
 // repository.
 func ProjectConfigPath() (string, error) {
 	basePath, err := RootGitRepoDir()
 	if err == nil {
-		return path.Join(basePath, projectConfigName), nil
+		return filepath.Join(basePath, projectConfigName), nil
 	}
-	return path.Join("", projectConfigName), nil
+	return filepath.Join("", projectConfigName), nil
 }
 
 func RootGitRepoDir() (string, error) {
-	var tl = []string{"rev-parse", "--show-toplevel"}
+	tl := []string{"rev-parse", "--show-toplevel"}
 	out, err := exec.Command("git", tl...).CombinedOutput()
 	if err != nil {
 		return "", errors.New("unable to find git root directory")
 	}
 
-	return string(strings.TrimSuffix(string(out), "\n")), nil
+	return strings.TrimSuffix(string(out), "\n"), nil
 }
 
 func ProjectConfigFile() string {
 	return projectConfigName
+}
+
+func readAccessToken() (string, error) {
+	ring, err := openKeyring()
+
+	if errors.Is(err, keyring.ErrNoAvailImpl) {
+		accessToken, tokenErr := readAccessTokenPath()
+		// Token not existing means we're not authenticated.
+		if os.IsNotExist(tokenErr) {
+			return "", nil
+		}
+		return string(accessToken), tokenErr
+	}
+
+	item, err := ring.Get(keyringKey)
+	if err == nil {
+		// We're shipping this first without removing the
+		// existing token file. Once we're confident that
+		// the keyring works well, we can remove the token
+		// from disk here.
+		//path, err := accessTokenPath()
+		//if err != nil {
+		//	return "", err
+		//}
+		//err = os.Remove(path)
+		//if err != nil {
+		//	return "", err
+		//}
+
+		return string(item.Data), nil
+	}
+
+	if errors.Is(err, keyring.ErrKeyNotFound) {
+		// Migrate to keychain
+		accessToken, tokenErr := readAccessTokenPath()
+		if len(accessToken) > 0 && tokenErr == nil {
+			return migrateAccessToken(ring, accessToken)
+		}
+		// Might need to improve this, but today the empty
+		// token value represents no auth known, and we should
+		// not error here since that breaks if you're not logged
+		// in yet.
+		return "", nil
+	}
+
+	return "", err
+}
+
+func migrateAccessToken(ring keyring.Keyring, accessToken []byte) (string, error) {
+	err := ring.Set(keyring.Item{
+		Key:   keyringKey,
+		Data:  accessToken,
+		Label: keyringLabel,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	path, err := accessTokenPath()
+	if err == nil {
+		fmt.Fprintf(os.Stderr, "Your access token has been migrated to your keyring.\n"+
+			"In a future version we will remove the existing token located at: \n\n%s\n\n"+
+			"If you want, you can manually delete the token file to complete the migration.\n\n", path)
+	}
+
+	return string(accessToken), nil
+}
+
+func WriteAccessToken(accessToken string) error {
+	ring, err := openKeyring()
+
+	if errors.Is(err, keyring.ErrNoAvailImpl) {
+		return writeAccessTokenPath(accessToken)
+	}
+
+	return ring.Set(keyring.Item{
+		Key:   keyringKey,
+		Data:  []byte(accessToken),
+		Label: keyringLabel,
+	})
+}
+
+func DeleteAccessToken() error {
+	ring, err := openKeyring()
+
+	if errors.Is(err, keyring.ErrNoAvailImpl) {
+		return deleteAccessTokenPath()
+	}
+
+	return ring.Remove(keyringKey)
+}
+
+func openKeyring() (keyring.Keyring, error) {
+	return keyring.Open(keyring.Config{
+		AllowedBackends: []keyring.BackendType{
+			keyring.SecretServiceBackend,
+			keyring.KWalletBackend,
+			keyring.KeychainBackend,
+			keyring.WinCredBackend,
+		},
+		ServiceName:              keyringService,
+		KeychainTrustApplication: true,
+		KeychainSynchronizable:   true,
+	})
+}
+
+func accessTokenPath() (string, error) {
+	dir, err := ConfigDir()
+	if err != nil {
+		return "", err
+	}
+
+	return filepath.Join(dir, keyringKey), nil
+}
+
+func readAccessTokenPath() ([]byte, error) {
+	var accessToken []byte
+	tokenPath, err := accessTokenPath()
+	if err != nil {
+		return nil, err
+	}
+
+	stat, err := os.Stat(tokenPath)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			log.Fatal(err)
+		}
+		return nil, err
+	} else {
+		if stat.Mode()&^tokenFileMode != 0 {
+			err = os.Chmod(tokenPath, tokenFileMode)
+			if err != nil {
+				log.Printf("Unable to change %v file mode to 0%o: %v", tokenPath, tokenFileMode, err)
+			}
+		}
+		accessToken, err = os.ReadFile(tokenPath)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	return accessToken, nil
+}
+
+func deleteAccessTokenPath() error {
+	tokenPath, err := accessTokenPath()
+	if err != nil {
+		return err
+	}
+
+	err = os.Remove(tokenPath)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return errors.Wrap(err, "error removing access token file")
+		}
+	}
+
+	configFile, err := DefaultConfigPath()
+	if err != nil {
+		return err
+	}
+
+	err = os.Remove(configFile)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return errors.Wrap(err, "error removing default config file")
+		}
+	}
+	return nil
+}
+
+func writeAccessTokenPath(accessToken string) error {
+	tokenPath, err := accessTokenPath()
+	if err != nil {
+		return err
+	}
+
+	configDir := filepath.Dir(tokenPath)
+
+	_, err = os.Stat(configDir)
+	if os.IsNotExist(err) {
+		err := os.MkdirAll(configDir, 0771)
+		if err != nil {
+			return errors.New("error creating config directory")
+		}
+	} else if err != nil {
+		return err
+	}
+
+	tokenBytes := []byte(accessToken)
+	err = os.WriteFile(tokenPath, tokenBytes, tokenFileMode)
+	if err != nil {
+		return errors.Wrap(err, "error writing token")
+	}
+
+	return nil
 }

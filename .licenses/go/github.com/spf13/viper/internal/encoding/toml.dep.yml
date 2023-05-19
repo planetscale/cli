@@ -1,12 +1,12 @@
 ---
 name: github.com/spf13/viper/internal/encoding/toml
-version: v1.10.1
+version: v1.15.0
 type: go
 summary: 
-homepage: https://godoc.org/github.com/spf13/viper/internal/encoding/toml
+homepage: https://pkg.go.dev/github.com/spf13/viper/internal/encoding/toml
 license: mit
 licenses:
-- sources: viper@v1.10.1/LICENSE
+- sources: viper@v1.15.0/LICENSE
   text: |-
     The MIT License (MIT)
 

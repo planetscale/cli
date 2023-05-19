@@ -3,16 +3,15 @@ package dumper
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/planetscale/cli/internal/cmdutil"
+	"golang.org/x/sync/errgroup"
 
 	"go.uber.org/zap"
 )
@@ -42,7 +41,7 @@ func NewLoader(cfg *Config) (*Loader, error) {
 	}, nil
 }
 
-// Loader used to start the loader worker.
+// Run used to start the loader worker.
 func (l *Loader) Run(ctx context.Context) error {
 	pool, err := NewPool(l.log, l.cfg.Threads, l.cfg.Address, l.cfg.User, l.cfg.Password, l.cfg.SessionVars, "")
 	if err != nil {
@@ -75,25 +74,25 @@ func (l *Loader) Run(ctx context.Context) error {
 		files.tables[i], files.tables[j] = files.tables[j], files.tables[i]
 	}
 
-	var wg sync.WaitGroup
+	var eg errgroup.Group
 	var bytes uint64
 	t := time.Now()
+
 	for _, table := range files.tables {
+		table := table
 		conn := pool.Get()
-		wg.Add(1)
-		go func(conn *Connection, table string) {
-			defer func() {
-				wg.Done()
-				pool.Put(conn)
-			}()
+
+		eg.Go(func() error {
+			defer pool.Put(conn)
+
 			r, err := l.restoreTable(table, conn)
 			if err != nil {
-				fmt.Printf("err = %+v\n", err)
-				// TODO(fatih) log error via logger
+				return err
 			}
 
 			atomic.AddUint64(&bytes, uint64(r))
-		}(conn, table)
+			return nil
+		})
 	}
 
 	tick := time.NewTicker(time.Millisecond * time.Duration(l.cfg.IntervalMs))
@@ -112,8 +111,13 @@ func (l *Loader) Run(ctx context.Context) error {
 		}
 	}()
 
-	wg.Wait()
 	elapsed := time.Since(t)
+
+	if err := eg.Wait(); err != nil {
+		l.log.Error("error restoring", zap.Error(err))
+		return err
+	}
+
 	l.log.Info(
 		"restoring all done",
 		zap.Duration("elapsed_time", elapsed),
@@ -154,7 +158,7 @@ func (l *Loader) restoreDatabaseSchema(dbs []string, conn *Connection) error {
 		base := filepath.Base(db)
 		name := strings.TrimSuffix(base, dbSuffix)
 
-		data, err := ioutil.ReadFile(db)
+		data, err := os.ReadFile(db)
 		if err != nil {
 			return err
 		}
@@ -194,7 +198,7 @@ func (l *Loader) restoreTableSchema(overwrite bool, tables []string, conn *Conne
 			return err
 		}
 
-		data, err := ioutil.ReadFile(table)
+		data, err := os.ReadFile(table)
 		if err != nil {
 			return err
 		}
@@ -259,8 +263,7 @@ func (l *Loader) restoreTable(table string, conn *Connection) (int, error) {
 		return 0, err
 	}
 
-	data, err := ioutil.ReadFile(table)
-
+	data, err := os.ReadFile(table)
 	if err != nil {
 		return 0, err
 	}

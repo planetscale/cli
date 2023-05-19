@@ -32,7 +32,7 @@ func TestDeployRequest_CreateCmd(t *testing.T) {
 			c.Assert(req.Organization, qt.Equals, org)
 			c.Assert(req.Database, qt.Equals, db)
 			c.Assert(req.Branch, qt.Equals, branch)
-			c.Assert(req.IntoBranch, qt.Equals, "main", qt.Commentf("default value of the '--deploy-to' flag has changed"))
+			c.Assert(req.IntoBranch, qt.Equals, "", qt.Commentf("default value of the '--into' flag has changed"))
 
 			return &ps.DeployRequest{Number: number}, nil
 		},
@@ -53,6 +53,105 @@ func TestDeployRequest_CreateCmd(t *testing.T) {
 
 	cmd := CreateCmd(ch)
 	cmd.SetArgs([]string{db, branch})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.CreateFnInvoked, qt.IsTrue)
+
+	res := &DeployRequest{Number: number}
+	c.Assert(buf.String(), qt.JSONEquals, res)
+}
+
+func TestDeployRequest_CreateCmdIntoFlag(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	db := "planetscale"
+	branch := "development"
+	var number uint64 = 10
+
+	svc := &mock.DeployRequestsService{
+		CreateFn: func(ctx context.Context, req *ps.CreateDeployRequestRequest) (*ps.DeployRequest, error) {
+			c.Assert(req.Organization, qt.Equals, org)
+			c.Assert(req.Database, qt.Equals, db)
+			c.Assert(req.Branch, qt.Equals, branch)
+			c.Assert(req.IntoBranch, qt.Equals, "main", qt.Commentf("value of the '--into' flag has changed"))
+
+			return &ps.DeployRequest{Number: number}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: org,
+		},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{
+				DeployRequests: svc,
+			}, nil
+
+		},
+	}
+
+	cmd := CreateCmd(ch)
+	cmd.SetArgs([]string{db, branch})
+	cmd.PersistentFlags().Set("into", "main")
+	cmd.PersistentFlags().Set("deploy-to", "other-branch")
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.CreateFnInvoked, qt.IsTrue)
+
+	res := &DeployRequest{Number: number}
+	c.Assert(buf.String(), qt.JSONEquals, res)
+}
+
+func TestDeployRequest_CreateCmdDeprecatedDeployToFlag(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	db := "planetscale"
+	branch := "development"
+	var number uint64 = 10
+
+	svc := &mock.DeployRequestsService{
+		CreateFn: func(ctx context.Context, req *ps.CreateDeployRequestRequest) (*ps.DeployRequest, error) {
+			c.Assert(req.Organization, qt.Equals, org)
+			c.Assert(req.Database, qt.Equals, db)
+			c.Assert(req.Branch, qt.Equals, branch)
+			c.Assert(req.IntoBranch, qt.Equals, "main", qt.Commentf("value of the '--deploy-to' flag has changed"))
+
+			return &ps.DeployRequest{Number: number}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: org,
+		},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{
+				DeployRequests: svc,
+			}, nil
+
+		},
+	}
+
+	cmd := CreateCmd(ch)
+	cmd.SetArgs([]string{db, branch})
+	cmd.PersistentFlags().Set("deploy-to", "main")
 	err := cmd.Execute()
 
 	c.Assert(err, qt.IsNil)

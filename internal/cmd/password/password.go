@@ -36,7 +36,7 @@ type Password struct {
 	PublicID  string `header:"id" json:"id"`
 	Name      string `header:"name" json:"name"`
 	Branch    string `header:"branch" json:"branch"`
-	UserName  string `header:"username" json:"username"`
+	Username  string `header:"username" json:"username"`
 	Role      string `header:"role" json:"role"`
 	RoleDesc  string `header:"role description" json:"-"`
 	CreatedAt int64  `json:"created_at"`
@@ -46,7 +46,8 @@ type Password struct {
 type PasswordWithPlainText struct {
 	Name              string               `header:"name" json:"name"`
 	Branch            string               `header:"branch" json:"branch"`
-	PublicID          string               `header:"username" json:"username"`
+	PublicID          string               `header:"id" json:"public_id"`
+	Username          string               `header:"username" json:"username"`
 	AccessHostUrl     string               `header:"access host url" json:"access_host_url"`
 	Role              string               `header:"role" json:"role"`
 	RoleDesc          string               `header:"role description" json:"role_description"`
@@ -83,7 +84,7 @@ func toPassword(password *ps.DatabaseBranchPassword) *Password {
 		Name:      password.Name,
 		Branch:    password.Branch.Name,
 		PublicID:  password.PublicID,
-		UserName:  password.PublicID,
+		Username:  password.Username,
 		Role:      password.Role,
 		RoleDesc:  toRoleDesc(password.Role),
 		CreatedAt: password.CreatedAt.UTC().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond)),
@@ -104,6 +105,7 @@ func toPasswordWithPlainText(password *ps.DatabaseBranchPassword) *PasswordWithP
 		Name:              password.Name,
 		Branch:            password.Branch.Name,
 		PublicID:          password.PublicID,
+		Username:          password.Username,
 		PlainText:         password.PlainText,
 		AccessHostUrl:     password.Branch.AccessHostURL,
 		Role:              password.Role,

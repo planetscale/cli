@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/adrg/xdg"
+	"github.com/mitchellh/go-homedir"
 	"net"
 	"os"
 	"path/filepath"
@@ -18,7 +20,6 @@ import (
 
 	ps "github.com/planetscale/planetscale-go/planetscale"
 
-	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	exec "golang.org/x/sys/execabs"
 )
@@ -66,7 +67,7 @@ second argument:
 				return err
 			}
 
-			client, err := ch.Config.NewClientFromConfig()
+			client, err := ch.Client()
 			if err != nil {
 				return err
 			}
@@ -169,13 +170,10 @@ second argument:
 				"-t", // the -s (silent) flag disables tabular output, re-enable it.
 				"-h", host,
 				"-P", port,
+				"-D", database,
 			}
 
-			historyFile, err := historyFilePath(ch.Config.Organization, database, branch)
-			if err != nil {
-				return err
-			}
-
+			historyFile := historyFilePath(ch.Config.Organization, database, branch)
 			styledBranch := formatMySQLBranch(database, dbBranch)
 
 			m := &mysql{
@@ -196,11 +194,11 @@ second argument:
 	cmd.PersistentFlags().StringVar(&flags.localAddr, "local-addr",
 		"", "Local address to bind and listen for connections. By default the proxy binds to 127.0.0.1 with a random port.")
 	cmd.PersistentFlags().StringVar(&flags.remoteAddr, "remote-addr", "",
-		"PlanetScale Database remote network address. By default the remote address is populated automatically from the PlanetScale API.")
+		"PlanetScale Database remote network address. By default the remote address is populated automatically from the PlanetScale API. (format: `hostname:port`)")
 	cmd.PersistentFlags().StringVar(&flags.role, "role",
 		"admin", "Role defines the access level, allowed values are : reader, writer, readwriter, admin. By default it is admin.")
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
-	cmd.PersistentFlags().MarkHidden("role")
+
 	return cmd
 }
 
@@ -265,24 +263,38 @@ func formatMySQLBranch(database string, branch *ps.DatabaseBranch) string {
 	return fmt.Sprintf("%s/%s> ", database, branchStr)
 }
 
-func historyFilePath(org, db, branch string) (string, error) {
+// Originally we wrote history to the home directory, if present, keep using it
+func legacyHistoryFilePath(org, db, branch string) string {
 	dir, err := homedir.Dir()
 	if err != nil {
-		return "", err
+		return ""
 	}
 
 	historyDir := filepath.Join(dir, ".pscale", "history")
 
 	_, err = os.Stat(historyDir)
 	if os.IsNotExist(err) {
-		err := os.MkdirAll(historyDir, 0771)
-		if err != nil {
-			return "", err
-		}
+		return ""
 	}
 
 	historyFilename := fmt.Sprintf("%s.%s.%s", org, db, branch)
 	historyFile := filepath.Join(historyDir, historyFilename)
 
-	return historyFile, nil
+	return historyFile
+}
+
+func historyFilePath(org, db, branch string) string {
+	legacyHistoryFile := legacyHistoryFilePath(org, db, branch)
+	if legacyHistoryFile != "" {
+		return legacyHistoryFile
+	}
+
+	historyFilePath := fmt.Sprintf(".pscale/history/%s.%s.%s", org, db, branch)
+
+	historyFile, err := xdg.DataFile(historyFilePath)
+	if err != nil {
+		return ""
+	}
+
+	return historyFile
 }

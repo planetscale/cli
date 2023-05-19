@@ -1,10 +1,10 @@
 ---
 name: github.com/dustin/go-humanize
-version: v1.0.0
+version: v1.0.1
 type: go
 summary: Package humanize converts boring ugly numbers to human-friendly strings and
   back.
-homepage: https://godoc.org/github.com/dustin/go-humanize
+homepage: https://pkg.go.dev/github.com/dustin/go-humanize
 license: mit
 licenses:
 - sources: LICENSE

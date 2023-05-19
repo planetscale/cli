@@ -2,7 +2,6 @@ package dumper
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -14,6 +13,17 @@ import (
 
 	qt "github.com/frankban/quicktest"
 )
+
+func testRow(name, extra string) []sqltypes.Value {
+	return []sqltypes.Value{
+		sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte(name)),
+		sqltypes.MakeTrusted(querypb.Type_BLOB, []byte("varchar(255)")),
+		sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("YES")),
+		sqltypes.MakeTrusted(querypb.Type_BINARY, []byte("")),
+		sqltypes.MakeTrusted(querypb.Type_NULL_TYPE, []byte("NULL")),
+		sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte(extra)),
+	}
+}
 
 func TestDumper(t *testing.T) {
 	c := qt.New(t)
@@ -115,14 +125,13 @@ func TestDumper(t *testing.T) {
 			{Name: "Extra", Type: querypb.Type_VARCHAR},
 		},
 		Rows: [][]sqltypes.Value{
-			{
-				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("not_deleted")),
-				sqltypes.MakeTrusted(querypb.Type_BLOB, []byte("int")),
-				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("YES")),
-				sqltypes.MakeTrusted(querypb.Type_BINARY, []byte("")),
-				sqltypes.MakeTrusted(querypb.Type_NULL_TYPE, []byte("NULL")),
-				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("VIRTUAL GENERATED")),
-			},
+			testRow("id", ""),
+			testRow("name", ""),
+			testRow("namei1", ""),
+			testRow("null", ""),
+			testRow("decimal", ""),
+			testRow("datetime", ""),
+			testRow("not_deleted", "virtual generated"),
 		},
 	}
 
@@ -155,7 +164,7 @@ func TestDumper(t *testing.T) {
 	err = d.Run(context.Background())
 	c.Assert(err, qt.IsNil)
 
-	dat, err := ioutil.ReadFile(cfg.Outdir + "/test.t1-05-11.00001.sql")
+	dat, err := os.ReadFile(cfg.Outdir + "/test.t1-05-11.00001.sql")
 	c.Assert(err, qt.IsNil)
 
 	want := strings.Contains(string(dat), `(11,"11\"xx\"","",NULL,210.01,NULL)`)
@@ -262,14 +271,13 @@ func TestDumperGeneratedFields(t *testing.T) {
 			{Name: "Extra", Type: querypb.Type_VARCHAR},
 		},
 		Rows: [][]sqltypes.Value{
-			{
-				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("name")),
-				sqltypes.MakeTrusted(querypb.Type_BLOB, []byte("varchar(255)")),
-				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("YES")),
-				sqltypes.MakeTrusted(querypb.Type_BINARY, []byte("")),
-				sqltypes.MakeTrusted(querypb.Type_NULL_TYPE, []byte("NULL")),
-				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("VIRTUAL GENERATED")),
-			},
+			testRow("id", ""),
+			testRow("name", "VIRTUAL GENERATED"),
+			testRow("namei1", ""),
+			testRow("null", ""),
+			testRow("decimal", ""),
+			testRow("datetime", "DEFAULT_GENERATED"),
+			testRow("not_deleted", "STORED GENERATED"),
 		},
 	}
 
@@ -302,7 +310,7 @@ func TestDumperGeneratedFields(t *testing.T) {
 	err = d.Run(context.Background())
 	c.Assert(err, qt.IsNil)
 
-	dat, err := ioutil.ReadFile(cfg.Outdir + "/test.t1-05-11.00001.sql")
+	dat, err := os.ReadFile(cfg.Outdir + "/test.t1-05-11.00001.sql")
 	c.Assert(err, qt.IsNil)
 
 	insStmt := "INSERT INTO `t1-05-11`(`id`,`namei1`,`null`,`decimal`,`datetime`) VALUES"
@@ -443,14 +451,13 @@ func TestDumperAll(t *testing.T) {
 			{Name: "Extra", Type: querypb.Type_VARCHAR},
 		},
 		Rows: [][]sqltypes.Value{
-			{
-				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("not_deleted")),
-				sqltypes.MakeTrusted(querypb.Type_BLOB, []byte("int")),
-				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("YES")),
-				sqltypes.MakeTrusted(querypb.Type_BINARY, []byte("")),
-				sqltypes.MakeTrusted(querypb.Type_NULL_TYPE, []byte("NULL")),
-				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("VIRTUAL GENERATED")),
-			},
+			testRow("id", ""),
+			testRow("name", ""),
+			testRow("namei1", ""),
+			testRow("null", ""),
+			testRow("decimal", ""),
+			testRow("datetime", ""),
+			testRow("not_deleted", "virtual generated"),
 		},
 	}
 
@@ -484,13 +491,13 @@ func TestDumperAll(t *testing.T) {
 	err = d.Run(context.Background())
 	c.Assert(err, qt.IsNil)
 
-	dat_test1, err_test1 := ioutil.ReadFile(cfg.Outdir + "/test1.t1-05-11.00001.sql")
+	dat_test1, err_test1 := os.ReadFile(cfg.Outdir + "/test1.t1-05-11.00001.sql")
 	c.Assert(err_test1, qt.IsNil)
 
 	want_test1 := strings.Contains(string(dat_test1), `(11,"11\"xx\"","",NULL,210.01,NULL)`)
 	c.Assert(want_test1, qt.IsTrue)
 
-	dat_test2, err_test2 := ioutil.ReadFile(cfg.Outdir + "/test2.t1-05-11.00001.sql")
+	dat_test2, err_test2 := os.ReadFile(cfg.Outdir + "/test2.t1-05-11.00001.sql")
 	c.Assert(err_test2, qt.IsNil)
 
 	want_test2 := strings.Contains(string(dat_test2), `(1337)`)
@@ -631,14 +638,13 @@ func TestDumperMultiple(t *testing.T) {
 			{Name: "Extra", Type: querypb.Type_VARCHAR},
 		},
 		Rows: [][]sqltypes.Value{
-			{
-				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("not_deleted")),
-				sqltypes.MakeTrusted(querypb.Type_BLOB, []byte("int")),
-				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("YES")),
-				sqltypes.MakeTrusted(querypb.Type_BINARY, []byte("")),
-				sqltypes.MakeTrusted(querypb.Type_NULL_TYPE, []byte("NULL")),
-				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("VIRTUAL GENERATED")),
-			},
+			testRow("id", ""),
+			testRow("name", ""),
+			testRow("namei1", ""),
+			testRow("null", ""),
+			testRow("decimal", ""),
+			testRow("datetime", ""),
+			testRow("not_deleted", "virtual generated"),
 		},
 	}
 
@@ -673,13 +679,13 @@ func TestDumperMultiple(t *testing.T) {
 	err = d.Run(context.Background())
 	c.Assert(err, qt.IsNil)
 
-	dat_test1, err_test1 := ioutil.ReadFile(cfg.Outdir + "/test1.t1-05-11.00001.sql")
+	dat_test1, err_test1 := os.ReadFile(cfg.Outdir + "/test1.t1-05-11.00001.sql")
 	c.Assert(err_test1, qt.IsNil)
 
 	want_test1 := strings.Contains(string(dat_test1), `(11,"11\"xx\"","",NULL,210.01,NULL)`)
 	c.Assert(want_test1, qt.IsTrue)
 
-	dat_test2, err_test2 := ioutil.ReadFile(cfg.Outdir + "/test2.t1-05-11.00001.sql")
+	dat_test2, err_test2 := os.ReadFile(cfg.Outdir + "/test2.t1-05-11.00001.sql")
 	c.Assert(err_test2, qt.IsNil)
 
 	want_test2 := strings.Contains(string(dat_test2), `(1337)`)
@@ -829,14 +835,13 @@ func TestDumperSimpleRegexp(t *testing.T) {
 			{Name: "Extra", Type: querypb.Type_VARCHAR},
 		},
 		Rows: [][]sqltypes.Value{
-			{
-				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("not_deleted")),
-				sqltypes.MakeTrusted(querypb.Type_BLOB, []byte("int")),
-				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("YES")),
-				sqltypes.MakeTrusted(querypb.Type_BINARY, []byte("")),
-				sqltypes.MakeTrusted(querypb.Type_NULL_TYPE, []byte("NULL")),
-				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("VIRTUAL GENERATED")),
-			},
+			testRow("id", ""),
+			testRow("name", ""),
+			testRow("namei1", ""),
+			testRow("null", ""),
+			testRow("decimal", ""),
+			testRow("datetime", ""),
+			testRow("not_deleted", "virtual generated"),
 		},
 	}
 
@@ -871,13 +876,13 @@ func TestDumperSimpleRegexp(t *testing.T) {
 	err = d.Run(context.Background())
 	c.Assert(err, qt.IsNil)
 
-	dat_test1, err_test1 := ioutil.ReadFile(cfg.Outdir + "/test1.t1-05-11.00001.sql")
+	dat_test1, err_test1 := os.ReadFile(cfg.Outdir + "/test1.t1-05-11.00001.sql")
 	c.Assert(err_test1, qt.IsNil)
 
 	want_test1 := strings.Contains(string(dat_test1), `(11,"11\"xx\"","",NULL,210.01,NULL)`)
 	c.Assert(want_test1, qt.IsTrue)
 
-	dat_test2, err_test2 := ioutil.ReadFile(cfg.Outdir + "/test2.t1-05-11.00001.sql")
+	dat_test2, err_test2 := os.ReadFile(cfg.Outdir + "/test2.t1-05-11.00001.sql")
 	c.Assert(err_test2, qt.IsNil)
 
 	want_test2 := strings.Contains(string(dat_test2), `(1337)`)
@@ -1027,14 +1032,13 @@ func TestDumperComplexRegexp(t *testing.T) {
 			{Name: "Extra", Type: querypb.Type_VARCHAR},
 		},
 		Rows: [][]sqltypes.Value{
-			{
-				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("not_deleted")),
-				sqltypes.MakeTrusted(querypb.Type_BLOB, []byte("int")),
-				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("YES")),
-				sqltypes.MakeTrusted(querypb.Type_BINARY, []byte("")),
-				sqltypes.MakeTrusted(querypb.Type_NULL_TYPE, []byte("NULL")),
-				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("VIRTUAL GENERATED")),
-			},
+			testRow("id", ""),
+			testRow("name", ""),
+			testRow("namei1", ""),
+			testRow("null", ""),
+			testRow("decimal", ""),
+			testRow("datetime", ""),
+			testRow("not_deleted", "virtual generated"),
 		},
 	}
 
@@ -1069,13 +1073,13 @@ func TestDumperComplexRegexp(t *testing.T) {
 	err = d.Run(context.Background())
 	c.Assert(err, qt.IsNil)
 
-	dat_test1, err_test1 := ioutil.ReadFile(cfg.Outdir + "/test1.t1-05-11.00001.sql")
+	dat_test1, err_test1 := os.ReadFile(cfg.Outdir + "/test1.t1-05-11.00001.sql")
 	c.Assert(err_test1, qt.IsNil)
 
 	want_test1 := strings.Contains(string(dat_test1), `(11,"11\"xx\"","",NULL,210.01,NULL)`)
 	c.Assert(want_test1, qt.IsTrue)
 
-	dat_test2, err_test2 := ioutil.ReadFile(cfg.Outdir + "/test2.t1-05-11.00001.sql")
+	dat_test2, err_test2 := os.ReadFile(cfg.Outdir + "/test2.t1-05-11.00001.sql")
 	c.Assert(err_test2, qt.IsNil)
 
 	want_test2 := strings.Contains(string(dat_test2), `(1337)`)
@@ -1271,13 +1275,13 @@ func TestDumperInvertMatch(t *testing.T) {
 	err = d.Run(context.Background())
 	c.Assert(err, qt.IsNil)
 
-	dat_test1, err_test1 := ioutil.ReadFile(cfg.Outdir + "/test1.t1-05-11.00001.sql")
+	dat_test1, err_test1 := os.ReadFile(cfg.Outdir + "/test1.t1-05-11.00001.sql")
 	c.Assert(err_test1, qt.IsNil)
 
 	want_test1 := strings.Contains(string(dat_test1), `(11,"11\"xx\"","",NULL,210.01,NULL)`)
 	c.Assert(want_test1, qt.IsTrue)
 
-	dat_test2, err_test2 := ioutil.ReadFile(cfg.Outdir + "/test2.t1-05-11.00001.sql")
+	dat_test2, err_test2 := os.ReadFile(cfg.Outdir + "/test2.t1-05-11.00001.sql")
 	c.Assert(err_test2, qt.IsNil)
 
 	want_test2 := strings.Contains(string(dat_test2), `(1337)`)
