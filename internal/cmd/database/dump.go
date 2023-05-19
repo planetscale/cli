@@ -144,7 +144,7 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 		return err
 	}
 
-	ksName, err := getDatabaseName(keyspace, addr.String())
+	dbName, err := getDatabaseName(keyspace, addr.String())
 	if err != nil {
 		return err
 	}
@@ -154,10 +154,10 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 		return err
 	}
 
-	if ksName == database {
+	if dbName == database {
 		dir = filepath.Join(dir, fmt.Sprintf("pscale_dump_%s_%s", database, branch))
 	} else {
-		dir = filepath.Join(dir, fmt.Sprintf("pscale_dump_%s_%s_%s", database, branch, ksName))
+		dir = filepath.Join(dir, fmt.Sprintf("pscale_dump_%s_%s_%s", database, branch, dbName))
 	}
 
 	if flags.output != "" {
@@ -179,7 +179,7 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 	// NOTE(fatih): the password is a placeholder, replace once we get rid of the proxy
 	cfg.Password = "root"
 	cfg.Address = addr.String()
-	cfg.Database = ksName
+	cfg.Database = dbName
 	cfg.Debug = ch.Debug()
 	cfg.StmtSize = 1000000
 	cfg.IntervalMs = 10 * 1000
