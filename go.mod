@@ -6,7 +6,7 @@ require (
 	github.com/99designs/keyring v1.2.2
 	github.com/AlecAivazis/survey/v2 v2.3.6
 	github.com/adrg/xdg v0.4.0
-	github.com/benbjohnson/clock v1.3.4
+	github.com/benbjohnson/clock v1.3.5
 	github.com/briandowns/spinner v1.23.0
 	github.com/fatih/color v1.15.0
 	github.com/frankban/quicktest v1.14.5
