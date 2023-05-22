@@ -42,6 +42,7 @@ type Config struct {
 	Allbytes             uint64
 	Allrows              uint64
 	OverwriteTables      bool
+	UseReplica           bool
 	Wheres               map[string]string
 	Selects              map[string]map[string]string
 	Filters              map[string]map[string]string
@@ -154,7 +155,7 @@ func (d *Dumper) Run(ctx context.Context) error {
 					zap.Int("thread_conn_id", conn.ID),
 				)
 
-				err := d.dumpTable(conn, database, table)
+				err := d.dumpTable(conn, database, table, d.cfg.UseReplica)
 				if err != nil {
 					d.log.Error("error dumping table", zap.Error(err))
 				}
@@ -217,11 +218,16 @@ func (d *Dumper) dumpTableSchema(conn *Connection, database string, table string
 }
 
 // Dump a table in "MySQL" (multi-inserts) format
-func (d *Dumper) dumpTable(conn *Connection, database string, table string) error {
+func (d *Dumper) dumpTable(conn *Connection, database string, table string, useReplica bool) error {
 	var allBytes uint64
 	var allRows uint64
 	var where string
 	var selfields []string
+
+	databaseHandle := database
+	if useReplica {
+		databaseHandle += "@replica"
+	}
 
 	fields := make([]string, 0)
 	{
@@ -251,7 +257,7 @@ func (d *Dumper) dumpTable(conn *Connection, database string, table string) erro
 		where = fmt.Sprintf(" WHERE %v", v)
 	}
 
-	cursor, err := conn.StreamFetch(fmt.Sprintf("SELECT %s FROM `%s`.`%s` %s", strings.Join(selfields, ", "), database, table, where))
+	cursor, err := conn.StreamFetch(fmt.Sprintf("SELECT %s FROM `%s`.`%s` %s", strings.Join(selfields, ", "), databaseHandle, table, where))
 	if err != nil {
 		return err
 	}
@@ -300,7 +306,7 @@ func (d *Dumper) dumpTable(conn *Connection, database string, table string) erro
 
 		if (chunkbytes / 1024 / 1024) >= d.cfg.ChunksizeInMB {
 			query := strings.Join(inserts, ";\n") + ";\n"
-			file := fmt.Sprintf("%s/%s.%s.%05d.sql", d.cfg.Outdir, database, table, fileNo)
+			file := fmt.Sprintf("%s/%s.%s.%05d.sql", d.cfg.Outdir, databaseHandle, table, fileNo)
 			err = writeFile(file, query)
 			if err != nil {
 				return err

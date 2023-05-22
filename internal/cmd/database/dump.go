@@ -25,6 +25,7 @@ import (
 type dumpFlags struct {
 	localAddr string
 	keyspace  string
+	replica   bool
 	tables    string
 	wheres    string
 	output    string
@@ -45,6 +46,7 @@ func DumpCmd(ch *cmdutil.Helper) *cobra.Command {
 		"", "Optionally target a specific keyspace to be dumped. Useful for sharded databases.")
 	cmd.PersistentFlags().StringVar(&f.localAddr, "local-addr",
 		"", "Local address to bind and listen for connections. By default the proxy binds to 127.0.0.1 with a random port.")
+	cmd.PersistentFlags().BoolVar(&f.replica, "replica", false, "Dump from a replica (if available; will fail if not).")
 	cmd.PersistentFlags().StringVar(&f.tables, "tables", "",
 		"Comma separated string of tables to dump. By default all tables are dumped.")
 	cmd.PersistentFlags().StringVar(&f.wheres, "wheres", "",
@@ -186,6 +188,10 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 	cfg.ChunksizeInMB = 128
 	cfg.SessionVars = "set workload=olap;"
 	cfg.Outdir = dir
+
+	if flags.replica {
+		cfg.UseReplica = true
+	}
 
 	if flags.tables != "" {
 		cfg.Table = flags.tables
