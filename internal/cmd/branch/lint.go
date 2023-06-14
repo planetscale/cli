@@ -13,12 +13,12 @@ import (
 
 // SchemaLintError returns a table-serializable lint error.
 type SchemaLintError struct {
-	LintError        string `json:"lint_error", header:"lint_error"`
-	Keyspace         string `json:"keyspace_name", header:"keyspace"`
-	Table            string `json:"table_name", header:"table"`
-	SubjectType      string `json:"subject_type", header:"subject_type"`
-	ErrorDescription string `json:"error_description", header:"error_description"`
-	DocsURL          string `json:"docs_url", header:"docs_url"`
+	LintError        string `json:"lint_error" header:"lint_error"`
+	Keyspace         string `json:"keyspace_name" header:"keyspace"`
+	Table            string `json:"table_name" header:"table"`
+	SubjectType      string `json:"subject_type" header:"subject_type"`
+	ErrorDescription string `json:"error_description" header:"error_description"`
+	DocsURL          string `json:"docs_url" header:"docs_url"`
 
 	orig *ps.SchemaLintError
 }
