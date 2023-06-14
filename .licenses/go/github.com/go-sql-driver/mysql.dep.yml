@@ -1,6 +1,6 @@
 ---
 name: github.com/go-sql-driver/mysql
-version: v1.7.0
+version: v1.7.1
 type: go
 summary: Package mysql provides a MySQL driver for Go's database/sql package.
 homepage: https://pkg.go.dev/github.com/go-sql-driver/mysql
@@ -266,12 +266,13 @@ notices:
     at gmail.com>\nNathanial Murphy <nathanial.murphy at gmail.com>\nNicola Peduzzi
     <thenikso at gmail.com>\nOlivier Mengu?? <dolmen at cpan.org>\noscarzhao <oscarzhaosl
     at gmail.com>\nPaul Bonser <misterpib at gmail.com>\nPeter Schultz <peter.schultz
-    at classmarkets.com>\nRebecca Chin <rchin at pivotal.io>\nReed Allman <rdallman10
-    at gmail.com>\nRichard Wilkes <wilkes at me.com>\nRobert Russell <robert at rrbrussell.com>\nRunrioter
-    Wung <runrioter at gmail.com>\nSanthosh Kumar Tekuri <santhosh.tekuri at gmail.com>\nSho
-    Iizuka <sho.i518 at gmail.com>\nSho Ikeda <suicaicoca at gmail.com>\nShuode Li
-    <elemount at qq.com>\nSimon J Mudd <sjmudd at pobox.com>\nSoroush Pour <me at
-    soroushjp.com>\nStan Putrya <root.vagner at gmail.com>\nStanley Gunawan <gunawan.stanley
+    at classmarkets.com>\nPhil Porada <philporada at gmail.com>\nRebecca Chin <rchin
+    at pivotal.io>\nReed Allman <rdallman10 at gmail.com>\nRichard Wilkes <wilkes
+    at me.com>\nRobert Russell <robert at rrbrussell.com>\nRunrioter Wung <runrioter
+    at gmail.com>\nSamantha Frank <hello at entropy.cat>\nSanthosh Kumar Tekuri <santhosh.tekuri
+    at gmail.com>\nSho Iizuka <sho.i518 at gmail.com>\nSho Ikeda <suicaicoca at gmail.com>\nShuode
+    Li <elemount at qq.com>\nSimon J Mudd <sjmudd at pobox.com>\nSoroush Pour <me
+    at soroushjp.com>\nStan Putrya <root.vagner at gmail.com>\nStanley Gunawan <gunawan.stanley
     at gmail.com>\nSteven Hartland <steven.hartland at multiplay.co.uk>\nTan Jinhua
     <312841925 at qq.com>\nThomas Wodarek <wodarekwebpage at gmail.com>\nTim Ruffles
     <timruffles at gmail.com>\nTom Jenkinson <tom at tjenkinson.me>\nVladimir Kovpak

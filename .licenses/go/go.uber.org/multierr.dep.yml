@@ -1,6 +1,6 @@
 ---
 name: go.uber.org/multierr
-version: v1.9.0
+version: v1.11.0
 type: go
 summary: Package multierr allows combining one or more errors together.
 homepage: https://pkg.go.dev/go.uber.org/multierr

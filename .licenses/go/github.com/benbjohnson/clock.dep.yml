@@ -1,9 +1,9 @@
 ---
 name: github.com/benbjohnson/clock
-version: v1.3.0
+version: v1.3.5
 type: go
 summary: 
-homepage: https://godoc.org/github.com/benbjohnson/clock
+homepage: https://pkg.go.dev/github.com/benbjohnson/clock
 license: mit
 licenses:
 - sources: LICENSE

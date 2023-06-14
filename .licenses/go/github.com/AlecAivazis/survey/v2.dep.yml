@@ -1,6 +1,6 @@
 ---
 name: github.com/AlecAivazis/survey/v2
-version: v2.3.6
+version: v2.3.7
 type: go
 summary: 
 homepage: https://pkg.go.dev/github.com/AlecAivazis/survey/v2
