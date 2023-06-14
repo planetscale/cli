@@ -92,7 +92,7 @@ func SwitchCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			ch.Printer.Printf(
-				"Successfully switched to branch %s on database %s",
+				"Successfully switched to branch %s on database %s\n",
 				printer.BoldBlue(branch),
 				printer.BoldBlue(ch.Config.Database),
 			)
