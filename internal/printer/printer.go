@@ -132,7 +132,7 @@ func (p *Printer) PrintProgress(message string) func() {
 	s := spinner.New(spinner.CharSets[14], 100*time.Millisecond, spinner.WithWriter(p.out()))
 	s.Suffix = fmt.Sprintf(" %s", message)
 
-	s.Color("bold", "green") // nolint:errcheck
+	_ = s.Color("bold", "green")
 	s.Start()
 	return func() {
 		s.Stop()
@@ -242,7 +242,6 @@ func (p *Printer) PrintJSON(v interface{}) error {
 
 	fmt.Fprintln(out, string(buf))
 	return nil
-
 }
 
 func (p *Printer) PrettyPrintJSON(b []byte) error {

@@ -4,22 +4,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/adrg/xdg"
-	"github.com/mitchellh/go-homedir"
 	"net"
 	"os"
 	"path/filepath"
 	"time"
 
+	"github.com/adrg/xdg"
+	"github.com/mitchellh/go-homedir"
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
 	"github.com/planetscale/cli/internal/promptutil"
 	"github.com/planetscale/cli/internal/proxyutil"
-
-	"github.com/planetscale/sql-proxy/proxy"
-
 	ps "github.com/planetscale/planetscale-go/planetscale"
-
+	"github.com/planetscale/sql-proxy/proxy"
 	"github.com/spf13/cobra"
 	exec "golang.org/x/sys/execabs"
 )
@@ -126,7 +123,7 @@ second argument:
 			proxyError := make(chan error, 1)
 
 			go func() {
-				proxyError <- runProxy(ctx, ch, proxyOpts, proxyAddr)
+				proxyError <- runProxy(ctx, proxyOpts, proxyAddr)
 			}()
 
 			dbBranch, err := client.DatabaseBranches.Get(ctx, &ps.GetDatabaseBranchRequest{
@@ -186,7 +183,6 @@ second argument:
 
 			err = m.Run(ctx, mysqlArgs...)
 			return err
-
 		},
 	}
 
@@ -203,7 +199,7 @@ second argument:
 }
 
 // runProxy runs the sql-proxy with the given options.
-func runProxy(ctx context.Context, ch *cmdutil.Helper, proxyOpts proxy.Options, ready chan string) error {
+func runProxy(ctx context.Context, proxyOpts proxy.Options, ready chan string) error {
 	p, err := proxy.NewClient(proxyOpts)
 	if err != nil {
 		return fmt.Errorf("couldn't create proxy client: %s", err)
