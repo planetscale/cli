@@ -64,9 +64,9 @@ func SchemaCmd(ch *cmdutil.Helper) *cobra.Command {
 				for scanner.Scan() {
 					txt := scanner.Text()
 					if strings.HasPrefix(txt, "+") {
-						ch.Printer.Println(color.New(color.FgGreen).Add(color.Bold).Sprint(txt)) //nolint: errcheck
+						ch.Printer.Println(color.New(color.FgGreen).Add(color.Bold).Sprint(txt))
 					} else if strings.HasPrefix(txt, "-") {
-						ch.Printer.Println(color.New(color.FgRed).Add(color.Bold).Sprint(txt)) //nolint: errcheck
+						ch.Printer.Println(color.New(color.FgRed).Add(color.Bold).Sprint(txt))
 					} else {
 						ch.Printer.Println(txt)
 					}
