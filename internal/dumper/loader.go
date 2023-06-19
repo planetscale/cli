@@ -239,9 +239,15 @@ func (l *Loader) restoreTable(table string, conn *Connection) (int, error) {
 	part := "0"
 	base := filepath.Base(table)
 	name := strings.TrimSuffix(base, tableSuffix)
+
 	splits := strings.Split(name, ".")
+	if len(splits) < 2 {
+		return 0, fmt.Errorf("expected database.table, but got: %q", name)
+	}
+
 	db := splits[0]
 	tbl := splits[1]
+
 	if len(splits) > 2 {
 		part = splits[2]
 	}
