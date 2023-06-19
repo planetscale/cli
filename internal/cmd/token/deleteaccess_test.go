@@ -46,7 +46,6 @@ func TestServiceToken_DeleteAccessCmd(t *testing.T) {
 			return &ps.Client{
 				ServiceTokens: svc,
 			}, nil
-
 		},
 	}
 

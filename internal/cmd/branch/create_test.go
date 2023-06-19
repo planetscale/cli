@@ -48,7 +48,6 @@ func TestBranch_CreateCmd(t *testing.T) {
 			return &ps.Client{
 				DatabaseBranches: svc,
 			}, nil
-
 		},
 	}
 

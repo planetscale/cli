@@ -50,7 +50,6 @@ func TestPassword_ListCmd(t *testing.T) {
 			return &ps.Client{
 				Passwords: svc,
 			}, nil
-
 		},
 	}
 

@@ -5,14 +5,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
+	"testing"
+
 	qt "github.com/frankban/quicktest"
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/config"
 	"github.com/planetscale/cli/internal/mock"
 	"github.com/planetscale/cli/internal/printer"
 	ps "github.com/planetscale/planetscale-go/planetscale"
-	"strings"
-	"testing"
 )
 
 func TestImports_Cancel_FailsIfNoImport(t *testing.T) {
@@ -98,7 +99,6 @@ func invokeCancel(org, dbName string, c *qt.C, shouldInvokeCancel bool, svc *moc
 			return &ps.Client{
 				DataImports: svc,
 			}, nil
-
 		},
 	}
 

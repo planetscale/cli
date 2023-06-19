@@ -79,7 +79,6 @@ func EnableSafeMigrationsCmd(ch *cmdutil.Helper) *cobra.Command {
 				default:
 					return cmdutil.HandleError(err)
 				}
-
 			}
 
 			end()

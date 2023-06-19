@@ -50,7 +50,6 @@ func TestPassword_CreateCmd(t *testing.T) {
 			return &ps.Client{
 				Passwords: svc,
 			}, nil
-
 		},
 	}
 
@@ -98,7 +97,6 @@ func TestPassword_CreateCmd_InvalidRole(t *testing.T) {
 			return &ps.Client{
 				Passwords: svc,
 			}, nil
-
 		},
 	}
 
@@ -108,7 +106,6 @@ func TestPassword_CreateCmd_InvalidRole(t *testing.T) {
 	err := cmd.Execute()
 	c.Assert(err, qt.IsNotNil)
 	c.Assert(svc.CreateFnInvoked, qt.IsFalse)
-
 }
 
 func TestPassword_CreateCmd_DefaultRoleAdmin(t *testing.T) {
@@ -146,7 +143,6 @@ func TestPassword_CreateCmd_DefaultRoleAdmin(t *testing.T) {
 			return &ps.Client{
 				Passwords: svc,
 			}, nil
-
 		},
 	}
 

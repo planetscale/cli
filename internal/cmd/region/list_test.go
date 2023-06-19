@@ -45,7 +45,6 @@ func TestRegion_ListCmd(t *testing.T) {
 			return &ps.Client{
 				Organizations: svc,
 			}, nil
-
 		},
 	}
 

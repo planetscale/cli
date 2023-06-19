@@ -77,7 +77,7 @@ func (f *FileConfig) Write(path string) error {
 		return fmt.Errorf("can't marshal file config: %s", err)
 	}
 
-	return os.WriteFile(path, d, 0644)
+	return os.WriteFile(path, d, 0o644)
 }
 
 // WriteDefault creates the config directory and persists the file config
@@ -90,7 +90,7 @@ func (f *FileConfig) WriteDefault() error {
 
 	_, err = os.Stat(configDir)
 	if os.IsNotExist(err) {
-		err := os.MkdirAll(configDir, 0771)
+		err := os.MkdirAll(configDir, 0o771)
 		if err != nil {
 			return errors.New("error creating config directory")
 		}

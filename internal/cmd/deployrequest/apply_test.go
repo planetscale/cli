@@ -46,7 +46,6 @@ func TestDeployRequest_ApplyCmd(t *testing.T) {
 			return &ps.Client{
 				DeployRequests: svc,
 			}, nil
-
 		},
 	}
 

@@ -50,7 +50,6 @@ func TestBranch_EnableSafeMigrationsCmd(t *testing.T) {
 			return &ps.Client{
 				DatabaseBranches: svc,
 			}, nil
-
 		},
 	}
 
@@ -114,7 +113,6 @@ func TestBranch_EnableSafeMigrationsCmdWithLintingErrors(t *testing.T) {
 			return &ps.Client{
 				DatabaseBranches: svc,
 			}, nil
-
 		},
 	}
 
@@ -165,7 +163,6 @@ func TestBranch_DisableSafeMigrationsCmd(t *testing.T) {
 			return &ps.Client{
 				DatabaseBranches: svc,
 			}, nil
-
 		},
 	}
 

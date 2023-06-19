@@ -53,7 +53,6 @@ func TestAuditLog_List(t *testing.T) {
 			return &ps.Client{
 				AuditLogs: svc,
 			}, nil
-
 		},
 	}
 

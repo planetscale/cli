@@ -47,7 +47,6 @@ func TestBackup_DeleteCmd(t *testing.T) {
 			return &ps.Client{
 				Backups: svc,
 			}, nil
-
 		},
 	}
 

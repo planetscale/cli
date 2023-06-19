@@ -60,7 +60,6 @@ func TestServiceToken_AddAccessCmd(t *testing.T) {
 			return &ps.Client{
 				ServiceTokens: svc,
 			}, nil
-
 		},
 	}
 

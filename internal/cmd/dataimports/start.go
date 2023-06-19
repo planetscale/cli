@@ -3,11 +3,12 @@ package dataimports
 import (
 	"errors"
 	"fmt"
+	"strings"
+
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
 	ps "github.com/planetscale/planetscale-go/planetscale"
 	"github.com/spf13/cobra"
-	"strings"
 )
 
 func StartDataImportCmd(ch *cmdutil.Helper) *cobra.Command {
@@ -34,7 +35,6 @@ func StartDataImportCmd(ch *cmdutil.Helper) *cobra.Command {
 		Short:   "start importing data from an external database",
 		Aliases: []string{"s"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-
 			ctx := cmd.Context()
 			sslMode := cmdutil.ParseSSLMode(flags.sslMode)
 

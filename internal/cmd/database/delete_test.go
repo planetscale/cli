@@ -47,7 +47,6 @@ func TestDatabase_DeleteCmd(t *testing.T) {
 			return &ps.Client{
 				Databases: svc,
 			}, nil
-
 		},
 	}
 
@@ -90,7 +89,6 @@ func TestDatabase_DeleteCmdWithDeletionRequest(t *testing.T) {
 			return &ps.Client{
 				Databases: svc,
 			}, nil
-
 		},
 	}
 

@@ -51,7 +51,6 @@ func TestDeployRequest_DiffCmd(t *testing.T) {
 			return &ps.Client{
 				DeployRequests: svc,
 			}, nil
-
 		},
 	}
 

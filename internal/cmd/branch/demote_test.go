@@ -55,7 +55,6 @@ func TestBranch_DemoteCmd(t *testing.T) {
 			return &ps.Client{
 				DatabaseBranches: svc,
 			}, nil
-
 		},
 	}
 
@@ -108,7 +107,6 @@ func TestBranch_DemoteCmdWithDemotionRequest(t *testing.T) {
 			return &ps.Client{
 				DatabaseBranches: svc,
 			}, nil
-
 		},
 	}
 

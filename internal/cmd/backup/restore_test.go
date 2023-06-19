@@ -48,7 +48,6 @@ func TestBackup_RestoreCmd(t *testing.T) {
 			return &ps.Client{
 				DatabaseBranches: svc,
 			}, nil
-
 		},
 	}
 

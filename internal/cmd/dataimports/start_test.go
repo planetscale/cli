@@ -4,14 +4,15 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"strings"
+	"testing"
+
 	qt "github.com/frankban/quicktest"
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/config"
 	"github.com/planetscale/cli/internal/mock"
 	"github.com/planetscale/cli/internal/printer"
 	ps "github.com/planetscale/planetscale-go/planetscale"
-	"strings"
-	"testing"
 )
 
 func TestStart_LintDatabase_Success(t *testing.T) {
@@ -88,11 +89,11 @@ func TestStart_LintDatabase_SchemaIncompatible(t *testing.T) {
 	res := &ps.TestDataImportSourceResponse{
 		CanConnect: true,
 		Errors: []*ps.DataSourceIncompatibilityError{
-			&ps.DataSourceIncompatibilityError{
+			{
 				LintError:        "NO_PRIMARY_KEY",
 				ErrorDescription: "Table \"employees\" has no primary key",
 			},
-			&ps.DataSourceIncompatibilityError{
+			{
 				LintError:        "NO_PRIMARY_KEY",
 				ErrorDescription: "Table \"departments\" has no primary key",
 			},
@@ -137,7 +138,6 @@ func invokeStartDatabase(externalDataSource *ps.DataImportSource, psdbName, org 
 			return &ps.Client{
 				DataImports: svc,
 			}, nil
-
 		},
 	}
 

@@ -47,7 +47,6 @@ func TestPassword_DeleteCmd(t *testing.T) {
 			return &ps.Client{
 				Passwords: svc,
 			}, nil
-
 		},
 	}
 

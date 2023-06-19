@@ -49,7 +49,6 @@ func TestBackup_ShowCmd(t *testing.T) {
 			return &ps.Client{
 				Backups: svc,
 			}, nil
-
 		},
 	}
 

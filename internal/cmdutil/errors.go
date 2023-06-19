@@ -8,8 +8,10 @@ import (
 	"github.com/planetscale/planetscale-go/planetscale"
 )
 
-const ActionRequestedExitCode = 1
-const FatalErrExitCode = 2
+const (
+	ActionRequestedExitCode = 1
+	FatalErrExitCode        = 2
+)
 
 var errExpiredAuthMessage = errors.New("the access token has expired. Please run 'pscale auth login'")
 

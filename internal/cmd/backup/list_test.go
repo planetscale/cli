@@ -50,7 +50,6 @@ func TestBackup_ListCmd(t *testing.T) {
 			return &ps.Client{
 				Backups: svc,
 			}, nil
-
 		},
 	}
 

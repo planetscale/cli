@@ -57,7 +57,6 @@ func (s *ServiceTokenService) AddAccess(ctx context.Context, req *ps.AddServiceT
 func (s *ServiceTokenService) DeleteAccess(ctx context.Context, req *ps.DeleteServiceTokenAccessRequest) error {
 	s.DeleteAccessFnInvoked = true
 	return s.DeleteAccessFn(ctx, req)
-
 }
 
 func (s *ServiceTokenService) ListGrants(ctx context.Context, req *ps.ListServiceTokenGrantsRequest) ([]*ps.ServiceTokenGrant, error) {

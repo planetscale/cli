@@ -50,7 +50,6 @@ func TestBranch_PromoteCmd(t *testing.T) {
 			return &ps.Client{
 				DatabaseBranches: svc,
 			}, nil
-
 		},
 	}
 
