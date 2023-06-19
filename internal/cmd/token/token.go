@@ -49,6 +49,7 @@ func toServiceToken(st *ps.ServiceToken) *ServiceToken {
 		orig:  st,
 	}
 }
+
 func toServiceTokens(serviceTokens []*ps.ServiceToken) []*ServiceToken {
 	snapshots := make([]*ServiceToken, 0, len(serviceTokens))
 

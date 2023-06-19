@@ -47,7 +47,6 @@ func TestBackup_CreateCmd(t *testing.T) {
 			return &ps.Client{
 				Backups: svc,
 			}, nil
-
 		},
 	}
 

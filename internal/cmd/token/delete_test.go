@@ -42,7 +42,6 @@ func TestServiceToken_DeleteCmd(t *testing.T) {
 			return &ps.Client{
 				ServiceTokens: svc,
 			}, nil
-
 		},
 	}
 

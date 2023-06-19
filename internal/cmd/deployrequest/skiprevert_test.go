@@ -46,7 +46,6 @@ func TestDeployRequest_SkipRevertCmd(t *testing.T) {
 			return &ps.Client{
 				DeployRequests: svc,
 			}, nil
-
 		},
 	}
 

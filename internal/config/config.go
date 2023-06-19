@@ -300,7 +300,7 @@ func writeAccessTokenPath(accessToken string) error {
 
 	_, err = os.Stat(configDir)
 	if os.IsNotExist(err) {
-		err := os.MkdirAll(configDir, 0771)
+		err := os.MkdirAll(configDir, 0o771)
 		if err != nil {
 			return errors.New("error creating config directory")
 		}

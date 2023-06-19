@@ -3,11 +3,12 @@ package dataimports
 import (
 	"errors"
 	"fmt"
+	"strings"
+
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
 	ps "github.com/planetscale/planetscale-go/planetscale"
 	"github.com/spf13/cobra"
-	"strings"
 )
 
 func LintExternalDataSourceCmd(ch *cmdutil.Helper) *cobra.Command {

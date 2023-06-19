@@ -15,7 +15,7 @@ import (
 func TestLatestVersion(t *testing.T) {
 	c := qt.New(t)
 
-	var tests = []struct {
+	tests := []struct {
 		name       string
 		resp       *ReleaseInfo
 		statusCode int
@@ -50,16 +50,14 @@ func TestLatestVersion(t *testing.T) {
 				c.Assert(err, qt.IsNil)
 				c.Assert(info, qt.DeepEquals, tt.resp)
 			}
-
 		})
 	}
-
 }
 
 func TestCheckVersion(t *testing.T) {
 	c := qt.New(t)
 
-	var tests = []struct {
+	tests := []struct {
 		name          string
 		buildVersion  string
 		latestVersion string
@@ -95,7 +93,6 @@ func TestCheckVersion(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-
 			dir := t.TempDir()
 			path := filepath.Join(dir, "state.yml")
 
@@ -115,8 +112,6 @@ func TestCheckVersion(t *testing.T) {
 
 			c.Assert(err, qt.IsNil)
 			c.Assert(updateInfo.Update, qt.Equals, tt.update, qt.Commentf("reason: %s", updateInfo.Reason))
-
 		})
 	}
-
 }

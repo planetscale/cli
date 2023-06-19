@@ -2,6 +2,7 @@ package dataimports
 
 import (
 	"fmt"
+
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
 	ps "github.com/planetscale/planetscale-go/planetscale"

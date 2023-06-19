@@ -61,7 +61,6 @@ func TestServiceToken_ShowAccess(t *testing.T) {
 			return &ps.Client{
 				ServiceTokens: svc,
 			}, nil
-
 		},
 	}
 

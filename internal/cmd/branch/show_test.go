@@ -47,7 +47,6 @@ func TestBranch_ShowCmd(t *testing.T) {
 			return &ps.Client{
 				DatabaseBranches: svc,
 			}, nil
-
 		},
 	}
 

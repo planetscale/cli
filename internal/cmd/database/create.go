@@ -48,7 +48,6 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			org, err := client.Organizations.Get(cmd.Context(), &ps.GetOrganizationRequest{
 				Organization: ch.Config.Organization,
 			})
-
 			if err != nil {
 				return err
 			}

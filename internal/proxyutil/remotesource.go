@@ -28,8 +28,10 @@ func NewRemoteCertSource(client *ps.Client, role cmdutil.PasswordRole) *RemoteCe
 	}
 }
 
-const publicIdAlphabet = "0123456789abcdefghijklmnopqrstuvwxyz"
-const publicIdLength = 6
+const (
+	publicIdAlphabet = "0123456789abcdefghijklmnopqrstuvwxyz"
+	publicIdLength   = 6
+)
 
 func (r *RemoteCertSource) Cert(ctx context.Context, org, db, branch string) (*proxy.Cert, error) {
 	pkey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)

@@ -46,7 +46,6 @@ func TestDeployRequest_CloseCmd(t *testing.T) {
 			return &ps.Client{
 				DeployRequests: svc,
 			}, nil
-
 		},
 	}
 

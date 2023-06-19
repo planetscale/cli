@@ -45,7 +45,6 @@ func TestDatabase_ListCmd(t *testing.T) {
 			return &ps.Client{
 				Databases: svc,
 			}, nil
-
 		},
 	}
 

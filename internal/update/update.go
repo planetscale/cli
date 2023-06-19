@@ -144,7 +144,6 @@ func checkVersion(
 			info.Version, buildVersion),
 		ReleaseInfo: info,
 	}, nil
-
 }
 
 func latestVersion(ctx context.Context, addr string) (*ReleaseInfo, error) {
@@ -218,7 +217,7 @@ func setStateEntry(stateFilePath string, t time.Time, r ReleaseInfo) error {
 	if err != nil {
 		return err
 	}
-	_ = os.WriteFile(stateFilePath, content, 0600)
+	_ = os.WriteFile(stateFilePath, content, 0o600)
 
 	return nil
 }

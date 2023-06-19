@@ -45,7 +45,6 @@ func TestDatabase_ShowCmd(t *testing.T) {
 			return &ps.Client{
 				Databases: svc,
 			}, nil
-
 		},
 	}
 

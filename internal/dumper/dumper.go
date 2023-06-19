@@ -159,7 +159,6 @@ func (d *Dumper) Run(ctx context.Context) error {
 				if err != nil {
 					d.log.Error("error dumping table", zap.Error(err))
 				}
-
 			}(conn, database, table)
 		}
 	}
@@ -402,7 +401,6 @@ func (d *Dumper) dumpableFieldNames(conn *Connection, table string) ([]string, e
 	qr, err := conn.Fetch(fmt.Sprintf("SHOW FIELDS FROM `%s`", table))
 	if err != nil {
 		return nil, err
-
 	}
 
 	fields := make([]string, 0, len(qr.Rows))

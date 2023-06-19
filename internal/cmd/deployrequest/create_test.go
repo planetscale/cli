@@ -47,7 +47,6 @@ func TestDeployRequest_CreateCmd(t *testing.T) {
 			return &ps.Client{
 				DeployRequests: svc,
 			}, nil
-
 		},
 	}
 
@@ -95,7 +94,6 @@ func TestDeployRequest_CreateCmdIntoFlag(t *testing.T) {
 			return &ps.Client{
 				DeployRequests: svc,
 			}, nil
-
 		},
 	}
 
@@ -145,7 +143,6 @@ func TestDeployRequest_CreateCmdDeprecatedDeployToFlag(t *testing.T) {
 			return &ps.Client{
 				DeployRequests: svc,
 			}, nil
-
 		},
 	}
 

@@ -46,7 +46,6 @@ func TestBranch_LintCmd(t *testing.T) {
 			return &ps.Client{
 				DatabaseBranches: svc,
 			}, nil
-
 		},
 	}
 

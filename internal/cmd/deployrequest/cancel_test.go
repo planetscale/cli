@@ -46,7 +46,6 @@ func TestDeployRequest_CancelCmd(t *testing.T) {
 			return &ps.Client{
 				DeployRequests: svc,
 			}, nil
-
 		},
 	}
 

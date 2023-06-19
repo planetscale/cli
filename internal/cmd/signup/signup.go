@@ -50,7 +50,7 @@ func SignupCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			ch.Printer.Println("You are registering a new PlanetScale account.")
 
-			var qs = []*survey.Question{
+			qs := []*survey.Question{
 				{
 					Name:     "email",
 					Prompt:   &survey.Input{Message: "What is your e-mail?"},
@@ -143,7 +143,6 @@ func SignupCmd(ch *cmdutil.Helper) *cobra.Command {
 			ch.Printer.Println("\nYou've successfully signed up for PlanetScale!\nPlease check your email for a confirmation link and then get started with `pscale auth login`. ")
 
 			return nil
-
 		},
 	}
 

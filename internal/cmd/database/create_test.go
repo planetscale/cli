@@ -54,7 +54,6 @@ func TestDatabase_CreateCmd(t *testing.T) {
 					},
 				},
 			}, nil
-
 		},
 	}
 

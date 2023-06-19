@@ -44,7 +44,6 @@ func TestServiceToken_ListCmd(t *testing.T) {
 			return &ps.Client{
 				ServiceTokens: svc,
 			}, nil
-
 		},
 	}
 

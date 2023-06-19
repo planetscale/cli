@@ -170,7 +170,7 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 		return fmt.Errorf("backup directory already exists: %s", dir)
 	}
 
-	err = os.MkdirAll(dir, 0755)
+	err = os.MkdirAll(dir, 0o755)
 	if err != nil {
 		return err
 	}
@@ -265,7 +265,7 @@ func getDatabaseName(name, addr string) (string, error) {
 		return "", fmt.Errorf("failed getting database names: %s", err)
 	}
 
-	var hasDatabaseName = map[string]bool{
+	hasDatabaseName := map[string]bool{
 		"onboarding-demo": true,
 	}
 
