@@ -84,6 +84,20 @@ alias pscale="docker run -e HOME=/tmp -v $HOME/.config/planetscale:/tmp/.config/
 
 If you need a more advanced example that works with service tokens and differentiates between commands that need a pseudo terminal or non-interactive mode, [have a look at this shell function](https://github.com/jonico/pscale-cli-helper-scripts/blob/main/.pscale/cli-helper-scripts/use-pscale-docker-image.sh).
 
+## GitHub Actions Usage
+Use the [setup-pscale-action](https://github.com/planetscale/setup-pscale-action) to install and use `pscale` in GitHub Actions.
+
+```yaml
+- name: Setup pscale
+  uses: planetscale/setup-pscale-action@v1
+- name: Use pscale
+  env:
+    PLANETSCALE_SERVICE_TOKEN_ID: ${{ secrets.PLANETSCALE_SERVICE_TOKEN_ID }}
+    PLANETSCALE_SERVICE_TOKEN: ${{ secrets.PLANETSCALE_SERVICE_TOKEN }}
+  run: |
+    pscale deploy-request list my-db --org my-org
+```
+
 ## Local Development
 
 To run a command:
