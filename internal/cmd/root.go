@@ -27,6 +27,7 @@ import (
 	"github.com/planetscale/cli/internal/cmd/dataimports"
 
 	"github.com/fatih/color"
+	"github.com/planetscale/cli/internal/cmd/api"
 	"github.com/planetscale/cli/internal/cmd/auditlog"
 	"github.com/planetscale/cli/internal/cmd/auth"
 	"github.com/planetscale/cli/internal/cmd/backup"
@@ -143,16 +144,16 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 		return err
 	}
 
+	userAgent := "pscale-cli/" + ver
+	headers := map[string]string{
+		"pscale-cli-version": ver,
+	}
+
 	ch := &cmdutil.Helper{
 		Printer:  printer.NewPrinter(format),
 		Config:   cfg,
 		ConfigFS: config.NewConfigFS(osFS{}),
 		Client: func() (*ps.Client, error) {
-			userAgent := "pscale-cli/" + ver
-
-			headers := map[string]string{
-				"pscale-cli-version": ver,
-			}
 			return cfg.NewClientFromConfig(ps.WithUserAgent(userAgent), ps.WithRequestHeaders(headers))
 		},
 	}
@@ -183,6 +184,7 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 
 	rootCmd.AddCommand(loginCmd)
 	rootCmd.AddCommand(logoutCmd)
+	rootCmd.AddCommand(api.ApiCmd(ch, userAgent, headers))
 	rootCmd.AddCommand(auditlog.AuditLogCmd(ch))
 	rootCmd.AddCommand(auth.AuthCmd(ch))
 	rootCmd.AddCommand(backup.BackupCmd(ch))
