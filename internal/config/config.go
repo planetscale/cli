@@ -67,7 +67,7 @@ func (c *Config) IsAuthenticated() error {
 	return nil
 }
 
-// NewClientFromConfig creates a PlaentScale API client from our configuration
+// NewClientFromConfig creates a PlanetScale API client from our configuration
 func (c *Config) NewClientFromConfig(clientOpts ...ps.ClientOption) (*ps.Client, error) {
 	opts := []ps.ClientOption{
 		ps.WithBaseURL(c.BaseURL),
