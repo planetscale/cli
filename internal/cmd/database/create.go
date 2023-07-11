@@ -28,6 +28,20 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
+			plan, err := cmd.Flags().GetString("plan")
+			if err != nil {
+				return err
+			}
+
+			createReq.Plan = ps.Plan(plan)
+
+			clusterSize, err := cmd.Flags().GetString("cluster-size")
+			if err != nil {
+				return err
+			}
+
+			createReq.ClusterSize = ps.ClusterSize(clusterSize)
+
 			createReq.Organization = ch.Config.Organization
 			createReq.Name = args[0]
 
@@ -87,6 +101,10 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	cmd.Flags().StringVar(&createReq.Notes, "notes", "", "notes for the database")
 	cmd.Flags().StringVar(&createReq.Region, "region", "", "region for the database")
+
+	cmd.Flags().String("plan", "", "plan for the database. Options: hobby, scaler, or scaler_pro")
+	cmd.Flags().String("cluster-size", "", "cluster size for the database. Options: PS_10, PS_20, PS_40, PS_80, PS_160, PS_320, PS_400")
+
 	cmd.RegisterFlagCompletionFunc("region", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		ctx := cmd.Context()
 		client, err := ch.Client()
@@ -108,6 +126,18 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 		}
 
 		return regionStrs, cobra.ShellCompDirectiveDefault
+	})
+
+	cmd.RegisterFlagCompletionFunc("cluster_size", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		clusterSizes := []string{"PS_10", "PS_20", "PS_40", "PS_80", "PS_160", "PS_320", "PS_400"}
+
+		return clusterSizes, cobra.ShellCompDirectiveDefault
+	})
+
+	cmd.RegisterFlagCompletionFunc("plan", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		plans := []string{"hobby", "scaler", "scaler_pro"}
+
+		return plans, cobra.ShellCompDirectiveDefault
 	})
 
 	cmd.Flags().BoolP("web", "w", false, "Create a database in your web browser")
