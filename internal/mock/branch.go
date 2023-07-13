@@ -34,20 +34,8 @@ type DatabaseBranchesService struct {
 	RefreshSchemaFn        func(context.Context, *ps.RefreshSchemaRequest) error
 	RefreshSchemaFnInvoked bool
 
-	RequestPromotionFn        func(context.Context, *ps.RequestPromotionRequest) (*ps.BranchPromotionRequest, error)
-	RequestPromotionFnInvoked bool
-
-	GetPromotionRequestFn        func(context.Context, *ps.GetPromotionRequestRequest) (*ps.BranchPromotionRequest, error)
-	GetPromotionRequestFnInvoked bool
-
-	DemoteFn        func(context.Context, *ps.DemoteRequest) (*ps.BranchDemotionRequest, error)
+	DemoteFn        func(context.Context, *ps.DemoteRequest) (*ps.DatabaseBranch, error)
 	DemoteFnInvoked bool
-
-	GetDemotionRequestFn        func(context.Context, *ps.GetDemotionRequestRequest) (*ps.BranchDemotionRequest, error)
-	GetDemotionRequestFnInvoked bool
-
-	DenyDemotionRequestFn        func(context.Context, *ps.DenyDemotionRequestRequest) error
-	DenyDemotionRequestFnInvoked bool
 
 	EnableSafeMigrationsFn        func(context.Context, *ps.EnableSafeMigrationsRequest) (*ps.DatabaseBranch, error)
 	EnableSafeMigrationsFnInvoked bool
@@ -107,29 +95,9 @@ func (d *DatabaseBranchesService) RefreshSchema(ctx context.Context, req *ps.Ref
 	return d.RefreshSchemaFn(ctx, req)
 }
 
-func (d *DatabaseBranchesService) RequestPromotion(ctx context.Context, req *ps.RequestPromotionRequest) (*ps.BranchPromotionRequest, error) {
-	d.RequestPromotionFnInvoked = true
-	return d.RequestPromotionFn(ctx, req)
-}
-
-func (d *DatabaseBranchesService) GetPromotionRequest(ctx context.Context, req *ps.GetPromotionRequestRequest) (*ps.BranchPromotionRequest, error) {
-	d.GetPromotionRequestFnInvoked = true
-	return d.GetPromotionRequestFn(ctx, req)
-}
-
-func (d *DatabaseBranchesService) Demote(ctx context.Context, req *ps.DemoteRequest) (*ps.BranchDemotionRequest, error) {
+func (d *DatabaseBranchesService) Demote(ctx context.Context, req *ps.DemoteRequest) (*ps.DatabaseBranch, error) {
 	d.DemoteFnInvoked = true
 	return d.DemoteFn(ctx, req)
-}
-
-func (d *DatabaseBranchesService) GetDemotionRequest(ctx context.Context, req *ps.GetDemotionRequestRequest) (*ps.BranchDemotionRequest, error) {
-	d.GetDemotionRequestFnInvoked = true
-	return d.GetDemotionRequestFn(ctx, req)
-}
-
-func (d *DatabaseBranchesService) DenyDemotionRequest(ctx context.Context, req *ps.DenyDemotionRequestRequest) error {
-	d.DenyDemotionRequestFnInvoked = true
-	return d.DenyDemotionRequestFn(ctx, req)
 }
 
 func (d *DatabaseBranchesService) EnableSafeMigrations(ctx context.Context, req *ps.EnableSafeMigrationsRequest) (*ps.DatabaseBranch, error) {
