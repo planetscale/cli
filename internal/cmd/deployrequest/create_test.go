@@ -25,6 +25,7 @@ func TestDeployRequest_CreateCmd(t *testing.T) {
 	org := "planetscale"
 	db := "planetscale"
 	branch := "development"
+	notes := "notes"
 	var number uint64 = 10
 
 	svc := &mock.DeployRequestsService{
@@ -32,6 +33,7 @@ func TestDeployRequest_CreateCmd(t *testing.T) {
 			c.Assert(req.Organization, qt.Equals, org)
 			c.Assert(req.Database, qt.Equals, db)
 			c.Assert(req.Branch, qt.Equals, branch)
+			c.Assert(req.Notes, qt.Equals, notes)
 			c.Assert(req.IntoBranch, qt.Equals, "", qt.Commentf("default value of the '--into' flag has changed"))
 
 			return &ps.DeployRequest{Number: number}, nil
@@ -51,7 +53,7 @@ func TestDeployRequest_CreateCmd(t *testing.T) {
 	}
 
 	cmd := CreateCmd(ch)
-	cmd.SetArgs([]string{db, branch})
+	cmd.SetArgs([]string{db, branch, "--notes", notes})
 	err := cmd.Execute()
 
 	c.Assert(err, qt.IsNil)

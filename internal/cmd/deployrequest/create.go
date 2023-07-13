@@ -13,8 +13,8 @@ import (
 // CreateCmd is the command for creating deploy requests.
 func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
-		deployTo string
-		into     string
+		into  string
+		notes string
 	}
 
 	cmd := &cobra.Command{
@@ -34,16 +34,12 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Request deploying of %s branch in %s...", printer.BoldBlue(branch), printer.BoldBlue(database)))
 			defer end()
 
-			into := flags.into
-			if len(into) == 0 && len(flags.deployTo) > 0 {
-				into = flags.deployTo
-			}
-
 			dr, err := client.DeployRequests.Create(ctx, &planetscale.CreateDeployRequestRequest{
 				Organization: ch.Config.Organization,
 				Database:     database,
 				Branch:       branch,
-				IntoBranch:   into,
+				IntoBranch:   flags.into,
+				Notes:        flags.notes,
 			})
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
@@ -66,9 +62,8 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 		},
 	}
 
-	cmd.PersistentFlags().StringVar(&flags.deployTo, "deploy-to", "", "Database branch to deploy into. Defaults to the parent of the branch (if present) or the database's default branch.")
-	cmd.PersistentFlags().MarkDeprecated("deploy-to", "this flag will be removed in a future release. Use --into instead.")
 	cmd.PersistentFlags().StringVar(&flags.into, "into", "", "Branch to deploy into. By default, it's the parent branch (if present) or the database's default branch.")
+	cmd.PersistentFlags().StringVar(&flags.notes, "notes", "", "Notes to include with the deploy request.")
 
 	return cmd
 }
