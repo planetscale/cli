@@ -23,6 +23,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/planetscale/cli/internal/cmd/dataimports"
 
@@ -79,6 +80,31 @@ func Execute(ctx context.Context, ver, commit, buildDate string) int {
 		}
 	}
 
+	if _, ok := os.LookupEnv("PSCALE_NO_UPDATE_NOTIFIER"); !ok {
+		updateCheckRes := make(chan *update.UpdateInfo, 1)
+		updateCheckErr := make(chan error, 1)
+		updateTimeout := time.After(500 * time.Millisecond)
+		go func() {
+			// note: don't close the chans to avoid
+			// triggering the wrong select case
+			ui, err := update.CheckVersion(ctx, ver)
+			if err != nil {
+				updateCheckErr <- err
+			} else {
+				updateCheckRes <- ui
+			}
+		}()
+		defer func() {
+			select {
+			case ui := <-updateCheckRes:
+				ui.PrintUpdateHint(ver)
+			case err := <-updateCheckErr:
+				fmt.Fprintf(os.Stderr, "Updater error: %#v\n", err)
+			case <-updateTimeout:
+			}
+		}()
+	}
+
 	err := runCmd(ctx, ver, commit, buildDate, &format, &debug)
 	if err == nil {
 		return 0
@@ -89,10 +115,6 @@ func Execute(ctx context.Context, ver, commit, buildDate string) int {
 	case printer.JSON:
 		fmt.Fprintf(os.Stderr, `{"error": "%s"}`, err)
 	default:
-		if err := update.CheckVersion(ctx, ver); err != nil && debug {
-			fmt.Fprintf(os.Stderr, "Updater error: %s\n", err)
-		}
-
 		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
 	}
 

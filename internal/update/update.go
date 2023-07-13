@@ -29,6 +29,29 @@ type UpdateInfo struct {
 	ReleaseInfo *ReleaseInfo
 }
 
+func (ui *UpdateInfo) PrintUpdateHint(buildVersion string) {
+	if ui == nil || !ui.Update {
+		return
+	}
+
+	fmt.Fprintf(color.Error, "\n%s %s → %s\n",
+		color.BlueString("A new release of pscale is available:"),
+		color.CyanString(buildVersion),
+		color.CyanString(ui.ReleaseInfo.Version))
+
+	var binpath string
+	if exepath, err := os.Executable(); err == nil {
+		binpath = exepath
+	} else if path, err := exec.LookPath("pscale"); err == nil {
+		binpath = path
+	}
+
+	if cmdutil.IsUnderHomebrew(binpath) {
+		fmt.Fprintf(os.Stderr, "To upgrade, run: %s\n", "brew update && brew upgrade pscale")
+	}
+	fmt.Fprintf(color.Error, "%s\n", color.YellowString(ui.ReleaseInfo.URL))
+}
+
 // ReleaseInfo stores information about a release
 type ReleaseInfo struct {
 	Version     string    `json:"tag_name"`
@@ -45,14 +68,14 @@ type StateEntry struct {
 
 // CheckVersion checks for the given build version whether there is a new
 // version of the CLI or not.
-func CheckVersion(ctx context.Context, buildVersion string) error {
+func CheckVersion(ctx context.Context, buildVersion string) (*UpdateInfo, error) {
 	if ctx.Err() != nil {
-		return ctx.Err()
+		return nil, ctx.Err()
 	}
 
 	path, err := stateFilePath()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	updateInfo, err := checkVersion(
@@ -62,30 +85,9 @@ func CheckVersion(ctx context.Context, buildVersion string) error {
 		latestVersion,
 	)
 	if err != nil {
-		return fmt.Errorf("skipping update, error: %s", err)
+		return nil, fmt.Errorf("skipping update, error: %s", err)
 	}
-
-	if !updateInfo.Update {
-		return fmt.Errorf("skipping update, reason: %s", updateInfo.Reason)
-	}
-
-	fmt.Fprintf(color.Error, "\n%s %s → %s\n",
-		color.BlueString("A new release of pscale is available:"),
-		color.CyanString(buildVersion),
-		color.CyanString(updateInfo.ReleaseInfo.Version))
-
-	var binpath string
-	if exepath, err := os.Executable(); err == nil {
-		binpath = exepath
-	} else if path, err := exec.LookPath("pscale"); err == nil {
-		binpath = path
-	}
-
-	if cmdutil.IsUnderHomebrew(binpath) {
-		fmt.Fprintf(os.Stderr, "To upgrade, run: %s\n", "brew update && brew upgrade pscale")
-	}
-	fmt.Fprintf(color.Error, "%s\n", color.YellowString(updateInfo.ReleaseInfo.URL))
-	return nil
+	return updateInfo, nil
 }
 
 func checkVersion(
@@ -93,13 +95,6 @@ func checkVersion(
 	buildVersion, path string,
 	latestVersionFn func(ctx context.Context, addr string) (*ReleaseInfo, error),
 ) (*UpdateInfo, error) {
-	if _, exists := os.LookupEnv("PSCALE_NO_UPDATE_NOTIFIER"); exists {
-		return &UpdateInfo{
-			Update: false,
-			Reason: "PSCALE_NO_UPDATE_NOTIFIER is set",
-		}, nil
-	}
-
 	stateEntry, _ := getStateEntry(path)
 	if stateEntry != nil && time.Since(stateEntry.CheckedForUpdateAt).Hours() < 24 {
 		return &UpdateInfo{
