@@ -1,6 +1,7 @@
 package cmdutil
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -235,4 +236,29 @@ func ParseSSLMode(sslMode string) ps.ExternalDataSourceSSLVerificationMode {
 
 func TimeToMilliseconds(t time.Time) int64 {
 	return t.UTC().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond))
+}
+
+func DeployRequestBranchToNumber(ctx context.Context, client *ps.Client, organization string, database string, branch string, state string) (uint64, error) {
+	deployRequests, err := client.DeployRequests.List(ctx, &ps.ListDeployRequestsRequest{
+		Organization: organization,
+		Database:     database,
+		Branch:       branch,
+		State:        state,
+	})
+	if err != nil {
+		switch ErrCode(err) {
+		case ps.ErrNotFound:
+			return 0, fmt.Errorf("database %s does not exist in organization %s",
+				printer.BoldBlue(database), printer.BoldBlue(organization))
+		default:
+			return 0, HandleError(err)
+		}
+	}
+
+	// if there are no deploy requests, return an error
+	if len(deployRequests) == 0 {
+		return 0, fmt.Errorf("no open deploy requests found for branch %s", printer.BoldBlue(branch))
+	}
+
+	return deployRequests[0].Number, nil
 }

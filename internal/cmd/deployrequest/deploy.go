@@ -39,28 +39,10 @@ func DeployCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			// Not a valid number, try branch name
 			if err != nil {
-				deployRequests, err := client.DeployRequests.List(ctx, &planetscale.ListDeployRequestsRequest{
-					Organization: ch.Config.Organization,
-					Database:     database,
-					Branch:       number_or_branch,
-					State:        "open",
-				})
+				number, err = cmdutil.DeployRequestBranchToNumber(ctx, client, ch.Config.Organization, database, number_or_branch, "open")
 				if err != nil {
-					switch cmdutil.ErrCode(err) {
-					case planetscale.ErrNotFound:
-						return fmt.Errorf("database %s does not exist in organization %s",
-							printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
-					default:
-						return cmdutil.HandleError(err)
-					}
+					return err
 				}
-
-				// if there are no deploy requests, return an error
-				if len(deployRequests) == 0 {
-					return fmt.Errorf("no open deploy requests found for branch %s", printer.BoldBlue(number_or_branch))
-				}
-
-				number = deployRequests[0].Number
 			}
 
 			dr, err := client.DeployRequests.Deploy(ctx, &planetscale.PerformDeployRequest{
