@@ -257,7 +257,7 @@ func DeployRequestBranchToNumber(ctx context.Context, client *ps.Client, organiz
 
 	// if there are no deploy requests, return an error
 	if len(deployRequests) == 0 {
-		return 0, fmt.Errorf("no open deploy requests found for branch %s", printer.BoldBlue(branch))
+		return 0, fmt.Errorf("no deploy requests found for branch %s", printer.BoldBlue(branch))
 	}
 
 	return deployRequests[0].Number, nil
