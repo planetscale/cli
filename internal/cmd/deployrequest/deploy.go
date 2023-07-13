@@ -21,29 +21,54 @@ func DeployCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:   "deploy <database> <number>",
+		Use:   "deploy <database> <number|branch>",
 		Short: "Deploy a specific deploy request",
-		Args:  cmdutil.RequiredArgs("database", "number"),
+		Args:  cmdutil.RequiredArgs("database", "number|branch"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			database := args[0]
-			number := args[1]
+			number_or_branch := args[1]
+			var number uint64
 
 			client, err := ch.Client()
 			if err != nil {
 				return err
 			}
 
-			n, err := strconv.ParseUint(number, 10, 64)
+			number, err = strconv.ParseUint(number_or_branch, 10, 64)
+
+			// Not a valid number, try branch name
 			if err != nil {
-				return fmt.Errorf("the argument <number> is invalid: %s", err)
+				deployRequests, err := client.DeployRequests.List(ctx, &planetscale.ListDeployRequestsRequest{
+					Organization: ch.Config.Organization,
+					Database:     database,
+					Branch:       number_or_branch,
+					State:        "open",
+				})
+				if err != nil {
+					switch cmdutil.ErrCode(err) {
+					case planetscale.ErrNotFound:
+						return fmt.Errorf("database %s does not exist in organization %s",
+							printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
+					default:
+						return cmdutil.HandleError(err)
+					}
+				}
+
+				// if there are no deploy requests, return an error
+				if len(deployRequests) == 0 {
+					return fmt.Errorf("no open deploy requests found for branch %s", printer.BoldBlue(number_or_branch))
+				}
+
+				number = deployRequests[0].Number
 			}
 
 			dr, err := client.DeployRequests.Deploy(ctx, &planetscale.PerformDeployRequest{
 				Organization: ch.Config.Organization,
 				Database:     database,
-				Number:       n,
+				Number:       number,
 			})
+
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
@@ -62,7 +87,7 @@ func DeployCmd(ch *cmdutil.Helper) *cobra.Command {
 				getReq := &planetscale.GetDeployRequestRequest{
 					Organization: ch.Config.Organization,
 					Database:     database,
-					Number:       n,
+					Number:       number,
 				}
 				state, err := waitUntilReady(ctx, client, ch.Printer, ch.Debug(), getReq)
 				if err != nil {
