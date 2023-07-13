@@ -26,16 +26,18 @@ func TestBranch_DemoteCmd(t *testing.T) {
 	branch := "development"
 
 	res := &ps.DatabaseBranch{
-		Name: branch,
+		Name:           branch,
+		Production:     false,
+		SafeMigrations: false,
 	}
 
 	svc := &mock.DatabaseBranchesService{
-		DemoteFn: func(ctx context.Context, req *ps.DemoteRequest) (*ps.BranchDemotionRequest, error) {
+		DemoteFn: func(ctx context.Context, req *ps.DemoteRequest) (*ps.DatabaseBranch, error) {
 			c.Assert(req.Branch, qt.Equals, branch)
 			c.Assert(req.Database, qt.Equals, db)
 			c.Assert(req.Organization, qt.Equals, org)
 
-			return nil, nil
+			return res, nil
 		},
 		GetFn: func(ctx context.Context, req *ps.GetDatabaseBranchRequest) (*ps.DatabaseBranch, error) {
 			c.Assert(req.Branch, qt.Equals, branch)

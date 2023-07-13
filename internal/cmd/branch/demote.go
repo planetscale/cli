@@ -35,7 +35,7 @@ func DemoteCmd(ch *cmdutil.Helper) *cobra.Command {
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Demoting %s branch in %s to development...", printer.BoldBlue(branch), printer.BoldBlue(database)))
 			defer end()
 
-			_, err = client.DatabaseBranches.Demote(ctx, demoteReq)
+			b, err := client.DatabaseBranches.Demote(ctx, demoteReq)
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case ps.ErrNotFound:
@@ -52,15 +52,10 @@ func DemoteCmd(ch *cmdutil.Helper) *cobra.Command {
 				ch.Printer.Printf("%s branch was successfully demoted to development.\n", printer.BoldBlue(branch))
 				return nil
 			} else {
-				dbBranch, err := client.DatabaseBranches.Get(cmd.Context(), &ps.GetDatabaseBranchRequest{
-					Organization: ch.Config.Organization,
-					Database:     database,
-					Branch:       branch,
-				})
 				if err != nil {
 					return cmdutil.HandleError(err)
 				}
-				return ch.Printer.PrintResource(ToDatabaseBranch(dbBranch))
+				return ch.Printer.PrintResource(ToDatabaseBranch(b))
 			}
 		},
 	}
