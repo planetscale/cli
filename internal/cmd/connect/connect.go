@@ -31,6 +31,7 @@ func ConnectCmd(ch *cmdutil.Helper) *cobra.Command {
 		execCommandProtocol string
 		execCommandEnvURL   string
 		role                string
+		noRandom            bool
 	}
 
 	cmd := &cobra.Command{
@@ -144,7 +145,7 @@ argument:
 
 			err = runProxy(ctx, ch, proxyOpts, database, branch, proxyReady)
 			if err != nil {
-				if isAddrInUse(err) {
+				if isAddrInUse(err) && !flags.noRandom {
 					ch.Printer.Printf("Tried address %s, but it's already in use. Picking up a random port ...\n", localAddr)
 					proxyOpts.LocalAddr = net.JoinHostPort(flags.host, "0")
 					return runProxy(ctx, ch, proxyOpts, database, branch, proxyReady)
@@ -165,6 +166,7 @@ argument:
 	cmd.PersistentFlags().StringVar(&ch.Config.Organization, "org", ch.Config.Organization, "The organization for the current user")
 	cmd.PersistentFlags().StringVar(&flags.host, "host", "127.0.0.1", "Local host to bind and listen for connections")
 	cmd.PersistentFlags().StringVar(&flags.port, "port", "3306", "Local port to bind and listen for connections")
+	cmd.PersistentFlags().BoolVar(&flags.noRandom, "no-random", false, "Do not pick a random port if the default port is in use")
 	cmd.PersistentFlags().StringVar(&flags.remoteAddr, "remote-addr", "",
 		"PlanetScale Database remote network address. By default the remote address is populated automatically from the PlanetScale API.")
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
