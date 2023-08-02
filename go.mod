@@ -10,7 +10,7 @@ require (
 	github.com/benbjohnson/clock v1.3.5
 	github.com/briandowns/spinner v1.23.0
 	github.com/fatih/color v1.15.0
-	github.com/frankban/quicktest v1.14.5
+	github.com/frankban/quicktest v1.14.6
 	github.com/go-sql-driver/mysql v1.7.1
 	github.com/gocarina/gocsv v0.0.0-20230614100527-2696de6cd848
 	github.com/hashicorp/go-cleanhttp v0.5.2
