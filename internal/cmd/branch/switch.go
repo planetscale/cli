@@ -49,7 +49,7 @@ func SwitchCmd(ch *cmdutil.Helper) *cobra.Command {
 						ch.Config.Database, ch.Config.Organization)
 				}
 
-				end := ch.Printer.PrintProgress(fmt.Sprintf("Branch does not exist, creating %s branch from %s...", printer.BoldBlue(branch), printer.BoldBlue(parentBranch)))
+				end := ch.Printer.PrintProgress(fmt.Sprintf("Branch does not exist, creating %s branch...", printer.BoldBlue(branch)))
 				defer end()
 
 				createReq := &ps.CreateDatabaseBranchRequest{
@@ -105,7 +105,7 @@ func SwitchCmd(ch *cmdutil.Helper) *cobra.Command {
 		"The organization for the current user")
 	cmd.PersistentFlags().StringVar(&ch.Config.Database, "database", ch.Config.Database,
 		"The database this project is using")
-	cmd.Flags().StringVar(&parentBranch, "parent-branch", "main",
+	cmd.Flags().StringVar(&parentBranch, "parent-branch", "",
 		"parent branch to inherit from if a new branch is being created")
 	cmd.Flags().BoolVar(&autoCreate, "create", false,
 		"if enabled, will automatically create the branch if it does not exist")
