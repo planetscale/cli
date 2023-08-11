@@ -51,13 +51,13 @@ func EnableSafeMigrationsCmd(ch *cmdutil.Helper) *cobra.Command {
 				case ps.ErrNotFound:
 					return fmt.Errorf("branch %s does not exist in database %s", printer.BoldBlue(branch), printer.BoldBlue(db))
 				case ps.ErrRetry:
-					lintErrors, err := client.DatabaseBranches.LintSchema(ctx, &ps.LintSchemaRequest{
+					lintErrors, lintErr := client.DatabaseBranches.LintSchema(ctx, &ps.LintSchemaRequest{
 						Organization: ch.Config.Organization,
 						Database:     db,
 						Branch:       branch,
 					})
-					if err != nil {
-						return cmdutil.HandleError(err)
+					if lintErr != nil {
+						return cmdutil.HandleError(lintErr)
 					}
 
 					if len(lintErrors) > 0 {
