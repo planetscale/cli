@@ -58,9 +58,9 @@ func TestPassword_DeleteCmd(t *testing.T) {
 	c.Assert(svc.DeleteFnInvoked, qt.IsTrue)
 
 	res := map[string]string{
-		"result":   "password deleted",
-		"password": password,
-		"branch":   branch,
+		"result":      "password deleted",
+		"password_id": password,
+		"branch":      branch,
 	}
 	c.Assert(buf.String(), qt.JSONEquals, res)
 }
