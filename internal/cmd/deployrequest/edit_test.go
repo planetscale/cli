@@ -58,6 +58,6 @@ func TestDeployRequest_EditCmd(t *testing.T) {
 	c.Assert(err, qt.IsNil)
 	c.Assert(svc.AutoApplyFnInvoked, qt.IsTrue)
 
-	res := &DeployRequest{Number: number}
+	res := &ps.DeployRequest{Number: number}
 	c.Assert(buf.String(), qt.JSONEquals, res)
 }
