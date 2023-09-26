@@ -1,6 +1,8 @@
 package deployrequest
 
 import (
+	"encoding/json"
+
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
 	"github.com/planetscale/planetscale-go/planetscale"
@@ -51,6 +53,8 @@ type DeployRequest struct {
 	CreatedAt  int64            `header:"created_at,timestamp(ms|utc|human)" json:"created_at"`
 	UpdatedAt  int64            `header:"updated_at,timestamp(ms|utc|human)" json:"updated_at"`
 	ClosedAt   *int64           `header:"closed_at,timestamp(ms|utc|human),-" json:"closed_at"`
+
+	orig *planetscale.DeployRequest
 }
 
 type inlineDeployment struct {
@@ -60,6 +64,8 @@ type inlineDeployment struct {
 	QueuedAt   *int64 `header:"queued_at,timestamp(ms|utc|human),-" json:"queued_at"`
 	StartedAt  *int64 `header:"started_at,timestamp(ms|utc|human),-" json:"started_at"`
 	FinishedAt *int64 `header:"finished_at,timestamp(ms|utc|human),-" json:"finished_at"`
+
+	orig *planetscale.Deployment
 }
 
 func (d *DeployRequest) MarshalCSVValue() interface{} {
@@ -78,6 +84,8 @@ func toInlineDeployment(d *planetscale.Deployment) inlineDeployment {
 		FinishedAt: printer.GetMillisecondsIfExists(d.FinishedAt),
 		StartedAt:  printer.GetMillisecondsIfExists(d.StartedAt),
 		QueuedAt:   printer.GetMillisecondsIfExists(d.QueuedAt),
+
+		orig: d,
 	}
 }
 
@@ -93,6 +101,7 @@ func toDeployRequest(dr *planetscale.DeployRequest) *DeployRequest {
 		CreatedAt:  printer.GetMilliseconds(dr.CreatedAt),
 		UpdatedAt:  printer.GetMilliseconds(dr.UpdatedAt),
 		ClosedAt:   printer.GetMillisecondsIfExists(dr.ClosedAt),
+		orig:       dr,
 	}
 }
 
@@ -104,4 +113,12 @@ func toDeployRequests(deployRequests []*planetscale.DeployRequest) []*DeployRequ
 	}
 
 	return requests
+}
+
+func (d *DeployRequest) MarshalJSON() ([]byte, error) {
+	return json.MarshalIndent(d.orig, "", "  ")
+}
+
+func (d *inlineDeployment) MarshalJSON() ([]byte, error) {
+	return json.MarshalIndent(d.orig, "", "  ")
 }
