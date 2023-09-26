@@ -56,6 +56,6 @@ func TestDeployRequest_SkipRevertCmd(t *testing.T) {
 	c.Assert(err, qt.IsNil)
 	c.Assert(svc.SkipRevertDeployFnInvoked, qt.IsTrue)
 
-	res := &DeployRequest{Number: number}
+	res := &ps.DeployRequest{Number: number}
 	c.Assert(buf.String(), qt.JSONEquals, res)
 }

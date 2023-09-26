@@ -56,7 +56,7 @@ func TestDeployRequest_ListCmd(t *testing.T) {
 	c.Assert(err, qt.IsNil)
 	c.Assert(svc.ListFnInvoked, qt.IsTrue)
 
-	res := []*DeployRequest{
+	res := []*ps.DeployRequest{
 		{Number: 1},
 		{Number: 2},
 	}

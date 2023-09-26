@@ -56,7 +56,7 @@ func TestDeployRequest_DeployCmd(t *testing.T) {
 	c.Assert(err, qt.IsNil)
 	c.Assert(svc.DeployFnInvoked, qt.IsTrue)
 
-	res := &DeployRequest{Number: number}
+	res := &ps.DeployRequest{Number: number}
 	c.Assert(buf.String(), qt.JSONEquals, res)
 }
 
@@ -113,6 +113,6 @@ func TestDeployRequest_DeployBranchName(t *testing.T) {
 	c.Assert(err, qt.IsNil)
 	c.Assert(svc.DeployFnInvoked, qt.IsTrue)
 
-	res := &DeployRequest{Number: number}
+	res := &ps.DeployRequest{Number: number}
 	c.Assert(buf.String(), qt.JSONEquals, res)
 }
