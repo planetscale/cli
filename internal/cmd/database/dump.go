@@ -13,12 +13,11 @@ import (
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/dumper"
 	"github.com/planetscale/cli/internal/printer"
-	"github.com/planetscale/cli/internal/proxyutil"
 	ps "github.com/planetscale/planetscale-go/planetscale"
-	"github.com/planetscale/sql-proxy/proxy"
 
 	_ "github.com/go-sql-driver/mysql"
 
+	nanoid "github.com/matoous/go-nanoid/v2"
 	"github.com/spf13/cobra"
 )
 
@@ -31,6 +30,11 @@ type dumpFlags struct {
 	output    string
 	threads   int
 }
+
+const (
+	publicIdAlphabet = "0123456789abcdefghijklmnopqrstuvwxyz"
+	publicIdLength   = 6
+)
 
 // DumpCmd encapsulates the commands for dumping a database
 func DumpCmd(ch *cmdutil.Helper) *cobra.Command {
@@ -75,31 +79,6 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 		return err
 	}
 
-	const localProxyAddr = "127.0.0.1"
-	localAddr := localProxyAddr + ":0"
-	if flags.localAddr != "" {
-		localAddr = flags.localAddr
-	}
-
-	proxyOpts := proxy.Options{
-		CertSource: proxyutil.NewRemoteCertSource(client, cmdutil.AdministratorRole),
-		LocalAddr:  localAddr,
-		Instance:   fmt.Sprintf("%s/%s/%s", ch.Config.Organization, database, branch),
-		Logger:     cmdutil.NewZapLogger(ch.Debug()),
-	}
-
-	p, err := proxy.NewClient(proxyOpts)
-	if err != nil {
-		return fmt.Errorf("couldn't create proxy client: %s", err)
-	}
-
-	go func() {
-		err := p.Run(ctx)
-		if err != nil {
-			ch.Printer.Println("proxy error: ", err)
-		}
-	}()
-
 	db, err := client.Databases.Get(ctx, &ps.GetDatabaseRequest{
 		Organization: ch.Config.Organization,
 		Database:     database,
@@ -141,12 +120,32 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 		return errors.New("database branch is not ready yet, please try again in a few minutes")
 	}
 
-	addr, err := p.LocalAddr()
+	pw, err := client.Passwords.Create(ctx, &ps.DatabaseBranchPasswordRequest{
+		Organization: ch.Config.Organization,
+		Database:     database,
+		Branch:       branch,
+		Role:         cmdutil.AdministratorRole.ToString(),
+		Name:         fmt.Sprintf("pscale-cli-dump-%s-%s", time.Now().Format("2006-01-02"), nanoid.MustGenerate(publicIdAlphabet, publicIdLength)),
+		TTL:          int((6 * time.Hour).Seconds()),
+	})
 	if err != nil {
 		return err
 	}
 
-	dbName, err := getDatabaseName(keyspace, addr.String())
+	fmt.Println(pw.Hostname, pw.Name, pw.Username, pw.PlainText, pw.TTL)
+	defer func() {
+		if err := client.Passwords.Delete(ctx, &ps.DeleteDatabaseBranchPasswordRequest{
+			Organization: ch.Config.Organization,
+			Database:     database,
+			Branch:       branch,
+			Name:         pw.Name,
+			PasswordId:   pw.PublicID,
+		}); err != nil {
+			ch.Printer.Println("error deleting temporary credentials: ", err)
+		}
+	}()
+
+	dbName, err := getDatabaseName(keyspace, pw.Username, pw.PlainText, pw.Hostname)
 	if err != nil {
 		return err
 	}
@@ -177,10 +176,9 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 
 	cfg := dumper.NewDefaultConfig()
 	cfg.Threads = flags.threads
-	cfg.User = "root"
-	// NOTE(fatih): the password is a placeholder, replace once we get rid of the proxy
-	cfg.Password = "root"
-	cfg.Address = addr.String()
+	cfg.User = pw.Username
+	cfg.Password = pw.PlainText
+	cfg.Address = pw.Hostname + ":3306"
 	cfg.Database = dbName
 	cfg.Debug = ch.Debug()
 	cfg.StmtSize = 1000000
@@ -233,8 +231,8 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 	return nil
 }
 
-func getDatabaseName(name, addr string) (string, error) {
-	dsn := fmt.Sprintf("%s:%s@tcp(%s)/", "root", "", addr)
+func getDatabaseName(name, user, pw, addr string) (string, error) {
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:3306)/?tls=true", user, pw, addr)
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		return "", err
