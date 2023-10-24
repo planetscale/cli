@@ -1,6 +1,6 @@
 ---
 name: github.com/gocarina/gocsv
-version: v0.0.0-20230614100527-2696de6cd848
+version: v0.0.0-20230616125104-99d496ca653d
 type: go
 summary: 
 homepage: https://pkg.go.dev/github.com/gocarina/gocsv
