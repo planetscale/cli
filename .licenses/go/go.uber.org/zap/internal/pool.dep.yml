@@ -1,10 +1,9 @@
 ---
-name: go.uber.org/zap/zapcore
+name: go.uber.org/zap/internal/pool
 version: v1.26.0
 type: go
-summary: Package zapcore defines and implements the low-level interfaces upon which
-  zap is built.
-homepage: https://pkg.go.dev/go.uber.org/zap/zapcore
+summary: Package pool provides internal pool utilities.
+homepage: https://pkg.go.dev/go.uber.org/zap/internal/pool
 license: mit
 licenses:
 - sources: zap@v1.26.0/LICENSE.txt

@@ -1,5 +1,5 @@
-ARG GORELEASE_CROSS_VERSION=v1.20.4
+ARG GORELEASE_CROSS_VERSION=v1.21.3
 FROM ghcr.io/goreleaser/goreleaser-cross:${GORELEASE_CROSS_VERSION}
 
-ARG SYFT_VERSION=0.75.0
+ARG SYFT_VERSION=0.94.0
 RUN wget -O syft.deb https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/syft_${SYFT_VERSION}_linux_amd64.deb && dpkg -i syft.deb
