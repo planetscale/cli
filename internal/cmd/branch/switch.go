@@ -2,7 +2,6 @@ package branch
 
 import (
 	"fmt"
-	"net/http"
 
 	"github.com/pkg/errors"
 	"github.com/planetscale/cli/internal/cmdutil"
@@ -39,11 +38,13 @@ func SwitchCmd(ch *cmdutil.Helper) *cobra.Command {
 				Database:     ch.Config.Database,
 				Branch:       branch,
 			})
-			if err != nil && !errorIsNotFound(err) {
+			errorIsNotFound := cmdutil.ErrCode(err) == ps.ErrNotFound
+
+			if err != nil && !errorIsNotFound {
 				return cmdutil.HandleError(err)
 			}
 
-			if errorIsNotFound(err) {
+			if errorIsNotFound {
 				if !autoCreate {
 					return fmt.Errorf("branch does not exist in database %s and organization %s. Use --create to automatically create during switch",
 						ch.Config.Database, ch.Config.Organization)
@@ -61,7 +62,13 @@ func SwitchCmd(ch *cmdutil.Helper) *cobra.Command {
 
 				_, err = client.DatabaseBranches.Create(ctx, createReq)
 				if err != nil {
-					return err
+					switch cmdutil.ErrCode(err) {
+					case ps.ErrNotFound:
+						return fmt.Errorf("database %s does not exist in organization %s",
+						printer.BoldBlue(ch.Config.Database), printer.BoldBlue(ch.Config.Organization))
+					default:
+						return cmdutil.HandleError(err)
+					}
 				}
 				end()
 
@@ -113,11 +120,4 @@ func SwitchCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	cmd.MarkPersistentFlagRequired("database") // nolint:errcheck
 	return cmd
-}
-
-func errorIsNotFound(err error) bool {
-	if err == nil {
-		return false
-	}
-	return err.Error() == http.StatusText(http.StatusNotFound)
 }
