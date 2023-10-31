@@ -79,8 +79,10 @@ nfpms:
     formats:
     - deb
     - rpm
-    replacements:
-      darwin: macOS
+    name_template: >-
+    {{ .ProjectName }}_{{ .Version }}_
+    {{- if eq .Os "darwin" }}macOS
+    {{- else }}{{ .Os }}{{ end }}_{{ .Arch }}
 scoop:
   bucket:
     owner: planetscale
@@ -108,8 +110,10 @@ brews:
       zsh_completion.install "completions/pscale.zsh" => "_pscale"
       fish_completion.install "completions/pscale.fish"
 archives:
-  - replacements:
-      darwin: macOS
+  - name_template: >-
+    {{ .ProjectName }}_{{ .Version }}_
+    {{- if eq .Os "darwin" }}macOS
+    {{- else }}{{ .Os }}{{ end }}_{{ .Arch }}
     format_overrides:
       - goos: windows
         format: zip
