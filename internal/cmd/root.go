@@ -259,12 +259,19 @@ func initConfig() {
 		}
 	}
 
-	// Check for a project-local configuration file to merge in if the user
-	// has not specified a config file
-	if rootDir, err := config.RootGitRepoDir(); err == nil && cfgFile == "" {
-		viper.AddConfigPath(rootDir)
-		viper.SetConfigName(config.ProjectConfigFile())
-		_ = viper.MergeInConfig()
+	// If no configFile is passed:
+	// 1. Check local git repo for a config file
+	// 2. If not in a git repo. Check working directory for a config file
+	if cfgFile == "" {
+		if rootDir, err := config.RootGitRepoDir(); err == nil {
+			viper.AddConfigPath(rootDir)
+			viper.SetConfigName(config.ProjectConfigFile())
+			_ = viper.MergeInConfig()
+		} else if localDir, err := config.LocalDir(); err == nil {
+			viper.AddConfigPath(localDir)
+			viper.SetConfigName(config.ProjectConfigFile())
+			_ = viper.MergeInConfig()
+		}
 	}
 
 	postInitCommands(rootCmd.Commands())

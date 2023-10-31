@@ -107,6 +107,15 @@ func ProjectConfigPath() (string, error) {
 	return filepath.Join("", projectConfigName), nil
 }
 
+// LocalDir returns the path within the current working directory
+func LocalDir() (string, error) {
+	localDir, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	return localDir, nil
+}
+
 func RootGitRepoDir() (string, error) {
 	tl := []string{"rev-parse", "--show-toplevel"}
 	out, err := exec.Command("git", tl...).CombinedOutput()
