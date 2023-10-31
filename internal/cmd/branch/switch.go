@@ -108,8 +108,6 @@ func SwitchCmd(ch *cmdutil.Helper) *cobra.Command {
 		},
 	}
 
-	cmd.PersistentFlags().StringVar(&ch.Config.Organization, "org", ch.Config.Organization,
-		"The organization for the current user")
 	cmd.PersistentFlags().StringVar(&ch.Config.Database, "database", ch.Config.Database,
 		"The database this project is using")
 	cmd.Flags().StringVar(&parentBranch, "parent-branch", "",
