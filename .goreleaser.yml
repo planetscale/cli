@@ -80,9 +80,9 @@ nfpms:
     - deb
     - rpm
     name_template: >-
-    {{ .ProjectName }}_{{ .Version }}_
-    {{- if eq .Os "darwin" }}macOS
-    {{- else }}{{ .Os }}{{ end }}_{{ .Arch }}
+      {{ .ProjectName }}_{{ .Version }}_
+      {{- if eq .Os "darwin" }}macOS
+      {{- else }}{{ .Os }}{{ end }}_{{ .Arch }}
 scoop:
   bucket:
     owner: planetscale
@@ -111,9 +111,9 @@ brews:
       fish_completion.install "completions/pscale.fish"
 archives:
   - name_template: >-
-    {{ .ProjectName }}_{{ .Version }}_
-    {{- if eq .Os "darwin" }}macOS
-    {{- else }}{{ .Os }}{{ end }}_{{ .Arch }}
+      {{ .ProjectName }}_{{ .Version }}_
+      {{- if eq .Os "darwin" }}macOS
+      {{- else }}{{ .Os }}{{ end }}_{{ .Arch }}
     format_overrides:
       - goos: windows
         format: zip
