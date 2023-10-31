@@ -156,10 +156,11 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 		return err
 	}
 
+	timestamp := time.Now().Format("20060102_150405")
 	if dbName == database {
-		dir = filepath.Join(dir, fmt.Sprintf("pscale_dump_%s_%s", database, branch))
+		dir = filepath.Join(dir, fmt.Sprintf("pscale_dump_%s_%s_%s", database, branch, timestamp))
 	} else {
-		dir = filepath.Join(dir, fmt.Sprintf("pscale_dump_%s_%s_%s", database, branch, dbName))
+		dir = filepath.Join(dir, fmt.Sprintf("pscale_dump_%s_%s_%s_%s", database, branch, dbName, timestamp))
 	}
 
 	if flags.output != "" {
