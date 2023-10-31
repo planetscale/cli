@@ -71,4 +71,4 @@ release:
 		-v `pwd`:/go/src/${REPO}/${NAME} \
 		-w /go/src/${REPO}/${NAME} \
 		releaser \
-		release --rm-dist ${GORELEASER_EXTRA_ARGS}
+		release --clean ${GORELEASER_EXTRA_ARGS}
