@@ -12,11 +12,11 @@ import (
 	"github.com/adrg/xdg"
 	"github.com/mitchellh/go-homedir"
 	"github.com/planetscale/cli/internal/cmdutil"
+	"github.com/planetscale/cli/internal/passwordutil"
 	"github.com/planetscale/cli/internal/printer"
 	"github.com/planetscale/cli/internal/promptutil"
 	"github.com/planetscale/cli/internal/proxyutil"
 	ps "github.com/planetscale/planetscale-go/planetscale"
-	"github.com/planetscale/sql-proxy/proxy"
 	"github.com/spf13/cobra"
 	exec "golang.org/x/sys/execabs"
 )
@@ -105,27 +105,6 @@ second argument:
 				}
 			}
 
-			const localProxyAddr = "127.0.0.1"
-			localAddr := localProxyAddr + ":0"
-			if flags.localAddr != "" {
-				localAddr = flags.localAddr
-			}
-
-			proxyOpts := proxy.Options{
-				CertSource: proxyutil.NewRemoteCertSource(client, role),
-				LocalAddr:  localAddr,
-				RemoteAddr: flags.remoteAddr,
-				Instance:   fmt.Sprintf("%s/%s/%s", ch.Config.Organization, database, branch),
-				Logger:     cmdutil.NewZapLogger(ch.Debug()),
-			}
-
-			proxyAddr := make(chan string, 1)
-			proxyError := make(chan error, 1)
-
-			go func() {
-				proxyError <- runProxy(ctx, proxyOpts, proxyAddr)
-			}()
-
 			dbBranch, err := client.DatabaseBranches.Get(ctx, &ps.GetDatabaseBranchRequest{
 				Organization: ch.Config.Organization,
 				Database:     database,
@@ -145,18 +124,54 @@ second argument:
 				return errors.New("database branch is not ready yet")
 			}
 
-			var addr string
-			select {
-			case err := <-proxyError:
-				return err
-			case addr = <-proxyAddr:
-			case <-time.After(time.Second * 10):
-				return errors.New("proxy timeout retrieving the certs")
+			pw, err := passwordutil.New(ctx, client, passwordutil.Options{
+				Organization: ch.Config.Organization,
+				Database:     database,
+				Branch:       branch,
+				Role:         role,
+				Name:         passwordutil.GenerateName("pscale-cli-shell"),
+				TTL:          6 * time.Hour, // TODO: use shorter TTL, but implement refreshing
+			})
+			if err != nil {
+				return cmdutil.HandleError(err)
+			}
+			defer func() {
+				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+
+				if err := pw.Cleanup(ctx); err != nil {
+					ch.Printer.Println("failed to delete credentials: ", err)
+				}
+			}()
+
+			localAddr := "127.0.0.1:0"
+			if flags.localAddr != "" {
+				localAddr = flags.localAddr
 			}
 
-			host, port, err := net.SplitHostPort(addr)
+			remoteAddr := flags.remoteAddr
+			if remoteAddr == "" {
+				remoteAddr = pw.Hostname
+			}
+
+			proxy := proxyutil.New(proxyutil.Config{
+				Logger:       cmdutil.NewZapLogger(ch.Debug()),
+				UpstreamAddr: remoteAddr,
+				Username:     pw.Username,
+				Password:     pw.PlainText,
+			})
+			defer proxy.Close()
+
+			l, err := net.Listen("tcp", localAddr)
 			if err != nil {
-				return err
+				return cmdutil.HandleError(err)
+			}
+			defer l.Close()
+
+			proxyAddr := l.Addr().String()
+			host, port, err := net.SplitHostPort(proxyAddr)
+			if err != nil {
+				return cmdutil.HandleError(err)
 			}
 
 			mysqlArgs := []string{
@@ -181,8 +196,24 @@ second argument:
 				printer:      ch.Printer,
 			}
 
-			err = m.Run(ctx, mysqlArgs...)
-			return err
+			errCh := make(chan error, 1)
+			go func() {
+				errCh <- proxy.Serve(l)
+			}()
+
+			go func() {
+				errCh <- m.Run(ctx, mysqlArgs...)
+			}()
+
+			select {
+			case <-ctx.Done():
+				return nil
+			case err := <-errCh:
+				if err == nil {
+					return nil
+				}
+				return cmdutil.HandleError(err)
+			}
 		},
 	}
 
@@ -196,28 +227,6 @@ second argument:
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
 
 	return cmd
-}
-
-// runProxy runs the sql-proxy with the given options.
-func runProxy(ctx context.Context, proxyOpts proxy.Options, ready chan string) error {
-	p, err := proxy.NewClient(proxyOpts)
-	if err != nil {
-		return fmt.Errorf("couldn't create proxy client: %s", err)
-	}
-
-	go func(ready chan string) {
-		// this is blocking and will only return once p.Run() below is
-		// invoked
-		addr, err := p.LocalAddr()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "failed getting local addr: %s\n", err)
-			return
-		}
-
-		ready <- addr.String()
-	}(ready)
-
-	return p.Run(ctx)
 }
 
 type mysql struct {
