@@ -22,7 +22,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8
 	github.com/pkg/errors v0.9.1
-	github.com/planetscale/planetscale-go v0.92.0
+	github.com/planetscale/planetscale-go v0.93.0
 	github.com/planetscale/sql-proxy v0.13.0
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.5
@@ -30,7 +30,7 @@ require (
 	github.com/stretchr/testify v1.8.4
 	github.com/xelabs/go-mysqlstack v1.0.0
 	go.uber.org/zap v1.26.0
-	golang.org/x/oauth2 v0.13.0
+	golang.org/x/oauth2 v0.14.0
 	golang.org/x/sync v0.5.0
 	golang.org/x/sys v0.14.0
 	golang.org/x/text v0.14.0
