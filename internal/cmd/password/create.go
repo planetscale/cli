@@ -71,5 +71,6 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 	cmd.PersistentFlags().StringVar(&flags.role, "role",
 		"admin", "Role defines the access level, allowed values are : reader, writer, readwriter, admin. By default it is admin.")
+	cmd.PersistentFlags().IntVar(&createReq.TTL, "ttl", 0, "TTL defines the time to live for the password in seconds. By default it is 0 which means it will never expire.")
 	return cmd
 }

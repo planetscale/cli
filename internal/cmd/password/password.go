@@ -39,6 +39,7 @@ type Password struct {
 	Username  string `header:"username" json:"username"`
 	Role      string `header:"role" json:"role"`
 	RoleDesc  string `header:"role description" json:"-"`
+	TTL       int    `header:"ttl" json:"ttl"`
 	CreatedAt int64  `json:"created_at"`
 	orig      *ps.DatabaseBranchPassword
 }
@@ -52,6 +53,7 @@ type PasswordWithPlainText struct {
 	Role              string               `header:"role" json:"role"`
 	RoleDesc          string               `header:"role description" json:"role_description"`
 	PlainText         string               `header:"password" json:"password"`
+	TTL               int                  `header:"ttl" json:"ttl"`
 	ConnectionStrings ps.ConnectionStrings `json:"connection_strings"`
 	orig              *ps.DatabaseBranchPassword
 }
@@ -87,6 +89,7 @@ func toPassword(password *ps.DatabaseBranchPassword) *Password {
 		Username:  password.Username,
 		Role:      password.Role,
 		RoleDesc:  toRoleDesc(password.Role),
+		TTL:       password.TTL,
 		CreatedAt: password.CreatedAt.UTC().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond)),
 		orig:      password,
 	}
@@ -110,6 +113,7 @@ func toPasswordWithPlainText(password *ps.DatabaseBranchPassword) *PasswordWithP
 		AccessHostUrl:     password.Branch.AccessHostURL,
 		Role:              password.Role,
 		RoleDesc:          toRoleDesc(password.Role),
+		TTL:               password.TTL,
 		ConnectionStrings: password.ConnectionStrings,
 		orig:              password,
 	}
