@@ -53,7 +53,7 @@ type PasswordWithPlainText struct {
 	Role              string               `header:"role" json:"role"`
 	RoleDesc          string               `header:"role description" json:"role_description"`
 	PlainText         string               `header:"password" json:"password"`
-	TTL							  int                  `header:"ttl" json:"ttl"`
+	TTL               int                  `header:"ttl" json:"ttl"`
 	ConnectionStrings ps.ConnectionStrings `json:"connection_strings"`
 	orig              *ps.DatabaseBranchPassword
 }
@@ -113,7 +113,7 @@ func toPasswordWithPlainText(password *ps.DatabaseBranchPassword) *PasswordWithP
 		AccessHostUrl:     password.Branch.AccessHostURL,
 		Role:              password.Role,
 		RoleDesc:          toRoleDesc(password.Role),
-		TTL:							 password.TTL,
+		TTL:               password.TTL,
 		ConnectionStrings: password.ConnectionStrings,
 		orig:              password,
 	}
