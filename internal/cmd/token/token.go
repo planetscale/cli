@@ -2,18 +2,33 @@ package token
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/planetscale/cli/internal/cmdutil"
+	"github.com/planetscale/cli/internal/printer"
 	ps "github.com/planetscale/planetscale-go/planetscale"
 	"github.com/spf13/cobra"
 )
 
-// TokenCmd encapsulates the command for running snapshots.
+func checkServiceToken(cmd *cobra.Command, args []string, ch *cmdutil.Helper) error {
+	if ch.Config.ServiceTokenIsSet() {
+		return fmt.Errorf("%s is unavailable when authenticated with a service token", printer.BoldBlue(cmd.CommandPath()))
+	}
+	return nil
+}
+
+// TokenCmd encapsulates the command for managing service tokens.
 func TokenCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:               "service-token <action>",
-		Short:             "Create, list, and manage access for service tokens",
-		PersistentPreRunE: cmdutil.CheckAuthentication(ch.Config),
+		Use:   "service-token <action>",
+		Short: "Create, list, and manage access for service tokens",
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			if err := cmdutil.CheckAuthentication(ch.Config)(cmd, args); err != nil {
+				return err
+			}
+
+			return checkServiceToken(cmd, args, ch)
+		},
 	}
 
 	cmd.PersistentFlags().StringVar(&ch.Config.Organization, "org", ch.Config.Organization, "The organization for the current user")
