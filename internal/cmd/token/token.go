@@ -10,6 +10,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// Service token endpoints cannot be accessed when authed with a service token.
+// If a user tries, show them this error message.
 func checkServiceToken(cmd *cobra.Command, args []string, ch *cmdutil.Helper) error {
 	if ch.Config.ServiceTokenIsSet() {
 		return fmt.Errorf("%s is unavailable when authenticated with a service token", printer.BoldBlue(cmd.CommandPath()))
