@@ -10,15 +10,16 @@ import (
 	"os/signal"
 	"runtime"
 	"syscall"
+	"time"
 
 	"github.com/planetscale/cli/internal/cmdutil"
+	"github.com/planetscale/cli/internal/passwordutil"
 	"github.com/planetscale/cli/internal/printer"
 	"github.com/planetscale/cli/internal/promptutil"
 	"github.com/planetscale/cli/internal/proxyutil"
 	"github.com/planetscale/planetscale-go/planetscale"
 
 	"github.com/mattn/go-shellwords"
-	"github.com/planetscale/sql-proxy/proxy"
 	"github.com/spf13/cobra"
 )
 
@@ -109,22 +110,70 @@ argument:
 				return errors.New("database branch is not ready yet")
 			}
 
+			pw, err := passwordutil.New(ctx, client, passwordutil.Options{
+				Organization: ch.Config.Organization,
+				Database:     database,
+				Branch:       branch,
+				Role:         role,
+				Name:         passwordutil.GenerateName("pscale-cli-connect"),
+				TTL:          24 * time.Hour, // TODO: use shorter TTL, but implement refreshing
+			})
+			if err != nil {
+				return cmdutil.HandleError(err)
+			}
+			defer func() {
+				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+
+				if err := pw.Cleanup(ctx); err != nil {
+					ch.Printer.Println("failed to delete credentials: ", err)
+				}
+			}()
+
 			localAddr := net.JoinHostPort(flags.host, flags.port)
 
-			proxyOpts := proxy.Options{
-				CertSource: proxyutil.NewRemoteCertSource(client, role),
-				LocalAddr:  localAddr,
-				RemoteAddr: flags.remoteAddr,
-				Instance:   fmt.Sprintf("%s/%s/%s", ch.Config.Organization, database, branch),
-				Logger:     cmdutil.NewZapLogger(ch.Debug()),
+			remoteAddr := flags.remoteAddr
+			if remoteAddr == "" {
+				remoteAddr = pw.Password.Hostname
 			}
 
-			proxyReady := make(chan string, 1)
+			l, err := net.Listen("tcp", localAddr)
+			if err != nil {
+				if isAddrInUse(err) && !flags.noRandom {
+					ch.Printer.Printf("Tried address %s, but it's already in use. Picking up a random port ...\n", localAddr)
+					localAddr = net.JoinHostPort(flags.host, "0")
+					l, err = net.Listen("tcp", localAddr)
+				}
+			}
+			if err != nil {
+				return cmdutil.HandleError(err)
+			}
+			defer l.Close()
 
-			var executeCh chan error
+			proxy := proxyutil.New(proxyutil.Config{
+				Logger:       cmdutil.NewZapLogger(ch.Debug()),
+				UpstreamAddr: remoteAddr,
+				Username:     pw.Password.Username,
+				Password:     pw.Password.PlainText,
+			})
+			defer proxy.Close()
+
+			addr := l.Addr()
+			ch.Printer.Printf("Secure connection to database %s and branch %s is established!.\n\nLocal address to connect your application: %s (press ctrl-c to quit)\n",
+				printer.BoldBlue(database),
+				printer.BoldBlue(branch),
+				printer.BoldBlue(addr.String()),
+			)
+
+			ctx, cancel = signal.NotifyContext(ctx, os.Interrupt, os.Kill)
+			defer cancel()
+
+			errCh := make(chan error, 1)
+			go func() {
+				errCh <- proxy.Serve(l)
+			}()
+
 			if flags.execCommand != "" {
-				executeCh = make(chan error, 1)
-
 				go func() {
 					err := runCommand(
 						ctx,
@@ -133,33 +182,25 @@ argument:
 						flags.execCommandEnvURL,
 						database,
 						branch,
-						proxyReady,
+						addr,
 					)
 
 					// TODO(fatih): is it worth to making cancellation configurable?
 					cancel() // stop the proxy by cancelling all other child contexts
 
-					executeCh <- err
+					errCh <- err
 				}()
 			}
 
-			err = runProxy(ctx, ch, proxyOpts, database, branch, proxyReady)
-			if err != nil {
-				if isAddrInUse(err) && !flags.noRandom {
-					ch.Printer.Printf("Tried address %s, but it's already in use. Picking up a random port ...\n", localAddr)
-					proxyOpts.LocalAddr = net.JoinHostPort(flags.host, "0")
-					return runProxy(ctx, ch, proxyOpts, database, branch, proxyReady)
+			select {
+			case <-ctx.Done():
+				return nil
+			case err := <-errCh:
+				if err == nil {
+					return nil
 				}
-				return err
+				return cmdutil.HandleError(err)
 			}
-
-			// if the user enabled the --execute flag, make sure to return the
-			// error message and status from that command
-			if executeCh != nil {
-				return <-executeCh
-			}
-
-			return nil
 		},
 	}
 
@@ -181,50 +222,13 @@ argument:
 	return cmd
 }
 
-// runProxy runs the sql-proxy with the given options.
-func runProxy(
-	ctx context.Context,
-	ch *cmdutil.Helper,
-	proxyOpts proxy.Options,
-	database, branch string,
-	ready chan string,
-) error {
-	p, err := proxy.NewClient(proxyOpts)
-	if err != nil {
-		return fmt.Errorf("couldn't create proxy client: %s", err)
-	}
-
-	go func(ready chan string) {
-		// this is blocking and will only return once p.Run() below is
-		// invoked
-		addr, err := p.LocalAddr()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "failed getting local addr: %s\n", err)
-			return
-		}
-
-		ch.Printer.Printf("Secure connection to database %s and branch %s is established!.\n\nLocal address to connect your application: %s (press ctrl-c to quit)\n",
-			printer.BoldBlue(database),
-			printer.BoldBlue(branch),
-			printer.BoldBlue(addr.String()),
-		)
-		ready <- addr.String()
-	}(ready)
-
-	return p.Run(ctx)
-}
-
 // runCommand runs the given command with several environment variables exposed
 // to the command.
-func runCommand(ctx context.Context, command, protocol, databaseEnvURL, database, branch string, ready chan string) error {
+func runCommand(ctx context.Context, command, protocol, databaseEnvURL, database, branch string, addr net.Addr) error {
 	args, err := shellwords.Parse(command)
 	if err != nil {
 		return fmt.Errorf("failed to parse command, not running: %s", err)
 	}
-	addr := <-ready
-
-	ctx, cancel := signal.NotifyContext(ctx, os.Interrupt, os.Kill)
-	defer cancel()
 
 	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
 	cmd.Env = os.Environ()
