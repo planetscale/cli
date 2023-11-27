@@ -158,11 +158,11 @@ argument:
 			})
 			defer proxy.Close()
 
-			addr := l.Addr()
+			addr := l.Addr().String()
 			ch.Printer.Printf("Secure connection to database %s and branch %s is established!.\n\nLocal address to connect your application: %s (press ctrl-c to quit)\n",
 				printer.BoldBlue(database),
 				printer.BoldBlue(branch),
-				printer.BoldBlue(addr.String()),
+				printer.BoldBlue(addr),
 			)
 
 			ctx, cancel = signal.NotifyContext(ctx, os.Interrupt, os.Kill)
@@ -175,7 +175,7 @@ argument:
 
 			if flags.execCommand != "" {
 				go func() {
-					err := runCommand(
+					errCh <- runCommand(
 						ctx,
 						flags.execCommand,
 						flags.execCommandProtocol,
@@ -184,11 +184,6 @@ argument:
 						branch,
 						addr,
 					)
-
-					// TODO(fatih): is it worth to making cancellation configurable?
-					cancel() // stop the proxy by cancelling all other child contexts
-
-					errCh <- err
 				}()
 			}
 
@@ -224,7 +219,7 @@ argument:
 
 // runCommand runs the given command with several environment variables exposed
 // to the command.
-func runCommand(ctx context.Context, command, protocol, databaseEnvURL, database, branch string, addr net.Addr) error {
+func runCommand(ctx context.Context, command, protocol, databaseEnvURL, database, branch, addr string) error {
 	args, err := shellwords.Parse(command)
 	if err != nil {
 		return fmt.Errorf("failed to parse command, not running: %s", err)
@@ -235,7 +230,7 @@ func runCommand(ctx context.Context, command, protocol, databaseEnvURL, database
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	connStr := fmt.Sprintf("%s=%s://root@%s/%s", databaseEnvURL, protocol, addr, database)
+	connStr := fmt.Sprintf("%s=%s://nobody@%s/%s", databaseEnvURL, protocol, addr, database)
 	cmd.Env = append(cmd.Env, connStr)
 
 	hostEnv := fmt.Sprintf("PLANETSCALE_DATABASE_HOST=%s", addr)
