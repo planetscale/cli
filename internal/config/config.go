@@ -56,7 +56,7 @@ func (c *Config) IsAuthenticated() error {
 		return errors.New("both --service-token and --service-token-id are required for service token authentication")
 	}
 
-	if c.ServiceToken != "" && c.ServiceTokenID != "" {
+	if c.ServiceTokenIsSet() {
 		return nil
 	}
 
@@ -65,6 +65,10 @@ func (c *Config) IsAuthenticated() error {
 	}
 
 	return nil
+}
+
+func (c *Config) ServiceTokenIsSet() bool {
+	return c.ServiceToken != "" && c.ServiceTokenID != ""
 }
 
 // NewClientFromConfig creates a PlanetScale API client from our configuration
@@ -77,7 +81,7 @@ func (c *Config) NewClientFromConfig(clientOpts ...ps.ClientOption) (*ps.Client,
 		return nil, errors.New("both --service-token and --service-token-id are required for service token authentication")
 	}
 
-	if c.ServiceToken != "" && c.ServiceTokenID != "" {
+	if c.ServiceTokenIsSet() {
 		opts = append(opts, ps.WithServiceToken(c.ServiceTokenID, c.ServiceToken))
 	} else {
 		opts = append(opts, ps.WithAccessToken(c.AccessToken))
