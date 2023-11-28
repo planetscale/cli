@@ -38,6 +38,7 @@ import (
 	"github.com/planetscale/cli/internal/cmd/deployrequest"
 	"github.com/planetscale/cli/internal/cmd/org"
 	"github.com/planetscale/cli/internal/cmd/password"
+	"github.com/planetscale/cli/internal/cmd/ping"
 	"github.com/planetscale/cli/internal/cmd/region"
 	"github.com/planetscale/cli/internal/cmd/shell"
 	"github.com/planetscale/cli/internal/cmd/signup"
@@ -217,6 +218,7 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 	rootCmd.AddCommand(deployrequest.DeployRequestCmd(ch))
 	rootCmd.AddCommand(org.OrgCmd(ch))
 	rootCmd.AddCommand(password.PasswordCmd(ch))
+	rootCmd.AddCommand(ping.PingCmd(ch))
 	rootCmd.AddCommand(region.RegionCmd(ch))
 	rootCmd.AddCommand(shell.ShellCmd(ch))
 	rootCmd.AddCommand(signup.SignupCmd(ch))
