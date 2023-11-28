@@ -151,14 +151,14 @@ second argument:
 
 			remoteAddr := flags.remoteAddr
 			if remoteAddr == "" {
-				remoteAddr = pw.Hostname
+				remoteAddr = pw.Password.Hostname
 			}
 
 			proxy := proxyutil.New(proxyutil.Config{
 				Logger:       cmdutil.NewZapLogger(ch.Debug()),
 				UpstreamAddr: remoteAddr,
-				Username:     pw.Username,
-				Password:     pw.PlainText,
+				Username:     pw.Password.Username,
+				Password:     pw.Password.PlainText,
 			})
 			defer proxy.Close()
 

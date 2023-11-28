@@ -11,6 +11,11 @@ import (
 	ps "github.com/planetscale/planetscale-go/planetscale"
 )
 
+const (
+	publicIdAlphabet = "0123456789abcdefghijklmnopqrstuvwxyz"
+	publicIdLength   = 6
+)
+
 type Options struct {
 	Organization string
 	Database     string
@@ -21,8 +26,8 @@ type Options struct {
 }
 
 type Password struct {
-	ps.DatabaseBranchPassword
-	cleanup func(context.Context) error
+	Password *ps.DatabaseBranchPassword
+	cleanup  func(context.Context) error
 }
 
 func (p *Password) Cleanup(ctx context.Context) error {
@@ -46,7 +51,7 @@ func New(ctx context.Context, client *ps.Client, opt Options) (*Password, error)
 	}
 
 	return &Password{
-		DatabaseBranchPassword: *pw,
+		Password: pw,
 		cleanup: func(ctx context.Context) error {
 			return client.Passwords.Delete(ctx, &ps.DeleteDatabaseBranchPasswordRequest{
 				Organization: opt.Organization,
@@ -59,6 +64,8 @@ func New(ctx context.Context, client *ps.Client, opt Options) (*Password, error)
 	}, nil
 }
 
+// GenerateName takes a given prefix and adds a randomized suffix and datetime
+// marker that is useful for password Names, which will be shown in the product UI.
 func GenerateName(prefix string) string {
 	return fmt.Sprintf(
 		"%s-%s-%s",
@@ -67,8 +74,3 @@ func GenerateName(prefix string) string {
 		nanoid.MustGenerate(publicIdAlphabet, publicIdLength),
 	)
 }
-
-const (
-	publicIdAlphabet = "0123456789abcdefghijklmnopqrstuvwxyz"
-	publicIdLength   = 6
-)
