@@ -4,7 +4,7 @@ version: v1.3.1
 type: go
 summary: Package decimal implements an arbitrary precision fixed-point decimal.
 homepage: https://godoc.org/github.com/shopspring/decimal
-license: other
+license: mit
 licenses:
 - sources: LICENSE
   text: |
