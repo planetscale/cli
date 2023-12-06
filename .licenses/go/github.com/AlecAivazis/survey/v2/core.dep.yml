@@ -2,7 +2,7 @@
 name: github.com/AlecAivazis/survey/v2/core
 version: v2.3.7
 type: go
-summary:
+summary: 
 homepage: https://pkg.go.dev/github.com/AlecAivazis/survey/v2/core
 license: mit
 licenses:

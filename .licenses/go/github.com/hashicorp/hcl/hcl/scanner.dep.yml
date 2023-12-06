@@ -1,13 +1,13 @@
 ---
 name: github.com/hashicorp/hcl/hcl/scanner
-version: v1.0.1-vault-5
+version: v1.0.0
 type: go
 summary: Package scanner implements a scanner for HCL (HashiCorp Configuration Language)
   source text.
-homepage: https://pkg.go.dev/github.com/hashicorp/hcl/hcl/scanner
+homepage: https://godoc.org/github.com/hashicorp/hcl/hcl/scanner
 license: mpl-2.0
 licenses:
-- sources: hcl@v1.0.1-vault-5/LICENSE
+- sources: hcl@v1.0.0/LICENSE
   text: |+
     Mozilla Public License, version 2.0
 
@@ -364,4 +364,3 @@ licenses:
           the Mozilla Public License, v. 2.0.
 
 notices: []
-...

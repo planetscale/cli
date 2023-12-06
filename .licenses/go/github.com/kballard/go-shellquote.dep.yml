@@ -4,7 +4,7 @@ version: v0.0.0-20180428030007-95032a82bc51
 type: go
 summary: Shellquote provides utilities for joining/splitting strings using sh's word-splitting
   rules.
-homepage: https://pkg.go.dev/github.com/kballard/go-shellquote
+homepage: https://godoc.org/github.com/kballard/go-shellquote
 license: mit
 licenses:
 - sources: LICENSE

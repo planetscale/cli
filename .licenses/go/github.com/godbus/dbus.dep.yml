@@ -4,7 +4,7 @@ version: v0.0.0-20190726142602-4481cbc300e2
 type: go
 summary: Package dbus implements bindings to the D-Bus message bus system.
 homepage: https://pkg.go.dev/github.com/godbus/dbus
-license: other
+license: bsd-2-clause
 licenses:
 - sources: LICENSE
   text: |

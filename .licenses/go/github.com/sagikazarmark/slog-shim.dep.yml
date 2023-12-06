@@ -2,9 +2,9 @@
 name: github.com/sagikazarmark/slog-shim
 version: v0.1.0
 type: go
-summary:
+summary: 
 homepage: https://pkg.go.dev/github.com/sagikazarmark/slog-shim
-license: other
+license: bsd-3-clause
 licenses:
 - sources: LICENSE
   text: |
