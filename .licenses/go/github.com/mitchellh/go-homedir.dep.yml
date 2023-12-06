@@ -2,8 +2,8 @@
 name: github.com/mitchellh/go-homedir
 version: v1.1.0
 type: go
-summary: 
-homepage: https://godoc.org/github.com/mitchellh/go-homedir
+summary:
+homepage: https://pkg.go.dev/github.com/mitchellh/go-homedir
 license: mit
 licenses:
 - sources: LICENSE

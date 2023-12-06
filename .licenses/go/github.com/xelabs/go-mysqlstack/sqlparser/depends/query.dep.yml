@@ -3,8 +3,8 @@ name: github.com/xelabs/go-mysqlstack/sqlparser/depends/query
 version: v1.0.0
 type: go
 summary: Package query is a generated protocol buffer package.
-homepage: https://godoc.org/github.com/xelabs/go-mysqlstack/sqlparser/depends/query
-license: bsd-3-clause
+homepage: https://pkg.go.dev/github.com/xelabs/go-mysqlstack/sqlparser/depends/query
+license: other
 licenses:
 - sources: go-mysqlstack@v1.0.0/LICENSE
   text: |

@@ -3,7 +3,7 @@ name: github.com/kataras/tablewriter
 version: v0.0.0-20180708051242-e063d29b7c23
 type: go
 summary: Create & Generate text based table
-homepage: https://godoc.org/github.com/kataras/tablewriter
+homepage: https://pkg.go.dev/github.com/kataras/tablewriter
 license: mit
 licenses:
 - sources: LICENCE.md

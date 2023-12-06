@@ -2,7 +2,7 @@
 name: github.com/spf13/viper/internal/encoding/hcl
 version: v1.17.0
 type: go
-summary: 
+summary:
 homepage: https://pkg.go.dev/github.com/spf13/viper/internal/encoding/hcl
 license: mit
 licenses:
