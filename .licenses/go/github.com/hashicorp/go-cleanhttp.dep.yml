@@ -4,7 +4,7 @@ version: v0.5.2
 type: go
 summary: Package cleanhttp offers convenience utilities for acquiring "clean" http.Transport
   and http.Client structs.
-homepage: https://godoc.org/github.com/hashicorp/go-cleanhttp
+homepage: https://pkg.go.dev/github.com/hashicorp/go-cleanhttp
 license: mpl-2.0
 licenses:
 - sources: LICENSE
@@ -373,3 +373,4 @@ licenses:
           the Mozilla Public License, v. 2.0.
 
 notices: []
+...

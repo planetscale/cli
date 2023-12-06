@@ -2,7 +2,7 @@
 name: github.com/pelletier/go-toml/v2/internal/danger
 version: v2.1.0
 type: go
-summary: 
+summary:
 homepage: https://pkg.go.dev/github.com/pelletier/go-toml/v2/internal/danger
 license: other
 licenses:

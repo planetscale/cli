@@ -3,8 +3,8 @@ name: github.com/xelabs/go-mysqlstack/sqlparser/depends/sqltypes
 version: v1.0.0
 type: go
 summary: Package sqltypes implements interfaces and types that represent SQL values.
-homepage: https://godoc.org/github.com/xelabs/go-mysqlstack/sqlparser/depends/sqltypes
-license: bsd-3-clause
+homepage: https://pkg.go.dev/github.com/xelabs/go-mysqlstack/sqlparser/depends/sqltypes
+license: other
 licenses:
 - sources: go-mysqlstack@v1.0.0/LICENSE
   text: |
