@@ -10,7 +10,7 @@ services:
   licensing:
     build:
       context: ./docker
-      dockerfile: Dockerfile.licensed
+      dockerfile: Dockerfile.license_finder
     volumes:
       - .:/work
     working_dir: /work
