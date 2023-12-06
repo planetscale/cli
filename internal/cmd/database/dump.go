@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,10 +12,10 @@ import (
 
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/dumper"
-	"github.com/planetscale/cli/internal/passwordutil"
 	"github.com/planetscale/cli/internal/printer"
 	"github.com/planetscale/cli/internal/proxyutil"
 	ps "github.com/planetscale/planetscale-go/planetscale"
+	"github.com/planetscale/sql-proxy/proxy"
 
 	_ "github.com/go-sql-driver/mysql"
 
@@ -24,14 +23,13 @@ import (
 )
 
 type dumpFlags struct {
-	localAddr  string
-	remoteAddr string
-	keyspace   string
-	replica    bool
-	tables     string
-	wheres     string
-	output     string
-	threads    int
+	localAddr string
+	keyspace  string
+	replica   bool
+	tables    string
+	wheres    string
+	output    string
+	threads   int
 }
 
 // DumpCmd encapsulates the commands for dumping a database
@@ -48,8 +46,6 @@ func DumpCmd(ch *cmdutil.Helper) *cobra.Command {
 		"", "Optionally target a specific keyspace to be dumped. Useful for sharded databases.")
 	cmd.PersistentFlags().StringVar(&f.localAddr, "local-addr",
 		"", "Local address to bind and listen for connections. By default the proxy binds to 127.0.0.1 with a random port.")
-	cmd.PersistentFlags().StringVar(&f.remoteAddr, "remote-addr", "",
-		"PlanetScale Database remote network address. By default the remote address is populated automatically from the PlanetScale API. (format: `hostname:port`)")
 	cmd.PersistentFlags().BoolVar(&f.replica, "replica", false, "Dump from a replica (if available; will fail if not).")
 	cmd.PersistentFlags().StringVar(&f.tables, "tables", "",
 		"Comma separated string of tables to dump. By default all tables are dumped.")
@@ -78,6 +74,31 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 	if err != nil {
 		return err
 	}
+
+	const localProxyAddr = "127.0.0.1"
+	localAddr := localProxyAddr + ":0"
+	if flags.localAddr != "" {
+		localAddr = flags.localAddr
+	}
+
+	proxyOpts := proxy.Options{
+		CertSource: proxyutil.NewRemoteCertSource(client, cmdutil.AdministratorRole),
+		LocalAddr:  localAddr,
+		Instance:   fmt.Sprintf("%s/%s/%s", ch.Config.Organization, database, branch),
+		Logger:     cmdutil.NewZapLogger(ch.Debug()),
+	}
+
+	p, err := proxy.NewClient(proxyOpts)
+	if err != nil {
+		return fmt.Errorf("couldn't create proxy client: %s", err)
+	}
+
+	go func() {
+		err := p.Run(ctx)
+		if err != nil {
+			ch.Printer.Println("proxy error: ", err)
+		}
+	}()
 
 	db, err := client.Databases.Get(ctx, &ps.GetDatabaseRequest{
 		Organization: ch.Config.Organization,
@@ -120,57 +141,10 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 		return errors.New("database branch is not ready yet, please try again in a few minutes")
 	}
 
-	pw, err := passwordutil.New(ctx, client, passwordutil.Options{
-		Organization: ch.Config.Organization,
-		Database:     database,
-		Branch:       branch,
-		Role:         cmdutil.AdministratorRole,
-		Name:         passwordutil.GenerateName("pscale-cli-dump"),
-		TTL:          6 * time.Hour, // TODO: use shorter TTL, but implement refreshing
-	})
+	addr, err := p.LocalAddr()
 	if err != nil {
-		return cmdutil.HandleError(err)
+		return err
 	}
-	defer func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-
-		if err := pw.Cleanup(ctx); err != nil {
-			ch.Printer.Println("failed to delete credentials: ", err)
-		}
-	}()
-
-	localAddr := "127.0.0.1:0"
-	if flags.localAddr != "" {
-		localAddr = flags.localAddr
-	}
-
-	remoteAddr := flags.remoteAddr
-	if remoteAddr == "" {
-		remoteAddr = pw.Password.Hostname
-	}
-
-	proxy := proxyutil.New(proxyutil.Config{
-		Logger:       cmdutil.NewZapLogger(ch.Debug()),
-		UpstreamAddr: remoteAddr,
-		Username:     pw.Password.Username,
-		Password:     pw.Password.PlainText,
-	})
-	defer proxy.Close()
-
-	l, err := net.Listen("tcp", localAddr)
-	if err != nil {
-		return cmdutil.HandleError(err)
-	}
-	defer l.Close()
-
-	go func() {
-		if err := proxy.Serve(l); err != nil {
-			ch.Printer.Println("proxy error: ", err)
-		}
-	}()
-
-	addr := l.Addr()
 
 	dbName, err := getDatabaseName(keyspace, addr.String())
 	if err != nil {
@@ -197,16 +171,16 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 		return fmt.Errorf("backup directory already exists: %s", dir)
 	}
 
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	err = os.MkdirAll(dir, 0o755)
+	if err != nil {
 		return err
 	}
 
 	cfg := dumper.NewDefaultConfig()
 	cfg.Threads = flags.threads
-	// NOTE(mattrobenolt): credentials are needed even though they aren't used,
-	// otherwise, dumper will complain.
-	cfg.User = "nobody"
-	cfg.Password = "nobody"
+	cfg.User = "root"
+	// NOTE(fatih): the password is a placeholder, replace once we get rid of the proxy
+	cfg.Password = "root"
 	cfg.Address = addr.String()
 	cfg.Database = dbName
 	cfg.Debug = ch.Debug()
@@ -261,7 +235,7 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 }
 
 func getDatabaseName(name, addr string) (string, error) {
-	dsn := fmt.Sprintf("tcp(%s)/", addr)
+	dsn := fmt.Sprintf("%s:%s@tcp(%s)/", "root", "", addr)
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		return "", err

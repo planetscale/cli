@@ -2,8 +2,8 @@
 name: github.com/lensesio/tableprinter
 version: v0.0.0-20201125135848-89e81fc956e7
 type: go
-summary:
-homepage: https://pkg.go.dev/github.com/lensesio/tableprinter
+summary: 
+homepage: https://godoc.org/github.com/lensesio/tableprinter
 license: apache-2.0
 licenses:
 - sources: LICENSE

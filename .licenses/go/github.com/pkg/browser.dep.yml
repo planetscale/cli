@@ -4,7 +4,7 @@ version: v0.0.0-20210911075715-681adbf594b8
 type: go
 summary: Package browser provides helpers to open files, readers, and urls in a browser
   window.
-homepage: https://pkg.go.dev/github.com/pkg/browser
+homepage: https://godoc.org/github.com/pkg/browser
 license: bsd-2-clause
 licenses:
 - sources: LICENSE

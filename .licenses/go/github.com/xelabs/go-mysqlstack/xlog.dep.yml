@@ -2,9 +2,9 @@
 name: github.com/xelabs/go-mysqlstack/xlog
 version: v1.0.0
 type: go
-summary:
-homepage: https://pkg.go.dev/github.com/xelabs/go-mysqlstack/xlog
-license: other
+summary: 
+homepage: https://godoc.org/github.com/xelabs/go-mysqlstack/xlog
+license: bsd-3-clause
 licenses:
 - sources: go-mysqlstack@v1.0.0/LICENSE
   text: |

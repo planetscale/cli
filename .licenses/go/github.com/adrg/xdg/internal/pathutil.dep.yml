@@ -2,7 +2,7 @@
 name: github.com/adrg/xdg/internal/pathutil
 version: v0.4.0
 type: go
-summary:
+summary: 
 homepage: https://pkg.go.dev/github.com/adrg/xdg/internal/pathutil
 license: mit
 licenses:

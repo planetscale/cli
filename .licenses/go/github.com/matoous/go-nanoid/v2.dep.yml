@@ -2,8 +2,8 @@
 name: github.com/matoous/go-nanoid/v2
 version: v2.0.0
 type: go
-summary:
-homepage: https://pkg.go.dev/github.com/matoous/go-nanoid/v2
+summary: 
+homepage: https://godoc.org/github.com/matoous/go-nanoid/v2
 license: mit
 licenses:
 - sources: LICENSE
