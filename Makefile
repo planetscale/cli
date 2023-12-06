@@ -31,11 +31,6 @@ lint:
 	@staticcheck ./...
 	@go vet ./...
 
-.PHONY: licensed
-licensed:
-	licensed cache
-	licensed status
-
 .PHONY: build-image
 build-image:
 	@echo "==> Building docker image ${REPO}/${NAME}:$(VERSION)"

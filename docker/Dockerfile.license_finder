@@ -1,0 +1,4 @@
+FROM golang:1-alpine
+
+RUN apk --no-cache add ruby git
+RUN gem install license_finder
