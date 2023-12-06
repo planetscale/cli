@@ -10,7 +10,7 @@ steps:
         run: app
 
 - name: "Verify dependency licenses"
-  command: "make licensing"
+  command: "go get -v ./... && license_finder"
   plugins:
     - docker-compose#v4.14.0:
         cli-version: "2"
