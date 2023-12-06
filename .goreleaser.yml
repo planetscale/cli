@@ -64,6 +64,30 @@ dockers:
     - "--label=org.opencontainers.image.version={{.Version}}"
     - "--label=org.opencontainers.image.source={{.GitURL}}"
     dockerfile: Dockerfile.goreleaser
+aurs:
+  -
+    name: pscale-cli-bin
+    homepage: https://github.com/planetscale/cli
+    description: The PlanetScale CLI
+    private_key: '{{ .Env.AUR_KEY }}'
+    license: Apache 2.0
+    git_url: 'ssh://aur@aur.archlinux.org/pscale-cli-bin.git'
+    provides:
+      - pscale
+    conflicts:
+      - pscale
+    package: |-
+      # bin
+      install -Dm755 "./pscale" "${pkgdir}/usr/bin/pscale"
+
+      # completions
+      mkdir -p "${pkgdir}/usr/share/bash-completion/completions/"
+      mkdir -p "${pkgdir}/usr/share/zsh/site-functions/"
+      mkdir -p "${pkgdir}/usr/share/fish/vendor_completions.d/"
+      install -Dm644 "./completions/pscale.bash" "${pkgdir}/usr/share/bash-completion/completions/pscale"
+      install -Dm644 "./completions/pscale.zsh" "${pkgdir}/usr/share/zsh/site-functions/pscale"
+      install -Dm644 "./completions/pscale.fish" "${pkgdir}/usr/share/fish/vendor_completions.d/pscale.fish"
+
 nfpms:
   - maintainer: PlanetScale
     description: The PlanetScale CLI
