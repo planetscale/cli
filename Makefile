@@ -31,10 +31,9 @@ lint:
 	@staticcheck ./...
 	@go vet ./...
 
-.PHONY: licensed
-licensed:
-	licensed cache
-	licensed status
+.PHONY: licensing
+licensing:
+	license_finder
 
 .PHONY: build-image
 build-image:
