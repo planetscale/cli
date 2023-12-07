@@ -30,6 +30,8 @@ brew upgrade pscale
 
 `pscale` is available as downloadable binaries from the [releases](https://github.com/planetscale/cli/releases/latest) page. Download the .deb or .rpm from the [releases](https://github.com/planetscale/cli/releases/latest) page and install with `sudo dpkg -i` and `sudo rpm -i` respectively.
 
+Arch: [`pscale-cli-bin`](https://aur.archlinux.org/packages/pscale-cli-bin)
+
 #### Windows
 
 `pscale` is available via [scoop](https://scoop.sh/), and as a downloadable binary from the [releases](https://github.com/planetscale/cli/releases/latest) page:
