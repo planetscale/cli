@@ -85,7 +85,7 @@ aurs:
       mkdir -p "${pkgdir}/usr/share/zsh/site-functions/"
       mkdir -p "${pkgdir}/usr/share/fish/vendor_completions.d/"
       install -Dm644 "./completions/pscale.bash" "${pkgdir}/usr/share/bash-completion/completions/pscale"
-      install -Dm644 "./completions/pscale.zsh" "${pkgdir}/usr/share/zsh/site-functions/pscale"
+      install -Dm644 "./completions/pscale.zsh" "${pkgdir}/usr/share/zsh/site-functions/_pscale"
       install -Dm644 "./completions/pscale.fish" "${pkgdir}/usr/share/fish/vendor_completions.d/pscale.fish"
 
 nfpms:
@@ -95,7 +95,7 @@ nfpms:
     license: Apache 2.0
     contents:
       - src: ./completions/pscale.bash
-        dst: /etc/bash_completion.d/pscale
+        dst: /usr/share/bash-completion/completions/pscale
       - src: ./completions/pscale.fish
         dst: /usr/share/fish/completions/pscale.fish
       - src: ./completions/pscale.zsh
