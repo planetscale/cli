@@ -3,8 +3,10 @@ package ping
 import (
 	"cmp"
 	"context"
+	"errors"
 	"fmt"
 	"net"
+	"net/http"
 	"net/netip"
 	"slices"
 	"strings"
@@ -95,8 +97,10 @@ func PingCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			// set of unique providers for the optimized endpoints
 			providers := make(map[string]struct{})
+			regionsBySlug := make(map[string]*ps.Region)
 			for _, r := range regions {
 				providers[strings.ToLower(r.Provider)] = struct{}{}
+				regionsBySlug[r.Slug] = r
 			}
 
 			endpoints := make([]string, 0, len(providers)+len(regions))
@@ -119,7 +123,9 @@ func PingCmd(ch *cmdutil.Helper) *cobra.Command {
 			)
 			end()
 
-			return ch.Printer.PrintResource(toResultsTable(results, providers))
+			return ch.Printer.PrintResource(toResultsTable(
+				ctx, results, providers, regionsBySlug, flags.timeout,
+			))
 		},
 	}
 
@@ -139,8 +145,9 @@ type pingResult struct {
 }
 
 type Result struct {
-	Endpoint string `header:"endpoint" json:"endpoint"`
+	Name     string `header:"name" json:"name"`
 	Latency  string `header:"latency" json:"latency"`
+	Endpoint string `header:"endpoint" json:"endpoint"`
 	Type     string `header:"type" json:"type"`
 }
 
@@ -151,10 +158,53 @@ func directOrOptimized(key string, providers map[string]struct{}) string {
 	return "direct"
 }
 
-func toResultsTable(results []pingResult, providers map[string]struct{}) []*Result {
+func getDisplayName(ctx context.Context, key string, regions map[string]*ps.Region, timeout time.Duration) string {
+	if r, ok := regions[key]; ok {
+		return r.Name
+	}
+
+	// if we don't map to a region, we need to attempt to query and lookup
+	// what an endpoint is resolving to. This is needed for the optimized endpoints
+	// which may point at the closest region to the caller.
+	if key, err := lookupRegionSlug(ctx, key, timeout); err == nil {
+		if r, ok := regions[key]; ok {
+			return r.Name
+		}
+	}
+
+	return "<unknown>"
+}
+
+func lookupRegionSlug(ctx context.Context, key string, timeout time.Duration) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, "HEAD", "https://"+makeHostname(key), nil)
+	if err != nil {
+		return "", err
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	// XXX: we identify ourselves through the Server header
+	// Formatted as:
+	//  Server: gateway/{region}/{sha}
+	// We are looking to extract the middle region bit
+	server := resp.Header.Get("Server")
+	bits := strings.SplitN(server, "/", 3)
+	if len(bits) != 3 {
+		return "", errors.New("server header was malformed")
+	}
+	return bits[1], nil
+}
+
+func toResultsTable(ctx context.Context, results []pingResult, providers map[string]struct{}, regions map[string]*ps.Region, timeout time.Duration) []*Result {
 	rs := make([]*Result, 0, len(results))
 	for _, r := range results {
 		row := &Result{
+			Name:     getDisplayName(ctx, r.key, regions, timeout*2),
 			Endpoint: makeHostname(r.key),
 			Type:     directOrOptimized(r.key, providers),
 		}
