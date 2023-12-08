@@ -77,21 +77,24 @@ func toServiceTokens(serviceTokens []*ps.ServiceToken) []*ServiceToken {
 	return snapshots
 }
 
-// ServiceTokenAccess returns a table and json serializiable service token
+// ServiceTokenAccess returns a table and json serializable service token
 type ServiceTokenAccess struct {
-	Database string   `header:"database" json:"database"`
-	Accesses []string `header:"accesses" json:"accesses"`
+	ResourceName string   `header:"resource_name" json:"resource_name"`
+	ResourceType string   `header:"resource_type" json:"resource_type"`
+	Accesses     []string `header:"accesses" json:"accesses"`
 }
 
 func toServiceTokenAccesses(st []*ps.ServiceTokenAccess) []*ServiceTokenAccess {
 	data := map[string]*ServiceTokenAccess{}
 	for _, v := range st {
-		if db, ok := data[v.Resource.Name]; ok {
+		resourceId := v.Resource.Name + "/" + v.Resource.Type
+		if db, ok := data[resourceId]; ok {
 			db.Accesses = append(db.Accesses, v.Access)
 		} else {
-			data[v.Resource.Name] = &ServiceTokenAccess{
-				Database: v.Resource.Name,
-				Accesses: []string{v.Access},
+			data[resourceId] = &ServiceTokenAccess{
+				ResourceName: v.Resource.Name,
+				ResourceType: v.Resource.Type,
+				Accesses:     []string{v.Access},
 			}
 		}
 	}
@@ -103,7 +106,7 @@ func toServiceTokenAccesses(st []*ps.ServiceTokenAccess) []*ServiceTokenAccess {
 	return out
 }
 
-// ServiceTokenGrant erturns a table and json serializable service token grant
+// ServiceTokenGrant returns a table and json serializable service token grant
 type ServiceTokenGrant struct {
 	ResourceName string   `header:"resource_name" json:"resource_name"`
 	ResourceType string   `header:"resource_type" json:"resource_type"`
