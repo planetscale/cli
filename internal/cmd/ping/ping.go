@@ -14,19 +14,66 @@ import (
 	"github.com/planetscale/cli/internal/cmdutil"
 	ps "github.com/planetscale/planetscale-go/planetscale"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+	"golang.org/x/exp/constraints"
 )
 
 const baseDomain = ".connect.psdb.cloud"
+
+func ensurePositive[T constraints.Integer](f *pflag.Flag, v T) error {
+	if v < 1 {
+		var flags string
+		if f.Shorthand != "" {
+			flags = fmt.Sprintf("-%s, --%s", f.Shorthand, f.Name)
+		} else {
+			flags = fmt.Sprintf("--%s", f.Name)
+		}
+		return fmt.Errorf(
+			"invalid argument \"%d\" for \"%s\" flag: must be greater than 0",
+			v,
+			flags,
+		)
+	}
+	return nil
+}
+
+func ensureBetween[T constraints.Integer](f *pflag.Flag, v, min, max T) error {
+	if v < min || v > max {
+		var flags string
+		if f.Shorthand != "" {
+			flags = fmt.Sprintf("-%s, --%s", f.Shorthand, f.Name)
+		} else {
+			flags = fmt.Sprintf("--%s", f.Name)
+		}
+		return fmt.Errorf(
+			"invalid argument \"%d\" for \"%s\" flag: must be between %d and %d",
+			v,
+			flags,
+			min, max,
+		)
+	}
+	return nil
+}
 
 func PingCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
 		timeout     time.Duration
 		concurrency uint8
+		count       uint8
 	}
 
 	cmd := &cobra.Command{
 		Use:   "ping",
 		Short: "Ping public PlanetScale database endpoints",
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			if err := ensureBetween(cmd.PersistentFlags().Lookup("count"), flags.count, 1, 20); err != nil {
+				return err
+			}
+			if err := ensurePositive(cmd.PersistentFlags().Lookup("concurrency"), flags.concurrency); err != nil {
+				return err
+			}
+			return nil
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			// XXX: explicitly use a new client that doesn't use authentication
@@ -67,6 +114,7 @@ func PingCmd(ch *cmdutil.Helper) *cobra.Command {
 				ctx,
 				endpoints,
 				flags.concurrency,
+				flags.count,
 				flags.timeout,
 			)
 			end()
@@ -76,9 +124,10 @@ func PingCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 
 	cmd.PersistentFlags().DurationVar(&flags.timeout, "timeout",
-		5*time.Second, "Timeout for a ping to succeed.")
+		5*time.Second, "Timeout for each ping to succeed.")
 	cmd.PersistentFlags().Uint8Var(&flags.concurrency, "concurrency",
 		8, "Number of concurrent pings.")
+	cmd.PersistentFlags().Uint8VarP(&flags.count, "count", "n", 10, "Number of pings")
 
 	return cmd
 }
@@ -124,7 +173,7 @@ func makeHostname(subdomain string) string {
 	return subdomain + baseDomain
 }
 
-func pingEndpoints(ctx context.Context, eps []string, concurrency uint8, timeout time.Duration) []pingResult {
+func pingEndpoints(ctx context.Context, eps []string, concurrency, count uint8, timeout time.Duration) []pingResult {
 	var (
 		wg      sync.WaitGroup
 		mu      sync.Mutex
@@ -142,14 +191,24 @@ func pingEndpoints(ctx context.Context, eps []string, concurrency uint8, timeout
 			return results
 		case sem <- struct{}{}:
 			go func() {
-				d, err := pingEndpoint(ctx, makeHostname(ep), timeout)
-				// XXX: on failures, set the duration to the timeout so they are sorted last
-				if err != nil {
-					d = timeout
+				var sum time.Duration
+				var resultErr error
+				for i := 0; i < int(count); i++ {
+					d, err := pingEndpoint(ctx, makeHostname(ep), timeout)
+					// XXX: on failures, set the duration to the timeout so they are sorted last
+					if err != nil {
+						resultErr = err
+						d = timeout
+					}
+					sum += d
 				}
 
 				mu.Lock()
-				results = append(results, pingResult{ep, d, err})
+				results = append(results, pingResult{
+					key: ep,
+					d:   sum / time.Duration(count),
+					err: resultErr,
+				})
 				mu.Unlock()
 				wg.Done()
 				<-sem
