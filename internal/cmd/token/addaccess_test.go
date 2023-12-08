@@ -31,12 +31,12 @@ func TestServiceToken_AddAccessCmd(t *testing.T) {
 		{
 			ID:       "id-1",
 			Access:   "read_branch",
-			Resource: ps.Database{Name: db},
+			Resource: ps.ServiceTokenResource{Name: db, Type: "Database"},
 		},
 		{
 			ID:       "id-2",
 			Access:   "delete_branch",
-			Resource: ps.Database{Name: db},
+			Resource: ps.ServiceTokenResource{Name: db, Type: "Database"},
 		},
 	}
 
@@ -76,8 +76,76 @@ func TestServiceToken_AddAccessCmd(t *testing.T) {
 
 	res := []*ServiceTokenAccess{
 		{
-			Database: db,
-			Accesses: accesses,
+			ResourceName: db,
+			ResourceType: "Database",
+			Accesses:     accesses,
+		},
+	}
+	c.Assert(buf.String(), qt.JSONEquals, res)
+}
+
+func TestServiceToken_AddAccess_Organization(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	token := "123456"
+	accesses := []string{"create_databases", "delete_databases"}
+
+	orig := []*ps.ServiceTokenAccess{
+		{
+			ID:       "id-1",
+			Access:   "create_databases",
+			Resource: ps.ServiceTokenResource{Name: org, Type: "Organization"},
+		},
+		{
+			ID:       "id-2",
+			Access:   "delete_databases",
+			Resource: ps.ServiceTokenResource{Name: org, Type: "Organization"},
+		},
+	}
+
+	svc := &mock.ServiceTokenService{
+		AddAccessFn: func(ctx context.Context, req *ps.AddServiceTokenAccessRequest) ([]*ps.ServiceTokenAccess, error) {
+			c.Assert(req.Organization, qt.Equals, org)
+			c.Assert(req.ID, qt.Equals, token)
+			c.Assert(req.Accesses, qt.DeepEquals, accesses)
+
+			return orig, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: org,
+		},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{
+				ServiceTokens: svc,
+			}, nil
+		},
+	}
+
+	args := []string{token}
+	args = append(args, accesses...)
+
+	cmd := AddAccessCmd(ch)
+	cmd.SetArgs(args)
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.AddAccessFnInvoked, qt.IsTrue)
+
+	res := []*ServiceTokenAccess{
+		{
+			ResourceName: org,
+			ResourceType: "Organization",
+			Accesses:     accesses,
 		},
 	}
 	c.Assert(buf.String(), qt.JSONEquals, res)
