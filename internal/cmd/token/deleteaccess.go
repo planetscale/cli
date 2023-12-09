@@ -18,7 +18,7 @@ func DeleteAccessCmd(ch *cmdutil.Helper) *cobra.Command {
 
 For example, to remove access for a specific database, include the --database flag:
 
-  pscale service-token remove-access <token id> read_branch --database <database name>
+  pscale service-token delete-access <token id> read_branch --database <database name>
 
 To remove an organization level grant:
   
