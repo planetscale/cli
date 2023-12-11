@@ -31,7 +31,7 @@ func TestServiceToken_DeleteAccessCmd(t *testing.T) {
 		DeleteAccessFn: func(ctx context.Context, req *ps.DeleteServiceTokenAccessRequest) error {
 			c.Assert(req.Organization, qt.Equals, org)
 			c.Assert(req.ID, qt.Equals, token)
-			c.Assert(req.ID, qt.Equals, token)
+			c.Assert(req.Database, qt.Equals, db)
 			c.Assert(req.Accesses, qt.DeepEquals, accesses)
 			return nil
 		},
@@ -61,8 +61,59 @@ func TestServiceToken_DeleteAccessCmd(t *testing.T) {
 	c.Assert(svc.DeleteAccessFnInvoked, qt.IsTrue)
 
 	res := map[string]string{
-		"result": "accesses deleted",
+		"result": "access removed",
 		"perms":  "read_branch,delete_branch",
+	}
+	c.Assert(buf.String(), qt.JSONEquals, res)
+}
+
+func TestServiceToken_DeleteOrganizationAccessCmd(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	token := "123456"
+	accesses := []string{"delete_databases", "create_databases"}
+
+	svc := &mock.ServiceTokenService{
+		DeleteAccessFn: func(ctx context.Context, req *ps.DeleteServiceTokenAccessRequest) error {
+			c.Assert(req.Organization, qt.Equals, org)
+			c.Assert(req.ID, qt.Equals, token)
+			c.Assert(req.Database, qt.Equals, "")
+			c.Assert(req.Accesses, qt.DeepEquals, accesses)
+			return nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: org,
+		},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{
+				ServiceTokens: svc,
+			}, nil
+		},
+	}
+
+	args := []string{token}
+	args = append(args, accesses...)
+
+	cmd := DeleteAccessCmd(ch)
+	cmd.SetArgs(args)
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.DeleteAccessFnInvoked, qt.IsTrue)
+
+	res := map[string]string{
+		"result": "access removed",
+		"perms":  "delete_databases,create_databases",
 	}
 	c.Assert(buf.String(), qt.JSONEquals, res)
 }
