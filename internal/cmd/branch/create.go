@@ -4,10 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/url"
 	"time"
 
-	"github.com/pkg/browser"
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
 	ps "github.com/planetscale/planetscale-go/planetscale"
@@ -75,23 +73,6 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			createReq.Database = source
 			createReq.Name = branch
 			createReq.Organization = ch.Config.Organization
-
-			web, err := cmd.Flags().GetBool("web")
-			if err != nil {
-				return err
-			}
-
-			if web {
-				ch.Printer.Println("🌐  Redirecting you to branch a database in your web browser.")
-				err := browser.OpenURL(fmt.Sprintf(
-					"%s/%s/%s/branches?name=%s&region=%s&showDialog=true",
-					cmdutil.ApplicationURL, ch.Config.Organization, source, url.QueryEscape(createReq.Name), url.QueryEscape(createReq.Region),
-				))
-				if err != nil {
-					return err
-				}
-				return nil
-			}
 
 			client, err := ch.Client()
 			if err != nil {
@@ -165,7 +146,6 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 
 		return regionStrs, cobra.ShellCompDirectiveDefault
 	})
-	cmd.Flags().BoolP("web", "w", false, "Create a branch in your web browser")
 
 	return cmd
 }
