@@ -26,7 +26,7 @@ require (
 	github.com/planetscale/sql-proxy v0.13.0
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.5
-	github.com/spf13/viper v1.18.1
+	github.com/spf13/viper v1.18.2
 	github.com/stretchr/testify v1.8.4
 	github.com/xelabs/go-mysqlstack v1.0.0
 	go.uber.org/zap v1.26.0
