@@ -24,8 +24,8 @@ require (
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8
 	github.com/pkg/errors v0.9.1
 	github.com/planetscale/planetscale-go v0.94.0
-	github.com/planetscale/psdb v0.0.0-20231031205845-c667a0f67df1
-	github.com/planetscale/psdbproxy v0.0.0-20231219155427-d2f8d9b11804
+	github.com/planetscale/psdb v0.0.0-20231211201729-8cfd83fe2664
+	github.com/planetscale/psdbproxy v0.0.0-20240103083722-1341ef2326d1
 	github.com/planetscale/sql-proxy v0.13.0
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.5
@@ -43,7 +43,7 @@ require (
 )
 
 require (
-	connectrpc.com/connect v1.12.0 // indirect
+	connectrpc.com/connect v1.14.0 // indirect
 	github.com/99designs/go-keychain v0.0.0-20191008050251-8e49817e8af4 // indirect
 	github.com/AdaLogics/go-fuzz-headers v0.0.0-20230811130428-ced1acdcaa24 // indirect
 	github.com/danieljoos/wincred v1.2.0 // indirect
@@ -59,7 +59,7 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/kataras/tablewriter v0.0.0-20180708051242-e063d29b7c23 // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
-	github.com/klauspost/compress v1.17.2 // indirect
+	github.com/klauspost/compress v1.17.4 // indirect
 	github.com/klauspost/connect-compress/v2 v2.0.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
@@ -71,7 +71,7 @@ require (
 	github.com/mtibben/percent v0.2.1 // indirect
 	github.com/pelletier/go-toml/v2 v2.1.0 // indirect
 	github.com/pires/go-proxyproto v0.7.0 // indirect
-	github.com/planetscale/vitess-types v0.0.0-20231005172453-a4a7c0c1df6a // indirect
+	github.com/planetscale/vitess-types v0.0.0-20231211191709-770e14433716 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/rogpeppe/go-internal v1.10.0 // indirect
@@ -87,13 +87,13 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/term v0.15.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20231120223509-83a465c0220f // indirect
-	google.golang.org/grpc v1.59.0 // indirect
-	google.golang.org/protobuf v1.31.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240102182953-50ed04b92917 // indirect
+	google.golang.org/grpc v1.60.1 // indirect
+	google.golang.org/protobuf v1.32.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	vitess.io/vitess v0.0.0-20231219153810-071454f8173b // indirect
+	vitess.io/vitess v0.0.0-20231229124652-260bf149a930 // indirect
 )
 
 replace github.com/golang/glog => github.com/planetscale/noglog v0.2.1-0.20210421230640-bea75fcd2e8e
