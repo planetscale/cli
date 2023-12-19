@@ -2,8 +2,6 @@ module github.com/planetscale/cli
 
 go 1.21
 
-toolchain go1.21.4
-
 require (
 	github.com/99designs/keyring v1.2.2
 	github.com/AlecAivazis/survey/v2 v2.3.7
