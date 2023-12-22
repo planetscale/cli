@@ -121,8 +121,15 @@ func PingCmd(ch *cmdutil.Helper) *cobra.Command {
 		5*time.Second, "Timeout for each ping to succeed.")
 	cmd.PersistentFlags().Uint8Var(&flags.concurrency, "concurrency",
 		8, "Number of concurrent pings.")
-	cmd.PersistentFlags().Uint8VarP(&flags.count, "count", "n", 10, "Number of pings")
-	cmd.PersistentFlags().StringVarP(&flags.provider, "provider", "p", "", `Only ping endpoints for the specified infrastructure provider (options: "aws", "gcp").`)
+	cmd.PersistentFlags().Uint8VarP(&flags.count, "count", "n", 10, "Number of total pings.")
+	cmd.PersistentFlags().StringVarP(&flags.provider, "provider", "p", "", `Only ping endpoints for the specified infrastructure provider. Possible values: [aws, gcp]`)
+
+	cmd.RegisterFlagCompletionFunc("provider", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+		// We could arguably fetch this data dynamically from the regions list
+		// but it's wasteful given that the IaaS providers list will rarely ever
+		// change. Hardcode to enable easier completion.
+		return []string{"aws", "gcp"}, cobra.ShellCompDirectiveDefault
+	})
 
 	return cmd
 }
