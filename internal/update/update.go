@@ -73,10 +73,11 @@ func CheckVersion(ctx context.Context, buildVersion string) (*UpdateInfo, error)
 		return nil, ctx.Err()
 	}
 
-	path, err := stateFilePath()
+	dir, err := config.ConfigDir()
 	if err != nil {
 		return nil, err
 	}
+	path := filepath.Join(dir, "state.yml")
 
 	updateInfo, err := checkVersion(
 		ctx,
@@ -85,8 +86,9 @@ func CheckVersion(ctx context.Context, buildVersion string) (*UpdateInfo, error)
 		latestVersion,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("skipping update, error: %s", err)
+		return nil, fmt.Errorf("skipping update, error: %v", err)
 	}
+
 	return updateInfo, nil
 }
 
@@ -95,22 +97,21 @@ func checkVersion(
 	buildVersion, path string,
 	latestVersionFn func(ctx context.Context, addr string) (*ReleaseInfo, error),
 ) (*UpdateInfo, error) {
-	stateEntry, _ := getStateEntry(path)
-	if stateEntry != nil && time.Since(stateEntry.CheckedForUpdateAt).Hours() < 24 {
+	if state, err := getStateEntry(path); err == nil && time.Since(state.CheckedForUpdateAt).Hours() < 24 {
+		// State is valid and we've checked for an update recently.
 		return &UpdateInfo{
 			Update: false,
 			Reason: "Latest version was already checked",
 		}, nil
 	}
 
-	addr := "https://api.github.com/repos/planetscale/cli/releases/latest"
-	info, err := latestVersionFn(ctx, addr)
+	// State is invalid, or we haven't checked for an update recently.
+	info, err := latestVersionFn(ctx, "https://api.github.com/repos/planetscale/cli/releases/latest")
 	if err != nil {
 		return nil, err
 	}
 
-	err = setStateEntry(path, time.Now(), *info)
-	if err != nil {
+	if err := setStateEntry(path, time.Now(), *info); err != nil {
 		return nil, err
 	}
 
@@ -188,50 +189,36 @@ func latestVersion(ctx context.Context, addr string) (*ReleaseInfo, error) {
 		return nil, fmt.Errorf("error fetching latest release: %v", string(out))
 	}
 
-	var info *ReleaseInfo
-	err = json.Unmarshal(out, &info)
-	if err != nil {
+	var info ReleaseInfo
+	if err := json.Unmarshal(out, &info); err != nil {
 		return nil, err
 	}
 
-	return info, nil
+	return &info, nil
 }
 
-func getStateEntry(stateFilePath string) (*StateEntry, error) {
-	content, err := os.ReadFile(stateFilePath)
+func getStateEntry(path string) (*StateEntry, error) {
+	content, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
 
-	var stateEntry StateEntry
-	err = yaml.Unmarshal(content, &stateEntry)
-	if err != nil {
+	var state StateEntry
+	if err := yaml.Unmarshal(content, &state); err != nil {
 		return nil, err
 	}
 
-	return &stateEntry, nil
+	return &state, nil
 }
 
-func setStateEntry(stateFilePath string, t time.Time, r ReleaseInfo) error {
-	data := StateEntry{
+func setStateEntry(path string, t time.Time, r ReleaseInfo) error {
+	content, err := yaml.Marshal(StateEntry{
 		CheckedForUpdateAt: t,
 		LatestRelease:      r,
-	}
-
-	content, err := yaml.Marshal(data)
+	})
 	if err != nil {
 		return err
 	}
-	_ = os.WriteFile(stateFilePath, content, 0o600)
 
-	return nil
-}
-
-func stateFilePath() (string, error) {
-	dir, err := config.ConfigDir()
-	if err != nil {
-		return "", err
-	}
-
-	return filepath.Join(dir, "state.yml"), nil
+	return os.WriteFile(path, content, 0o600)
 }
