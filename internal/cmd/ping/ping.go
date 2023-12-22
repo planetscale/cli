@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/netip"
 	"slices"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -62,6 +63,7 @@ func PingCmd(ch *cmdutil.Helper) *cobra.Command {
 		timeout     time.Duration
 		concurrency uint8
 		count       uint8
+		provider    string
 	}
 
 	cmd := &cobra.Command{
@@ -95,28 +97,14 @@ func PingCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 			end()
 
-			// set of unique providers for the optimized endpoints
-			providers := make(map[string]struct{})
-			regionsBySlug := make(map[string]*ps.Region)
-			for _, r := range regions {
-				providers[strings.ToLower(r.Provider)] = struct{}{}
-				regionsBySlug[r.Slug] = r
-			}
-
-			endpoints := make([]string, 0, len(providers)+len(regions))
-			for p := range providers {
-				endpoints = append(endpoints, p)
-			}
-			for _, r := range regions {
-				endpoints = append(endpoints, r.Slug)
-			}
+			rd := processRegions(flags.provider, regions)
 
 			end = ch.Printer.PrintProgress("Pinging endpoints...")
 			defer end()
 
 			results := pingEndpoints(
 				ctx,
-				endpoints,
+				rd.Endpoints,
 				flags.concurrency,
 				flags.count,
 				flags.timeout,
@@ -124,7 +112,7 @@ func PingCmd(ch *cmdutil.Helper) *cobra.Command {
 			end()
 
 			return ch.Printer.PrintResource(toResultsTable(
-				ctx, results, providers, regionsBySlug, flags.timeout,
+				ctx, results, rd, flags.timeout,
 			))
 		},
 	}
@@ -134,6 +122,7 @@ func PingCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.PersistentFlags().Uint8Var(&flags.concurrency, "concurrency",
 		8, "Number of concurrent pings.")
 	cmd.PersistentFlags().Uint8VarP(&flags.count, "count", "n", 10, "Number of pings")
+	cmd.PersistentFlags().StringVarP(&flags.provider, "provider", "p", "", `Only ping endpoints for the specified infrastructure provider (options: "aws", "gcp").`)
 
 	return cmd
 }
@@ -200,13 +189,13 @@ func lookupRegionSlug(ctx context.Context, key string, timeout time.Duration) (s
 	return bits[1], nil
 }
 
-func toResultsTable(ctx context.Context, results []pingResult, providers map[string]struct{}, regions map[string]*ps.Region, timeout time.Duration) []*Result {
+func toResultsTable(ctx context.Context, results []pingResult, rd regionData, timeout time.Duration) []*Result {
 	rs := make([]*Result, 0, len(results))
 	for _, r := range results {
 		row := &Result{
-			Name:     getDisplayName(ctx, r.key, regions, timeout*2),
+			Name:     getDisplayName(ctx, r.key, rd.RegionsBySlug, timeout*2),
 			Endpoint: makeHostname(r.key),
-			Type:     directOrOptimized(r.key, providers),
+			Type:     directOrOptimized(r.key, rd.Providers),
 		}
 		if r.err == nil {
 			row.Latency = r.d.Truncate(100 * time.Microsecond).String()
@@ -221,6 +210,59 @@ func toResultsTable(ctx context.Context, results []pingResult, providers map[str
 
 func makeHostname(subdomain string) string {
 	return subdomain + baseDomain
+}
+
+type regionData struct {
+	// Set of unique providers for the optimized endpoints.
+	Providers map[string]struct{}
+
+	// Map of each region by its slug.
+	RegionsBySlug map[string]*ps.Region
+
+	// The final list of endpoints to ping.
+	Endpoints []string
+}
+
+// processRegions processes a list of PlanetScale regions into data to begin the
+// ping process. If provider is not empty, it is used as a filter to match
+// infrastructure for that provider.
+func processRegions(provider string, regions []*ps.Region) regionData {
+	var (
+		providers     = make(map[string]struct{})
+		regionsBySlug = make(map[string]*ps.Region)
+		endpoints     []string
+	)
+
+	for _, r := range regions {
+		providers[strings.ToLower(r.Provider)] = struct{}{}
+		regionsBySlug[r.Slug] = r
+	}
+
+	// The user may have typed "aws" or "AWS"; be lax in comparing the provider
+	// strings.
+	for p := range providers {
+		if provider != "" && !strings.EqualFold(p, provider) {
+			continue
+		}
+
+		endpoints = append(endpoints, p)
+	}
+
+	for _, r := range regions {
+		if provider != "" && !strings.EqualFold(r.Provider, provider) {
+			continue
+		}
+
+		endpoints = append(endpoints, r.Slug)
+	}
+
+	sort.Strings(endpoints)
+
+	return regionData{
+		Providers:     providers,
+		RegionsBySlug: regionsBySlug,
+		Endpoints:     endpoints,
+	}
 }
 
 func pingEndpoints(ctx context.Context, eps []string, concurrency, count uint8, timeout time.Duration) []pingResult {
