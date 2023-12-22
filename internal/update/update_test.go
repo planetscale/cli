@@ -65,6 +65,12 @@ func TestCheckVersion(t *testing.T) {
 		lastChecked   time.Time
 	}{
 		{
+			name:          "self-compiled",
+			buildVersion:  "",
+			latestVersion: "v0.2.0",
+			update:        false,
+		},
+		{
 			name:          "new version",
 			buildVersion:  "v0.1.0",
 			latestVersion: "v0.2.0",
@@ -112,6 +118,10 @@ func TestCheckVersion(t *testing.T) {
 
 			c.Assert(err, qt.IsNil)
 			c.Assert(updateInfo.Update, qt.Equals, tt.update, qt.Commentf("reason: %s", updateInfo.Reason))
+
+			if !tt.update {
+				t.Logf("reason: %s", updateInfo.Reason)
+			}
 		})
 	}
 }

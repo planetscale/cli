@@ -121,6 +121,16 @@ func checkVersion(
 
 	v2, err := version.NewVersion(buildVersion)
 	if err != nil {
+		if buildVersion == "" {
+			// A self-compiled binary has no version and thus parsing the
+			// version fails.
+			return &UpdateInfo{
+				Update:      false,
+				Reason:      fmt.Sprintf("Binary has no build version, cannot compare against latest version (%s)", info.Version),
+				ReleaseInfo: info,
+			}, nil
+		}
+
 		return nil, err
 	}
 

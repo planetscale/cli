@@ -100,7 +100,7 @@ func Execute(ctx context.Context, ver, commit, buildDate string) int {
 			case ui := <-updateCheckRes:
 				ui.PrintUpdateHint(ver)
 			case err := <-updateCheckErr:
-				fmt.Fprintf(os.Stderr, "Updater error: %#v\n", err)
+				fmt.Fprintf(os.Stderr, "Updater error: %v\n", err)
 			case <-updateTimeout:
 			}
 		}()
