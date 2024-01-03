@@ -107,19 +107,19 @@ nfpms:
       {{ .ProjectName }}_{{ .Version }}_
       {{- if eq .Os "darwin" }}macOS
       {{- else }}{{ .Os }}{{ end }}_{{ .Arch }}
-scoop:
-  bucket:
-    owner: planetscale
-    name: scoop-bucket
-  homepage: "https://github.com/planetscale/cli"
-  description: "The PlanetScale CLI"
-  license: Apache 2.0
+scoops:
+  - repository:
+      owner: planetscale
+      name: scoop-bucket
+    homepage: "https://github.com/planetscale/cli"
+    description: "The PlanetScale CLI"
+    license: Apache 2.0
 brews:
   - homepage: "https://planetscale.com/"
     description: "The PlanetScale CLI"
     name: "pscale"
     license: Apache 2.0
-    tap: 
+    repository:
       owner: planetscale
       name: homebrew-tap
     dependencies:
