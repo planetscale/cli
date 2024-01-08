@@ -133,7 +133,6 @@ func Test_setStateEntry(t *testing.T) {
 	tests := []struct {
 		name  string
 		setup func(t *testing.T) string
-		err   error
 	}{
 		{
 			name: "create file",
@@ -165,12 +164,7 @@ func Test_setStateEntry(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			path := tt.setup(t)
-
-			err := setStateEntry(path, time.Unix(1, 0), ReleaseInfo{})
-			require.ErrorIs(t, err, tt.err)
-			if err != nil {
-				return
-			}
+			require.NoError(t, setStateEntry(path, time.Unix(1, 0), ReleaseInfo{}))
 
 			stat, err := os.Stat(path)
 			require.NoError(t, err)
