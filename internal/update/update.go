@@ -217,8 +217,21 @@ func setStateEntry(path string, t time.Time, r ReleaseInfo) error {
 		LatestRelease:      r,
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("marshal state: %w", err)
 	}
 
-	return os.WriteFile(path, content, 0o600)
+	// Make sure all parent directories exist (ex: ~/.config/planetscale) to
+	// allow writing the state file.
+	dir := filepath.Dir(path)
+	if dir != "" {
+		if err := os.MkdirAll(dir, 0o775); err != nil {
+			return fmt.Errorf("create %q: %w", dir, err)
+		}
+	}
+
+	if err := os.WriteFile(path, content, 0o644); err != nil {
+		return fmt.Errorf("write %q: %w", path, err)
+	}
+
+	return nil
 }
