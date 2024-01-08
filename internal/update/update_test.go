@@ -3,13 +3,16 @@ package update
 import (
 	"context"
 	"encoding/json"
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
 	qt "github.com/frankban/quicktest"
+	"github.com/stretchr/testify/require"
 )
 
 func TestLatestVersion(t *testing.T) {
@@ -122,6 +125,56 @@ func TestCheckVersion(t *testing.T) {
 			if !tt.update {
 				t.Logf("reason: %s", updateInfo.Reason)
 			}
+		})
+	}
+}
+
+func Test_setStateEntry(t *testing.T) {
+	tests := []struct {
+		name  string
+		setup func(t *testing.T) string
+		err   error
+	}{
+		{
+			name: "create file",
+			setup: func(t *testing.T) string {
+				const name = "teststate.yml"
+				t.Cleanup(func() { _ = os.Remove(name) })
+
+				return name
+			},
+		},
+		{
+			name: "create directory",
+			setup: func(t *testing.T) string {
+				dir := t.TempDir()
+
+				return filepath.Join(dir, "state.yml")
+			},
+		},
+		{
+			name: "create nested directories",
+			setup: func(t *testing.T) string {
+				dir := t.TempDir()
+
+				return filepath.Join(dir, "dir1", "dir2", "state.yml")
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			path := tt.setup(t)
+
+			err := setStateEntry(path, time.Unix(1, 0), ReleaseInfo{})
+			require.ErrorIs(t, err, tt.err)
+			if err != nil {
+				return
+			}
+
+			stat, err := os.Stat(path)
+			require.NoError(t, err)
+			require.Equal(t, fs.FileMode(0o644), stat.Mode().Perm())
 		})
 	}
 }
