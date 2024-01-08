@@ -23,6 +23,32 @@ import (
 	exec "golang.org/x/sys/execabs"
 )
 
+// Enabled reports whether this process should automatically check for updates.
+func Enabled() bool { return enabled(os.LookupEnv) }
+
+// enabled is the internal implementation of Enabled, with the environment
+// variable lookup function factored out for testing.
+func enabled(lookup func(string) (string, bool)) bool {
+	vars := []string{
+		// Local development.
+		"PSCALE_NO_UPDATE_NOTIFIER",
+		// CI environments.
+		"CI",
+		"GITHUB_ACTION",
+		"BUILDKITE",
+	}
+
+	for _, v := range vars {
+		// Just check for the presence of certain values; don't look for
+		// matching strings.
+		if _, ok := lookup(v); ok {
+			return false
+		}
+	}
+
+	return true
+}
+
 type UpdateInfo struct {
 	Update      bool
 	Reason      string

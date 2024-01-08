@@ -172,3 +172,47 @@ func Test_setStateEntry(t *testing.T) {
 		})
 	}
 }
+
+func Test_enabled(t *testing.T) {
+	tests := []struct {
+		name    string
+		vars    map[string]string
+		enabled bool
+	}{
+		{
+			name:    "default",
+			enabled: true,
+		},
+		{
+			name:    "PSCALE_NO_UPDATE_NOTIFIER",
+			vars:    map[string]string{"PSCALE_NO_UPDATE_NOTIFIER": "1"},
+			enabled: false,
+		},
+		{
+			name:    "CI",
+			vars:    map[string]string{"CI": "true"},
+			enabled: false,
+		},
+		{
+			name:    "GITHUB_ACTION",
+			vars:    map[string]string{"GITHUB_ACTION": "__run"},
+			enabled: false,
+		},
+		{
+			name:    "BUILDKITE",
+			vars:    map[string]string{"BUILDKITE": "true"},
+			enabled: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			lookup := func(v string) (string, bool) {
+				s, ok := tt.vars[v]
+				return s, ok
+			}
+
+			require.Equal(t, tt.enabled, enabled(lookup))
+		})
+	}
+}
