@@ -81,7 +81,7 @@ func Execute(ctx context.Context, ver, commit, buildDate string) int {
 		}
 	}
 
-	if _, ok := os.LookupEnv("PSCALE_NO_UPDATE_NOTIFIER"); !ok {
+	if update.Enabled() {
 		updateCheckRes := make(chan *update.UpdateInfo, 1)
 		updateCheckErr := make(chan error, 1)
 		updateTimeout := time.After(500 * time.Millisecond)
