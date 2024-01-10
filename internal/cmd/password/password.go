@@ -110,7 +110,7 @@ func toPasswordWithPlainText(password *ps.DatabaseBranchPassword) *PasswordWithP
 		PublicID:          password.PublicID,
 		Username:          password.Username,
 		PlainText:         password.PlainText,
-		AccessHostUrl:     password.Branch.AccessHostURL,
+		AccessHostUrl:     password.Hostname,
 		Role:              password.Role,
 		RoleDesc:          toRoleDesc(password.Role),
 		TTL:               password.TTL,
