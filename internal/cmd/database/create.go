@@ -71,16 +71,6 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
-			if org.RemainingFreeDatabases == 0 && !force {
-				ch.Printer.Printf("Organization [%s] does not have any free databases remaining\n", org.Name)
-				ch.Printer.Printf("If you choose to continue, this database will be created on the Scaler plan. The monthly cost is %v.\n", printer.BoldYellow("$29"))
-				confirmationName := "Y"
-				confirmError := ch.Printer.ConfirmCommand(confirmationName, "create", "create this database")
-				if confirmError != nil {
-					return confirmError
-				}
-			}
-
 			end := ch.Printer.PrintProgress("Creating database...")
 			defer end()
 			database, err := client.Databases.Create(ctx, createReq)
