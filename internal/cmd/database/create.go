@@ -47,7 +47,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			if web {
 				ch.Printer.Println("🌐  Redirecting you to create a database in your web browser.")
-				err := browser.OpenURL(fmt.Sprintf("%s/%s?name=%s&notes=%s&showDialog=true", cmdutil.ApplicationURL, ch.Config.Organization, url.QueryEscape(createReq.Name), url.QueryEscape(createReq.Notes)))
+				err := browser.OpenURL(fmt.Sprintf("%s/%s?name=%s&showDialog=true", cmdutil.ApplicationURL, ch.Config.Organization, url.QueryEscape(createReq.Name)))
 				if err != nil {
 					return err
 				}
@@ -83,6 +83,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&createReq.Notes, "notes", "", "notes for the database")
+	cmd.Flags().MarkDeprecated("notes", "is no longer available.")
 	cmd.Flags().StringVar(&createReq.Region, "region", "", "region for the database")
 
 	cmd.Flags().String("plan", "", "plan for the database. Options: hobby, scaler, or scaler_pro")

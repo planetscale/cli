@@ -51,7 +51,6 @@ type Database struct {
 func toDatabase(db *ps.Database) *Database {
 	return &Database{
 		Name:      db.Name,
-		Notes:     db.Notes,
 		CreatedAt: db.CreatedAt.UTC().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond)),
 		UpdatedAt: db.UpdatedAt.UTC().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond)),
 		orig:      db,
