@@ -28,11 +28,6 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
-			force, err := cmd.Flags().GetBool("force")
-			if err != nil {
-				return err
-			}
-
 			plan, err := cmd.Flags().GetString("plan")
 			if err != nil {
 				return err
@@ -64,23 +59,6 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
-			org, err := client.Organizations.Get(cmd.Context(), &ps.GetOrganizationRequest{
-				Organization: ch.Config.Organization,
-			})
-			if err != nil {
-				return err
-			}
-
-			if org.RemainingFreeDatabases == 0 && !force {
-				ch.Printer.Printf("Organization [%s] does not have any free databases remaining\n", org.Name)
-				ch.Printer.Printf("If you choose to continue, this database will be created on the Scaler plan. The monthly cost is %v.\n", printer.BoldYellow("$29"))
-				confirmationName := "Y"
-				confirmError := ch.Printer.ConfirmCommand(confirmationName, "create", "create this database")
-				if confirmError != nil {
-					return confirmError
-				}
-			}
-
 			end := ch.Printer.PrintProgress("Creating database...")
 			defer end()
 			database, err := client.Databases.Create(ctx, createReq)
@@ -109,7 +87,6 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	cmd.Flags().String("plan", "", "plan for the database. Options: hobby, scaler, or scaler_pro")
 	cmd.Flags().String("cluster-size", "", "cluster size for Scaler Pro databases. Options: PS_10, PS_20, PS_40, PS_80, PS_160, PS_320, PS_400")
-	cmd.Flags().Bool("force", false, "Force the creation of a paid database")
 
 	cmd.RegisterFlagCompletionFunc("region", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		ctx := cmd.Context()
