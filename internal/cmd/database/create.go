@@ -2,14 +2,12 @@ package database
 
 import (
 	"fmt"
-	"net/url"
 
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
 
 	ps "github.com/planetscale/planetscale-go/planetscale"
 
-	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
 )
 
@@ -23,10 +21,6 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 		Args:  cmdutil.RequiredArgs("database"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			web, err := cmd.Flags().GetBool("web")
-			if err != nil {
-				return err
-			}
 
 			plan, err := cmd.Flags().GetString("plan")
 			if err != nil {
@@ -44,15 +38,6 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			createReq.Organization = ch.Config.Organization
 			createReq.Name = args[0]
-
-			if web {
-				ch.Printer.Println("🌐  Redirecting you to create a database in your web browser.")
-				err := browser.OpenURL(fmt.Sprintf("%s/%s?name=%s&showDialog=true", cmdutil.ApplicationURL, ch.Config.Organization, url.QueryEscape(createReq.Name)))
-				if err != nil {
-					return err
-				}
-				return nil
-			}
 
 			client, err := ch.Client()
 			if err != nil {
@@ -123,8 +108,6 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 
 		return plans, cobra.ShellCompDirectiveDefault
 	})
-
-	cmd.Flags().BoolP("web", "w", false, "Create a database in your web browser")
 
 	return cmd
 }
