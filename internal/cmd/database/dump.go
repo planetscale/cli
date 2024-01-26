@@ -126,7 +126,7 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 		Branch:       branch,
 		Role:         cmdutil.AdministratorRole,
 		Name:         passwordutil.GenerateName("pscale-cli-dump"),
-		TTL:          6 * time.Hour, // TODO: use shorter TTL, but implement refreshing
+		TTL:          5 * time.Minute,
 	})
 	if err != nil {
 		return cmdutil.HandleError(err)
@@ -166,6 +166,12 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 
 	go func() {
 		if err := proxy.Serve(l); err != nil {
+			ch.Printer.Println("proxy error: ", err)
+		}
+	}()
+
+	go func() {
+		if err := pw.Renew(ctx); err != nil {
 			ch.Printer.Println("proxy error: ", err)
 		}
 	}()

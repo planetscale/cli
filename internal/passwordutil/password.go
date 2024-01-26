@@ -28,6 +28,7 @@ type Options struct {
 type Password struct {
 	Password *ps.DatabaseBranchPassword
 	cleanup  func(context.Context) error
+	renew    func(context.Context) error
 }
 
 func (p *Password) Cleanup(ctx context.Context) error {
@@ -35,6 +36,38 @@ func (p *Password) Cleanup(ctx context.Context) error {
 		return nil
 	}
 	return p.cleanup(ctx)
+}
+
+func (p *Password) Renew(ctx context.Context) error {
+	if p.renew == nil || p.Password.TTL == 0 {
+		return nil
+	}
+
+	ttl := time.Duration(p.Password.TTL) * time.Second
+
+	// renew at half the TTL
+	timer := time.NewTimer(ttl / 2)
+	defer timer.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-timer.C:
+		}
+
+		if err := p.renew(ctx); err != nil {
+			switch cmdutil.ErrCode(err) {
+			case ps.ErrNotFound, ps.ErrRetry:
+				// either of these indicate there's no ability to retry
+				return fmt.Errorf("password failed to renew: %w", err)
+			}
+			// on failure to renew, retry a bit more aggressively
+			timer.Reset(ttl / 8)
+		} else {
+			timer.Reset(ttl / 2)
+		}
+	}
 }
 
 func New(ctx context.Context, client *ps.Client, opt Options) (*Password, error) {
@@ -60,6 +93,15 @@ func New(ctx context.Context, client *ps.Client, opt Options) (*Password, error)
 				Name:         pw.Name,
 				PasswordId:   pw.PublicID,
 			})
+		},
+		renew: func(ctx context.Context) error {
+			_, err := client.Passwords.Renew(ctx, &ps.RenewDatabaseBranchPasswordRequest{
+				Organization: opt.Organization,
+				Database:     opt.Database,
+				Branch:       opt.Branch,
+				PasswordId:   pw.PublicID,
+			})
+			return err
 		},
 	}, nil
 }

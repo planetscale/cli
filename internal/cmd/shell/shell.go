@@ -124,14 +124,13 @@ second argument:
 			if !dbBranch.Ready {
 				return errors.New("database branch is not ready yet")
 			}
-
 			pw, err := passwordutil.New(ctx, client, passwordutil.Options{
 				Organization: ch.Config.Organization,
 				Database:     database,
 				Branch:       branch,
 				Role:         role,
 				Name:         passwordutil.GenerateName("pscale-cli-shell"),
-				TTL:          6 * time.Hour, // TODO: use shorter TTL, but implement refreshing
+				TTL:          5 * time.Minute,
 			})
 			if err != nil {
 				return cmdutil.HandleError(err)
@@ -204,6 +203,10 @@ second argument:
 
 			go func() {
 				errCh <- m.Run(ctx, mysqlArgs...)
+			}()
+
+			go func() {
+				errCh <- pw.Renew(ctx)
 			}()
 
 			select {
