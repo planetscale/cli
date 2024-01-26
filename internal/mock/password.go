@@ -15,6 +15,8 @@ type PasswordsService struct {
 	GetFnInvoked    bool
 	DeleteFn        func(context.Context, *ps.DeleteDatabaseBranchPasswordRequest) error
 	DeleteFnInvoked bool
+	RenewFn         func(context.Context, *ps.RenewDatabaseBranchPasswordRequest) (*ps.DatabaseBranchPassword, error)
+	RenewFnInvoked  bool
 }
 
 func (b *PasswordsService) Create(ctx context.Context, req *ps.DatabaseBranchPasswordRequest) (*ps.DatabaseBranchPassword, error) {
@@ -35,4 +37,9 @@ func (b *PasswordsService) Get(ctx context.Context, req *ps.GetDatabaseBranchPas
 func (b *PasswordsService) Delete(ctx context.Context, req *ps.DeleteDatabaseBranchPasswordRequest) error {
 	b.DeleteFnInvoked = true
 	return b.DeleteFn(ctx, req)
+}
+
+func (b *PasswordsService) Renew(ctx context.Context, req *ps.RenewDatabaseBranchPasswordRequest) (*ps.DatabaseBranchPassword, error) {
+	b.RenewFnInvoked = true
+	return b.RenewFn(ctx, req)
 }

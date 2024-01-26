@@ -40,7 +40,9 @@ type Password struct {
 	Role      string `header:"role" json:"role"`
 	RoleDesc  string `header:"role description" json:"-"`
 	TTL       int    `header:"ttl" json:"ttl"`
+	Remaining int    `header:"ttl_remaining" json:"-"`
 	CreatedAt int64  `json:"created_at"`
+	Expired   bool   `header:"expired" json:"expired"`
 	orig      *ps.DatabaseBranchPassword
 }
 
@@ -82,6 +84,10 @@ func (b *PasswordWithPlainText) MarshalCSVValue() interface{} {
 
 // toPassword Returns a struct that prints out the various fields of a branch model.
 func toPassword(password *ps.DatabaseBranchPassword) *Password {
+	ttlRemaining := 0
+	if password.TTL > 0 {
+		ttlRemaining = max(int(time.Until(password.ExpiresAt).Seconds()), 0)
+	}
 	return &Password{
 		Name:      password.Name,
 		Branch:    password.Branch.Name,
@@ -90,7 +96,9 @@ func toPassword(password *ps.DatabaseBranchPassword) *Password {
 		Role:      password.Role,
 		RoleDesc:  toRoleDesc(password.Role),
 		TTL:       password.TTL,
+		Remaining: ttlRemaining,
 		CreatedAt: password.CreatedAt.UTC().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond)),
+		Expired:   password.TTL > 0 && ttlRemaining == 0,
 		orig:      password,
 	}
 }
