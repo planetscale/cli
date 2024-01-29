@@ -88,7 +88,7 @@ func restore(ch *cmdutil.Helper, cmd *cobra.Command, flags *restoreFlags, args [
 		Branch:       branch,
 		Role:         cmdutil.AdministratorRole,
 		Name:         passwordutil.GenerateName("pscale-cli-restore"),
-		TTL:          6 * time.Hour, // TODO: use shorter TTL, but implement refreshing
+		TTL:          5 * time.Minute,
 	})
 	if err != nil {
 		return cmdutil.HandleError(err)
@@ -128,6 +128,12 @@ func restore(ch *cmdutil.Helper, cmd *cobra.Command, flags *restoreFlags, args [
 
 	go func() {
 		if err := proxy.Serve(l); err != nil {
+			ch.Printer.Println("proxy error: ", err)
+		}
+	}()
+
+	go func() {
+		if err := pw.Renew(ctx); err != nil {
 			ch.Printer.Println("proxy error: ", err)
 		}
 	}()
