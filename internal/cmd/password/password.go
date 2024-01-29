@@ -26,6 +26,7 @@ func PasswordCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.AddCommand(CreateCmd(ch))
 	cmd.AddCommand(ListCmd(ch))
 	cmd.AddCommand(DeleteCmd(ch))
+	cmd.AddCommand(RenewCmd(ch))
 
 	return cmd
 }
