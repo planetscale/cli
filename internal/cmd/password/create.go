@@ -3,6 +3,7 @@ package password
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/planetscale/cli/internal/cmdutil"
@@ -10,12 +11,13 @@ import (
 	ps "github.com/planetscale/planetscale-go/planetscale"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
 		role string
-		ttl  time.Duration
+		ttl  ttlFlag
 	}
 
 	cmd := &cobra.Command{
@@ -35,11 +37,6 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 				}
 			}
 
-			ttl, err := ttlSeconds(flags.ttl)
-			if err != nil {
-				return err
-			}
-
 			client, err := ch.Client()
 			if err != nil {
 				return err
@@ -54,7 +51,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 				Organization: ch.Config.Organization,
 				Name:         name,
 				Role:         flags.role,
-				TTL:          ttl,
+				TTL:          int(flags.ttl.Value.Seconds()),
 			})
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
@@ -78,19 +75,49 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 	cmd.PersistentFlags().StringVar(&flags.role, "role",
 		"admin", "Role defines the access level, allowed values are : reader, writer, readwriter, admin. By default it is admin.")
-	cmd.PersistentFlags().DurationVar(&flags.ttl, "ttl", 0*time.Second, "TTL defines the time to live for the password, rounded to the nearest second. By default it is 0 which means it will never expire.")
+	cmd.PersistentFlags().Var(&flags.ttl, "ttl", `TTL defines the time to live for the password. Durations such as "30m", "24h", or bare integers such as "3600" (seconds) are accepted. The default TTL is 0s, which means the password will never expire.`)
+
 	return cmd
 }
 
-// ttlSeconds validates and converts a duration TTL into an integer TTL in
-// seconds.
-func ttlSeconds(ttl time.Duration) (int, error) {
+var _ pflag.Value = &ttlFlag{}
+
+// A ttlFlag is a pflag.Value specialized for parsing TTL durations which may or
+// may not have an accompanying time unit.
+type ttlFlag struct{ Value time.Duration }
+
+func (f *ttlFlag) String() string { return f.Value.String() }
+func (f *ttlFlag) Type() string   { return "duration" }
+
+func (f *ttlFlag) Set(value string) error {
+	if value == "" {
+		// Empty string or undefined.
+		return f.set(0 * time.Second)
+	}
+
+	if d, derr := time.ParseDuration(value); derr == nil {
+		// Valid stdlib duration.
+		return f.set(d)
+	}
+
+	// Fall back to parsing a bare integer in seconds for CLI compatibility.
+	i, err := strconv.Atoi(value)
+	if err != nil {
+		return fmt.Errorf("cannot parse %q as TTL in seconds", value)
+	}
+
+	return f.set(time.Duration(i) * time.Second)
+}
+
+// set sets d into f after performing validation.
+func (f *ttlFlag) set(d time.Duration) error {
 	switch {
-	case ttl < 0:
-		return 0, errors.New("TTL cannot be negative")
-	case ttl > 0 && ttl < 1*time.Second:
-		return 0, errors.New("TTL must be at least 1 second")
+	case d < 0:
+		return errors.New("TTL cannot be negative")
+	case d.Round(time.Second) != d:
+		return errors.New("TTL must be defined in increments of 1 second")
 	default:
-		return int(ttl.Round(1 * time.Second).Seconds()), nil
+		f.Value = d
+		return nil
 	}
 }

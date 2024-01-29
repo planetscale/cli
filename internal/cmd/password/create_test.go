@@ -156,55 +156,101 @@ func TestPassword_CreateCmd_DefaultRoleAdmin(t *testing.T) {
 	c.Assert(svc.CreateFnInvoked, qt.IsTrue)
 }
 
-func Test_ttlSeconds(t *testing.T) {
+func Test_ttlFlag(t *testing.T) {
 	tests := []struct {
 		name string
-		in   time.Duration
-		out  int
+		in   string
+		out  time.Duration
 		err  string
 	}{
 		{
-			name: "zero",
-			in:   0 * time.Second,
+			name: "empty",
+			in:   "",
 			out:  0,
 		},
 		{
+			name: "zero",
+			in:   "0",
+			out:  0,
+		},
+		{
+			name: "zero seconds",
+			in:   "0s",
+			out:  0,
+		},
+		{
+			name: "invalid",
+			in:   "x",
+			err:  `cannot parse "x" as TTL in seconds`,
+		},
+		{
+			name: "invalid duration",
+			in:   "1x",
+			err:  `cannot parse "1x" as TTL in seconds`,
+		},
+		{
 			name: "negative",
-			in:   -1 * time.Second,
+			in:   "-1",
+			err:  "TTL cannot be negative",
+		},
+		{
+			name: "negative seconds",
+			in:   "-1s",
+			err:  "TTL cannot be negative",
+		},
+		{
+			name: "negative",
+			in:   "-1",
 			err:  "TTL cannot be negative",
 		},
 		{
 			name: "milliseconds",
-			in:   10 * time.Millisecond,
-			err:  "TTL must be at least 1 second",
+			in:   "10ms",
+			err:  "TTL must be defined in increments of 1 second",
 		},
 		{
 			name: "rounding",
-			in:   10*time.Second + 400*time.Millisecond,
-			out:  10,
+			in:   "10.4s",
+			err:  "TTL must be defined in increments of 1 second",
+		},
+		{
+			name: "integer",
+			in:   "3600",
+			out:  1 * time.Hour,
+		},
+		{
+			name: "seconds",
+			in:   "30s",
+			out:  30 * time.Second,
+		},
+		{
+			name: "minutes",
+			in:   "15m",
+			out:  15 * time.Minute,
 		},
 		{
 			name: "hours",
-			in:   12 * time.Hour,
-			out:  43200,
+			in:   "12h",
+			out:  12 * time.Hour,
 		},
 		{
 			name: "complex",
-			in:   (7 * 24 * time.Hour) + 12*time.Hour + 10*time.Minute,
-			out:  648600,
+			in:   "48h10m30s",
+			out:  48*time.Hour + 10*time.Minute + 30*time.Second,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			out, err := ttlSeconds(tt.in)
+			var ttl ttlFlag
+			err := ttl.Set(tt.in)
 			if tt.err != "" {
 				require.EqualError(t, err, tt.err)
 				return
 			}
 
 			require.NoError(t, err)
-			require.Equal(t, tt.out, out)
+			require.Equal(t, tt.out, ttl.Value)
 		})
 	}
 }
