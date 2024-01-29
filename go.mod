@@ -25,7 +25,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/planetscale/planetscale-go v0.95.0
 	github.com/planetscale/psdb v0.0.0-20231211201729-8cfd83fe2664
-	github.com/planetscale/psdbproxy v0.0.0-20240103083722-1341ef2326d1
+	github.com/planetscale/psdbproxy v0.0.0-20240129191825-eb90028bd2f1
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.18.2

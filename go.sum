@@ -122,8 +122,8 @@ github.com/planetscale/planetscale-go v0.95.0 h1:7GFazNrmi2X1KnBiexflzYl8CIqRi/n
 github.com/planetscale/planetscale-go v0.95.0/go.mod h1:hDSA/dClhuKuW8dNhKN9vQW8E5fo034Rb6qGTf86/yI=
 github.com/planetscale/psdb v0.0.0-20231211201729-8cfd83fe2664 h1:hmerwr1c1L9aBEr0HPWlwushah3kmyT+r5DUKQtMgYo=
 github.com/planetscale/psdb v0.0.0-20231211201729-8cfd83fe2664/go.mod h1:WZmi4gw3rOK+ryd1inGxgfKwoFV04O7xBCqzWzv0/0U=
-github.com/planetscale/psdbproxy v0.0.0-20240103083722-1341ef2326d1 h1:HWBvak/eA+wm/GED6vlq7t9KwMWl5qF3TpcxOfw85YI=
-github.com/planetscale/psdbproxy v0.0.0-20240103083722-1341ef2326d1/go.mod h1:/2doJWfU8rhgffCMRy6N2HOuETYrt4zDKf2LA0w6yEM=
+github.com/planetscale/psdbproxy v0.0.0-20240129191825-eb90028bd2f1 h1:nAd3zMzd+2j7x2VbKn7hHpOIsBCEqOXdMgGN4TuH5/A=
+github.com/planetscale/psdbproxy v0.0.0-20240129191825-eb90028bd2f1/go.mod h1:Tb+1BCKJ4KHJeS+mPX6GhnamQZ4U1LjoAYpAA1feCcQ=
 github.com/planetscale/vitess-types v0.0.0-20231211191709-770e14433716 h1:FD6vnHCirVPeyn+E6Z0HyXoAqXzjfTcRpgss/63im6w=
 github.com/planetscale/vitess-types v0.0.0-20231211191709-770e14433716/go.mod h1:8KWsIjuUBs+xlbfn9wBCxicFZqV8BCPIFoqlOSs+60I=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
