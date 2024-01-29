@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"testing"
+	"time"
 
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/config"
@@ -12,6 +13,7 @@ import (
 	ps "github.com/planetscale/planetscale-go/planetscale"
 
 	qt "github.com/frankban/quicktest"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPassword_CreateCmd(t *testing.T) {
@@ -152,4 +154,103 @@ func TestPassword_CreateCmd_DefaultRoleAdmin(t *testing.T) {
 
 	c.Assert(err, qt.IsNil)
 	c.Assert(svc.CreateFnInvoked, qt.IsTrue)
+}
+
+func Test_ttlFlag(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		out  time.Duration
+		err  string
+	}{
+		{
+			name: "empty",
+			in:   "",
+			out:  0,
+		},
+		{
+			name: "zero",
+			in:   "0",
+			out:  0,
+		},
+		{
+			name: "zero seconds",
+			in:   "0s",
+			out:  0,
+		},
+		{
+			name: "invalid",
+			in:   "x",
+			err:  `cannot parse "x" as TTL in seconds`,
+		},
+		{
+			name: "invalid duration",
+			in:   "1x",
+			err:  `cannot parse "1x" as TTL in seconds`,
+		},
+		{
+			name: "negative",
+			in:   "-1",
+			err:  "TTL cannot be negative",
+		},
+		{
+			name: "negative seconds",
+			in:   "-1s",
+			err:  "TTL cannot be negative",
+		},
+		{
+			name: "negative",
+			in:   "-1",
+			err:  "TTL cannot be negative",
+		},
+		{
+			name: "milliseconds",
+			in:   "10ms",
+			err:  "TTL must be defined in increments of 1 second",
+		},
+		{
+			name: "rounding",
+			in:   "10.4s",
+			err:  "TTL must be defined in increments of 1 second",
+		},
+		{
+			name: "integer",
+			in:   "3600",
+			out:  1 * time.Hour,
+		},
+		{
+			name: "seconds",
+			in:   "30s",
+			out:  30 * time.Second,
+		},
+		{
+			name: "minutes",
+			in:   "15m",
+			out:  15 * time.Minute,
+		},
+		{
+			name: "hours",
+			in:   "12h",
+			out:  12 * time.Hour,
+		},
+		{
+			name: "complex",
+			in:   "48h10m30s",
+			out:  48*time.Hour + 10*time.Minute + 30*time.Second,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var ttl ttlFlag
+			err := ttl.Set(tt.in)
+			if tt.err != "" {
+				require.EqualError(t, err, tt.err)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, tt.out, ttl.Value)
+		})
+	}
 }
