@@ -12,7 +12,7 @@ REPO=planetscale
 NAME=pscale
 BUILD_PKG=github.com/planetscale/cli/cmd/pscale
 GORELEASE_CROSS_VERSION ?= v1.23.0
-SYFT_VERSION ?= 0.94.0
+SYFT_VERSION ?= 0.102.0
 
 .PHONY: all
 all: build test lint
