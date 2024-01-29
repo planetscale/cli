@@ -40,6 +40,19 @@ type Password struct {
 	Role      string `header:"role" json:"role"`
 	RoleDesc  string `header:"role description" json:"-"`
 	TTL       int    `header:"ttl" json:"ttl"`
+	Remaining int    `header:"ttl_remaining" json:"-"`
+	CreatedAt int64  `json:"created_at"`
+	Expired   bool   `header:"expired" json:"expired"`
+	orig      *ps.DatabaseBranchPassword
+}
+
+type passwordWithoutTTL struct {
+	PublicID  string `header:"id" json:"id"`
+	Name      string `header:"name" json:"name"`
+	Branch    string `header:"branch" json:"branch"`
+	Username  string `header:"username" json:"username"`
+	Role      string `header:"role" json:"role"`
+	RoleDesc  string `header:"role description" json:"-"`
 	CreatedAt int64  `json:"created_at"`
 	orig      *ps.DatabaseBranchPassword
 }
@@ -82,6 +95,10 @@ func (b *PasswordWithPlainText) MarshalCSVValue() interface{} {
 
 // toPassword Returns a struct that prints out the various fields of a branch model.
 func toPassword(password *ps.DatabaseBranchPassword) *Password {
+	ttlRemaining := 0
+	if password.TTL > 0 {
+		ttlRemaining = max(int(time.Until(password.ExpiresAt).Seconds()), 0)
+	}
 	return &Password{
 		Name:      password.Name,
 		Branch:    password.Branch.Name,
@@ -90,15 +107,49 @@ func toPassword(password *ps.DatabaseBranchPassword) *Password {
 		Role:      password.Role,
 		RoleDesc:  toRoleDesc(password.Role),
 		TTL:       password.TTL,
-		CreatedAt: password.CreatedAt.UTC().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond)),
+		Remaining: ttlRemaining,
+		CreatedAt: toTimestamp(password.CreatedAt),
+		Expired:   password.TTL > 0 && ttlRemaining == 0,
 		orig:      password,
 	}
+}
+
+func toPasswordWithoutTTL(password *ps.DatabaseBranchPassword) *passwordWithoutTTL {
+	return &passwordWithoutTTL{
+		Name:      password.Name,
+		Branch:    password.Branch.Name,
+		PublicID:  password.PublicID,
+		Username:  password.Username,
+		Role:      password.Role,
+		RoleDesc:  toRoleDesc(password.Role),
+		CreatedAt: toTimestamp(password.CreatedAt),
+		orig:      password,
+	}
+}
+
+// hasEphemeral checks if any password is emphemeral or not. Ephemeral is
+// any password that has a TTL > 0. A 0 TTL password doesn't expire.
+func hasEphemeral(passwords []*ps.DatabaseBranchPassword) bool {
+	for _, password := range passwords {
+		if password.TTL > 0 {
+			return true
+		}
+	}
+	return false
 }
 
 func toPasswords(passwords []*ps.DatabaseBranchPassword) []*Password {
 	bs := make([]*Password, 0, len(passwords))
 	for _, password := range passwords {
 		bs = append(bs, toPassword(password))
+	}
+	return bs
+}
+
+func toPasswordsWithoutTTL(passwords []*ps.DatabaseBranchPassword) []*passwordWithoutTTL {
+	bs := make([]*passwordWithoutTTL, 0, len(passwords))
+	for _, password := range passwords {
+		bs = append(bs, toPasswordWithoutTTL(password))
 	}
 	return bs
 }
@@ -131,4 +182,8 @@ func toRoleDesc(role string) string {
 		return "Can Read, Write & Administer"
 	}
 	return "Can Read"
+}
+
+func toTimestamp(t time.Time) int64 {
+	return t.UTC().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond))
 }
