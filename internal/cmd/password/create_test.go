@@ -234,9 +234,34 @@ func Test_ttlFlag(t *testing.T) {
 			out:  12 * time.Hour,
 		},
 		{
+			name: "invalid days",
+			in:   "0.1d",
+			err:  `cannot parse "0.1d" as TTL in seconds`,
+		},
+		{
+			name: "days",
+			in:   "180d",
+			out:  180 * 24 * time.Hour,
+		},
+		{
+			name: "unsupported weeks",
+			in:   "1w",
+			err:  `cannot parse "1w" as TTL in seconds`,
+		},
+		{
+			name: "unsupported years",
+			in:   "1y",
+			err:  `cannot parse "1y" as TTL in seconds`,
+		},
+		{
 			name: "complex",
 			in:   "48h10m30s",
 			out:  48*time.Hour + 10*time.Minute + 30*time.Second,
+		},
+		{
+			name: "complex days",
+			in:   "1d10h",
+			err:  `cannot parse "1d10h" as TTL in seconds`,
 		},
 	}
 
