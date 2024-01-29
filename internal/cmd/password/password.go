@@ -46,6 +46,17 @@ type Password struct {
 	orig      *ps.DatabaseBranchPassword
 }
 
+type passwordWithoutTTL struct {
+	PublicID  string `header:"id" json:"id"`
+	Name      string `header:"name" json:"name"`
+	Branch    string `header:"branch" json:"branch"`
+	Username  string `header:"username" json:"username"`
+	Role      string `header:"role" json:"role"`
+	RoleDesc  string `header:"role description" json:"-"`
+	CreatedAt int64  `json:"created_at"`
+	orig      *ps.DatabaseBranchPassword
+}
+
 type PasswordWithPlainText struct {
 	Name              string               `header:"name" json:"name"`
 	Branch            string               `header:"branch" json:"branch"`
@@ -97,16 +108,48 @@ func toPassword(password *ps.DatabaseBranchPassword) *Password {
 		RoleDesc:  toRoleDesc(password.Role),
 		TTL:       password.TTL,
 		Remaining: ttlRemaining,
-		CreatedAt: password.CreatedAt.UTC().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond)),
+		CreatedAt: toTimestamp(password.CreatedAt),
 		Expired:   password.TTL > 0 && ttlRemaining == 0,
 		orig:      password,
 	}
+}
+
+func toPasswordWithoutTTL(password *ps.DatabaseBranchPassword) *passwordWithoutTTL {
+	return &passwordWithoutTTL{
+		Name:      password.Name,
+		Branch:    password.Branch.Name,
+		PublicID:  password.PublicID,
+		Username:  password.Username,
+		Role:      password.Role,
+		RoleDesc:  toRoleDesc(password.Role),
+		CreatedAt: toTimestamp(password.CreatedAt),
+		orig:      password,
+	}
+}
+
+// hasEphemeral checks if any password is emphemeral or not. Ephemeral is
+// any password that has a TTL > 0. A 0 TTL password doesn't expire.
+func hasEphemeral(passwords []*ps.DatabaseBranchPassword) bool {
+	for _, password := range passwords {
+		if password.TTL > 0 {
+			return true
+		}
+	}
+	return false
 }
 
 func toPasswords(passwords []*ps.DatabaseBranchPassword) []*Password {
 	bs := make([]*Password, 0, len(passwords))
 	for _, password := range passwords {
 		bs = append(bs, toPassword(password))
+	}
+	return bs
+}
+
+func toPasswordsWithoutTTL(passwords []*ps.DatabaseBranchPassword) []*passwordWithoutTTL {
+	bs := make([]*passwordWithoutTTL, 0, len(passwords))
+	for _, password := range passwords {
+		bs = append(bs, toPasswordWithoutTTL(password))
 	}
 	return bs
 }
@@ -139,4 +182,8 @@ func toRoleDesc(role string) string {
 		return "Can Read, Write & Administer"
 	}
 	return "Can Read"
+}
+
+func toTimestamp(t time.Time) int64 {
+	return t.UTC().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond))
 }

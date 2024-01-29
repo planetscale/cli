@@ -224,8 +224,8 @@ github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINE
 github.com/planetscale/noglog v0.2.1-0.20210421230640-bea75fcd2e8e h1:MZ8D+Z3m2vvqGZLvoQfpaGg/j1fNDr4j03s3PRz4rVY=
 github.com/planetscale/noglog v0.2.1-0.20210421230640-bea75fcd2e8e/go.mod h1:hwAsSPQdvPa3WcfKfzTXxtEq/HlqwLjQasfO6QbGo4Q=
 github.com/planetscale/planetscale-go v0.51.0/go.mod h1:+rGpW2u7iQZZx4O/nFj4MZe4xIS22CVegEgl1IkTExQ=
-github.com/planetscale/planetscale-go v0.94.1-0.20240126214049-b69a8ac210a0 h1:Tmzq/rQ3cAeL4LbCwfnuMSUCiubQON5ktl30zqYlADY=
-github.com/planetscale/planetscale-go v0.94.1-0.20240126214049-b69a8ac210a0/go.mod h1:hDSA/dClhuKuW8dNhKN9vQW8E5fo034Rb6qGTf86/yI=
+github.com/planetscale/planetscale-go v0.94.1-0.20240129031810-f7180eeaa9e4 h1:NS9OG8D0BDO+G6vQazYhVUOjpgWn4Be9rdRsy8W79H0=
+github.com/planetscale/planetscale-go v0.94.1-0.20240129031810-f7180eeaa9e4/go.mod h1:hDSA/dClhuKuW8dNhKN9vQW8E5fo034Rb6qGTf86/yI=
 github.com/planetscale/psdb v0.0.0-20231211201729-8cfd83fe2664 h1:hmerwr1c1L9aBEr0HPWlwushah3kmyT+r5DUKQtMgYo=
 github.com/planetscale/psdb v0.0.0-20231211201729-8cfd83fe2664/go.mod h1:WZmi4gw3rOK+ryd1inGxgfKwoFV04O7xBCqzWzv0/0U=
 github.com/planetscale/psdbproxy v0.0.0-20240103083722-1341ef2326d1 h1:HWBvak/eA+wm/GED6vlq7t9KwMWl5qF3TpcxOfw85YI=

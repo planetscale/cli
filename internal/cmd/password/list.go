@@ -73,6 +73,12 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 				return nil
 			}
 
+			// if we're doing human display and none of our passwords are ephemeral
+			// we can hide a few of the columns for a more compact view.
+			if ch.Printer.Format() == printer.Human && !hasEphemeral(passwords) {
+				return ch.Printer.PrintResource(toPasswordsWithoutTTL(passwords))
+			}
+
 			return ch.Printer.PrintResource(toPasswords(passwords))
 		},
 	}
