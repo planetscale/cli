@@ -24,8 +24,8 @@ require (
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8
 	github.com/pkg/errors v0.9.1
 	github.com/planetscale/planetscale-go v0.95.0
-	github.com/planetscale/psdb v0.0.0-20231211201729-8cfd83fe2664
-	github.com/planetscale/psdbproxy v0.0.0-20240129191825-eb90028bd2f1
+	github.com/planetscale/psdb v0.0.0-20240109164348-6848e728f6e7
+	github.com/planetscale/psdbproxy v0.0.0-20240202125557-53fac1923f5a
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.18.2
@@ -58,7 +58,7 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/kataras/tablewriter v0.0.0-20180708051242-e063d29b7c23 // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
-	github.com/klauspost/compress v1.17.4 // indirect
+	github.com/klauspost/compress v1.17.5 // indirect
 	github.com/klauspost/connect-compress/v2 v2.0.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
@@ -72,7 +72,7 @@ require (
 	github.com/pires/go-proxyproto v0.7.0 // indirect
 	github.com/planetscale/vitess-types v0.0.0-20231211191709-770e14433716 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
-	github.com/rivo/uniseg v0.4.4 // indirect
+	github.com/rivo/uniseg v0.4.6 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
 	github.com/sagikazarmark/locafero v0.4.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
@@ -86,13 +86,13 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/term v0.16.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240116215550-a9fa1716bcac // indirect
-	google.golang.org/grpc v1.60.1 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240125205218-1f4bbc51befe // indirect
+	google.golang.org/grpc v1.61.0 // indirect
 	google.golang.org/protobuf v1.32.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	vitess.io/vitess v0.10.3-0.20240127133750-f751c8323ff5 // indirect
+	vitess.io/vitess v0.10.3-0.20240202095444-ea8a90d0938b // indirect
 )
 
 replace github.com/golang/glog => github.com/planetscale/noglog v0.2.1-0.20210421230640-bea75fcd2e8e
