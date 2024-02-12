@@ -90,15 +90,15 @@ func StartDataImportCmd(ch *cmdutil.Helper) *cobra.Command {
 				return errors.New(sb.String())
 			}
 			ch.Printer.Printf("Database %s is compatible and can be imported into PlanetScale database %s\n", printer.BoldBlue(flags.database), printer.BoldGreen(flags.name))
-			if resp.SuggestedBillingPlan == ps.ScalerPlan {
-				ch.Printer.Printf("If you choose to continue, the imported database will be on Scaler plan. The monthly cost is %v.\n", printer.BoldYellow("$29"))
+			if resp.SuggestedBillingPlan == ps.ScalerProPlan {
+				ch.Printer.Println("If you choose to continue, the imported database will be on Scaler Pro with a PS-10.")
 			}
 			if flags.dryRun {
 				ch.Printer.Println("Please run this command with --dry-run=false to start the import")
 				return nil
 			}
-			if resp.SuggestedBillingPlan == ps.ScalerPlan {
-				confirmationName := "$29"
+			if resp.SuggestedBillingPlan == ps.ScalerProPlan {
+				confirmationName := "start"
 				confirmError := ch.Printer.ConfirmCommand(confirmationName, "import", "import into PlanetScale")
 				if confirmError != nil {
 					return confirmError
