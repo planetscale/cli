@@ -61,7 +61,7 @@ func (c *Config) IsAuthenticated() error {
 	}
 
 	if c.AccessToken == "" {
-		return errors.New("--access-token is required for access token authentication")
+		return errors.New("you must run 'pscale auth login' to authenticate before using this command")
 	}
 
 	return nil
