@@ -83,7 +83,7 @@ func GetVSchemaCmd(ch *cmdutil.Helper) *cobra.Command {
 	return cmd
 }
 
-// UpdateVSchemaCmd is the command for showing the VSchema of a branch.
+// UpdateVSchemaCmd is the command for updating the VSchema of a branch.
 func UpdateVSchemaCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
 		keyspace string
