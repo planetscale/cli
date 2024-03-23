@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// VSchemaCmd is the top-level command for fetching or updating the VSchema of a branch.
 func VSchemaCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "vschema <command>",
@@ -28,7 +29,7 @@ func VSchemaCmd(ch *cmdutil.Helper) *cobra.Command {
 	return cmd
 }
 
-// VSchemaCmd is the command for showing the VSchema of a branch.
+// GetVSchemaCmd is the command for showing the VSchema of a branch.
 func GetVSchemaCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
 		keyspace string
