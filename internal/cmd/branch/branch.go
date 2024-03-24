@@ -32,6 +32,7 @@ func BranchCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.AddCommand(PromoteCmd(ch))
 	cmd.AddCommand(DemoteCmd(ch))
 	cmd.AddCommand(VSchemaCmd(ch))
+	cmd.AddCommand(RoutingRulesCmd(ch))
 	cmd.AddCommand(KeyspaceCmd(ch))
 	cmd.AddCommand(SafeMigrationsCmd(ch))
 	cmd.AddCommand(LintCmd(ch))

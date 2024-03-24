@@ -28,6 +28,15 @@ type DatabaseBranchesService struct {
 	VSchemaFn        func(context.Context, *ps.BranchVSchemaRequest) (*ps.VSchemaDiff, error)
 	VSchemaFnInvoked bool
 
+	UpdateVSchemaFn        func(context.Context, *ps.UpdateBranchVschemaRequest) (*ps.VSchemaDiff, error)
+	UpdateVSchemaFnInvoked bool
+
+	RoutingRulesFn        func(context.Context, *ps.BranchRoutingRulesRequest) (*ps.RoutingRules, error)
+	RoutingRulesFnInvoked bool
+
+	UpdateRoutingRulesFn        func(context.Context, *ps.UpdateBranchRoutingRulesRequest) (*ps.RoutingRules, error)
+	UpdateRoutingRulesFnInvoked bool
+
 	KeyspacesFn        func(context.Context, *ps.BranchKeyspacesRequest) ([]*ps.Keyspace, error)
 	KeyspacesFnInvoked bool
 
@@ -83,6 +92,21 @@ func (d *DatabaseBranchesService) Schema(ctx context.Context, req *ps.BranchSche
 func (d *DatabaseBranchesService) VSchema(ctx context.Context, req *ps.BranchVSchemaRequest) (*ps.VSchemaDiff, error) {
 	d.VSchemaFnInvoked = true
 	return d.VSchemaFn(ctx, req)
+}
+
+func (d *DatabaseBranchesService) UpdateVSchema(ctx context.Context, req *ps.UpdateBranchVschemaRequest) (*ps.VSchemaDiff, error) {
+	d.UpdateVSchemaFnInvoked = true
+	return d.UpdateVSchemaFn(ctx, req)
+}
+
+func (d *DatabaseBranchesService) RoutingRules(ctx context.Context, req *ps.BranchRoutingRulesRequest) (*ps.RoutingRules, error) {
+	d.RoutingRulesFnInvoked = true
+	return d.RoutingRulesFn(ctx, req)
+}
+
+func (d *DatabaseBranchesService) UpdateRoutingRules(ctx context.Context, req *ps.UpdateBranchRoutingRulesRequest) (*ps.RoutingRules, error) {
+	d.UpdateRoutingRulesFnInvoked = true
+	return d.UpdateRoutingRulesFn(ctx, req)
 }
 
 func (d *DatabaseBranchesService) Keyspaces(ctx context.Context, req *ps.BranchKeyspacesRequest) ([]*ps.Keyspace, error) {
