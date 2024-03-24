@@ -53,7 +53,7 @@ func TestBranchVSchemaCmd(t *testing.T) {
 	}
 
 	cmd := VSchemaCmd(ch)
-	cmd.SetArgs([]string{db, branch})
+	cmd.SetArgs([]string{"get", db, branch})
 	err := cmd.Execute()
 
 	c.Assert(err, qt.IsNil)
