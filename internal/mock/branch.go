@@ -25,10 +25,10 @@ type DatabaseBranchesService struct {
 	SchemaFn        func(context.Context, *ps.BranchSchemaRequest) ([]*ps.Diff, error)
 	SchemaFnInvoked bool
 
-	VSchemaFn        func(context.Context, *ps.BranchVSchemaRequest) (*ps.VSchemaDiff, error)
+	VSchemaFn        func(context.Context, *ps.BranchVSchemaRequest) (*ps.VSchema, error)
 	VSchemaFnInvoked bool
 
-	UpdateVSchemaFn        func(context.Context, *ps.UpdateBranchVschemaRequest) (*ps.VSchemaDiff, error)
+	UpdateVSchemaFn        func(context.Context, *ps.UpdateBranchVschemaRequest) (*ps.VSchema, error)
 	UpdateVSchemaFnInvoked bool
 
 	RoutingRulesFn        func(context.Context, *ps.BranchRoutingRulesRequest) (*ps.RoutingRules, error)
@@ -89,12 +89,12 @@ func (d *DatabaseBranchesService) Schema(ctx context.Context, req *ps.BranchSche
 	return d.SchemaFn(ctx, req)
 }
 
-func (d *DatabaseBranchesService) VSchema(ctx context.Context, req *ps.BranchVSchemaRequest) (*ps.VSchemaDiff, error) {
+func (d *DatabaseBranchesService) VSchema(ctx context.Context, req *ps.BranchVSchemaRequest) (*ps.VSchema, error) {
 	d.VSchemaFnInvoked = true
 	return d.VSchemaFn(ctx, req)
 }
 
-func (d *DatabaseBranchesService) UpdateVSchema(ctx context.Context, req *ps.UpdateBranchVschemaRequest) (*ps.VSchemaDiff, error) {
+func (d *DatabaseBranchesService) UpdateVSchema(ctx context.Context, req *ps.UpdateBranchVschemaRequest) (*ps.VSchema, error) {
 	d.UpdateVSchemaFnInvoked = true
 	return d.UpdateVSchemaFn(ctx, req)
 }
