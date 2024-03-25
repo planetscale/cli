@@ -26,12 +26,12 @@ func TestBranchVSchemaCmd(t *testing.T) {
 	db := "planetscale"
 	branch := "feature"
 
-	res := &ps.VSchemaDiff{
+	res := &ps.VSchema{
 		Raw: `{"sharded": true}`,
 	}
 
 	svc := &mock.DatabaseBranchesService{
-		VSchemaFn: func(ctx context.Context, req *ps.BranchVSchemaRequest) (*ps.VSchemaDiff, error) {
+		VSchemaFn: func(ctx context.Context, req *ps.BranchVSchemaRequest) (*ps.VSchema, error) {
 			c.Assert(req.Organization, qt.Equals, org)
 			c.Assert(req.Database, qt.Equals, db)
 			c.Assert(req.Branch, qt.Equals, branch)
@@ -53,7 +53,7 @@ func TestBranchVSchemaCmd(t *testing.T) {
 	}
 
 	cmd := VSchemaCmd(ch)
-	cmd.SetArgs([]string{db, branch})
+	cmd.SetArgs([]string{"get", db, branch})
 	err := cmd.Execute()
 
 	c.Assert(err, qt.IsNil)

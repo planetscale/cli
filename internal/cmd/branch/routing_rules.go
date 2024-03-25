@@ -12,32 +12,24 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// VSchemaCmd is the top-level command for fetching or updating the VSchema of a branch.
-func VSchemaCmd(ch *cmdutil.Helper) *cobra.Command {
+// RoutingRulesCmd is the top-level command for fetching or updating the routing rules of a branch.
+func RoutingRulesCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "vschema <command>",
-		Short: "Fetch or update your keyspace VSchema",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			// keep this around for backwards compat.
-			return GetVSchemaCmd(ch).RunE(cmd, args)
-		},
+		Use:   "routing-rules <command>",
+		Short: "Fetch or update your keyspace routing rules",
 	}
 
-	cmd.AddCommand(GetVSchemaCmd(ch))
-	cmd.AddCommand(UpdateVSchemaCmd(ch))
+	cmd.AddCommand(GetRoutingRulesCmd(ch))
+	cmd.AddCommand(UpdateRoutingRulesCmd(ch))
 
 	return cmd
 }
 
-// GetVSchemaCmd is the command for showing the VSchema of a branch.
-func GetVSchemaCmd(ch *cmdutil.Helper) *cobra.Command {
-	var flags struct {
-		keyspace string
-	}
-
+// GetRoutingRulesCmd is the command for showing the routing rules of a branch.
+func GetRoutingRulesCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "get <database> <branch>",
-		Short: "Show the vschema of a branch",
+		Short: "Show the routing rules of a branch",
 		Args:  cmdutil.RequiredArgs("database", "branch"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -48,11 +40,10 @@ func GetVSchemaCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
-			vschema, err := client.DatabaseBranches.VSchema(ctx, &planetscale.BranchVSchemaRequest{
+			routingRules, err := client.DatabaseBranches.RoutingRules(ctx, &planetscale.BranchRoutingRulesRequest{
 				Organization: ch.Config.Organization,
 				Database:     database,
 				Branch:       branch,
-				Keyspace:     flags.keyspace,
 			})
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
@@ -65,34 +56,30 @@ func GetVSchemaCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			if ch.Printer.Format() != printer.Human {
-				return ch.Printer.PrintResource(vschema)
+				return ch.Printer.PrintResource(routingRules)
 			}
 
-			err = ch.Printer.PrettyPrintJSON([]byte(vschema.Raw))
+			err = ch.Printer.PrettyPrintJSON([]byte(routingRules.Raw))
 			if err != nil {
-				return fmt.Errorf("reading vschema raw: %s", err)
+				return fmt.Errorf("reading routingRules raw: %s", err)
 			}
 
 			return nil
 		},
 	}
 
-	cmd.Flags().StringVar(&flags.keyspace, "keyspace", "", "The keyspace in the branch")
-	cmd.Flags().MarkHidden("keyspace")
-
 	return cmd
 }
 
-// UpdateVSchemaCmd is the command for updating the VSchema of a branch.
-func UpdateVSchemaCmd(ch *cmdutil.Helper) *cobra.Command {
+// UpdateRoutingRulesCmd is the command for updating the routing rules of a branch.
+func UpdateRoutingRulesCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
-		keyspace string
-		vschema  string
+		routingRules string
 	}
 
 	cmd := &cobra.Command{
-		Use:   "update <database> <branch> --vschema <file>",
-		Short: "Update the vschema of a branch",
+		Use:   "update <database> <branch> --routing-rules <file>",
+		Short: "Update the routing rules of a branch",
 		Args:  cmdutil.RequiredArgs("database", "branch"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -105,12 +92,12 @@ func UpdateVSchemaCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			var data string
 
-			if flags.vschema != "" {
-				rawVSchema, err := os.ReadFile(flags.vschema)
+			if flags.routingRules != "" {
+				rawRoutingRules, err := os.ReadFile(flags.routingRules)
 				if err != nil {
 					return err
 				}
-				data = string(rawVSchema)
+				data = string(rawRoutingRules)
 			} else {
 				stdinFile, err := os.Stdin.Stat()
 				if err != nil {
@@ -128,15 +115,14 @@ func UpdateVSchemaCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			if len(data) == 0 {
-				return errors.New("no vschema provided, use the --vschema and provide a file or pipe the vschema to standard in")
+				return errors.New("no routing rules provided, use the --routing-rules and provide a file or pipe the rules to standard in")
 			}
 
-			vschema, err := client.DatabaseBranches.UpdateVSchema(ctx, &planetscale.UpdateBranchVschemaRequest{
+			routingRules, err := client.DatabaseBranches.UpdateRoutingRules(ctx, &planetscale.UpdateBranchRoutingRulesRequest{
 				Organization: ch.Config.Organization,
 				Database:     database,
 				Branch:       branch,
-				Keyspace:     flags.keyspace,
-				VSchema:      data,
+				RoutingRules: data,
 			})
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
@@ -149,20 +135,19 @@ func UpdateVSchemaCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			if ch.Printer.Format() != printer.Human {
-				return ch.Printer.PrintResource(vschema)
+				return ch.Printer.PrintResource(routingRules)
 			}
 
-			err = ch.Printer.PrettyPrintJSON([]byte(vschema.Raw))
+			err = ch.Printer.PrettyPrintJSON([]byte(routingRules.Raw))
 			if err != nil {
-				return fmt.Errorf("reading vschema raw: %s", err)
+				return fmt.Errorf("reading routing rules raw: %s", err)
 			}
 
 			return nil
 		},
 	}
 
-	cmd.Flags().StringVar(&flags.vschema, "vschema", "", "The vschema to set in JSON format")
-	cmd.Flags().StringVar(&flags.keyspace, "keyspace", "", "The keyspace to apply the vschema to")
+	cmd.Flags().StringVar(&flags.routingRules, "routing-rules", "", "The routing to set")
 
 	return cmd
 }
