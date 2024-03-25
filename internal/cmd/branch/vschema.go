@@ -57,7 +57,7 @@ func GetVSchemaCmd(ch *cmdutil.Helper) *cobra.Command {
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
-					return fmt.Errorf("branch %s does not exist in database %s (organization: %s)",
+					return fmt.Errorf("received HTTP 404 for branch %s in database %s (organization: %s). This may mean you're requesting a keyspace that does not exist",
 						printer.BoldBlue(branch), printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
 				default:
 					return cmdutil.HandleError(err)
@@ -140,7 +140,7 @@ func UpdateVSchemaCmd(ch *cmdutil.Helper) *cobra.Command {
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
-					return fmt.Errorf("branch %s does not exist in database %s (organization: %s)",
+					return fmt.Errorf("received HTTP 404 for branch %s in database %s (org: %s). This may mean you're requesting a keyspace that does not exist or not supplying one if you have multiple",
 						printer.BoldBlue(branch), printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
 				default:
 					return cmdutil.HandleError(err)
