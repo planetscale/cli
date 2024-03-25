@@ -78,7 +78,6 @@ func GetVSchemaCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&flags.keyspace, "keyspace", "", "The keyspace in the branch")
-	cmd.Flags().MarkHidden("keyspace")
 
 	return cmd
 }
