@@ -11,7 +11,7 @@ require (
 	github.com/briandowns/spinner v1.23.0
 	github.com/fatih/color v1.16.0
 	github.com/frankban/quicktest v1.14.6
-	github.com/go-sql-driver/mysql v1.8.0
+	github.com/go-sql-driver/mysql v1.8.1
 	github.com/gocarina/gocsv v0.0.0-20231116093920-b87c2d0e983a
 	github.com/google/go-cmp v0.6.0
 	github.com/hashicorp/go-cleanhttp v0.5.2
