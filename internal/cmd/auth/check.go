@@ -17,14 +17,30 @@ func CheckCmd(ch *cmdutil.Helper) *cobra.Command {
 		Args:  cobra.NoArgs,
 		Short: "Check if you are authenticated",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			errorMessage := "You are not authenticated. Please run `pscale auth login` to authenticate."
+
 			if ch.Config.AccessToken == "" {
 				return &cmdutil.Error{
-					Msg:      "You are not authenticated. Please run `pscale auth login` to authenticate.",
+					Msg:      errorMessage,
 					ExitCode: cmdutil.ActionRequestedExitCode,
 				}
 			} else {
-				ch.Printer.Printf("You are authenticated.")
-				return nil
+				ctx := cmd.Context()
+				client, err := ch.Client()
+				if err != nil {
+					return err
+				}
+
+				_, err = client.Organizations.List(ctx)
+				if err != nil {
+					return &cmdutil.Error{
+						Msg:      errorMessage,
+						ExitCode: cmdutil.ActionRequestedExitCode,
+					}
+				} else {
+					ch.Printer.Printf("You are authenticated.")
+					return nil
+				}
 			}
 		},
 	}
