@@ -38,6 +38,7 @@ func TestPassword_CreateCmd(t *testing.T) {
 			c.Assert(req.Branch, qt.Equals, branch)
 			c.Assert(req.Name, qt.Equals, name)
 			c.Assert(req.Role, qt.Equals, role)
+			c.Assert(req.Replica, qt.Equals, false)
 
 			return res, nil
 		},
@@ -85,6 +86,7 @@ func TestPassword_CreateCmd_InvalidRole(t *testing.T) {
 			c.Assert(req.Branch, qt.Equals, branch)
 			c.Assert(req.Name, qt.Equals, name)
 			c.Assert(req.Role, qt.Equals, "")
+			c.Assert(req.Replica, qt.Equals, false)
 
 			return res, nil
 		},
@@ -131,6 +133,7 @@ func TestPassword_CreateCmd_DefaultRoleAdmin(t *testing.T) {
 			c.Assert(req.Branch, qt.Equals, branch)
 			c.Assert(req.Name, qt.Equals, name)
 			c.Assert(req.Role, qt.Equals, "admin")
+			c.Assert(req.Replica, qt.Equals, false)
 
 			return res, nil
 		},
@@ -280,7 +283,7 @@ func Test_ttlFlag(t *testing.T) {
 	}
 }
 
-func TestPassword_CreateReplicaCmd(t *testing.T) {
+func TestPassword_CreateCmd_Replica(t *testing.T) {
 	c := qt.New(t)
 
 	var buf bytes.Buffer
