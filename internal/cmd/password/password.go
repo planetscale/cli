@@ -40,6 +40,7 @@ type Password struct {
 	Username  string `header:"username" json:"username"`
 	Role      string `header:"role" json:"role"`
 	RoleDesc  string `header:"role description" json:"-"`
+	Replica   string `header:"replica" json:"replica"`
 	TTL       int    `header:"ttl" json:"ttl"`
 	Remaining int    `header:"ttl_remaining" json:"-"`
 	CreatedAt int64  `json:"created_at"`
@@ -54,6 +55,7 @@ type passwordWithoutTTL struct {
 	Username  string `header:"username" json:"username"`
 	Role      string `header:"role" json:"role"`
 	RoleDesc  string `header:"role description" json:"-"`
+	Replica   string `header:"replica" json:"replica"`
 	CreatedAt int64  `json:"created_at"`
 	orig      *ps.DatabaseBranchPassword
 }
@@ -66,6 +68,7 @@ type PasswordWithPlainText struct {
 	AccessHostUrl     string               `header:"access host url" json:"access_host_url"`
 	Role              string               `header:"role" json:"role"`
 	RoleDesc          string               `header:"role description" json:"role_description"`
+	Replica           string               `header:"replica" json:"replica"`
 	PlainText         string               `header:"password" json:"password"`
 	TTL               int                  `header:"ttl" json:"ttl"`
 	ConnectionStrings ps.ConnectionStrings `json:"connection_strings"`
@@ -107,6 +110,7 @@ func toPassword(password *ps.DatabaseBranchPassword) *Password {
 		Username:  password.Username,
 		Role:      password.Role,
 		RoleDesc:  toRoleDesc(password.Role),
+		Replica:   password.Replica,
 		TTL:       password.TTL,
 		Remaining: ttlRemaining,
 		CreatedAt: toTimestamp(password.CreatedAt),
@@ -123,6 +127,7 @@ func toPasswordWithoutTTL(password *ps.DatabaseBranchPassword) *passwordWithoutT
 		Username:  password.Username,
 		Role:      password.Role,
 		RoleDesc:  toRoleDesc(password.Role),
+		Replica:   password.Replica,
 		CreatedAt: toTimestamp(password.CreatedAt),
 		orig:      password,
 	}
@@ -165,6 +170,7 @@ func toPasswordWithPlainText(password *ps.DatabaseBranchPassword) *PasswordWithP
 		AccessHostUrl:     password.Hostname,
 		Role:              password.Role,
 		RoleDesc:          toRoleDesc(password.Role),
+		Replica:           password.Replica,
 		TTL:               password.TTL,
 		ConnectionStrings: password.ConnectionStrings,
 		orig:              password,
