@@ -34,28 +34,30 @@ func PasswordCmd(ch *cmdutil.Helper) *cobra.Command {
 type Passwords []*Password
 
 type Password struct {
-	PublicID  string `header:"id" json:"id"`
-	Name      string `header:"name" json:"name"`
-	Branch    string `header:"branch" json:"branch"`
-	Username  string `header:"username" json:"username"`
-	Role      string `header:"role" json:"role"`
-	RoleDesc  string `header:"role description" json:"-"`
-	TTL       int    `header:"ttl" json:"ttl"`
-	Remaining int    `header:"ttl_remaining" json:"-"`
-	CreatedAt int64  `json:"created_at"`
-	Expired   bool   `header:"expired" json:"expired"`
-	orig      *ps.DatabaseBranchPassword
+	PublicID       string `header:"id" json:"id"`
+	Name           string `header:"name" json:"name"`
+	Branch         string `header:"branch" json:"branch"`
+	Username       string `header:"username" json:"username"`
+	Role           string `header:"role" json:"role"`
+	RoleDesc       string `header:"role description" json:"-"`
+	ConnectionType string `header:"connection type" json:"connection_type"`
+	TTL            int    `header:"ttl" json:"ttl"`
+	Remaining      int    `header:"ttl_remaining" json:"-"`
+	CreatedAt      int64  `json:"created_at"`
+	Expired        bool   `header:"expired" json:"expired"`
+	orig           *ps.DatabaseBranchPassword
 }
 
 type passwordWithoutTTL struct {
-	PublicID  string `header:"id" json:"id"`
-	Name      string `header:"name" json:"name"`
-	Branch    string `header:"branch" json:"branch"`
-	Username  string `header:"username" json:"username"`
-	Role      string `header:"role" json:"role"`
-	RoleDesc  string `header:"role description" json:"-"`
-	CreatedAt int64  `json:"created_at"`
-	orig      *ps.DatabaseBranchPassword
+	PublicID       string `header:"id" json:"id"`
+	Name           string `header:"name" json:"name"`
+	Branch         string `header:"branch" json:"branch"`
+	Username       string `header:"username" json:"username"`
+	Role           string `header:"role" json:"role"`
+	RoleDesc       string `header:"role description" json:"-"`
+	ConnectionType string `header:"connection type" json:"connection_type"`
+	CreatedAt      int64  `json:"created_at"`
+	orig           *ps.DatabaseBranchPassword
 }
 
 type PasswordWithPlainText struct {
@@ -66,6 +68,7 @@ type PasswordWithPlainText struct {
 	AccessHostUrl     string               `header:"access host url" json:"access_host_url"`
 	Role              string               `header:"role" json:"role"`
 	RoleDesc          string               `header:"role description" json:"role_description"`
+	ConnectionType    string               `header:"connection type" json:"connection_type"`
 	PlainText         string               `header:"password" json:"password"`
 	TTL               int                  `header:"ttl" json:"ttl"`
 	ConnectionStrings ps.ConnectionStrings `json:"connection_strings"`
@@ -101,30 +104,32 @@ func toPassword(password *ps.DatabaseBranchPassword) *Password {
 		ttlRemaining = max(int(time.Until(password.ExpiresAt).Seconds()), 0)
 	}
 	return &Password{
-		Name:      password.Name,
-		Branch:    password.Branch.Name,
-		PublicID:  password.PublicID,
-		Username:  password.Username,
-		Role:      password.Role,
-		RoleDesc:  toRoleDesc(password.Role),
-		TTL:       password.TTL,
-		Remaining: ttlRemaining,
-		CreatedAt: toTimestamp(password.CreatedAt),
-		Expired:   password.TTL > 0 && ttlRemaining == 0,
-		orig:      password,
+		Name:           password.Name,
+		Branch:         password.Branch.Name,
+		PublicID:       password.PublicID,
+		Username:       password.Username,
+		Role:           password.Role,
+		RoleDesc:       toRoleDesc(password.Role),
+		ConnectionType: toConnectionTypeDesc(password.Replica),
+		TTL:            password.TTL,
+		Remaining:      ttlRemaining,
+		CreatedAt:      toTimestamp(password.CreatedAt),
+		Expired:        password.TTL > 0 && ttlRemaining == 0,
+		orig:           password,
 	}
 }
 
 func toPasswordWithoutTTL(password *ps.DatabaseBranchPassword) *passwordWithoutTTL {
 	return &passwordWithoutTTL{
-		Name:      password.Name,
-		Branch:    password.Branch.Name,
-		PublicID:  password.PublicID,
-		Username:  password.Username,
-		Role:      password.Role,
-		RoleDesc:  toRoleDesc(password.Role),
-		CreatedAt: toTimestamp(password.CreatedAt),
-		orig:      password,
+		Name:           password.Name,
+		Branch:         password.Branch.Name,
+		PublicID:       password.PublicID,
+		Username:       password.Username,
+		Role:           password.Role,
+		RoleDesc:       toRoleDesc(password.Role),
+		ConnectionType: toConnectionTypeDesc(password.Replica),
+		CreatedAt:      toTimestamp(password.CreatedAt),
+		orig:           password,
 	}
 }
 
@@ -165,6 +170,7 @@ func toPasswordWithPlainText(password *ps.DatabaseBranchPassword) *PasswordWithP
 		AccessHostUrl:     password.Hostname,
 		Role:              password.Role,
 		RoleDesc:          toRoleDesc(password.Role),
+		ConnectionType:    toConnectionTypeDesc(password.Replica),
 		TTL:               password.TTL,
 		ConnectionStrings: password.ConnectionStrings,
 		orig:              password,
@@ -183,6 +189,14 @@ func toRoleDesc(role string) string {
 		return "Can Read, Write & Administer"
 	}
 	return "Can Read"
+}
+
+func toConnectionTypeDesc(replica bool) string {
+	if replica {
+		return "Replica"
+	} else {
+		return "Primary"
+	}
 }
 
 func toTimestamp(t time.Time) int64 {

@@ -16,8 +16,9 @@ import (
 
 func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
-		role string
-		ttl  ttlFlag
+		role    string
+		ttl     ttlFlag
+		replica bool
 	}
 
 	cmd := &cobra.Command{
@@ -52,6 +53,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 				Name:         name,
 				Role:         flags.role,
 				TTL:          int(flags.ttl.Value.Seconds()),
+				Replica:      flags.replica,
 			})
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
@@ -76,6 +78,8 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.PersistentFlags().StringVar(&flags.role, "role",
 		"admin", "Role defines the access level, allowed values are : reader, writer, readwriter, admin. By default it is admin.")
 	cmd.PersistentFlags().Var(&flags.ttl, "ttl", `TTL defines the time to live for the password. Durations such as "30m", "24h", or bare integers such as "3600" (seconds) are accepted. The default TTL is 0s, which means the password will never expire.`)
+	cmd.Flags().BoolVar(&flags.replica, "replica", false, "When enabled, the password will route all reads to the branch's primary replicas and all read-only regions.")
+	cmd.Flags().MarkHidden("replica")
 
 	return cmd
 }
