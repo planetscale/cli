@@ -31,9 +31,13 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			branch := args[1]
 			name := args[2]
 
-			// "admin" is the default value for role
-			if flags.role == "" && flags.replica {
-				flags.role = "reader"
+			if flags.role == "" {
+				if flags.replica {
+					flags.role = "reader"
+				} else {
+					// Maintain old behavior - "admin" is the default role.
+					flags.role = "admin"
+				}
 			}
 
 			if flags.role != "" {
