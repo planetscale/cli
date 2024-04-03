@@ -33,6 +33,7 @@ func ConnectCmd(ch *cmdutil.Helper) *cobra.Command {
 		execCommandEnvURL   string
 		role                string
 		noRandom            bool
+		replica             bool
 	}
 
 	cmd := &cobra.Command{
@@ -82,12 +83,16 @@ argument:
 				}
 			}
 
+			replica := flags.replica
+
 			role := cmdutil.AdministratorRole
 			if flags.role != "" {
 				role, err = cmdutil.RoleFromString(flags.role)
 				if err != nil {
 					return err
 				}
+			} else if replica {
+				role = cmdutil.ReaderRole
 			}
 
 			// check whether database and branch exist
@@ -116,6 +121,7 @@ argument:
 				Role:         role,
 				Name:         passwordutil.GenerateName("pscale-cli-connect"),
 				TTL:          5 * time.Minute,
+				Replica:      replica,
 			})
 			if err != nil {
 				return cmdutil.HandleError(err)
@@ -207,7 +213,9 @@ argument:
 	cmd.PersistentFlags().StringVar(&flags.execCommandEnvURL, "execute-env-url", "DATABASE_URL",
 		"Environment variable name that contains the exposed Database URL.")
 	cmd.PersistentFlags().StringVar(&flags.role, "role",
-		"admin", "Role defines the access level, allowed values are : reader, writer, readwriter, admin. By default it is admin.")
+		"", "Role defines the access level, allowed values are: reader, writer, readwriter, admin. Defaults to 'reader' for replica passwords, otherwise defaults to 'admin'.")
+	cmd.Flags().BoolVar(&flags.replica, "replica", false, "When enabled, the password will route all reads to the branch's primary replicas and all read-only regions.")
+	cmd.Flags().MarkHidden("replica")
 
 	return cmd
 }

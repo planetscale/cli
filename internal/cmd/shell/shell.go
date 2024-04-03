@@ -27,6 +27,7 @@ func ShellCmd(ch *cmdutil.Helper) *cobra.Command {
 		localAddr  string
 		remoteAddr string
 		role       string
+		replica    bool
 	}
 
 	cmd := &cobra.Command{
@@ -82,12 +83,16 @@ second argument:
 				}
 			}
 
+			replica := flags.replica
+
 			role := cmdutil.AdministratorRole
 			if flags.role != "" {
 				role, err = cmdutil.RoleFromString(flags.role)
 				if err != nil {
 					return err
 				}
+			} else if replica {
+				role = cmdutil.ReaderRole
 			}
 
 			// check whether database and branch exist
@@ -131,6 +136,7 @@ second argument:
 				Role:         role,
 				Name:         passwordutil.GenerateName("pscale-cli-shell"),
 				TTL:          5 * time.Minute,
+				Replica:      replica,
 			})
 			if err != nil {
 				return cmdutil.HandleError(err)
@@ -227,7 +233,10 @@ second argument:
 	cmd.PersistentFlags().StringVar(&flags.remoteAddr, "remote-addr", "",
 		"PlanetScale Database remote network address. By default the remote address is populated automatically from the PlanetScale API. (format: `hostname:port`)")
 	cmd.PersistentFlags().StringVar(&flags.role, "role",
-		"admin", "Role defines the access level, allowed values are : reader, writer, readwriter, admin. By default it is admin.")
+		"", "Role defines the access level, allowed values are: reader, writer, readwriter, admin. Defaults to 'reader' for replica passwords, otherwise defaults to 'admin'.")
+	cmd.Flags().BoolVar(&flags.replica, "replica", false, "When enabled, the password will route all reads to the branch's primary replicas and all read-only regions.")
+	cmd.Flags().MarkHidden("replica")
+
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
 
 	return cmd
