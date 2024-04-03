@@ -23,6 +23,7 @@ type Options struct {
 	Role         cmdutil.PasswordRole
 	Name         string
 	TTL          time.Duration
+	Replica      bool
 }
 
 type Password struct {
@@ -78,6 +79,7 @@ func New(ctx context.Context, client *ps.Client, opt Options) (*Password, error)
 		Role:         opt.Role.ToString(),
 		Name:         opt.Name,
 		TTL:          int(opt.TTL.Seconds()),
+		Replica:      opt.Replica,
 	})
 	if err != nil {
 		return nil, err
