@@ -180,11 +180,6 @@ second argument:
 				return cmdutil.HandleError(err)
 			}
 
-			useDatabase := "@primary"
-			if replica {
-				useDatabase = database
-			}
-
 			mysqlArgs := []string{
 				"-u",
 				"root",
@@ -193,7 +188,11 @@ second argument:
 				"-t", // the -s (silent) flag disables tabular output, re-enable it.
 				"-h", host,
 				"-P", port,
-				"-D", useDatabase,
+			}
+			if replica {
+				mysqlArgs = append([]string{"--no-defaults"}, mysqlArgs...)
+			} else {
+				mysqlArgs = append(mysqlArgs, "-D", "@primary")
 			}
 
 			historyFile := historyFilePath(ch.Config.Organization, database, branch)
