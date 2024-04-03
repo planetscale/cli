@@ -188,7 +188,10 @@ second argument:
 				"-t", // the -s (silent) flag disables tabular output, re-enable it.
 				"-h", host,
 				"-P", port,
-				"-D", "@primary",
+			}
+
+			if !replica {
+				mysqlArgs = append(mysqlArgs, "-D", "@primary")
 			}
 
 			historyFile := historyFilePath(ch.Config.Organization, database, branch)
