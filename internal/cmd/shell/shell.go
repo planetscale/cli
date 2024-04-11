@@ -239,7 +239,6 @@ second argument:
 	cmd.PersistentFlags().StringVar(&flags.role, "role",
 		"", "Role defines the access level, allowed values are: reader, writer, readwriter, admin. Defaults to 'reader' for replica passwords, otherwise defaults to 'admin'.")
 	cmd.Flags().BoolVar(&flags.replica, "replica", false, "When enabled, the password will route all reads to the branch's primary replicas and all read-only regions.")
-	cmd.Flags().MarkHidden("replica")
 
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
 
