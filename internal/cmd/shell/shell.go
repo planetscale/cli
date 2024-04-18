@@ -291,20 +291,32 @@ func (m *mysql) Run(ctx context.Context, sigc chan os.Signal, signals []os.Signa
 	if err != nil {
 		return err
 	}
+
+	wait := make(chan error, 1)
 	go func() {
-		for sig := range msig {
-			_ = c.Process.Signal(sig)
-		}
+		wait <- c.Wait()
+		close(wait)
 	}()
 
-	err = c.Wait()
-	if err != nil {
-		// If we failed to wait for the process, just in case
-		// we send a hard kill to ensure the MySQL subprocess
-		// gets killed.
-		c.Process.Signal(os.Kill)
+	for {
+		select {
+		case sig := <-msig:
+			if err := c.Process.Signal(sig); err != nil {
+				// If we failed to send a signal to the process, just in case
+				// it's still alive, make sure we kill it.
+				_ = c.Process.Signal(os.Kill)
+				return err
+			}
+		case err := <-wait:
+			if err != nil {
+				// If we failed to wait for the process, just in case
+				// we send a hard kill to ensure the MySQL subprocess
+				// gets killed.
+				c.Process.Signal(os.Kill)
+			}
+			return err
+		}
 	}
-	return err
 }
 
 func formatMySQLBranch(database string, branch *ps.DatabaseBranch) string {
