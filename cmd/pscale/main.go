@@ -19,8 +19,23 @@ func main() {
 }
 
 func realMain() int {
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	return cmd.Execute(ctx, version, commit, date)
+	sigc := make(chan os.Signal, 1)
+	signals := []os.Signal{os.Interrupt}
+	signal.Notify(sigc, signals...)
+	defer func() {
+		signal.Stop(sigc)
+		cancel()
+	}()
+	go func() {
+		select {
+		case <-sigc:
+			cancel()
+		case <-ctx.Done():
+		}
+	}()
+
+	return cmd.Execute(ctx, sigc, signals, version, commit, date)
 }

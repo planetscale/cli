@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"time"
 
@@ -22,7 +23,7 @@ import (
 	"github.com/planetscale/cli/internal/proxyutil"
 )
 
-func ShellCmd(ch *cmdutil.Helper) *cobra.Command {
+func ShellCmd(ch *cmdutil.Helper, sigc chan os.Signal, signals ...os.Signal) *cobra.Command {
 	var flags struct {
 		localAddr  string
 		remoteAddr string
@@ -212,7 +213,7 @@ second argument:
 			}()
 
 			go func() {
-				errCh <- m.Run(ctx, mysqlArgs...)
+				errCh <- m.Run(ctx, sigc, signals, mysqlArgs...)
 			}()
 
 			go func() {
@@ -255,7 +256,7 @@ type mysql struct {
 }
 
 // Run runs the `mysql` client with the given arguments.
-func (m *mysql) Run(ctx context.Context, args ...string) error {
+func (m *mysql) Run(ctx context.Context, sigc chan os.Signal, signals []os.Signal, args ...string) error {
 	c := exec.CommandContext(ctx, m.mysqlPath, args...)
 	if m.dir != "" {
 		c.Dir = m.dir
@@ -271,7 +272,28 @@ func (m *mysql) Run(ctx context.Context, args ...string) error {
 	c.Stderr = os.Stderr
 	c.Stdin = os.Stdin
 
-	return c.Run()
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs)
+	defer signal.Stop(sigs)
+
+	signal.Stop(sigc)
+	defer signal.Notify(sigc, signals...)
+
+	err := c.Start()
+	if err != nil {
+		return err
+	}
+	go func() {
+		for sig := range sigs {
+			_ = c.Process.Signal(sig)
+		}
+	}()
+
+	err = c.Wait()
+	if err != nil {
+		c.Process.Signal(os.Kill)
+	}
+	return err
 }
 
 func formatMySQLBranch(database string, branch *ps.DatabaseBranch) string {
