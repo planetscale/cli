@@ -272,10 +272,18 @@ func (m *mysql) Run(ctx context.Context, sigc chan os.Signal, signals []os.Signa
 	c.Stderr = os.Stderr
 	c.Stdin = os.Stdin
 
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs)
-	defer signal.Stop(sigs)
+	// Set up a new channel for signals received while MySQL is active.
+	// This is registered for all signals so we forward them all to MySQL,
+	// so we behave as much as possible like a regular MySQL.
+	// When we exit this function, we stop the custom signal receiver.
+	msig := make(chan os.Signal, 1)
+	signal.Notify(msig)
+	defer signal.Stop(msig)
 
+	// We stop handling signals for our default setup from the CLI. This
+	// is needed, so we stop handling for example the default os.Interrupt
+	// that stops the shell and we forward it to MySQL.
+	// When we exit from this function, we restore the signals as they were.
 	signal.Stop(sigc)
 	defer signal.Notify(sigc, signals...)
 
@@ -284,13 +292,16 @@ func (m *mysql) Run(ctx context.Context, sigc chan os.Signal, signals []os.Signa
 		return err
 	}
 	go func() {
-		for sig := range sigs {
+		for sig := range msig {
 			_ = c.Process.Signal(sig)
 		}
 	}()
 
 	err = c.Wait()
 	if err != nil {
+		// If we failed to wait for the process, just in case
+		// we send a hard kill to ensure the MySQL subprocess
+		// gets killed.
 		c.Process.Signal(os.Kill)
 	}
 	return err
