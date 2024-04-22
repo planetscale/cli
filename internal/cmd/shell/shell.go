@@ -272,7 +272,10 @@ func (m *mysql) Run(ctx context.Context, sigc chan os.Signal, signals []os.Signa
 	c.Stdin = os.Stdin
 
 	c.SysProcAttr = sysProcAttr()
-	setupSignals(ctx, c, sigc, signals)
+	cancel := setupSignals(ctx, c, sigc, signals)
+	if cancel != nil {
+		defer cancel()
+	}
 
 	return c.Run()
 }
