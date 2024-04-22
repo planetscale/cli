@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"os/signal"
 	"path/filepath"
 	"time"
 
@@ -272,58 +271,20 @@ func (m *mysql) Run(ctx context.Context, sigc chan os.Signal, signals []os.Signa
 	c.Stderr = os.Stderr
 	c.Stdin = os.Stdin
 
-	// Set up a new channel for signals received while MySQL is active.
-	// This is registered for all signals so we forward them all to MySQL,
-	// so we behave as much as possible like a regular MySQL.
-	// When we exit this function, we stop the custom signal receiver.
-	msig := make(chan os.Signal, 1)
-	signal.Notify(msig)
-	defer signal.Stop(msig)
-
-	// We stop handling signals for our default setup from the CLI. This
-	// is needed, so we stop handling for example the default os.Interrupt
-	// that stops the shell and we forward it to MySQL.
-	// When we exit from this function, we restore the signals as they were.
-	signal.Stop(sigc)
-	defer signal.Notify(sigc, signals...)
-
-	err := c.Start()
-	if err != nil {
-		return err
+	c.SysProcAttr = sysProcAttr()
+	cancel := setupSignals(ctx, c, sigc, signals)
+	if cancel != nil {
+		defer cancel()
 	}
 
-	wait := make(chan error, 1)
-	go func() {
-		wait <- c.Wait()
-		close(wait)
-	}()
-
-	for {
-		select {
-		case sig := <-msig:
-			if err := c.Process.Signal(sig); err != nil {
-				// If we failed to send a signal to the process, just in case
-				// it's still alive, make sure we kill it.
-				_ = c.Process.Signal(os.Kill)
-				return err
-			}
-		case err := <-wait:
-			if err != nil {
-				// If we failed to wait for the process, just in case
-				// we send a hard kill to ensure the MySQL subprocess
-				// gets killed.
-				c.Process.Signal(os.Kill)
-			}
-			return err
-		}
-	}
+	return c.Run()
 }
 
 func formatMySQLBranch(database string, branch *ps.DatabaseBranch) string {
 	branchStr := branch.Name
 
 	if branch.Production {
-		branchStr = fmt.Sprintf("|⚠ %s ⚠|", branch.Name)
+		branchStr = fmt.Sprintf("|%s %s %s|", warnSign, branch.Name, warnSign)
 	}
 
 	return fmt.Sprintf("%s/%s> ", database, branchStr)
