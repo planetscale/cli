@@ -71,7 +71,7 @@ var rootCmd = &cobra.Command{
 
 // Execute executes the command and returns the exit status of the finished
 // command.
-func Execute(ctx context.Context, sigc chan os.Signal, signals []os.Signal, ver, commit, buildDate string) int {
+func Execute(ctx context.Context, ver, commit, buildDate string) int {
 	var format printer.Format
 	var debug bool
 
@@ -106,7 +106,7 @@ func Execute(ctx context.Context, sigc chan os.Signal, signals []os.Signal, ver,
 		}()
 	}
 
-	err := runCmd(ctx, ver, commit, buildDate, &format, &debug, sigc, signals)
+	err := runCmd(ctx, ver, commit, buildDate, &format, &debug)
 	if err == nil {
 		return 0
 	}
@@ -130,7 +130,7 @@ func Execute(ctx context.Context, sigc chan os.Signal, signals []os.Signal, ver,
 
 // runCmd adds all child commands to the root command, sets flags
 // appropriately, and runs the root command.
-func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.Format, debug *bool, sigc chan os.Signal, signals []os.Signal) error {
+func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.Format, debug *bool) error {
 	cobra.OnInitialize(initConfig)
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config",
@@ -220,7 +220,7 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 	rootCmd.AddCommand(password.PasswordCmd(ch))
 	rootCmd.AddCommand(ping.PingCmd(ch))
 	rootCmd.AddCommand(region.RegionCmd(ch))
-	rootCmd.AddCommand(shell.ShellCmd(ch, sigc, signals...))
+	rootCmd.AddCommand(shell.ShellCmd(ch))
 	rootCmd.AddCommand(signup.SignupCmd(ch))
 	rootCmd.AddCommand(token.TokenCmd(ch))
 	rootCmd.AddCommand(version.VersionCmd(ch, ver, commit, buildDate))
