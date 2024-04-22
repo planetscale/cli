@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"time"
 
@@ -271,6 +272,8 @@ func (m *mysql) Run(ctx context.Context, args ...string) error {
 	c.Stderr = os.Stderr
 	c.Stdin = os.Stdin
 
+	c.SysProcAttr = sysProcAttr()
+	signal.Reset(os.Interrupt)
 	return c.Run()
 }
 
@@ -278,7 +281,7 @@ func formatMySQLBranch(database string, branch *ps.DatabaseBranch) string {
 	branchStr := branch.Name
 
 	if branch.Production {
-		branchStr = fmt.Sprintf("|⚠ %s ⚠|", branch.Name)
+		branchStr = fmt.Sprintf("|%s %s %s|", warnSign, branch.Name, warnSign)
 	}
 
 	return fmt.Sprintf("%s/%s> ", database, branchStr)
