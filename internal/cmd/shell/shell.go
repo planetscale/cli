@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"os/signal"
 	"path/filepath"
 	"time"
 
@@ -23,7 +22,7 @@ import (
 	"github.com/planetscale/cli/internal/proxyutil"
 )
 
-func ShellCmd(ch *cmdutil.Helper) *cobra.Command {
+func ShellCmd(ch *cmdutil.Helper, sigc chan os.Signal, signals ...os.Signal) *cobra.Command {
 	var flags struct {
 		localAddr  string
 		remoteAddr string
@@ -213,7 +212,7 @@ second argument:
 			}()
 
 			go func() {
-				errCh <- m.Run(ctx, mysqlArgs...)
+				errCh <- m.Run(ctx, sigc, signals, mysqlArgs...)
 			}()
 
 			go func() {
@@ -256,7 +255,7 @@ type mysql struct {
 }
 
 // Run runs the `mysql` client with the given arguments.
-func (m *mysql) Run(ctx context.Context, args ...string) error {
+func (m *mysql) Run(ctx context.Context, sigc chan os.Signal, signals []os.Signal, args ...string) error {
 	c := exec.CommandContext(ctx, m.mysqlPath, args...)
 	if m.dir != "" {
 		c.Dir = m.dir
@@ -273,7 +272,8 @@ func (m *mysql) Run(ctx context.Context, args ...string) error {
 	c.Stdin = os.Stdin
 
 	c.SysProcAttr = sysProcAttr()
-	signal.Reset(os.Interrupt)
+	setupSignals(ctx, c, sigc, signals)
+
 	return c.Run()
 }
 
