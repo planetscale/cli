@@ -20,7 +20,8 @@ import (
 	"github.com/mattn/go-isatty"
 )
 
-var IsTTY = isatty.IsTerminal(os.Stdout.Fd()) || isatty.IsCygwinTerminal(os.Stdout.Fd())
+var IsTTY = (isatty.IsTerminal(os.Stdout.Fd()) && isatty.IsTerminal(os.Stderr.Fd()) && isatty.IsTerminal(os.Stdin.Fd())) ||
+	(isatty.IsCygwinTerminal(os.Stdout.Fd()) && isatty.IsCygwinTerminal(os.Stderr.Fd()) && isatty.IsCygwinTerminal(os.Stdin.Fd()))
 
 // Format defines the option output format of a resource.
 type Format int
