@@ -55,10 +55,12 @@ second argument:
 
 			database := args[0]
 
+			runForeground := true
 			if !printer.IsTTY || ch.Printer.Format() != printer.Human {
 				if _, exists := os.LookupEnv("PSCALE_ALLOW_NONINTERACTIVE_SHELL"); !exists {
 					return errors.New("pscale shell only works in interactive mode")
 				}
+				runForeground = false
 			}
 
 			mysqlPath, err := cmdutil.MySQLClientPath()
@@ -212,7 +214,7 @@ second argument:
 			}()
 
 			go func() {
-				errCh <- m.Run(ctx, sigc, signals, mysqlArgs...)
+				errCh <- m.Run(ctx, sigc, signals, runForeground, mysqlArgs...)
 			}()
 
 			go func() {
@@ -255,7 +257,7 @@ type mysql struct {
 }
 
 // Run runs the `mysql` client with the given arguments.
-func (m *mysql) Run(ctx context.Context, sigc chan os.Signal, signals []os.Signal, args ...string) error {
+func (m *mysql) Run(ctx context.Context, sigc chan os.Signal, signals []os.Signal, runForeground bool, args ...string) error {
 	c := exec.CommandContext(ctx, m.mysqlPath, args...)
 	if m.dir != "" {
 		c.Dir = m.dir
@@ -271,10 +273,12 @@ func (m *mysql) Run(ctx context.Context, sigc chan os.Signal, signals []os.Signa
 	c.Stderr = os.Stderr
 	c.Stdin = os.Stdin
 
-	c.SysProcAttr = sysProcAttr()
-	cancel := setupSignals(ctx, c, sigc, signals)
-	if cancel != nil {
-		defer cancel()
+	if runForeground {
+		c.SysProcAttr = sysProcAttr()
+		cancel := setupSignals(ctx, c, sigc, signals)
+		if cancel != nil {
+			defer cancel()
+		}
 	}
 
 	return c.Run()
