@@ -55,6 +55,9 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			if ch.Printer.Format() == printer.Human {
 				number := fmt.Sprintf("#%d", dr.Number)
 				ch.Printer.Printf("Deploy request %s successfully created.\n\nView this deploy request in the browser: %s\n", printer.BoldBlue(number), printer.BoldBlue(dr.HtmlURL))
+				if dr.Deployment.InstantDDLEligible {
+					ch.Printer.Printf("This deploy request is instant DDL eligible. Pass the %s flag during deploy to deploy these schema changes using MySQL’s built-in ALGORITHM=INSTANT option. Deployment will be faster, but cannot be reverted.\n", printer.BoldYellow("--instant"))
+				}
 				return nil
 			}
 

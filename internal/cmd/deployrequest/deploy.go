@@ -17,7 +17,8 @@ import (
 // DeployCmd is the command for deploying deploy requests.
 func DeployCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
-		wait bool
+		wait        bool
+		instant_ddl bool
 	}
 
 	cmd := &cobra.Command{
@@ -45,10 +46,16 @@ func DeployCmd(ch *cmdutil.Helper) *cobra.Command {
 				}
 			}
 
+			if flags.instant_ddl {
+				ch.Printer.Printf("--instant flag passed, deploy request %s/%s will be deployed instantly.\n",
+					printer.BoldBlue(database), printer.BoldBlue(number))
+			}
+
 			dr, err := client.DeployRequests.Deploy(ctx, &planetscale.PerformDeployRequest{
 				Organization: ch.Config.Organization,
 				Database:     database,
 				Number:       number,
+				InstantDDL:   flags.instant_ddl,
 			})
 
 			if err != nil {
@@ -102,6 +109,8 @@ func DeployCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 
 	cmd.Flags().BoolVar(&flags.wait, "wait", false, "wait until the branch is deployed")
+	cmd.Flags().BoolVar(&flags.instant_ddl, "instant", false, "If enabled, the schema migrations from this DR will be applied using MySQL’s built-in ALGORITHM=INSTANT option. Deployment will be faster, but cannot be reverted.")
+	cmd.Flags().MarkHidden("instant")
 
 	return cmd
 }
