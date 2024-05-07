@@ -47,7 +47,7 @@ func DeployCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			if flags.instant_ddl {
-				ch.Printer.Printf("--instant flag passed, deploy request %s/%s will be deployed instantly.\n",
+				ch.Printer.Printf("Deploy request %s/%s will be deployed instantly.\n\n",
 					printer.BoldBlue(database), printer.BoldBlue(number))
 			}
 
@@ -98,8 +98,8 @@ func DeployCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			} else {
 				if ch.Printer.Format() == printer.Human {
-					ch.Printer.Printf("Successfully queued %s from %s for deployment to %s.\n",
-						dr.ID, dr.Branch, dr.IntoBranch)
+					ch.Printer.Printf("Successfully queued deploy request %s/%s from %s for deployment to %s.\n",
+						printer.BoldBlue(database), printer.BoldBlue(number), printer.BoldBlue(dr.Branch), printer.BoldBlue(dr.IntoBranch))
 					return nil
 				}
 			}
@@ -109,8 +109,8 @@ func DeployCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 
 	cmd.Flags().BoolVar(&flags.wait, "wait", false, "wait until the branch is deployed")
-	cmd.Flags().BoolVar(&flags.instant_ddl, "instant", false, "If enabled, the schema migrations from this DR will be applied using MySQL’s built-in ALGORITHM=INSTANT option. Deployment will be faster, but cannot be reverted.")
-	cmd.Flags().MarkHidden("instant")
+	cmd.Flags().BoolVar(&flags.instant_ddl, "instant", false, "If enabled, the schema migrations from this deploy request will be applied using MySQL’s built-in ALGORITHM=INSTANT option. Deployment will be faster, but cannot be reverted.")
+	// cmd.Flags().MarkHidden("instant")
 
 	return cmd
 }
