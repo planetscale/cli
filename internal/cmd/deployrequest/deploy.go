@@ -86,13 +86,13 @@ func DeployCmd(ch *cmdutil.Helper) *cobra.Command {
 
 				switch state {
 				case "complete_pending_revert":
-					ch.Printer.Printf("Deploy request %s/%s is successfully deployed and revertable. You can skip the revert to unblock the deploy queue.\n",
+					ch.Printer.Printf("Deploy request %s/%s is successfully deployed and revertable. You can skip the revert to unblock the deploy queue.\n\n",
 						printer.BoldBlue(database), printer.BoldBlue(number))
 				case "pending_cutover":
-					ch.Printer.Printf("Deploy request %s/%s is successfully staged and waiting to be applied.\n",
+					ch.Printer.Printf("Deploy request %s/%s is successfully staged and waiting to be applied.\n\n",
 						printer.BoldBlue(database), printer.BoldBlue(number))
 				default:
-					ch.Printer.Printf("Deploy request %s/%s is successfully deployed.\n",
+					ch.Printer.Printf("Deploy request %s/%s is successfully deployed.\n\n",
 						printer.BoldBlue(database), printer.BoldBlue(number))
 				}
 
