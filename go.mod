@@ -1,6 +1,6 @@
 module github.com/planetscale/cli
 
-go 1.22.2
+go 1.22.4
 
 require (
 	github.com/99designs/keyring v1.2.2
