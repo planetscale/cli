@@ -35,3 +35,9 @@
     :why:
     :versions: []
     :when: 2023-12-19 16:10:55.329978000 Z
+- - :approve
+  - github.com/hashicorp/go-version
+  - :who:
+    :why:
+    :versions: []
+    :when: 2024-06-05 12:38:52.085789469 Z
