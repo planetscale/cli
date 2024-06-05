@@ -9,7 +9,7 @@ require (
 	github.com/adrg/xdg v0.4.0
 	github.com/benbjohnson/clock v1.3.5
 	github.com/briandowns/spinner v1.23.0
-	github.com/fatih/color v1.16.0
+	github.com/fatih/color v1.17.0
 	github.com/frankban/quicktest v1.14.6
 	github.com/go-sql-driver/mysql v1.8.1
 	github.com/gocarina/gocsv v0.0.0-20231116093920-b87c2d0e983a
