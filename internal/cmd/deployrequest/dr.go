@@ -58,8 +58,9 @@ type DeployRequest struct {
 }
 
 type inlineDeployment struct {
-	State      string `header:"deploy state" json:"state"`
-	Deployable bool   `header:"deployable" json:"deployable"`
+	State              string `header:"deploy state" json:"state"`
+	Deployable         bool   `header:"deployable" json:"deployable"`
+	InstantDDLEligible bool   `header:"instant ddl eligible" json:"instant_ddl_eligible"`
 
 	QueuedAt   *int64 `header:"queued_at,timestamp(ms|utc|human),-" json:"queued_at"`
 	StartedAt  *int64 `header:"started_at,timestamp(ms|utc|human),-" json:"started_at"`
@@ -80,10 +81,11 @@ func toInlineDeployment(d *planetscale.Deployment) inlineDeployment {
 	return inlineDeployment{
 		State: d.State,
 
-		Deployable: d.Deployable,
-		FinishedAt: printer.GetMillisecondsIfExists(d.FinishedAt),
-		StartedAt:  printer.GetMillisecondsIfExists(d.StartedAt),
-		QueuedAt:   printer.GetMillisecondsIfExists(d.QueuedAt),
+		Deployable:         d.Deployable,
+		InstantDDLEligible: d.InstantDDLEligible,
+		FinishedAt:         printer.GetMillisecondsIfExists(d.FinishedAt),
+		StartedAt:          printer.GetMillisecondsIfExists(d.StartedAt),
+		QueuedAt:           printer.GetMillisecondsIfExists(d.QueuedAt),
 
 		orig: d,
 	}

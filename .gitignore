@@ -16,3 +16,6 @@ dist/
 completions/
 vendor/
 .idea
+
+# Output of running go build cmd/pscale/main.go
+main
