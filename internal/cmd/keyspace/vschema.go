@@ -1,4 +1,4 @@
-package branch
+package keyspace
 
 import (
 	"errors"
@@ -12,50 +12,38 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// VSchemaCmd is the top-level command for fetching or updating the VSchema of a branch.
 func VSchemaCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:        "vschema <command>",
-		Deprecated: "use `pscale keyspace vschema` instead",
-		Short:      "Fetch or update your keyspace VSchema",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			// keep this around for backwards compat.
-			return GetVSchemaCmd(ch).RunE(cmd, args)
-		},
+		Use:   "vschema <command>",
+		Short: "Update or show the VSchema of a branch",
 	}
 
-	cmd.AddCommand(GetVSchemaCmd(ch))
+	cmd.AddCommand(ShowVSchemaCmd(ch))
 	cmd.AddCommand(UpdateVSchemaCmd(ch))
 
 	return cmd
 }
 
-// GetVSchemaCmd is the command for showing the VSchema of a branch.
-func GetVSchemaCmd(ch *cmdutil.Helper) *cobra.Command {
-	var flags struct {
-		keyspace string
-	}
-
-	cmd := &cobra.Command{
-		Use:        "show <database> <branch>",
-		Short:      "Show the vschema of a branch",
-		Deprecated: "use `pscale keyspace vschema show` instead",
-		Args:       cmdutil.RequiredArgs("database", "branch"),
-		Aliases:    []string{"get"},
+// ShowVSchemaCmd is the command for showing a keyspace's VSchema.
+func ShowVSchemaCmd(ch *cmdutil.Helper) *cobra.Command {
+	return &cobra.Command{
+		Use:   "show <database> <branch> <keyspace>",
+		Short: "Show the VSchema of a keyspace in a branch",
+		Args:  cmdutil.RequiredArgs("database", "branch", "keyspace"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			database, branch := args[0], args[1]
+			database, branch, keyspace := args[0], args[1], args[2]
 
 			client, err := ch.Client()
 			if err != nil {
 				return err
 			}
 
-			vschema, err := client.DatabaseBranches.VSchema(ctx, &planetscale.BranchVSchemaRequest{
+			vSchema, err := client.Keyspaces.VSchema(ctx, &planetscale.GetKeyspaceVSchemaRequest{
 				Organization: ch.Config.Organization,
 				Database:     database,
 				Branch:       branch,
-				Keyspace:     flags.keyspace,
+				Keyspace:     keyspace,
 			})
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
@@ -68,10 +56,10 @@ func GetVSchemaCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			if ch.Printer.Format() != printer.Human {
-				return ch.Printer.PrintResource(vschema)
+				return ch.Printer.PrintResource(vSchema)
 			}
 
-			err = ch.Printer.PrettyPrintJSON([]byte(vschema.Raw))
+			err = ch.Printer.PrettyPrintJSON([]byte(vSchema.Raw))
 			if err != nil {
 				return fmt.Errorf("reading vschema raw: %s", err)
 			}
@@ -79,27 +67,20 @@ func GetVSchemaCmd(ch *cmdutil.Helper) *cobra.Command {
 			return nil
 		},
 	}
-
-	cmd.Flags().StringVar(&flags.keyspace, "keyspace", "", "The keyspace in the branch")
-
-	return cmd
 }
 
-// UpdateVSchemaCmd is the command for updating the VSchema of a branch.
+// UpdateVSchemaCmd is the command for updating a keyspace's VSchema.
 func UpdateVSchemaCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
-		keyspace string
-		vschema  string
+		vschema string
 	}
-
 	cmd := &cobra.Command{
-		Use:        "update <database> <branch> --vschema <file>",
-		Short:      "Update the vschema of a branch",
-		Deprecated: "use `pscale keyspace vschema update` instead",
-		Args:       cmdutil.RequiredArgs("database", "branch"),
+		Use:   "update <database> <branch> <keyspace> --vschema <file>",
+		Short: "Update the VSchema of a keyspace",
+		Args:  cmdutil.RequiredArgs("database", "branch", "keyspace"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			database, branch := args[0], args[1]
+			database, branch, keyspace := args[0], args[1], args[2]
 
 			client, err := ch.Client()
 			if err != nil {
@@ -134,11 +115,11 @@ func UpdateVSchemaCmd(ch *cmdutil.Helper) *cobra.Command {
 				return errors.New("no vschema provided, use the --vschema and provide a file or pipe the vschema to standard in")
 			}
 
-			vschema, err := client.DatabaseBranches.UpdateVSchema(ctx, &planetscale.UpdateBranchVschemaRequest{
+			vschema, err := client.Keyspaces.UpdateVSchema(ctx, &planetscale.UpdateKeyspaceVSchemaRequest{
 				Organization: ch.Config.Organization,
 				Database:     database,
 				Branch:       branch,
-				Keyspace:     flags.keyspace,
+				Keyspace:     keyspace,
 				VSchema:      data,
 			})
 			if err != nil {
@@ -154,7 +135,6 @@ func UpdateVSchemaCmd(ch *cmdutil.Helper) *cobra.Command {
 			if ch.Printer.Format() != printer.Human {
 				return ch.Printer.PrintResource(vschema)
 			}
-
 			err = ch.Printer.PrettyPrintJSON([]byte(vschema.Raw))
 			if err != nil {
 				return fmt.Errorf("reading vschema raw: %s", err)
@@ -164,8 +144,7 @@ func UpdateVSchemaCmd(ch *cmdutil.Helper) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&flags.vschema, "vschema", "", "The vschema to set in JSON format")
-	cmd.Flags().StringVar(&flags.keyspace, "keyspace", "", "The keyspace to apply the vschema to")
+	cmd.Flags().StringVar(&flags.vschema, "vschema", "", "The path to the VSchema file")
 
 	return cmd
 }
