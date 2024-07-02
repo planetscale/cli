@@ -36,6 +36,7 @@ import (
 	"github.com/planetscale/cli/internal/cmd/connect"
 	"github.com/planetscale/cli/internal/cmd/database"
 	"github.com/planetscale/cli/internal/cmd/deployrequest"
+	"github.com/planetscale/cli/internal/cmd/keyspace"
 	"github.com/planetscale/cli/internal/cmd/org"
 	"github.com/planetscale/cli/internal/cmd/password"
 	"github.com/planetscale/cli/internal/cmd/ping"
@@ -216,6 +217,7 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 	rootCmd.AddCommand(database.DatabaseCmd(ch))
 	rootCmd.AddCommand(dataimports.DataImportsCmd(ch))
 	rootCmd.AddCommand(deployrequest.DeployRequestCmd(ch))
+	rootCmd.AddCommand(keyspace.KeyspaceCmd(ch))
 	rootCmd.AddCommand(org.OrgCmd(ch))
 	rootCmd.AddCommand(password.PasswordCmd(ch))
 	rootCmd.AddCommand(ping.PingCmd(ch))
