@@ -262,3 +262,7 @@ func DeployRequestBranchToNumber(ctx context.Context, client *ps.Client, organiz
 
 	return deployRequests[0].Number, nil
 }
+
+func ToClusterSizeSlug(c ps.ClusterSize) string {
+	return strings.ReplaceAll(string(c), "_", "-")
+}
