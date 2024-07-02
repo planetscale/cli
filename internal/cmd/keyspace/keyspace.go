@@ -24,16 +24,15 @@ func KeyspaceCmd(ch *cmdutil.Helper) *cobra.Command {
 }
 
 type BranchKeyspace struct {
-	ID            string `json:"id"`
-	Name          string `header:"name" json:"name"`
-	Shards        int    `header:"shards" json:"shards"`
-	Sharded       bool   `header:"sharded" json:"sharded"`
-	Replicas      uint64 `header:"replicas" json:"replicas"`
-	ExtraReplicas uint64 `header:"extra_replicas" json:"extra_replicas"`
-	Resizing      bool   `header:"resizing" json:"resizing"`
-	ClusterSize   string `header:"cluster_size" json:"cluster_rate_name"`
-	CreatedAt     int64  `header:"created_at,timestamp(ms|utc|human)" json:"created_at"`
-	UpdatedAt     int64  `header:"updated_at,timestamp(ms|utc|human)" json:"updated_at"`
+	ID          string `json:"id"`
+	Name        string `header:"name" json:"name"`
+	Shards      int    `header:"shards" json:"shards"`
+	Sharded     bool   `header:"sharded" json:"sharded"`
+	Replicas    uint64 `header:"replicas" json:"replicas"`
+	Resizing    bool   `header:"resizing" json:"resizing"`
+	ClusterSize string `header:"cluster_size" json:"cluster_rate_name"`
+	CreatedAt   int64  `header:"created_at,timestamp(ms|utc|human)" json:"created_at"`
+	UpdatedAt   int64  `header:"updated_at,timestamp(ms|utc|human)" json:"updated_at"`
 
 	orig *ps.Keyspace
 }
@@ -50,16 +49,15 @@ func toBranchKeyspaces(keyspaces []*ps.Keyspace) []*BranchKeyspace {
 
 func toBranchKeyspace(k *ps.Keyspace) *BranchKeyspace {
 	return &BranchKeyspace{
-		ID:            k.ID,
-		Name:          k.Name,
-		Shards:        k.Shards,
-		Sharded:       k.Sharded,
-		Replicas:      k.Replicas,
-		ExtraReplicas: k.ExtraReplicas,
-		Resizing:      k.Resizing,
-		ClusterSize:   cmdutil.ToClusterSizeSlug(k.ClusterSize),
-		CreatedAt:     cmdutil.TimeToMilliseconds(k.CreatedAt),
-		UpdatedAt:     cmdutil.TimeToMilliseconds(k.UpdatedAt),
-		orig:          k,
+		ID:          k.ID,
+		Name:        k.Name,
+		Shards:      k.Shards,
+		Sharded:     k.Sharded,
+		Replicas:    k.Replicas,
+		Resizing:    k.Resizing,
+		ClusterSize: cmdutil.ToClusterSizeSlug(k.ClusterSize),
+		CreatedAt:   cmdutil.TimeToMilliseconds(k.CreatedAt),
+		UpdatedAt:   cmdutil.TimeToMilliseconds(k.UpdatedAt),
+		orig:        k,
 	}
 }
