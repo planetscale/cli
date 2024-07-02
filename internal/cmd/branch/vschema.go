@@ -15,8 +15,9 @@ import (
 // VSchemaCmd is the top-level command for fetching or updating the VSchema of a branch.
 func VSchemaCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "vschema <command>",
-		Short: "Fetch or update your keyspace VSchema",
+		Use:        "vschema <command>",
+		Deprecated: "use `pscale keyspace vschema` instead",
+		Short:      "Fetch or update your keyspace VSchema",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// keep this around for backwards compat.
 			return GetVSchemaCmd(ch).RunE(cmd, args)
@@ -36,9 +37,11 @@ func GetVSchemaCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:   "get <database> <branch>",
-		Short: "Show the vschema of a branch",
-		Args:  cmdutil.RequiredArgs("database", "branch"),
+		Use:        "show <database> <branch>",
+		Short:      "Show the vschema of a branch",
+		Deprecated: "use `pscale keyspace vschema show` instead",
+		Args:       cmdutil.RequiredArgs("database", "branch"),
+		Aliases:    []string{"get"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			database, branch := args[0], args[1]
@@ -90,9 +93,10 @@ func UpdateVSchemaCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:   "update <database> <branch> --vschema <file>",
-		Short: "Update the vschema of a branch",
-		Args:  cmdutil.RequiredArgs("database", "branch"),
+		Use:        "update <database> <branch> --vschema <file>",
+		Short:      "Update the vschema of a branch",
+		Deprecated: "use `pscale keyspace vschema update` instead",
+		Args:       cmdutil.RequiredArgs("database", "branch"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			database, branch := args[0], args[1]
