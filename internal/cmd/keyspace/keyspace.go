@@ -1,6 +1,8 @@
 package keyspace
 
 import (
+	"encoding/json"
+
 	"github.com/planetscale/cli/internal/cmdutil"
 	ps "github.com/planetscale/planetscale-go/planetscale"
 	"github.com/spf13/cobra"
@@ -62,4 +64,12 @@ func toBranchKeyspace(k *ps.Keyspace) *BranchKeyspace {
 		UpdatedAt:   cmdutil.TimeToMilliseconds(k.UpdatedAt),
 		orig:        k,
 	}
+}
+
+func (k *BranchKeyspace) MarshalJSON() ([]byte, error) {
+	return json.MarshalIndent(k.orig, "", "  ")
+}
+
+func (k *BranchKeyspace) MarshalCSVValue() interface{} {
+	return []*BranchKeyspace{k}
 }
