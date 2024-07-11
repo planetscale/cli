@@ -38,7 +38,7 @@ func CheckCmd(ch *cmdutil.Helper) *cobra.Command {
 						ExitCode: cmdutil.ActionRequestedExitCode,
 					}
 				} else {
-					ch.Printer.Printf("You are authenticated.\n")
+					ch.Printer.Println("You are authenticated.")
 					return nil
 				}
 			}
