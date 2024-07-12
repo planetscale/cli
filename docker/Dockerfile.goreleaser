@@ -1,4 +1,4 @@
-ARG GORELEASE_CROSS_VERSION=v1.22.4
+ARG GORELEASE_CROSS_VERSION=v1.26.2
 FROM ghcr.io/goreleaser/goreleaser-cross:${GORELEASE_CROSS_VERSION}
 
 RUN apt-get update && apt-get install -y openssh-client
