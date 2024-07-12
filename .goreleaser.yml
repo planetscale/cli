@@ -1,4 +1,5 @@
 project_name: pscale
+version: 2
 release:
   prerelease: auto # don't publish release with -rc1,-pre, etc suffixes
 before:
