@@ -150,7 +150,7 @@ sboms:
   -
     id: spdx-default
     documents: ["${artifact}.spdx.sbom"]
-    args: ["$artifact", "--file", "$sbom", "--output", "spdx-json"]
+    args: ["$artifact", "--output", "spdx-json=$document"]
 snapshot:
   name_template: "{{ .Tag }}-next"
 changelog:
