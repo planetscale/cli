@@ -1,4 +1,5 @@
 project_name: pscale
+version: 2
 release:
   prerelease: auto # don't publish release with -rc1,-pre, etc suffixes
 before:
@@ -125,7 +126,7 @@ brews:
     dependencies:
       - name: mysql # needed for 'pscale shell'
         type: optional
-    folder: Formula
+    directory: Formula
     test: |
          system "#{bin}/pscale --version"
     install: |
