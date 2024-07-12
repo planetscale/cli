@@ -126,7 +126,7 @@ brews:
     dependencies:
       - name: mysql # needed for 'pscale shell'
         type: optional
-    folder: Formula
+    directory: Formula
     test: |
          system "#{bin}/pscale --version"
     install: |
