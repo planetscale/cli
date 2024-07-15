@@ -126,8 +126,8 @@ func StartDataImportCmd(ch *cmdutil.Helper) *cobra.Command {
 		},
 	}
 
-	cmd.PersistentFlags().StringVar(&flags.name, "name", "", "")
-	cmd.PersistentFlags().StringVar(&flags.region, "region", "", "region for the PlanetScale database.")
+	cmd.PersistentFlags().StringVar(&flags.name, "name", "", "Name of the PlanetScale database you are importing into.")
+	cmd.PersistentFlags().StringVar(&flags.region, "region", "", "Region of the PlanetScale database.")
 	cmd.PersistentFlags().StringVar(&flags.host, "host", "", "Host name of the external database.")
 	cmd.PersistentFlags().StringVar(&flags.database, "database", "", "Name of the external database")
 	cmd.PersistentFlags().StringVar(&flags.username, "username", "", "Username to connect to external database.")
