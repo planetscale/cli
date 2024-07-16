@@ -13,8 +13,9 @@ import (
 // CreateCmd is the command for creating deploy requests.
 func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
-		into  string
-		notes string
+		into               string
+		notes              string
+		auto_delete_branch bool
 	}
 
 	cmd := &cobra.Command{
@@ -34,13 +35,20 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Request deploying of %s branch in %s...", printer.BoldBlue(branch), printer.BoldBlue(database)))
 			defer end()
 
-			dr, err := client.DeployRequests.Create(ctx, &planetscale.CreateDeployRequestRequest{
+			request := &planetscale.CreateDeployRequestRequest{
 				Organization: ch.Config.Organization,
 				Database:     database,
 				Branch:       branch,
 				IntoBranch:   flags.into,
 				Notes:        flags.notes,
-			})
+			}
+
+			if flags.auto_delete_branch {
+				request.AutoDeleteBranch = true
+			}
+
+			dr, err := client.DeployRequests.Create(ctx, request)
+
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
@@ -64,6 +72,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	cmd.PersistentFlags().StringVar(&flags.into, "into", "", "Branch to deploy into. By default, it's the parent branch (if present) or the database's default branch.")
 	cmd.PersistentFlags().StringVar(&flags.notes, "notes", "", "Notes to include with the deploy request.")
+	cmd.Flags().BoolVar(&flags.auto_delete_branch, "auto-delete-branch", false, "Delete the branch after the deploy request completes.")
 
 	return cmd
 }
