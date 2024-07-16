@@ -26,7 +26,7 @@ require (
 	github.com/planetscale/planetscale-go v0.106.0
 	github.com/planetscale/psdb v0.0.0-20240109164348-6848e728f6e7
 	github.com/planetscale/psdbproxy v0.0.0-20240307093246-10916da42cd0
-	github.com/spf13/cobra v1.8.0
+	github.com/spf13/cobra v1.8.1
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.19.0
 	github.com/stretchr/testify v1.9.0
