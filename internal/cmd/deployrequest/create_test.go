@@ -34,6 +34,7 @@ func TestDeployRequest_CreateCmd(t *testing.T) {
 			c.Assert(req.Database, qt.Equals, db)
 			c.Assert(req.Branch, qt.Equals, branch)
 			c.Assert(req.Notes, qt.Equals, notes)
+			c.Assert(req.AutoDeleteBranch, qt.Equals, true)
 			c.Assert(req.IntoBranch, qt.Equals, "", qt.Commentf("default value of the '--into' flag has changed"))
 
 			return &ps.DeployRequest{Number: number}, nil
@@ -53,7 +54,7 @@ func TestDeployRequest_CreateCmd(t *testing.T) {
 	}
 
 	cmd := CreateCmd(ch)
-	cmd.SetArgs([]string{db, branch, "--notes", notes})
+	cmd.SetArgs([]string{db, branch, "--notes", notes, "--auto-delete-branch"})
 	err := cmd.Execute()
 
 	c.Assert(err, qt.IsNil)
