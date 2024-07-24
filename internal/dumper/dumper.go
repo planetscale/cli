@@ -33,6 +33,7 @@ type Config struct {
 	Database             string
 	DatabaseRegexp       string
 	DatabaseInvertRegexp bool
+	Shard                string
 	Table                string
 	Outdir               string
 	SessionVars          string
@@ -155,7 +156,7 @@ func (d *Dumper) Run(ctx context.Context) error {
 					zap.Int("thread_conn_id", conn.ID),
 				)
 
-				err := d.dumpTable(conn, database, table, d.cfg.UseReplica)
+				err := d.dumpTable(conn, database, table, d.cfg.UseReplica, d.cfg.Shard)
 				if err != nil {
 					d.log.Error("error dumping table", zap.Error(err))
 				}
@@ -217,7 +218,7 @@ func (d *Dumper) dumpTableSchema(conn *Connection, database string, table string
 }
 
 // Dump a table in "MySQL" (multi-inserts) format
-func (d *Dumper) dumpTable(conn *Connection, database string, table string, useReplica bool) error {
+func (d *Dumper) dumpTable(conn *Connection, database string, table string, useReplica bool, shard string) error {
 	var allBytes uint64
 	var allRows uint64
 	var where string
@@ -254,6 +255,14 @@ func (d *Dumper) dumpTable(conn *Connection, database string, table string, useR
 
 	if v, ok := d.cfg.Wheres[table]; ok {
 		where = fmt.Sprintf(" WHERE %v", v)
+	}
+
+	if shard != "" {
+		useCmd := fmt.Sprintf("USE `%s/%s`", database, shard)
+		err := conn.Execute(useCmd)
+		if err != nil {
+			return err
+		}
 	}
 
 	cursor, err := conn.StreamFetch(fmt.Sprintf("SELECT %s FROM `%s`.`%s` %s", strings.Join(selfields, ", "), databaseHandle, table, where))
