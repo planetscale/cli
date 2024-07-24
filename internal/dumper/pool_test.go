@@ -29,7 +29,7 @@ func TestPool(t *testing.T) {
 		fakedbs.AddQueryPattern("select .*", &sqltypes.Result{})
 	}
 
-	pool, err := NewPool(zaptest.NewLogger(t), 8, address, "mock", "mock", "", "")
+	pool, err := NewPool(zaptest.NewLogger(t), 8, address, "mock", "mock", nil, "")
 
 	c.Assert(err, qt.IsNil)
 

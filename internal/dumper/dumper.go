@@ -33,9 +33,10 @@ type Config struct {
 	Database             string
 	DatabaseRegexp       string
 	DatabaseInvertRegexp bool
+	Shard                string
 	Table                string
 	Outdir               string
-	SessionVars          string
+	SessionVars          []string
 	Threads              int
 	ChunksizeInMB        int
 	StmtSize             int
@@ -71,7 +72,7 @@ func NewDumper(cfg *Config) (*Dumper, error) {
 }
 
 func (d *Dumper) Run(ctx context.Context) error {
-	initPool, err := NewPool(d.log, d.cfg.Threads, d.cfg.Address, d.cfg.User, d.cfg.Password, "", "")
+	initPool, err := NewPool(d.log, d.cfg.Threads, d.cfg.Address, d.cfg.User, d.cfg.Password, nil, "")
 	if err != nil {
 		return err
 	}

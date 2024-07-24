@@ -27,6 +27,7 @@ type dumpFlags struct {
 	localAddr  string
 	remoteAddr string
 	keyspace   string
+	shard      string
 	replica    bool
 	tables     string
 	wheres     string
@@ -46,6 +47,7 @@ func DumpCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	cmd.PersistentFlags().StringVar(&f.keyspace, "keyspace",
 		"", "Optionally target a specific keyspace to be dumped. Useful for sharded databases.")
+	cmd.PersistentFlags().StringVar(&f.shard, "shard", "", "Optional shard to target, must be used with keyspace")
 	cmd.PersistentFlags().StringVar(&f.localAddr, "local-addr",
 		"", "Local address to bind and listen for connections. By default the proxy binds to 127.0.0.1 with a random port.")
 	cmd.PersistentFlags().StringVar(&f.remoteAddr, "remote-addr", "",
@@ -72,6 +74,10 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 
 	if keyspace == "" {
 		keyspace = database
+	}
+
+	if flags.shard != "" && flags.keyspace == "" {
+		return fmt.Errorf("to target a single shard, please pass the --keyspace flag")
 	}
 
 	client, err := ch.Client()
@@ -215,12 +221,18 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 	cfg.Password = "nobody"
 	cfg.Address = addr.String()
 	cfg.Database = dbName
+	cfg.Shard = flags.shard
 	cfg.Debug = ch.Debug()
 	cfg.StmtSize = 1000000
 	cfg.IntervalMs = 10 * 1000
 	cfg.ChunksizeInMB = 128
-	cfg.SessionVars = "set workload=olap;"
+	cfg.SessionVars = []string{"set workload=olap;"}
 	cfg.Outdir = dir
+
+	if flags.shard != "" {
+		useCmd := fmt.Sprintf("USE `%s/%s`;", dbName, flags.shard)
+		cfg.SessionVars = append([]string{useCmd}, cfg.SessionVars...)
+	}
 
 	if flags.replica {
 		cfg.UseReplica = true
