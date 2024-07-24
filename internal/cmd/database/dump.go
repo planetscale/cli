@@ -234,8 +234,6 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 		cfg.SessionVars = append([]string{useCmd}, cfg.SessionVars...)
 	}
 
-	fmt.Println(cfg.SessionVars)
-
 	if flags.replica {
 		cfg.UseReplica = true
 	}
