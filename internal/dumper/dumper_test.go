@@ -155,7 +155,7 @@ func TestDumper(t *testing.T) {
 		Threads:       16,
 		StmtSize:      10000,
 		IntervalMs:    500,
-		SessionVars:   "SET @@radon_streaming_fetch='ON', @@xx=1",
+		SessionVars:   []string{"SET @@radon_streaming_fetch='ON', @@xx=1"},
 	}
 
 	d, err := NewDumper(cfg)
@@ -301,7 +301,7 @@ func TestDumperUseUseReplica(t *testing.T) {
 		Threads:       16,
 		StmtSize:      10000,
 		IntervalMs:    500,
-		SessionVars:   "SET @@radon_streaming_fetch='ON', @@xx=1",
+		SessionVars:   []string{"SET @@radon_streaming_fetch='ON', @@xx=1"},
 		UseReplica:    true,
 	}
 
@@ -448,7 +448,7 @@ func TestDumperGeneratedFields(t *testing.T) {
 		Threads:       16,
 		StmtSize:      10000,
 		IntervalMs:    500,
-		SessionVars:   "SET @@radon_streaming_fetch='ON', @@xx=1",
+		SessionVars:   []string{"SET @@radon_streaming_fetch='ON', @@xx=1"},
 	}
 
 	d, err := NewDumper(cfg)
@@ -629,7 +629,7 @@ func TestDumperAll(t *testing.T) {
 		Threads:       16,
 		StmtSize:      10000,
 		IntervalMs:    500,
-		SessionVars:   "SET @@radon_streaming_fetch='ON', @@xx=1",
+		SessionVars:   []string{"SET @@radon_streaming_fetch='ON', @@xx=1"},
 	}
 
 	d, err := NewDumper(cfg)
@@ -816,7 +816,7 @@ func TestDumperAllUseReplica(t *testing.T) {
 		Threads:       16,
 		StmtSize:      10000,
 		IntervalMs:    500,
-		SessionVars:   "SET @@radon_streaming_fetch='ON', @@xx=1",
+		SessionVars:   []string{"SET @@radon_streaming_fetch='ON', @@xx=1"},
 		UseReplica:    true,
 	}
 
@@ -1005,7 +1005,7 @@ func TestDumperMultiple(t *testing.T) {
 		Threads:       16,
 		StmtSize:      10000,
 		IntervalMs:    500,
-		SessionVars:   "SET @@radon_streaming_fetch='ON', @@xx=1",
+		SessionVars:   []string{"SET @@radon_streaming_fetch='ON', @@xx=1"},
 	}
 
 	d, err := NewDumper(cfg)
@@ -1193,7 +1193,7 @@ func TestDumperMultipleUseReplica(t *testing.T) {
 		Threads:       16,
 		StmtSize:      10000,
 		IntervalMs:    500,
-		SessionVars:   "SET @@radon_streaming_fetch='ON', @@xx=1",
+		SessionVars:   []string{"SET @@radon_streaming_fetch='ON', @@xx=1"},
 		UseReplica:    true,
 	}
 
@@ -1391,7 +1391,7 @@ func TestDumperSimpleRegexp(t *testing.T) {
 		Threads:        16,
 		StmtSize:       10000,
 		IntervalMs:     500,
-		SessionVars:    "SET @@radon_streaming_fetch='ON', @@xx=1",
+		SessionVars:    []string{"SET @@radon_streaming_fetch='ON', @@xx=1"},
 	}
 
 	d, err := NewDumper(cfg)
@@ -1588,7 +1588,7 @@ func TestDumperComplexRegexp(t *testing.T) {
 		Threads:        16,
 		StmtSize:       10000,
 		IntervalMs:     500,
-		SessionVars:    "SET @@radon_streaming_fetch='ON', @@xx=1",
+		SessionVars:    []string{"SET @@radon_streaming_fetch='ON', @@xx=1"},
 	}
 
 	d, err := NewDumper(cfg)
@@ -1790,7 +1790,7 @@ func TestDumperInvertMatch(t *testing.T) {
 		Threads:              16,
 		StmtSize:             10000,
 		IntervalMs:           500,
-		SessionVars:          "SET @@radon_streaming_fetch='ON', @@xx=1",
+		SessionVars:          []string{"SET @@radon_streaming_fetch='ON', @@xx=1"},
 	}
 
 	d, err := NewDumper(cfg)
