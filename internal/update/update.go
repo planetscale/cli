@@ -187,17 +187,6 @@ func latestVersion(ctx context.Context, addr string) (*ReleaseInfo, error) {
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
 	req.Header.Set("Accept", "application/vnd.github.v3+json")
 
-	getToken := func() string {
-		if t := os.Getenv("GH_TOKEN"); t != "" {
-			return t
-		}
-		return os.Getenv("GITHUB_TOKEN")
-	}
-
-	if token := getToken(); token != "" {
-		req.Header.Set("Authorization", fmt.Sprintf("token %s", token))
-	}
-
 	client := &http.Client{Timeout: time.Second * 15}
 	resp, err := client.Do(req)
 	if err != nil {
