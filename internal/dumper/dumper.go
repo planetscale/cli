@@ -36,7 +36,7 @@ type Config struct {
 	Shard                string
 	Table                string
 	Outdir               string
-	SessionVars          string
+	SessionVars          []string
 	Threads              int
 	ChunksizeInMB        int
 	StmtSize             int
@@ -72,7 +72,7 @@ func NewDumper(cfg *Config) (*Dumper, error) {
 }
 
 func (d *Dumper) Run(ctx context.Context) error {
-	initPool, err := NewPool(d.log, d.cfg.Threads, d.cfg.Address, d.cfg.User, d.cfg.Password, "", "")
+	initPool, err := NewPool(d.log, d.cfg.Threads, d.cfg.Address, d.cfg.User, d.cfg.Password, nil, "")
 	if err != nil {
 		return err
 	}
@@ -156,7 +156,7 @@ func (d *Dumper) Run(ctx context.Context) error {
 					zap.Int("thread_conn_id", conn.ID),
 				)
 
-				err := d.dumpTable(conn, database, table, d.cfg.UseReplica, d.cfg.Shard)
+				err := d.dumpTable(conn, database, table, d.cfg.UseReplica)
 				if err != nil {
 					d.log.Error("error dumping table", zap.Error(err))
 				}
@@ -218,7 +218,7 @@ func (d *Dumper) dumpTableSchema(conn *Connection, database string, table string
 }
 
 // Dump a table in "MySQL" (multi-inserts) format
-func (d *Dumper) dumpTable(conn *Connection, database string, table string, useReplica bool, shard string) error {
+func (d *Dumper) dumpTable(conn *Connection, database string, table string, useReplica bool) error {
 	var allBytes uint64
 	var allRows uint64
 	var where string
@@ -255,14 +255,6 @@ func (d *Dumper) dumpTable(conn *Connection, database string, table string, useR
 
 	if v, ok := d.cfg.Wheres[table]; ok {
 		where = fmt.Sprintf(" WHERE %v", v)
-	}
-
-	if shard != "" {
-		useCmd := fmt.Sprintf("USE `%s/%s`", database, shard)
-		err := conn.Execute(useCmd)
-		if err != nil {
-			return err
-		}
 	}
 
 	cursor, err := conn.StreamFetch(fmt.Sprintf("SELECT %s FROM `%s`.`%s` %s", strings.Join(selfields, ", "), databaseHandle, table, where))

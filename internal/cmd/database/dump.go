@@ -226,8 +226,15 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 	cfg.StmtSize = 1000000
 	cfg.IntervalMs = 10 * 1000
 	cfg.ChunksizeInMB = 128
-	cfg.SessionVars = "set workload=olap;"
+	cfg.SessionVars = []string{"set workload=olap;"}
 	cfg.Outdir = dir
+
+	if flags.shard != "" {
+		useCmd := fmt.Sprintf("USE `%s/%s`;", dbName, flags.shard)
+		cfg.SessionVars = append([]string{useCmd}, cfg.SessionVars...)
+	}
+
+	fmt.Println(cfg.SessionVars)
 
 	if flags.replica {
 		cfg.UseReplica = true
