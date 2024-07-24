@@ -46,14 +46,13 @@ func NewPool(log *zap.Logger, cap int, address string, user string, password str
 			return nil, err
 		}
 		conn := &Connection{ID: i, client: client}
-		if len(vars) > 0 {
-			for _, v := range vars {
-				err := conn.Execute(v)
-				if err != nil {
-					return nil, err
-				}
+		for _, v := range vars {
+			err := conn.Execute(v)
+			if err != nil {
+				return nil, err
 			}
 		}
+
 		conns <- conn
 	}
 
