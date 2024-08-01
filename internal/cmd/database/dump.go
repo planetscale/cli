@@ -29,6 +29,7 @@ type dumpFlags struct {
 	keyspace   string
 	shard      string
 	replica    bool
+	rdonly     bool
 	tables     string
 	wheres     string
 	output     string
@@ -53,6 +54,7 @@ func DumpCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.PersistentFlags().StringVar(&f.remoteAddr, "remote-addr", "",
 		"PlanetScale Database remote network address. By default the remote address is populated automatically from the PlanetScale API. (format: `hostname:port`)")
 	cmd.PersistentFlags().BoolVar(&f.replica, "replica", false, "Dump from a replica (if available; will fail if not).")
+	cmd.PersistentFlags().BoolVar(&f.rdonly, "rdonly", false, "Dump from a rdonly tablet (if available; will fail if not).")
 	cmd.PersistentFlags().StringVar(&f.tables, "tables", "",
 		"Comma separated string of tables to dump. By default all tables are dumped.")
 	cmd.PersistentFlags().StringVar(&f.wheres, "wheres", "",
@@ -230,12 +232,24 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 	cfg.Outdir = dir
 
 	if flags.shard != "" {
-		useCmd := fmt.Sprintf("USE `%s/%s`;", dbName, flags.shard)
-		cfg.SessionVars = append([]string{useCmd}, cfg.SessionVars...)
+		if flags.replica {
+			useCmd := fmt.Sprintf("USE `%s/%s@replica`;", dbName, flags.shard)
+			cfg.SessionVars = append([]string{useCmd}, cfg.SessionVars...)
+		} else if flags.rdonly {
+			useCmd := fmt.Sprintf("USE `%s/%s@rdonly`;", dbName, flags.shard)
+			cfg.SessionVars = append([]string{useCmd}, cfg.SessionVars...)
+		} else {
+			useCmd := fmt.Sprintf("USE `%s/%s`;", dbName, flags.shard)
+			cfg.SessionVars = append([]string{useCmd}, cfg.SessionVars...)
+		}
 	}
 
-	if flags.replica {
+	if flags.replica && flags.shard == "" {
 		cfg.UseReplica = true
+	}
+
+	if flags.rdonly && flags.shard == "" {
+		cfg.UseRdonly = true
 	}
 
 	if flags.tables != "" {
