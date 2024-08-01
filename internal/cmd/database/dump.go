@@ -234,11 +234,9 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 	if flags.shard != "" {
 		if flags.replica {
 			useCmd := fmt.Sprintf("USE `%s/%s@replica`;", dbName, flags.shard)
-			flags.replica = false // this is gross
 			cfg.SessionVars = append([]string{useCmd}, cfg.SessionVars...)
 		} else if flags.rdonly {
 			useCmd := fmt.Sprintf("USE `%s/%s@rdonly`;", dbName, flags.shard)
-			flags.rdonly = false // this is gross
 			cfg.SessionVars = append([]string{useCmd}, cfg.SessionVars...)
 		} else {
 			useCmd := fmt.Sprintf("USE `%s/%s`;", dbName, flags.shard)
@@ -246,11 +244,11 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 		}
 	}
 
-	if flags.replica {
+	if flags.replica && flags.shard == "" {
 		cfg.UseReplica = true
 	}
 
-	if flags.rdonly {
+	if flags.rdonly && flags.shard == "" {
 		cfg.UseRdonly = true
 	}
 
