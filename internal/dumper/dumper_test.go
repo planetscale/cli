@@ -311,7 +311,7 @@ func TestDumperUseUseReplica(t *testing.T) {
 	err = d.Run(context.Background())
 	c.Assert(err, qt.IsNil)
 
-	dat, err := os.ReadFile(cfg.Outdir + "/test@replica.t1-05-11.00001.sql")
+	dat, err := os.ReadFile(cfg.Outdir + "/test.t1-05-11.00001.sql")
 	c.Assert(err, qt.IsNil)
 
 	want := strings.Contains(string(dat), `(11,"11\"xx\"","",NULL,210.01,NULL)`)
@@ -826,13 +826,13 @@ func TestDumperAllUseReplica(t *testing.T) {
 	err = d.Run(context.Background())
 	c.Assert(err, qt.IsNil)
 
-	dat_test1, err_test1 := os.ReadFile(cfg.Outdir + "/test1@replica.t1-05-11.00001.sql")
+	dat_test1, err_test1 := os.ReadFile(cfg.Outdir + "/test1.t1-05-11.00001.sql")
 	c.Assert(err_test1, qt.IsNil)
 
 	want_test1 := strings.Contains(string(dat_test1), `(11,"11\"xx\"","",NULL,210.01,NULL)`)
 	c.Assert(want_test1, qt.IsTrue)
 
-	dat_test2, err_test2 := os.ReadFile(cfg.Outdir + "/test2@replica.t1-05-11.00001.sql")
+	dat_test2, err_test2 := os.ReadFile(cfg.Outdir + "/test2.t1-05-11.00001.sql")
 	c.Assert(err_test2, qt.IsNil)
 
 	want_test2 := strings.Contains(string(dat_test2), `(1337)`)
@@ -1203,13 +1203,13 @@ func TestDumperMultipleUseReplica(t *testing.T) {
 	err = d.Run(context.Background())
 	c.Assert(err, qt.IsNil)
 
-	dat_test1, err_test1 := os.ReadFile(cfg.Outdir + "/test1@replica.t1-05-11.00001.sql")
+	dat_test1, err_test1 := os.ReadFile(cfg.Outdir + "/test1.t1-05-11.00001.sql")
 	c.Assert(err_test1, qt.IsNil)
 
 	want_test1 := strings.Contains(string(dat_test1), `(11,"11\"xx\"","",NULL,210.01,NULL)`)
 	c.Assert(want_test1, qt.IsTrue)
 
-	dat_test2, err_test2 := os.ReadFile(cfg.Outdir + "/test2@replica.t1-05-11.00001.sql")
+	dat_test2, err_test2 := os.ReadFile(cfg.Outdir + "/test2.t1-05-11.00001.sql")
 	c.Assert(err_test2, qt.IsNil)
 
 	want_test2 := strings.Contains(string(dat_test2), `(1337)`)
