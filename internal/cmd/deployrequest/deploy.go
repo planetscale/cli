@@ -17,7 +17,8 @@ import (
 // DeployCmd is the command for deploying deploy requests.
 func DeployCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
-		wait bool
+		wait        bool
+		instant_ddl bool
 	}
 
 	cmd := &cobra.Command{
@@ -45,10 +46,16 @@ func DeployCmd(ch *cmdutil.Helper) *cobra.Command {
 				}
 			}
 
+			if flags.instant_ddl {
+				ch.Printer.Printf("Deploy request %s/%s will be deployed instantly.\n\n",
+					printer.BoldBlue(database), printer.BoldBlue(number))
+			}
+
 			dr, err := client.DeployRequests.Deploy(ctx, &planetscale.PerformDeployRequest{
 				Organization: ch.Config.Organization,
 				Database:     database,
 				Number:       number,
+				InstantDDL:   flags.instant_ddl,
 			})
 
 			if err != nil {
@@ -79,20 +86,20 @@ func DeployCmd(ch *cmdutil.Helper) *cobra.Command {
 
 				switch state {
 				case "complete_pending_revert":
-					ch.Printer.Printf("Deploy request %s/%s is successfully deployed and revertable. You can skip the revert to unblock the deploy queue.\n",
+					ch.Printer.Printf("Deploy request %s/%s is successfully deployed and revertable. You can skip the revert to unblock the deploy queue.\n\n",
 						printer.BoldBlue(database), printer.BoldBlue(number))
 				case "pending_cutover":
-					ch.Printer.Printf("Deploy request %s/%s is successfully staged and waiting to be applied.\n",
+					ch.Printer.Printf("Deploy request %s/%s is successfully staged and waiting to be applied.\n\n",
 						printer.BoldBlue(database), printer.BoldBlue(number))
 				default:
-					ch.Printer.Printf("Deploy request %s/%s is successfully deployed.\n",
+					ch.Printer.Printf("Deploy request %s/%s is successfully deployed.\n\n",
 						printer.BoldBlue(database), printer.BoldBlue(number))
 				}
 
 			} else {
 				if ch.Printer.Format() == printer.Human {
-					ch.Printer.Printf("Successfully queued %s from %s for deployment to %s.\n",
-						dr.ID, dr.Branch, dr.IntoBranch)
+					ch.Printer.Printf("Successfully queued deploy request %s/%s from %s for deployment to %s.\n",
+						printer.BoldBlue(database), printer.BoldBlue(number), printer.BoldBlue(dr.Branch), printer.BoldBlue(dr.IntoBranch))
 					return nil
 				}
 			}
@@ -102,6 +109,8 @@ func DeployCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 
 	cmd.Flags().BoolVar(&flags.wait, "wait", false, "wait until the branch is deployed")
+	cmd.Flags().BoolVar(&flags.instant_ddl, "instant", false, "If enabled, the schema migrations from this deploy request will be applied using MySQL’s built-in ALGORITHM=INSTANT option. Deployment will be faster, but cannot be reverted.")
+	// cmd.Flags().MarkHidden("instant")
 
 	return cmd
 }
