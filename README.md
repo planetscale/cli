@@ -14,10 +14,10 @@ PlanetScale is more than a database and our CLI is more than a jumble of command
 ```
 brew install planetscale/tap/pscale
 ```
-Optional: `pscale` requires the MySQL Client for certain commands. You can install it by running:
+Optional: `pscale` requires a MySQL 8 Client in your PATH for certain commands. You can install it by running:
 
 ```
-brew install mysql-client
+brew install mysql-client@8.4
 ```
 
 To upgrade to the latest version:
@@ -63,7 +63,7 @@ To upgrade to the latest version
 bin upgrade pscale
 ```
 
-#### Container images 
+#### Container images
 
 We provide ready to use Docker container images.  To pull the latest image:
 
