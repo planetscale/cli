@@ -18,11 +18,14 @@ import (
 )
 
 type restoreFlags struct {
-	localAddr  string
-	remoteAddr string
-	dir        string
-	overwrite  bool
-	threads    int
+	localAddr                 string
+	remoteAddr                string
+	dir                       string
+	overwrite                 bool
+	showDetails               bool
+	startFrom                 string
+	allowDifferentDestination bool
+	threads                   int
 }
 
 // RestoreCmd encapsulates the commands for restore a database
@@ -42,7 +45,10 @@ func RestoreCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.PersistentFlags().StringVar(&f.dir, "dir", "",
 		"Directory containing the files to be used for the restore (required)")
 	cmd.PersistentFlags().BoolVar(&f.overwrite, "overwrite-tables", false, "If true, will attempt to DROP TABLE before restoring.")
-
+	cmd.PersistentFlags().BoolVar(&f.showDetails, "show-details", false, "If true, will add extra output during the restore process.")
+	cmd.PersistentFlags().StringVar(&f.startFrom, "start-from", "",
+		"Table to start from for the restore (useful for restarting from a certain point)")
+	cmd.PersistentFlags().BoolVar(&f.allowDifferentDestination, "allow-different-destination", false, "If true, will allow you to restore the files to a database with a different name without needing to rename the existing dump's files.")
 	cmd.PersistentFlags().IntVar(&f.threads, "threads", 1, "Number of concurrent threads to use to restore the database.")
 	return cmd
 }
@@ -151,20 +157,30 @@ func restore(ch *cmdutil.Helper, cmd *cobra.Command, flags *restoreFlags, args [
 	cfg.IntervalMs = 10 * 1000
 	cfg.Outdir = flags.dir
 	cfg.OverwriteTables = flags.overwrite
+	cfg.ShowDetails = flags.showDetails
+	cfg.AllowDifferentDestination = flags.allowDifferentDestination
+	cfg.Database = database // Needs to be passed in to allow for allowDifferentDestination flag to work
+	cfg.StartFrom = flags.startFrom
 
 	loader, err := dumper.NewLoader(cfg)
 	if err != nil {
 		return err
 	}
 
+	end := func() {}
+
 	ch.Printer.Printf("Starting to restore database %s from folder %s\n",
 		printer.BoldBlue(database), printer.BoldBlue(flags.dir))
 
-	end := ch.Printer.PrintProgress("Restoring database ...")
+	if flags.showDetails {
+		ch.Printer.Println("Restoring database ...")
+	} else {
+		end = ch.Printer.PrintProgress("Restoring database ...\n")
+	}
 	defer end()
 
 	start := time.Now()
-	err = loader.Run(ctx)
+	err = loader.Run(ctx, ch)
 	if err != nil {
 		return fmt.Errorf("failed to restore database: %s", err)
 	}

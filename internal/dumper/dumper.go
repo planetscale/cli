@@ -22,32 +22,35 @@ const VITESS_GHOST_TABLE_REGEX = "_vt_EVAC_.*|_vt_DROP_.*|_vt_PURGE_.*|_vt_HOLD_
 
 // Config describes the settings to dump from a database.
 type Config struct {
-	User                 string
-	Password             string
-	Address              string
-	ToUser               string
-	ToPassword           string
-	ToAddress            string
-	ToDatabase           string
-	ToEngine             string
-	Database             string
-	DatabaseRegexp       string
-	DatabaseInvertRegexp bool
-	Shard                string
-	Table                string
-	Outdir               string
-	SessionVars          []string
-	Threads              int
-	ChunksizeInMB        int
-	StmtSize             int
-	Allbytes             uint64
-	Allrows              uint64
-	OverwriteTables      bool
-	UseReplica           bool
-	UseRdonly            bool
-	Wheres               map[string]string
-	Selects              map[string]map[string]string
-	Filters              map[string]map[string]string
+	User                      string
+	Password                  string
+	Address                   string
+	ToUser                    string
+	ToPassword                string
+	ToAddress                 string
+	ToDatabase                string
+	ToEngine                  string
+	Database                  string
+	DatabaseRegexp            string
+	DatabaseInvertRegexp      bool
+	Shard                     string
+	Table                     string
+	Outdir                    string
+	SessionVars               []string
+	Threads                   int
+	ChunksizeInMB             int
+	StmtSize                  int
+	Allbytes                  uint64
+	Allrows                   uint64
+	OverwriteTables           bool
+	ShowDetails               bool
+	StartFrom                 string
+	AllowDifferentDestination bool
+	UseReplica                bool
+	UseRdonly                 bool
+	Wheres                    map[string]string
+	Selects                   map[string]map[string]string
+	Filters                   map[string]map[string]string
 
 	// Interval in millisecond.
 	IntervalMs int
