@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/planetscale/cli/internal/cmdutil"
+	"github.com/planetscale/cli/internal/printer"
 	querypb "github.com/xelabs/go-mysqlstack/sqlparser/depends/query"
 
 	"go.uber.org/zap"
@@ -43,6 +44,8 @@ type Config struct {
 	Allbytes                  uint64
 	Allrows                   uint64
 	OverwriteTables           bool
+	SchemaOnly                bool
+	DataOnly                  bool
 	ShowDetails               bool
 	StartFrom                 string
 	AllowDifferentDestination bool
@@ -55,6 +58,7 @@ type Config struct {
 	// Interval in millisecond.
 	IntervalMs int
 	Debug      bool
+	Printer    *printer.Printer
 }
 
 func NewDefaultConfig() *Config {

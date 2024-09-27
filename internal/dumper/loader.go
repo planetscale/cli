@@ -43,7 +43,7 @@ func NewLoader(cfg *Config) (*Loader, error) {
 }
 
 // Run used to start the loader worker.
-func (l *Loader) Run(ctx context.Context, ch *cmdutil.Helper) error {
+func (l *Loader) Run(ctx context.Context) error {
 	pool, err := NewPool(l.log, l.cfg.Threads, l.cfg.Address, l.cfg.User, l.cfg.Password, l.cfg.SessionVars, "")
 	if err != nil {
 		return err
@@ -51,28 +51,40 @@ func (l *Loader) Run(ctx context.Context, ch *cmdutil.Helper) error {
 	defer pool.Close()
 
 	if l.cfg.ShowDetails && l.cfg.AllowDifferentDestination {
-		ch.Printer.Println("The allow different destination option is enabled for this restore.")
-		ch.Printer.Printf("Files that do not begin with the provided database name of %s will still be processed without having to rename them first.\n", printer.BoldBlue(l.cfg.Database))
+		l.cfg.Printer.Println("The allow different destination option is enabled for this restore.")
+		l.cfg.Printer.Printf("Files that do not begin with the provided database name of %s will still be processed without having to rename them first.\n", printer.BoldBlue(l.cfg.Database))
 	}
 
-	files, err := l.loadFiles(l.cfg.Outdir, ch, l.cfg.ShowDetails, l.cfg.StartFrom)
+	if l.cfg.ShowDetails && l.cfg.SchemaOnly {
+		l.cfg.Printer.Println("The schema only option is enabled for this restore.")
+	}
+
+	if l.cfg.ShowDetails && l.cfg.DataOnly {
+		l.cfg.Printer.Println("The data only option is enabled for this restore.")
+	}
+
+	files, err := l.loadFiles(l.cfg.Outdir)
 	if err != nil {
 		return err
 	}
 
 	// database.
 	conn := pool.Get()
-	if err := l.restoreDatabaseSchema(files.databases, conn, ch, l.cfg.ShowDetails); err != nil {
+	if err := l.restoreDatabaseSchema(files.databases, conn); err != nil {
 		return err
 	}
 	pool.Put(conn)
 
 	// tables.
-	conn = pool.Get()
-	if err := l.restoreTableSchema(l.cfg.OverwriteTables, files.schemas, conn, ch, l.cfg.ShowDetails, l.cfg.StartFrom); err != nil {
-		return err
+	if l.canRestoreSchema() {
+		conn = pool.Get()
+		if err := l.restoreTableSchema(l.cfg.OverwriteTables, files.schemas, conn); err != nil {
+			return err
+		}
+		pool.Put(conn)
+	} else {
+		l.cfg.Printer.Println("Skipping restoring schema files...")
 	}
-	pool.Put(conn)
 
 	// Commenting out to add some predictability to the order in which data files will be processed:
 	// Shuffle the tables
@@ -85,34 +97,38 @@ func (l *Loader) Run(ctx context.Context, ch *cmdutil.Helper) error {
 	var bytes uint64
 	t := time.Now()
 
-	numberOfDataFiles := len(files.tables)
+	if l.canRestoreData() {
+		numberOfDataFiles := len(files.tables)
 
-	for idx, table := range files.tables {
-		table := table
-		conn := pool.Get()
+		for idx, table := range files.tables {
+			table := table
+			conn := pool.Get()
 
-		eg.Go(func() error {
-			defer pool.Put(conn)
+			eg.Go(func() error {
+				defer pool.Put(conn)
 
-			if l.cfg.ShowDetails {
-				ch.Printer.Printf("%s: %s in thread %s (File %d of %d)\n", printer.BoldGreen("Started Processing Data File"), printer.BoldBlue(filepath.Base(table)), printer.BoldBlue(conn.ID), (idx + 1), numberOfDataFiles)
-			}
-			fileProcessingTimeStart := time.Now()
-			r, err := l.restoreTable(table, conn, ch, l.cfg.ShowDetails)
+				if l.cfg.ShowDetails {
+					l.cfg.Printer.Printf("%s: %s in thread %s (File %d of %d)\n", printer.BoldGreen("Started Processing Data File"), printer.BoldBlue(filepath.Base(table)), printer.BoldBlue(conn.ID), (idx + 1), numberOfDataFiles)
+				}
+				fileProcessingTimeStart := time.Now()
+				r, err := l.restoreTable(table, conn)
 
-			if err != nil {
-				return err
-			}
+				if err != nil {
+					return err
+				}
 
-			fileProcessingTimeFinish := time.Since(fileProcessingTimeStart)
-			timeElapsedSofar := time.Since(t)
-			if l.cfg.ShowDetails {
-				ch.Printer.Printf("%s: %s in %s with %s elapsed so far (File %d of %d)\n", printer.BoldGreen("Finished Processing Data File"), printer.BoldBlue(filepath.Base(table)), printer.BoldBlue(fileProcessingTimeFinish), printer.BoldBlue(timeElapsedSofar), (idx + 1), numberOfDataFiles)
-			}
+				fileProcessingTimeFinish := time.Since(fileProcessingTimeStart)
+				timeElapsedSofar := time.Since(t)
+				if l.cfg.ShowDetails {
+					l.cfg.Printer.Printf("%s: %s in %s with %s elapsed so far (File %d of %d)\n", printer.BoldGreen("Finished Processing Data File"), printer.BoldBlue(filepath.Base(table)), printer.BoldBlue(fileProcessingTimeFinish), printer.BoldBlue(timeElapsedSofar), (idx + 1), numberOfDataFiles)
+				}
 
-			atomic.AddUint64(&bytes, uint64(r))
-			return nil
-		})
+				atomic.AddUint64(&bytes, uint64(r))
+				return nil
+			})
+		}
+	} else {
+		l.cfg.Printer.Println("Skipping restoring data files...")
 	}
 
 	tick := time.NewTicker(time.Millisecond * time.Duration(l.cfg.IntervalMs))
@@ -147,10 +163,10 @@ func (l *Loader) Run(ctx context.Context, ch *cmdutil.Helper) error {
 	return nil
 }
 
-func (l *Loader) loadFiles(dir string, ch *cmdutil.Helper, showDetails bool, startFrom string) (*Files, error) {
+func (l *Loader) loadFiles(dir string) (*Files, error) {
 	files := &Files{}
-	if showDetails {
-		ch.Printer.Println("Collecting files from folder " + printer.BoldBlue(dir))
+	if l.cfg.ShowDetails {
+		l.cfg.Printer.Println("Collecting files from folder " + printer.BoldBlue(dir))
 	}
 
 	if err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
@@ -163,24 +179,24 @@ func (l *Loader) loadFiles(dir string, ch *cmdutil.Helper, showDetails bool, sta
 			switch {
 			case strings.HasSuffix(path, dbSuffix):
 				files.databases = append(files.databases, path)
-				if showDetails {
-					ch.Printer.Println("Database file: " + filepath.Base(path))
+				if l.cfg.ShowDetails {
+					l.cfg.Printer.Println("Database file: " + filepath.Base(path))
 				}
 			case strings.HasSuffix(path, schemaSuffix):
-				if tbl >= startFrom {
+				if tbl >= l.cfg.StartFrom {
 					files.schemas = append(files.schemas, path)
-					if showDetails {
-						ch.Printer.Println("  |- Table file: " + printer.BoldBlue(filepath.Base(path)))
+					if l.cfg.ShowDetails {
+						l.cfg.Printer.Println("  |- Table file: " + printer.BoldBlue(filepath.Base(path)))
 					}
 				} else {
-					ch.Printer.Printf("Skipping files associated with the %s table...\n", printer.BoldBlue(tbl))
+					l.cfg.Printer.Printf("Skipping files associated with the %s table...\n", printer.BoldBlue(tbl))
 				}
 			default:
 				if strings.HasSuffix(path, tableSuffix) {
-					if tbl >= startFrom {
+					if tbl >= l.cfg.StartFrom {
 						files.tables = append(files.tables, path)
-						if showDetails {
-							ch.Printer.Println("    |- Data file: " + printer.BoldBlue(filepath.Base(path)))
+						if l.cfg.ShowDetails {
+							l.cfg.Printer.Println("    |- Data file: " + printer.BoldBlue(filepath.Base(path)))
 						}
 					}
 				}
@@ -193,7 +209,7 @@ func (l *Loader) loadFiles(dir string, ch *cmdutil.Helper, showDetails bool, sta
 	return files, nil
 }
 
-func (l *Loader) restoreDatabaseSchema(dbs []string, conn *Connection, ch *cmdutil.Helper, showDetails bool) error {
+func (l *Loader) restoreDatabaseSchema(dbs []string, conn *Connection) error {
 	for _, db := range dbs {
 		base := filepath.Base(db)
 		name := strings.TrimSuffix(base, dbSuffix)
@@ -203,8 +219,8 @@ func (l *Loader) restoreDatabaseSchema(dbs []string, conn *Connection, ch *cmdut
 			return err
 		}
 
-		if showDetails {
-			ch.Printer.Println("Restoring Database: " + base)
+		if l.cfg.ShowDetails {
+			l.cfg.Printer.Println("Restoring Database: " + base)
 		}
 		err = conn.Execute(string(data))
 		if err != nil {
@@ -217,9 +233,9 @@ func (l *Loader) restoreDatabaseSchema(dbs []string, conn *Connection, ch *cmdut
 	return nil
 }
 
-func (l *Loader) restoreTableSchema(overwrite bool, tables []string, conn *Connection, ch *cmdutil.Helper, showDetails bool, startFrom string) error {
-	if startFrom != "" {
-		ch.Printer.Printf("Starting from %s table...\n", printer.BoldBlue(startFrom))
+func (l *Loader) restoreTableSchema(overwrite bool, tables []string, conn *Connection) error {
+	if l.cfg.StartFrom != "" {
+		l.cfg.Printer.Printf("Starting from %s table...\n", printer.BoldBlue(l.cfg.StartFrom))
 	}
 
 	numberOfTables := len(tables)
@@ -236,11 +252,6 @@ func (l *Loader) restoreTableSchema(overwrite bool, tables []string, conn *Conne
 			zap.String("database", db),
 			zap.String("table ", tbl),
 		)
-
-		if tbl < startFrom {
-			ch.Printer.Printf("Skipping %s table (Table %d of %d)...\n", printer.BoldBlue(tbl), (idx + 1), numberOfTables)
-			continue
-		}
 
 		err := conn.Execute(fmt.Sprintf("USE `%s`", db))
 		if err != nil {
@@ -267,8 +278,8 @@ func (l *Loader) restoreTableSchema(overwrite bool, tables []string, conn *Conne
 						zap.String("table ", tbl),
 					)
 
-					if showDetails {
-						ch.Printer.Println("Dropping Existing Table (if it exists): " + printer.BoldBlue(name))
+					if l.cfg.ShowDetails {
+						l.cfg.Printer.Println("Dropping Existing Table (if it exists): " + printer.BoldBlue(name))
 					}
 					dropQuery := fmt.Sprintf("DROP TABLE IF EXISTS %s", name)
 					err = conn.Execute(dropQuery)
@@ -277,8 +288,8 @@ func (l *Loader) restoreTableSchema(overwrite bool, tables []string, conn *Conne
 					}
 				}
 
-				if showDetails {
-					ch.Printer.Printf("Creating Table: %s (Table %d of %d)\n", printer.BoldBlue(name), (idx + 1), numberOfTables)
+				if l.cfg.ShowDetails {
+					l.cfg.Printer.Printf("Creating Table: %s (Table %d of %d)\n", printer.BoldBlue(name), (idx + 1), numberOfTables)
 				}
 				err = conn.Execute(query)
 				if err != nil {
@@ -295,7 +306,7 @@ func (l *Loader) restoreTableSchema(overwrite bool, tables []string, conn *Conne
 	return nil
 }
 
-func (l *Loader) restoreTable(table string, conn *Connection, ch *cmdutil.Helper, showDetails bool) (int, error) {
+func (l *Loader) restoreTable(table string, conn *Connection) (int, error) {
 	bytes := 0
 	part := "0"
 	base := filepath.Base(table)
@@ -351,8 +362,8 @@ func (l *Loader) restoreTable(table string, conn *Connection, ch *cmdutil.Helper
 		if !strings.HasPrefix(query, "/*") && query != "" {
 			queryBytes := len(query)
 			if queryBytes <= 16777216 {
-				if showDetails {
-					ch.Printer.Printf("  Processing Query %s out of %s within %s in thread %s\n", printer.BoldBlue((idx + 1)), printer.BoldBlue(queriesInFile), printer.BoldBlue(base), printer.BoldBlue(conn.ID))
+				if l.cfg.ShowDetails {
+					l.cfg.Printer.Printf("  Processing Query %s out of %s within %s in thread %s\n", printer.BoldBlue((idx + 1)), printer.BoldBlue(queriesInFile), printer.BoldBlue(base), printer.BoldBlue(conn.ID))
 				}
 
 				err = conn.Execute(query)
@@ -362,11 +373,11 @@ func (l *Loader) restoreTable(table string, conn *Connection, ch *cmdutil.Helper
 			} else {
 				// Encountering this error should be uncommon for our users.
 				// However, it may be encountered if users generate files manually to match our expected folder format.
-				ch.Printer.Printf("%s: Query %s within %s in thread %s is larger than 16777216 bytes. Please reduce query size to avoid pkt error.\n", printer.BoldRed("ERROR"), printer.BoldBlue((idx + 1)), printer.BoldBlue(base), printer.BoldBlue(conn.ID))
+				l.cfg.Printer.Printf("%s: Query %s within %s in thread %s is larger than 16777216 bytes. Please reduce query size to avoid pkt error.\n", printer.BoldRed("ERROR"), printer.BoldBlue((idx + 1)), printer.BoldBlue(base), printer.BoldBlue(conn.ID))
 				return 0, errors.New("query is larger than 16777216 bytes in size")
 			}
 		} else {
-			ch.Printer.Printf("  Skipping Empty Query %s out of %s within %s in thread %s\n", printer.BoldBlue((idx + 1)), printer.BoldBlue(queriesInFile), printer.BoldBlue(base), printer.BoldBlue(conn.ID))
+			l.cfg.Printer.Printf("  Skipping Empty Query %s out of %s within %s in thread %s\n", printer.BoldBlue((idx + 1)), printer.BoldBlue(queriesInFile), printer.BoldBlue(base), printer.BoldBlue(conn.ID))
 		}
 	}
 	l.log.Info(
@@ -386,6 +397,24 @@ func (l *Loader) databaseNameFromFilename(filename string) string {
 	}
 
 	return strings.Split(filename, ".")[0]
+}
+
+func (l *Loader) canRestoreSchema() bool {
+	// Default state
+	if !l.cfg.SchemaOnly && !l.cfg.DataOnly {
+		return true
+	}
+
+	return l.cfg.SchemaOnly
+}
+
+func (l *Loader) canRestoreData() bool {
+	// Default state
+	if !l.cfg.SchemaOnly && !l.cfg.DataOnly {
+		return true
+	}
+
+	return l.cfg.DataOnly
 }
 
 func tableNameFromFilename(filename string) string {
