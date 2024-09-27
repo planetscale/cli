@@ -18,6 +18,9 @@ type BranchKeyspacesService struct {
 
 	UpdateVSchemaFn        func(context.Context, *ps.UpdateKeyspaceVSchemaRequest) (*ps.VSchema, error)
 	UpdateVSchemaFnInvoked bool
+
+	CreateFn        func(context.Context, *ps.CreateBranchKeyspaceRequest) (*ps.Keyspace, error)
+	CreateFnInvoked bool
 }
 
 func (s *BranchKeyspacesService) List(ctx context.Context, req *ps.ListBranchKeyspacesRequest) ([]*ps.Keyspace, error) {
@@ -39,4 +42,9 @@ func (s *BranchKeyspacesService) VSchema(ctx context.Context, req *ps.GetKeyspac
 func (s *BranchKeyspacesService) UpdateVSchema(ctx context.Context, req *ps.UpdateKeyspaceVSchemaRequest) (*ps.VSchema, error) {
 	s.UpdateVSchemaFnInvoked = true
 	return s.UpdateVSchemaFn(ctx, req)
+}
+
+func (s *BranchKeyspacesService) Create(ctx context.Context, req *ps.CreateBranchKeyspaceRequest) (*ps.Keyspace, error) {
+	s.CreateFnInvoked = true
+	return s.CreateFn(ctx, req)
 }
