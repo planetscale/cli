@@ -22,7 +22,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create <database> <branch> <keyspace>",
 		Short: "Create a new keyspace within a branch",
-		Args:  cmdutil.RequiredArgs("database", "branch"),
+		Args:  cmdutil.RequiredArgs("database", "branch", "keyspace"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			database, branch, keyspace := args[0], args[1], args[2]
