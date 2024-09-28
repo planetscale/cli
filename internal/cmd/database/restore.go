@@ -25,7 +25,8 @@ type restoreFlags struct {
 	schemaOnly                bool
 	dataOnly                  bool
 	showDetails               bool
-	startFrom                 string
+	startingTable             string
+	endingTable               string
 	allowDifferentDestination bool
 	threads                   int
 }
@@ -50,8 +51,10 @@ func RestoreCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.PersistentFlags().BoolVar(&f.schemaOnly, "schema-only", false, "If true, will only restore the schema files during the restore process.")
 	cmd.PersistentFlags().BoolVar(&f.dataOnly, "data-only", false, "If true, will only restore the data files during the restore process.")
 	cmd.PersistentFlags().BoolVar(&f.showDetails, "show-details", false, "If true, will add extra output during the restore process.")
-	cmd.PersistentFlags().StringVar(&f.startFrom, "start-from", "",
+	cmd.PersistentFlags().StringVar(&f.startingTable, "starting-table", "",
 		"Table to start from for the restore (useful for restarting from a certain point)")
+	cmd.PersistentFlags().StringVar(&f.endingTable, "ending-table", "",
+		"Table to end at for the restore (useful for stopping restore at a certain point)")
 	cmd.PersistentFlags().BoolVar(&f.allowDifferentDestination, "allow-different-destination", false, "If true, will allow you to restore the files to a database with a different name without needing to rename the existing dump's files.")
 	cmd.PersistentFlags().IntVar(&f.threads, "threads", 1, "Number of concurrent threads to use to restore the database.")
 	return cmd
@@ -66,6 +69,11 @@ func restore(ch *cmdutil.Helper, cmd *cobra.Command, flags *restoreFlags, args [
 
 	if flags.dir == "" {
 		return errors.New("--dir flag is missing, it's needed to restore the database")
+	}
+
+	if flags.endingTable != "" && flags.startingTable != "" && (flags.endingTable < flags.startingTable) {
+		return fmt.Errorf("Your provided ending table %s must come alphabetically after your provided starting table %s for the restore to continue.",
+			printer.BoldBlue(flags.endingTable), printer.BoldBlue(flags.startingTable))
 	}
 
 	client, err := ch.Client()
@@ -167,7 +175,8 @@ func restore(ch *cmdutil.Helper, cmd *cobra.Command, flags *restoreFlags, args [
 	cfg.ShowDetails = flags.showDetails
 	cfg.AllowDifferentDestination = flags.allowDifferentDestination
 	cfg.Database = database // Needs to be passed in to allow for allowDifferentDestination flag to work
-	cfg.StartFrom = flags.startFrom
+	cfg.StartingTable = flags.startingTable
+	cfg.EndingTable = flags.endingTable
 
 	loader, err := dumper.NewLoader(cfg)
 	if err != nil {

@@ -183,7 +183,7 @@ func (l *Loader) loadFiles(dir string) (*Files, error) {
 					l.cfg.Printer.Println("Database file: " + filepath.Base(path))
 				}
 			case strings.HasSuffix(path, schemaSuffix):
-				if tbl >= l.cfg.StartFrom {
+				if l.canIncludeTable(tbl) {
 					files.schemas = append(files.schemas, path)
 					if l.cfg.ShowDetails {
 						l.cfg.Printer.Println("  |- Table file: " + printer.BoldBlue(filepath.Base(path)))
@@ -193,7 +193,7 @@ func (l *Loader) loadFiles(dir string) (*Files, error) {
 				}
 			default:
 				if strings.HasSuffix(path, tableSuffix) {
-					if tbl >= l.cfg.StartFrom {
+					if l.canIncludeTable(tbl) {
 						files.tables = append(files.tables, path)
 						if l.cfg.ShowDetails {
 							l.cfg.Printer.Println("    |- Data file: " + printer.BoldBlue(filepath.Base(path)))
@@ -234,8 +234,11 @@ func (l *Loader) restoreDatabaseSchema(dbs []string, conn *Connection) error {
 }
 
 func (l *Loader) restoreTableSchema(overwrite bool, tables []string, conn *Connection) error {
-	if l.cfg.StartFrom != "" {
-		l.cfg.Printer.Printf("Starting from %s table...\n", printer.BoldBlue(l.cfg.StartFrom))
+	if l.cfg.StartingTable != "" {
+		l.cfg.Printer.Printf("Restore will be starting from the %s table...\n", printer.BoldBlue(l.cfg.StartingTable))
+	}
+	if l.cfg.EndingTable != "" {
+		l.cfg.Printer.Printf("Restore will be ending at the %s table...\n", printer.BoldBlue(l.cfg.EndingTable))
 	}
 
 	numberOfTables := len(tables)
@@ -397,6 +400,22 @@ func (l *Loader) databaseNameFromFilename(filename string) string {
 	}
 
 	return strings.Split(filename, ".")[0]
+}
+
+func (l *Loader) canIncludeTable(tbl string) bool {
+	if l.cfg.StartingTable != "" && l.cfg.EndingTable != "" {
+		return (tbl >= l.cfg.StartingTable && tbl <= l.cfg.EndingTable)
+	}
+
+	if l.cfg.StartingTable != "" {
+		return (tbl >= l.cfg.StartingTable)
+	}
+
+	if l.cfg.EndingTable != "" {
+		return (tbl <= l.cfg.EndingTable)
+	}
+
+	return true
 }
 
 func (l *Loader) canRestoreSchema() bool {

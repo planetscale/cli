@@ -47,7 +47,8 @@ type Config struct {
 	SchemaOnly                bool
 	DataOnly                  bool
 	ShowDetails               bool
-	StartFrom                 string
+	StartingTable             string
+	EndingTable               string
 	AllowDifferentDestination bool
 	UseReplica                bool
 	UseRdonly                 bool
