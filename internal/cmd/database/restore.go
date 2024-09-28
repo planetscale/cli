@@ -72,7 +72,7 @@ func restore(ch *cmdutil.Helper, cmd *cobra.Command, flags *restoreFlags, args [
 	}
 
 	if flags.endingTable != "" && flags.startingTable != "" && (flags.endingTable < flags.startingTable) {
-		return fmt.Errorf("Your provided ending table %s must come alphabetically after your provided starting table %s for the restore to continue.",
+		return fmt.Errorf("provided ending table %s must come alphabetically after your provided starting table %s for the restore to continue",
 			printer.BoldBlue(flags.endingTable), printer.BoldBlue(flags.startingTable))
 	}
 
