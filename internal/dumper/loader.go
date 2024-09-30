@@ -364,7 +364,7 @@ func (l *Loader) restoreTable(table string, conn *Connection) (int, error) {
 	for idx, query := range queries {
 		if !strings.HasPrefix(query, "/*") && query != "" {
 			queryBytes := len(query)
-			if queryBytes <= 16777216 {
+			if queryBytes <= l.cfg.MaxQuerySize {
 				if l.cfg.ShowDetails {
 					l.cfg.Printer.Printf("  Processing Query %s out of %s within %s in thread %s\n", printer.BoldBlue((idx + 1)), printer.BoldBlue(queriesInFile), printer.BoldBlue(base), printer.BoldBlue(conn.ID))
 				}
@@ -376,8 +376,8 @@ func (l *Loader) restoreTable(table string, conn *Connection) (int, error) {
 			} else {
 				// Encountering this error should be uncommon for our users.
 				// However, it may be encountered if users generate files manually to match our expected folder format.
-				l.cfg.Printer.Printf("%s: Query %s within %s in thread %s is larger than 16777216 bytes. Please reduce query size to avoid pkt error.\n", printer.BoldRed("ERROR"), printer.BoldBlue((idx + 1)), printer.BoldBlue(base), printer.BoldBlue(conn.ID))
-				return 0, errors.New("query is larger than 16777216 bytes in size")
+				l.cfg.Printer.Printf("%s: Query %s within %s in thread %s is larger than %d bytes. Please reduce query size to avoid pkt error.\n", printer.BoldRed("ERROR"), printer.BoldBlue((idx + 1)), printer.BoldBlue(base), printer.BoldBlue(conn.ID), l.cfg.MaxQuerySize)
+				return 0, errors.New("query is larger than " + fmt.Sprintf("%v", l.cfg.MaxQuerySize) + " bytes in size")
 			}
 		} else {
 			l.cfg.Printer.Printf("  Skipping Empty Query %s out of %s within %s in thread %s\n", printer.BoldBlue((idx + 1)), printer.BoldBlue(queriesInFile), printer.BoldBlue(base), printer.BoldBlue(conn.ID))

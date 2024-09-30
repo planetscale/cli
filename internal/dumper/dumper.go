@@ -50,6 +50,7 @@ type Config struct {
 	StartingTable             string
 	EndingTable               string
 	AllowDifferentDestination bool
+	MaxQuerySize              int
 	UseReplica                bool
 	UseRdonly                 bool
 	Wheres                    map[string]string

@@ -28,6 +28,7 @@ type restoreFlags struct {
 	startingTable             string
 	endingTable               string
 	allowDifferentDestination bool
+	maxQuerySize              int
 	threads                   int
 }
 
@@ -56,6 +57,7 @@ func RestoreCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.PersistentFlags().StringVar(&f.endingTable, "ending-table", "",
 		"Table to end at for the restore (useful for stopping restore at a certain point)")
 	cmd.PersistentFlags().BoolVar(&f.allowDifferentDestination, "allow-different-destination", false, "If true, will allow you to restore the files to a database with a different name without needing to rename the existing dump's files.")
+	cmd.PersistentFlags().IntVar(&f.maxQuerySize, "max-query-size", 16777216, "The maximum size allowed for each individual query processed by the command. Currently limited to 16777216 bytes (16 MiB).")
 	cmd.PersistentFlags().IntVar(&f.threads, "threads", 1, "Number of concurrent threads to use to restore the database.")
 	return cmd
 }
@@ -177,6 +179,7 @@ func restore(ch *cmdutil.Helper, cmd *cobra.Command, flags *restoreFlags, args [
 	cfg.Database = database // Needs to be passed in to allow for allowDifferentDestination flag to work
 	cfg.StartingTable = flags.startingTable
 	cfg.EndingTable = flags.endingTable
+	cfg.MaxQuerySize = flags.maxQuerySize
 
 	loader, err := dumper.NewLoader(cfg)
 	if err != nil {
