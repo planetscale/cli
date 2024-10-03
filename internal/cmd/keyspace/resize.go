@@ -11,12 +11,14 @@ import (
 
 type KeyspaceResizeRequest struct {
 	ID    string `json:"id"`
-	State string `json:"state"`
+	State string `header:"state" json:"state"`
 
-	ClusterSize string `header:"cluster_size" json:"cluster_rate_name"`
+	ClusterSize         string `header:"cluster_size" json:"cluster_rate_name"`
+	PreviousClusterSize string `header:"previous_cluster_size" json:"previous_cluster_rate_name"`
 
-	Replicas      uint `json:"replicas"`
-	ExtraReplicas uint `json:"extra_replicas"`
+	PreviousReplicas uint `header:"previous_replicas" json:"previous_replicas"`
+	Replicas         uint `header:"replicas" json:"replicas"`
+	ExtraReplicas    uint `header:"extra_replicas" json:"extra_replicas"`
 
 	CreatedAt   int64  `header:"created_at,timestamp(ms|utc|human)" json:"created_at"`
 	StartedAt   *int64 `header:"started_at,timestamp(ms|utc|human)" json:"started_at"`
@@ -88,17 +90,17 @@ func ResizeCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().IntVar(&flags.additionalReplicas, "additional-replicas", 0, "Number of additional additionalReplicas to add to the keyspace")
 	cmd.Flags().StringVar(&flags.clusterSize, "cluster-size", "", "The cluster size to use for the keyspace")
 
-	cmd.AddCommand(StatusCmd(ch))
+	cmd.AddCommand(ResizeStatusCmd(ch))
 
 	return cmd
 }
 
-func StatusCmd(ch *cmdutil.Helper) *cobra.Command {
+func ResizeStatusCmd(ch *cmdutil.Helper) *cobra.Command {
 	statusReq := &ps.KeyspaceResizeStatusRequest{}
 
 	cmd := &cobra.Command{
-		Use:   "resize status <database> <branch> <keyspace>",
-		Short: "Gets the status of the last resize operation on a keyspace",
+		Use:   "status <database> <branch> <keyspace>",
+		Short: "Show the last resize operation on a branch's keyspace",
 		Args:  cmdutil.RequiredArgs("database", "branch", "keyspace"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
