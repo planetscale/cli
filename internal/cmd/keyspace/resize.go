@@ -5,7 +5,7 @@ import (
 
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
-	"github.com/planetscale/planetscale-go/planetscale"
+	ps "github.com/planetscale/planetscale-go/planetscale"
 	"github.com/spf13/cobra"
 )
 
@@ -22,12 +22,12 @@ type KeyspaceResizeRequest struct {
 	StartedAt   *int64 `header:"started_at,timestamp(ms|utc|human)" json:"started_at"`
 	CompletedAt *int64 `header:"completed_at,timestamp(ms|utc|human)" json:"completed_at"`
 
-	orig *planetscale.KeyspaceResizeRequest
+	orig *ps.KeyspaceResizeRequest
 }
 
 // ResizeCmd encapsulates the command for resizing a keyspace within a branch.
 func ResizeCmd(ch *cmdutil.Helper) *cobra.Command {
-	resizeReq := &planetscale.ResizeKeyspaceRequest{}
+	resizeReq := &ps.ResizeKeyspaceRequest{}
 
 	var flags struct {
 		additionalReplicas int
@@ -53,7 +53,7 @@ func ResizeCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			if cmd.Flags().Changed("cluster-size") {
-				size := planetscale.ClusterSize(flags.clusterSize)
+				size := ps.ClusterSize(flags.clusterSize)
 				resizeReq.ClusterSize = &size
 			}
 
@@ -68,7 +68,7 @@ func ResizeCmd(ch *cmdutil.Helper) *cobra.Command {
 			krr, err := client.Keyspaces.Resize(ctx, resizeReq)
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
-				case planetscale.ErrNotFound:
+				case ps.ErrNotFound:
 					return fmt.Errorf("database %s or branch %s or keyspace %s does not exist in organization %s", printer.BoldBlue(database), printer.BoldBlue(branch), printer.BoldBlue(keyspace), printer.BoldBlue(ch.Config.Organization))
 				default:
 					return cmdutil.HandleError(err)
@@ -91,7 +91,7 @@ func ResizeCmd(ch *cmdutil.Helper) *cobra.Command {
 	return cmd
 }
 
-func toKeyspaceResizeRequest(krr *planetscale.KeyspaceResizeRequest) *KeyspaceResizeRequest {
+func toKeyspaceResizeRequest(krr *ps.KeyspaceResizeRequest) *KeyspaceResizeRequest {
 	return &KeyspaceResizeRequest{
 		ID:            krr.ID,
 		State:         krr.State,
