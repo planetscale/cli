@@ -23,7 +23,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/pkg/errors v0.9.1
-	github.com/planetscale/planetscale-go v0.108.0
+	github.com/planetscale/planetscale-go v0.109.0
 	github.com/planetscale/psdb v0.0.0-20240109164348-6848e728f6e7
 	github.com/planetscale/psdbproxy v0.0.0-20240927190836-61feaf3c8bdb
 	github.com/spf13/cobra v1.8.1
@@ -95,3 +95,5 @@ require (
 )
 
 replace github.com/golang/glog => github.com/planetscale/noglog v0.2.1-0.20210421230640-bea75fcd2e8e
+
+replace github.com/planetscale/planetscale-go => /Users/iheanyi/gohack/github.com/planetscale/planetscale-go
