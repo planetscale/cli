@@ -91,6 +91,7 @@ func ResizeCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().StringVar(&flags.clusterSize, "cluster-size", "", "The cluster size to use for the keyspace")
 
 	cmd.AddCommand(ResizeStatusCmd(ch))
+	cmd.AddCommand(ResizeCancelCmd(ch))
 
 	return cmd
 }
