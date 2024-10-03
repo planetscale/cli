@@ -1,6 +1,7 @@
 package keyspace
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/planetscale/cli/internal/cmdutil"
@@ -108,4 +109,12 @@ func toKeyspaceResizeRequest(krr *ps.KeyspaceResizeRequest) *KeyspaceResizeReque
 		CompletedAt:   printer.GetMillisecondsIfExists(krr.CompletedAt),
 		orig:          krr,
 	}
+}
+
+func (k *KeyspaceResizeRequest) MarshalJSON() ([]byte, error) {
+	return json.MarshalIndent(k.orig, "", "  ")
+}
+
+func (k *KeyspaceResizeRequest) MarshalCSVValue() interface{} {
+	return []*KeyspaceResizeRequest{k}
 }
