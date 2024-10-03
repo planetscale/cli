@@ -95,5 +95,3 @@ require (
 )
 
 replace github.com/golang/glog => github.com/planetscale/noglog v0.2.1-0.20210421230640-bea75fcd2e8e
-
-replace github.com/planetscale/planetscale-go => /Users/iheanyi/gohack/github.com/planetscale/planetscale-go
