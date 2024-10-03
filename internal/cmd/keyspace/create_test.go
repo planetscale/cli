@@ -58,7 +58,7 @@ func TestKeyspace_CreateCmd(t *testing.T) {
 	}
 
 	cmd := CreateCmd(ch)
-	cmd.SetArgs([]string{db, branch, keyspace})
+	cmd.SetArgs([]string{db, branch, keyspace, "--cluster-size", "PS-10", "--shards", "2", "--additional-replicas", "3"})
 	err := cmd.Execute()
 	c.Assert(err, qt.IsNil)
 	c.Assert(svc.CreateFnInvoked, qt.IsTrue)
