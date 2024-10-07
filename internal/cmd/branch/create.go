@@ -118,12 +118,14 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&createReq.ParentBranch, "from", "", "Branch to be created from")
-	cmd.Flags().StringVar(&createReq.Region, "region", "", "Region for the database. Can not be used with --restore")
+	cmd.Flags().StringVar(&createReq.ParentBranch, "from", "", "Parent branch to create the new branch from. Cannot be used with --restore")
+	cmd.Flags().StringVar(&createReq.Region, "region", "", "Region for the branch. Can not be used with --restore")
 	cmd.Flags().StringVar(&createReq.BackupID, "restore", "", "Backup to restore into the branch. Backup can only be restored to its original region")
 	cmd.Flags().BoolVar(&flags.dataBranching, "seed-data", false, "Add seed data using the Data Branching™ feature")
 	cmd.Flags().BoolVar(&flags.wait, "wait", false, "Wait until the branch is ready")
+	cmd.MarkFlagsMutuallyExclusive("from", "restore")
 	cmd.MarkFlagsMutuallyExclusive("region", "restore")
+	cmd.MarkFlagsMutuallyExclusive("restore", "seed-data")
 
 	cmd.RegisterFlagCompletionFunc("region", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		ctx := cmd.Context()
