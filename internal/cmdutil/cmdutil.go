@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -166,6 +168,8 @@ func HasHomebrew() bool {
 	return err == nil
 }
 
+var versionRegex = regexp.MustCompile(`Ver ([0-9]+)\.([0-9]+)\.([0-9]+)`)
+
 // MySQLClientPath checks whether the 'mysql' client exists and returns the
 // path to the binary. The returned error contains instructions to install the
 // client.
@@ -184,7 +188,11 @@ func MySQLClientPath() (string, error) {
 	}
 
 	oldpath := os.Getenv("PATH")
-	newpath := homebrewPrefix + "/opt/mysql-client/bin/" + string(os.PathListSeparator) + oldpath
+	newpath := homebrewPrefix + "/opt/mysql-client@8.4/bin/" +
+		homebrewPrefix + "/opt/mysql@8.4/bin/" +
+		homebrewPrefix + "/opt/mysql-client/bin/" +
+		homebrewPrefix + "/opt/mysql/bin/" +
+		string(os.PathListSeparator) + oldpath
 	defer func() {
 		if err := os.Setenv("PATH", oldpath); err != nil {
 			fmt.Println("failed to restore PATH", err)
@@ -196,17 +204,39 @@ func MySQLClientPath() (string, error) {
 	}
 
 	path, err := exec.LookPath("mysql")
-	if err == nil {
-		return path, nil
+	if err != nil {
+		return installInstructions("couldn't find the 'mysql' command-line tool required to run this command.")
 	}
 
-	msg := "couldn't find the 'mysql' command-line tool required to run this command."
+	cmd := exec.Command("mysql", "--version")
+	out, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("failed to run 'mysql --version': %w", err)
+	}
+
+	v := versionRegex.FindStringSubmatch(string(out))
+	if len(v) != 4 {
+		return "", fmt.Errorf("could not parse server version from: %s", string(out))
+	}
+	major, err := strconv.Atoi(v[1])
+	if err != nil {
+		return "", fmt.Errorf("could not parse server version from: %s", string(out))
+	}
+
+	if major > 8 {
+		return installInstructions(fmt.Sprintf("unsupported mysql version: %s. Please install MySQL 8.x.", string(out)))
+	}
+
+	return path, nil
+}
+
+func installInstructions(msg string) (string, error) {
 	installURL := "https://planetscale.com/docs/reference/planetscale-environment-setup"
 
 	switch runtime.GOOS {
 	case "darwin":
 		if HasHomebrew() {
-			return "", fmt.Errorf("%s\nTo install, run: brew install mysql-client", msg)
+			return "", fmt.Errorf("%s\nTo install, run: brew install mysql-client@8.4", msg)
 		}
 
 		installURL = "https://planetscale.com/docs/reference/planetscale-environment-setup#macos-instructions"
