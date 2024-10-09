@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"testing"
+	"time"
 
 	qt "github.com/frankban/quicktest"
 	"github.com/planetscale/cli/internal/cmdutil"
@@ -13,7 +14,7 @@ import (
 	ps "github.com/planetscale/planetscale-go/planetscale"
 )
 
-func TestKeyspace_CreateCmd(t *testing.T) {
+func TestKeyspace_ResizeCmd(t *testing.T) {
 	c := qt.New(t)
 
 	var buf bytes.Buffer
@@ -27,21 +28,26 @@ func TestKeyspace_CreateCmd(t *testing.T) {
 	branch := "main"
 	keyspace := "sharded"
 
-	ks := &ps.Keyspace{
-		ID:          "wantid",
-		Name:        "qux",
-		ClusterSize: ps.ClusterSize("PS-10"),
-		Replicas:    3,
-		Shards:      2,
+	ts := time.Now()
+
+	krr := &ps.KeyspaceResizeRequest{
+		ID:        "wantid",
+		State:     "completed",
+		CreatedAt: ts,
+		UpdatedAt: ts,
+		Actor:     nil,
 	}
 
 	svc := &mock.BranchKeyspacesService{
-		CreateFn: func(ctx context.Context, req *ps.CreateBranchKeyspaceRequest) (*ps.Keyspace, error) {
+		ResizeFn: func(ctx context.Context, req *ps.ResizeKeyspaceRequest) (*ps.KeyspaceResizeRequest, error) {
 			c.Assert(req.Database, qt.Equals, db)
 			c.Assert(req.Organization, qt.Equals, org)
 			c.Assert(req.Branch, qt.Equals, branch)
+			c.Assert(req.Keyspace, qt.Equals, keyspace)
+			c.Assert(*req.ExtraReplicas, qt.Equals, uint(3))
+			c.Assert(*req.ClusterSize, qt.Equals, ps.ClusterSize("PS_10"))
 
-			return ks, nil
+			return krr, nil
 		},
 	}
 
@@ -57,10 +63,10 @@ func TestKeyspace_CreateCmd(t *testing.T) {
 		},
 	}
 
-	cmd := CreateCmd(ch)
-	cmd.SetArgs([]string{db, branch, keyspace, "--cluster-size", "PS-10", "--shards", "2", "--additional-replicas", "3"})
+	cmd := ResizeCmd(ch)
+	cmd.SetArgs([]string{db, branch, keyspace, "--additional-replicas", "3", "--cluster-size", "PS_10"})
 	err := cmd.Execute()
 	c.Assert(err, qt.IsNil)
-	c.Assert(svc.CreateFnInvoked, qt.IsTrue)
-	c.Assert(buf.String(), qt.JSONEquals, ks)
+	c.Assert(svc.ResizeFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.JSONEquals, krr)
 }
