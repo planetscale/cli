@@ -63,7 +63,7 @@ second argument:
 				runForeground = false
 			}
 
-			mysqlPath, err := cmdutil.MySQLClientPath()
+			mysqlPath, authMethod, err := cmdutil.MySQLClientPath()
 			if err != nil {
 				return err
 			}
@@ -210,7 +210,7 @@ second argument:
 
 			errCh := make(chan error, 1)
 			go func() {
-				errCh <- proxy.Serve(l)
+				errCh <- proxy.Serve(l, authMethod)
 			}()
 
 			go func() {

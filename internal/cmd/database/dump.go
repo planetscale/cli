@@ -21,6 +21,8 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 
 	"github.com/spf13/cobra"
+
+	"vitess.io/vitess/go/mysql"
 )
 
 type dumpFlags struct {
@@ -173,7 +175,10 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 	defer l.Close()
 
 	go func() {
-		if err := proxy.Serve(l); err != nil {
+		// We have to use mysql.MysqlNativePassword here because we still end
+		// up using https://github.com/xelabs/go-mysqlstack which is unmaintained
+		// and doesn't support caching_sha2_password.
+		if err := proxy.Serve(l, mysql.MysqlNativePassword); err != nil {
 			ch.Printer.Println("proxy error: ", err)
 		}
 	}()

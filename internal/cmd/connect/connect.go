@@ -21,6 +21,8 @@ import (
 
 	"github.com/mattn/go-shellwords"
 	"github.com/spf13/cobra"
+
+	"vitess.io/vitess/go/mysql"
 )
 
 func ConnectCmd(ch *cmdutil.Helper) *cobra.Command {
@@ -34,6 +36,7 @@ func ConnectCmd(ch *cmdutil.Helper) *cobra.Command {
 		role                string
 		noRandom            bool
 		replica             bool
+		authMethod          string
 	}
 
 	cmd := &cobra.Command{
@@ -93,6 +96,18 @@ argument:
 				}
 			} else if replica {
 				role = cmdutil.ReaderRole
+			}
+
+			authMethod := mysql.CachingSha2Password
+			if flags.authMethod != "" {
+				switch flags.authMethod {
+				case "caching_sha2_password":
+					authMethod = mysql.CachingSha2Password
+				case "mysql_native_password":
+					authMethod = mysql.MysqlNativePassword
+				default:
+					return fmt.Errorf("unsupported auth method: %s", flags.authMethod)
+				}
 			}
 
 			// check whether database and branch exist
@@ -156,7 +171,7 @@ argument:
 
 			errCh := make(chan error, 1)
 			go func() {
-				errCh <- proxy.Serve(l)
+				errCh <- proxy.Serve(l, authMethod)
 			}()
 
 			go func() {
@@ -215,6 +230,8 @@ argument:
 	cmd.PersistentFlags().StringVar(&flags.role, "role",
 		"", "Role defines the access level, allowed values are: reader, writer, readwriter, admin. Defaults to 'reader' for replica passwords, otherwise defaults to 'admin'.")
 	cmd.Flags().BoolVar(&flags.replica, "replica", false, "When enabled, the password will route all reads to the branch's primary replicas and all read-only regions.")
+	cmd.PersistentFlags().StringVar(&flags.authMethod, "mysql-auth-method",
+		"", "MySQL auth method defines the authentication method returned for the MySQL protocol. Allowed values are: caching_sha2_password, mysql_native_password. Defaults to 'caching_sha2_password'.")
 
 	return cmd
 }

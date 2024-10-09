@@ -21,6 +21,15 @@ type BranchKeyspacesService struct {
 
 	CreateFn        func(context.Context, *ps.CreateBranchKeyspaceRequest) (*ps.Keyspace, error)
 	CreateFnInvoked bool
+
+	ResizeFn      func(context.Context, *ps.ResizeKeyspaceRequest) (*ps.KeyspaceResizeRequest, error)
+	ResizeInvoked bool
+
+	CancelResizeFn      func(context.Context, *ps.CancelKeyspaceResizeRequest) error
+	CancelResizeInvoked bool
+
+	ResizeStatusFn      func(context.Context, *ps.KeyspaceResizeStatusRequest) (*ps.KeyspaceResizeRequest, error)
+	ResizeStatusInvoked bool
 }
 
 func (s *BranchKeyspacesService) List(ctx context.Context, req *ps.ListBranchKeyspacesRequest) ([]*ps.Keyspace, error) {
@@ -47,4 +56,19 @@ func (s *BranchKeyspacesService) UpdateVSchema(ctx context.Context, req *ps.Upda
 func (s *BranchKeyspacesService) Create(ctx context.Context, req *ps.CreateBranchKeyspaceRequest) (*ps.Keyspace, error) {
 	s.CreateFnInvoked = true
 	return s.CreateFn(ctx, req)
+}
+
+func (s *BranchKeyspacesService) Resize(ctx context.Context, req *ps.ResizeKeyspaceRequest) (*ps.KeyspaceResizeRequest, error) {
+	s.ResizeInvoked = true
+	return s.ResizeFn(ctx, req)
+}
+
+func (s *BranchKeyspacesService) CancelResize(ctx context.Context, req *ps.CancelKeyspaceResizeRequest) error {
+	s.CancelResizeInvoked = true
+	return s.CancelResizeFn(ctx, req)
+}
+
+func (s *BranchKeyspacesService) ResizeStatus(ctx context.Context, req *ps.KeyspaceResizeStatusRequest) (*ps.KeyspaceResizeRequest, error) {
+	s.ResizeStatusInvoked = true
+	return s.ResizeStatusFn(ctx, req)
 }
