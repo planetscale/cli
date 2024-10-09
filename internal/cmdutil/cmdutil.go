@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -18,6 +20,8 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	exec "golang.org/x/sys/execabs"
+
+	"vitess.io/vitess/go/mysql"
 )
 
 const WarnAuthMessage = "not authenticated yet. Please run 'pscale auth login'"
@@ -166,10 +170,12 @@ func HasHomebrew() bool {
 	return err == nil
 }
 
+var versionRegex = regexp.MustCompile(`Ver ([0-9]+)\.([0-9]+)\.([0-9]+)`)
+
 // MySQLClientPath checks whether the 'mysql' client exists and returns the
 // path to the binary. The returned error contains instructions to install the
 // client.
-func MySQLClientPath() (string, error) {
+func MySQLClientPath() (string, mysql.AuthMethodDescription, error) {
 	// 'brew install mysql-client' installs the client into an unusual path
 	// https://docs.brew.sh/FAQ#why-should-i-install-homebrew-in-the-default-location
 	var homebrewPrefix string
@@ -183,8 +189,11 @@ func MySQLClientPath() (string, error) {
 		homebrewPrefix = "/home/linuxbrew/.linuxbrew"
 	}
 
+	authMethod := mysql.CachingSha2Password
 	oldpath := os.Getenv("PATH")
-	newpath := homebrewPrefix + "/opt/mysql-client/bin/" + string(os.PathListSeparator) + oldpath
+	newpath := homebrewPrefix + "/opt/mysql-client/bin/" +
+		homebrewPrefix + "/opt/mysql/bin/" +
+		string(os.PathListSeparator) + oldpath
 	defer func() {
 		if err := os.Setenv("PATH", oldpath); err != nil {
 			fmt.Println("failed to restore PATH", err)
@@ -192,21 +201,43 @@ func MySQLClientPath() (string, error) {
 	}()
 
 	if err := os.Setenv("PATH", newpath); err != nil {
-		return "", err
+		return "", authMethod, err
 	}
 
 	path, err := exec.LookPath("mysql")
-	if err == nil {
-		return path, nil
+	if err != nil {
+		return installInstructions("couldn't find the 'mysql' command-line tool required to run this command.")
 	}
 
-	msg := "couldn't find the 'mysql' command-line tool required to run this command."
+	cmd := exec.Command("mysql", "--version")
+	out, err := cmd.Output()
+	if err != nil {
+		return "", authMethod, fmt.Errorf("failed to run 'mysql --version': %w", err)
+	}
+
+	v := versionRegex.FindStringSubmatch(string(out))
+	if len(v) != 4 {
+		return "", authMethod, fmt.Errorf("could not parse server version from: %s", string(out))
+	}
+	major, err := strconv.Atoi(v[1])
+	if err != nil {
+		return "", authMethod, fmt.Errorf("could not parse server version from: %s", string(out))
+	}
+
+	if major < 8 {
+		authMethod = mysql.MysqlNativePassword
+	}
+
+	return path, authMethod, nil
+}
+
+func installInstructions(msg string) (string, mysql.AuthMethodDescription, error) {
 	installURL := "https://planetscale.com/docs/reference/planetscale-environment-setup"
 
 	switch runtime.GOOS {
 	case "darwin":
 		if HasHomebrew() {
-			return "", fmt.Errorf("%s\nTo install, run: brew install mysql-client", msg)
+			return "", mysql.CachingSha2Password, fmt.Errorf("%s\nTo install, run: brew install mysql-client@8.4", msg)
 		}
 
 		installURL = "https://planetscale.com/docs/reference/planetscale-environment-setup#macos-instructions"
@@ -216,7 +247,7 @@ func MySQLClientPath() (string, error) {
 		installURL = "https://planetscale.com/docs/reference/planetscale-environment-setup#windows-instructions"
 	}
 
-	return "", fmt.Errorf("%s\nTo install, follow the instructions: %s", msg, installURL)
+	return "", mysql.CachingSha2Password, fmt.Errorf("%s\nTo install, follow the instructions: %s", msg, installURL)
 }
 
 func ParseSSLMode(sslMode string) ps.ExternalDataSourceSSLVerificationMode {

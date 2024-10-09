@@ -1,6 +1,6 @@
 module github.com/planetscale/cli
 
-go 1.23.1
+go 1.23.2
 
 require (
 	github.com/99designs/keyring v1.2.2
@@ -23,9 +23,9 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/pkg/errors v0.9.1
-	github.com/planetscale/planetscale-go v0.109.0
+	github.com/planetscale/planetscale-go v0.110.0
 	github.com/planetscale/psdb v0.0.0-20240109164348-6848e728f6e7
-	github.com/planetscale/psdbproxy v0.0.0-20240927190836-61feaf3c8bdb
+	github.com/planetscale/psdbproxy v0.0.0-20241009145102-7fdfa92ae3ca
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.19.0
@@ -36,9 +36,10 @@ require (
 	golang.org/x/exp v0.0.0-20240909161429-701f63a606c0
 	golang.org/x/oauth2 v0.23.0
 	golang.org/x/sync v0.8.0
-	golang.org/x/sys v0.25.0
-	golang.org/x/text v0.18.0
+	golang.org/x/sys v0.26.0
+	golang.org/x/text v0.19.0
 	gopkg.in/yaml.v2 v2.4.0
+	vitess.io/vitess v0.10.3-0.20240927074858-3e5371377b43
 )
 
 require (
@@ -91,7 +92,6 @@ require (
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	vitess.io/vitess v0.10.3-0.20240927074858-3e5371377b43 // indirect
 )
 
 replace github.com/golang/glog => github.com/planetscale/noglog v0.2.1-0.20210421230640-bea75fcd2e8e
