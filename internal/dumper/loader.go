@@ -86,13 +86,6 @@ func (l *Loader) Run(ctx context.Context) error {
 		l.cfg.Printer.Println("Skipping restoring schema files...")
 	}
 
-	// Commenting out to add some predictability to the order in which data files will be processed:
-	// Shuffle the tables
-	//for i := range files.tables {
-	//	j := rand.Intn(i + 1)
-	//	files.tables[i], files.tables[j] = files.tables[j], files.tables[i]
-	//}
-
 	var eg errgroup.Group
 	var bytes uint64
 	t := time.Now()
