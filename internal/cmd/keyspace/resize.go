@@ -88,8 +88,8 @@ func ResizeCmd(ch *cmdutil.Helper) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().IntVar(&flags.additionalReplicas, "additional-replicas", 0, "Number of additional additionalReplicas to add to the keyspace")
-	cmd.Flags().StringVar(&flags.clusterSize, "cluster-size", "", "The cluster size to use for the keyspace")
+	cmd.Flags().IntVar(&flags.additionalReplicas, "additional-replicas", 0, "number of additional replicas per shard. By default, each production cluster comes with 2 replicas.")
+	cmd.Flags().StringVar(&flags.clusterSize, "cluster-size", "", "cluster size for the keyspace: Options: PS_10, PS_20, PS_40, PS_80, PS_160, PS_320, PS_400")
 
 	cmd.AddCommand(ResizeStatusCmd(ch))
 	cmd.AddCommand(ResizeCancelCmd(ch))
