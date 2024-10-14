@@ -35,6 +35,7 @@ type BranchKeyspace struct {
 	Shards        int    `header:"shards" json:"shards"`
 	Sharded       bool   `header:"sharded" json:"sharded"`
 	Replicas      uint64 `header:"replicas" json:"replicas"`
+	ExtraReplicas uint64 `header:"extra_replicas" json:"extra_replicas"`
 	Resizing      bool   `header:"resizing" json:"resizing"`
 	PendingResize bool   `header:"pending_resize" json:"resize_pending"`
 
