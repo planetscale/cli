@@ -33,7 +33,7 @@ func TestKeyspace_VSchemaShowCmd(t *testing.T) {
 		Raw: raw,
 	}
 
-	svc := &mock.BranchKeyspacesService{
+	svc := &mock.KeyspacesService{
 		VSchemaFn: func(ctx context.Context, req *ps.GetKeyspaceVSchemaRequest) (*ps.VSchema, error) {
 			c.Assert(req.Organization, qt.Equals, org)
 			c.Assert(req.Database, qt.Equals, db)
@@ -85,7 +85,7 @@ func TestKeyspace_UpdateVSchemaCmd(t *testing.T) {
 		Raw: raw,
 	}
 
-	svc := &mock.BranchKeyspacesService{
+	svc := &mock.KeyspacesService{
 		UpdateVSchemaFn: func(ctx context.Context, req *ps.UpdateKeyspaceVSchemaRequest) (*ps.VSchema, error) {
 			c.Assert(req.Organization, qt.Equals, org)
 			c.Assert(req.Database, qt.Equals, db)

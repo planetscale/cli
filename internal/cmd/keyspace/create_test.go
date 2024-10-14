@@ -35,8 +35,8 @@ func TestKeyspace_CreateCmd(t *testing.T) {
 		Shards:      2,
 	}
 
-	svc := &mock.BranchKeyspacesService{
-		CreateFn: func(ctx context.Context, req *ps.CreateBranchKeyspaceRequest) (*ps.Keyspace, error) {
+	svc := &mock.KeyspacesService{
+		CreateFn: func(ctx context.Context, req *ps.CreateKeyspaceRequest) (*ps.Keyspace, error) {
 			c.Assert(req.Database, qt.Equals, db)
 			c.Assert(req.Organization, qt.Equals, org)
 			c.Assert(req.Branch, qt.Equals, branch)
@@ -92,8 +92,8 @@ func TestKeyspace_CreateCmdOnlyClusterSize(t *testing.T) {
 		Shards:        1,
 	}
 
-	svc := &mock.BranchKeyspacesService{
-		CreateFn: func(ctx context.Context, req *ps.CreateBranchKeyspaceRequest) (*ps.Keyspace, error) {
+	svc := &mock.KeyspacesService{
+		CreateFn: func(ctx context.Context, req *ps.CreateKeyspaceRequest) (*ps.Keyspace, error) {
 			c.Assert(req.Database, qt.Equals, db)
 			c.Assert(req.Organization, qt.Equals, org)
 			c.Assert(req.Branch, qt.Equals, branch)

@@ -38,7 +38,7 @@ func TestKeyspace_ResizeCmd(t *testing.T) {
 		Actor:     nil,
 	}
 
-	svc := &mock.BranchKeyspacesService{
+	svc := &mock.KeyspacesService{
 		ResizeFn: func(ctx context.Context, req *ps.ResizeKeyspaceRequest) (*ps.KeyspaceResizeRequest, error) {
 			c.Assert(req.Database, qt.Equals, db)
 			c.Assert(req.Organization, qt.Equals, org)
@@ -95,7 +95,7 @@ func TestKeyspace_ResizeCmdOnlyClusterSize(t *testing.T) {
 		Actor:     nil,
 	}
 
-	svc := &mock.BranchKeyspacesService{
+	svc := &mock.KeyspacesService{
 		ResizeFn: func(ctx context.Context, req *ps.ResizeKeyspaceRequest) (*ps.KeyspaceResizeRequest, error) {
 			c.Assert(req.Database, qt.Equals, db)
 			c.Assert(req.Organization, qt.Equals, org)
@@ -152,7 +152,7 @@ func TestKeyspace_ResizeCmdOnlyReplicas(t *testing.T) {
 		Actor:     nil,
 	}
 
-	svc := &mock.BranchKeyspacesService{
+	svc := &mock.KeyspacesService{
 		ResizeFn: func(ctx context.Context, req *ps.ResizeKeyspaceRequest) (*ps.KeyspaceResizeRequest, error) {
 			c.Assert(req.Database, qt.Equals, db)
 			c.Assert(req.Organization, qt.Equals, org)

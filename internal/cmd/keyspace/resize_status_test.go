@@ -38,7 +38,7 @@ func TestKeyspace_ResizeStatusCmd(t *testing.T) {
 		Actor:     nil,
 	}
 
-	svc := &mock.BranchKeyspacesService{
+	svc := &mock.KeyspacesService{
 		ResizeStatusFn: func(ctx context.Context, req *ps.KeyspaceResizeStatusRequest) (*ps.KeyspaceResizeRequest, error) {
 			c.Assert(req.Database, qt.Equals, db)
 			c.Assert(req.Organization, qt.Equals, org)
