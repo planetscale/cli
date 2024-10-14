@@ -24,7 +24,7 @@ func TestKeyspace_ResizeCancelCmd(t *testing.T) {
 	branch := "main"
 	keyspace := "sharded"
 
-	svc := &mock.BranchKeyspacesService{
+	svc := &mock.KeyspacesService{
 		CancelResizeFn: func(ctx context.Context, req *ps.CancelKeyspaceResizeRequest) error {
 			c.Assert(req.Database, qt.Equals, db)
 			c.Assert(req.Organization, qt.Equals, org)

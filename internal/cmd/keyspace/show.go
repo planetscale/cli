@@ -26,7 +26,7 @@ func ShowCmd(ch *cmdutil.Helper) *cobra.Command {
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Fetching keyspace %s in %s/%s", printer.BoldBlue(keyspace), printer.BoldBlue(database), printer.BoldBlue(branch)))
 			defer end()
 
-			k, err := client.Keyspaces.Get(ctx, &planetscale.GetBranchKeyspaceRequest{
+			k, err := client.Keyspaces.Get(ctx, &planetscale.GetKeyspaceRequest{
 				Organization: ch.Config.Organization,
 				Database:     database,
 				Branch:       branch,
@@ -42,7 +42,7 @@ func ShowCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 			end()
 
-			return ch.Printer.PrintResource(toBranchKeyspace(k))
+			return ch.Printer.PrintResource(toKeyspace(k))
 		},
 	}
 

@@ -11,7 +11,7 @@ import (
 
 // CreateCmd encapsulates the command for creating a new keyspace within a branch.
 func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
-	createReq := &planetscale.CreateBranchKeyspaceRequest{}
+	createReq := &planetscale.CreateKeyspaceRequest{}
 
 	var flags struct {
 		shards             int
@@ -59,7 +59,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 				return nil
 			}
 
-			return ch.Printer.PrintResource(toBranchKeyspace(k))
+			return ch.Printer.PrintResource(toKeyspace(k))
 		},
 	}
 	cmd.Flags().IntVar(&flags.shards, "shards", 1, "Number of shards in the keyspace")

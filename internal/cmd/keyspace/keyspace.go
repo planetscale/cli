@@ -29,7 +29,7 @@ func KeyspaceCmd(ch *cmdutil.Helper) *cobra.Command {
 	return cmd
 }
 
-type BranchKeyspace struct {
+type Keyspace struct {
 	ID            string `json:"id"`
 	Name          string `header:"name" json:"name"`
 	Shards        int    `header:"shards" json:"shards"`
@@ -46,18 +46,18 @@ type BranchKeyspace struct {
 	orig *ps.Keyspace
 }
 
-func toBranchKeyspaces(keyspaces []*ps.Keyspace) []*BranchKeyspace {
-	kss := make([]*BranchKeyspace, 0, len(keyspaces))
+func toKeyspaces(keyspaces []*ps.Keyspace) []*Keyspace {
+	kss := make([]*Keyspace, 0, len(keyspaces))
 
 	for _, k := range keyspaces {
-		kss = append(kss, toBranchKeyspace(k))
+		kss = append(kss, toKeyspace(k))
 	}
 
 	return kss
 }
 
-func toBranchKeyspace(k *ps.Keyspace) *BranchKeyspace {
-	return &BranchKeyspace{
+func toKeyspace(k *ps.Keyspace) *Keyspace {
+	return &Keyspace{
 		ID:          k.ID,
 		Name:        k.Name,
 		Shards:      k.Shards,
@@ -71,10 +71,10 @@ func toBranchKeyspace(k *ps.Keyspace) *BranchKeyspace {
 	}
 }
 
-func (k *BranchKeyspace) MarshalJSON() ([]byte, error) {
+func (k *Keyspace) MarshalJSON() ([]byte, error) {
 	return json.MarshalIndent(k.orig, "", "  ")
 }
 
-func (k *BranchKeyspace) MarshalCSVValue() interface{} {
-	return []*BranchKeyspace{k}
+func (k *Keyspace) MarshalCSVValue() interface{} {
+	return []*Keyspace{k}
 }
