@@ -20,11 +20,18 @@ import (
 )
 
 type restoreFlags struct {
-	localAddr  string
-	remoteAddr string
-	dir        string
-	overwrite  bool
-	threads    int
+	localAddr                 string
+	remoteAddr                string
+	dir                       string
+	overwrite                 bool
+	schemaOnly                bool
+	dataOnly                  bool
+	showDetails               bool
+	startingTable             string
+	endingTable               string
+	allowDifferentDestination bool
+	maxQuerySize              int
+	threads                   int
 }
 
 // RestoreCmd encapsulates the commands for restore a database
@@ -44,7 +51,15 @@ func RestoreCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.PersistentFlags().StringVar(&f.dir, "dir", "",
 		"Directory containing the files to be used for the restore (required)")
 	cmd.PersistentFlags().BoolVar(&f.overwrite, "overwrite-tables", false, "If true, will attempt to DROP TABLE before restoring.")
-
+	cmd.PersistentFlags().BoolVar(&f.schemaOnly, "schema-only", false, "If true, will only restore the schema files during the restore process.")
+	cmd.PersistentFlags().BoolVar(&f.dataOnly, "data-only", false, "If true, will only restore the data files during the restore process.")
+	cmd.PersistentFlags().BoolVar(&f.showDetails, "show-details", false, "If true, will add extra output during the restore process.")
+	cmd.PersistentFlags().StringVar(&f.startingTable, "starting-table", "",
+		"Table to start from for the restore (useful for restarting from a certain point)")
+	cmd.PersistentFlags().StringVar(&f.endingTable, "ending-table", "",
+		"Table to end at for the restore (useful for stopping restore at a certain point)")
+	cmd.PersistentFlags().BoolVar(&f.allowDifferentDestination, "allow-different-destination", false, "If true, will allow you to restore the files to a database with a different name without needing to rename the existing dump's files.")
+	cmd.PersistentFlags().IntVar(&f.maxQuerySize, "max-query-size", 16777216, "The maximum size allowed for each individual query processed by the command. Currently limited to 16777216 bytes (16 MiB).")
 	cmd.PersistentFlags().IntVar(&f.threads, "threads", 1, "Number of concurrent threads to use to restore the database.")
 	return cmd
 }
@@ -58,6 +73,11 @@ func restore(ch *cmdutil.Helper, cmd *cobra.Command, flags *restoreFlags, args [
 
 	if flags.dir == "" {
 		return errors.New("--dir flag is missing, it's needed to restore the database")
+	}
+
+	if flags.endingTable != "" && flags.startingTable != "" && (flags.endingTable < flags.startingTable) {
+		return fmt.Errorf("provided ending table %s must come alphabetically after your provided starting table %s for the restore to continue",
+			printer.BoldBlue(flags.endingTable), printer.BoldBlue(flags.startingTable))
 	}
 
 	client, err := ch.Client()
@@ -150,19 +170,34 @@ func restore(ch *cmdutil.Helper, cmd *cobra.Command, flags *restoreFlags, args [
 	cfg.Password = "nobody"
 	cfg.Address = addr.String()
 	cfg.Debug = ch.Debug()
+	cfg.Printer = ch.Printer
 	cfg.IntervalMs = 10 * 1000
 	cfg.Outdir = flags.dir
 	cfg.OverwriteTables = flags.overwrite
+	cfg.SchemaOnly = flags.schemaOnly
+	cfg.DataOnly = flags.dataOnly
+	cfg.ShowDetails = flags.showDetails
+	cfg.AllowDifferentDestination = flags.allowDifferentDestination
+	cfg.Database = database // Needs to be passed in to allow for allowDifferentDestination flag to work
+	cfg.StartingTable = flags.startingTable
+	cfg.EndingTable = flags.endingTable
+	cfg.MaxQuerySize = flags.maxQuerySize
 
 	loader, err := dumper.NewLoader(cfg)
 	if err != nil {
 		return err
 	}
 
+	end := func() {}
+
 	ch.Printer.Printf("Starting to restore database %s from folder %s\n",
 		printer.BoldBlue(database), printer.BoldBlue(flags.dir))
 
-	end := ch.Printer.PrintProgress("Restoring database ...")
+	if flags.showDetails {
+		ch.Printer.Println("Restoring database ...")
+	} else {
+		end = ch.Printer.PrintProgress("Restoring database ...\n")
+	}
 	defer end()
 
 	start := time.Now()
