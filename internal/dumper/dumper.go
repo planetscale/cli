@@ -157,7 +157,7 @@ func (d *Dumper) Run(ctx context.Context) error {
 					zap.Int("thread_conn_id", conn.ID),
 				)
 
-				err := d.dumpTable(conn, database, table, d.cfg.UseReplica, d.cfg.UseRdonly)
+				err := d.dumpTable(ctx, conn, database, table, d.cfg.UseReplica, d.cfg.UseRdonly)
 				if err != nil {
 					d.log.Error("error dumping table", zap.Error(err))
 				}
@@ -219,7 +219,7 @@ func (d *Dumper) dumpTableSchema(conn *Connection, database string, table string
 }
 
 // Dump a table in "MySQL" (multi-inserts) format
-func (d *Dumper) dumpTable(conn *Connection, database string, table string, useReplica, useRdonly bool) error {
+func (d *Dumper) dumpTable(ctx context.Context, conn *Connection, database string, table string, useReplica, useRdonly bool) error {
 	var allBytes uint64
 	var allRows uint64
 	var where string
@@ -276,6 +276,11 @@ func (d *Dumper) dumpTable(conn *Connection, database string, table string, useR
 		row, err := cursor.RowValues()
 		if err != nil {
 			return err
+		}
+
+		// Allows for quicker exit when using Ctrl+C at the Terminal:
+		if ctx.Err() != nil {
+			return ctx.Err()
 		}
 
 		values := make([]string, 0, 16)
