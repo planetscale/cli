@@ -115,6 +115,23 @@ func TestDumper(t *testing.T) {
 		},
 	}
 
+	viewsResult := &sqltypes.Result{
+		Fields: []*querypb.Field{
+			{
+				Name: "Views_in_test",
+				Type: querypb.Type_VARCHAR,
+			},
+		},
+		Rows: [][]sqltypes.Value{
+			{
+				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("v1-2024-10-25")),
+			},
+			{
+				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("v2-2024-10-25")),
+			},
+		},
+	}
+
 	fieldsResult := &sqltypes.Result{
 		Fields: []*querypb.Field{
 			{Name: "Field", Type: querypb.Type_VARCHAR},
@@ -140,6 +157,7 @@ func TestDumper(t *testing.T) {
 		fakedbs.AddQueryPattern("use .*", &sqltypes.Result{})
 		fakedbs.AddQueryPattern("show create table .*", schemaResult)
 		fakedbs.AddQueryPattern("show tables from .*", tablesResult)
+		fakedbs.AddQueryPattern("select table_name \n\t\t\t from information_schema.tables \n\t\t\t where table_schema like 'test' \n\t\t\t and table_type = 'view'\n\t\t\t", viewsResult)
 		fakedbs.AddQueryPattern("show fields from .*", fieldsResult)
 		fakedbs.AddQueryPattern("select .* from `test`\\..* .*", selectResult)
 		fakedbs.AddQueryPattern("set .*", &sqltypes.Result{})
@@ -261,6 +279,23 @@ func TestDumperUseUseReplica(t *testing.T) {
 		},
 	}
 
+	viewsResult := &sqltypes.Result{
+		Fields: []*querypb.Field{
+			{
+				Name: "Views_in_test",
+				Type: querypb.Type_VARCHAR,
+			},
+		},
+		Rows: [][]sqltypes.Value{
+			{
+				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("v1-2024-10-25")),
+			},
+			{
+				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("v2-2024-10-25")),
+			},
+		},
+	}
+
 	fieldsResult := &sqltypes.Result{
 		Fields: []*querypb.Field{
 			{Name: "Field", Type: querypb.Type_VARCHAR},
@@ -286,6 +321,7 @@ func TestDumperUseUseReplica(t *testing.T) {
 		fakedbs.AddQueryPattern("use .*", &sqltypes.Result{})
 		fakedbs.AddQueryPattern("show create table .*", schemaResult)
 		fakedbs.AddQueryPattern("show tables from .*", tablesResult)
+		fakedbs.AddQueryPattern("select table_name \n\t\t\t from information_schema.tables \n\t\t\t where table_schema like 'test' \n\t\t\t and table_type = 'view'\n\t\t\t", viewsResult)
 		fakedbs.AddQueryPattern("show fields from .*", fieldsResult)
 		fakedbs.AddQueryPattern("select .* FROM `test@replica`\\..* .*", selectResult)
 		fakedbs.AddQueryPattern("set .*", &sqltypes.Result{})
@@ -408,6 +444,23 @@ func TestDumperGeneratedFields(t *testing.T) {
 		},
 	}
 
+	viewsResult := &sqltypes.Result{
+		Fields: []*querypb.Field{
+			{
+				Name: "Views_in_test",
+				Type: querypb.Type_VARCHAR,
+			},
+		},
+		Rows: [][]sqltypes.Value{
+			{
+				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("v1-2024-10-25")),
+			},
+			{
+				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("v2-2024-10-25")),
+			},
+		},
+	}
+
 	fieldsResult := &sqltypes.Result{
 		Fields: []*querypb.Field{
 			{Name: "Field", Type: querypb.Type_VARCHAR},
@@ -433,6 +486,7 @@ func TestDumperGeneratedFields(t *testing.T) {
 		fakedbs.AddQueryPattern("use .*", &sqltypes.Result{})
 		fakedbs.AddQueryPattern("show create table .*", schemaResult)
 		fakedbs.AddQueryPattern("show tables from .*", tablesResult)
+		fakedbs.AddQueryPattern("select table_name \n\t\t\t from information_schema.tables \n\t\t\t where table_schema like 'test' \n\t\t\t and table_type = 'view'\n\t\t\t", viewsResult)
 		fakedbs.AddQueryPattern("show fields from .*", fieldsResult)
 		fakedbs.AddQueryPattern("select .* from `test`\\..* .*", selectResult)
 		fakedbs.AddQueryPattern("set .*", &sqltypes.Result{})
@@ -571,6 +625,23 @@ func TestDumperAll(t *testing.T) {
 		},
 	}
 
+	viewsResult := &sqltypes.Result{
+		Fields: []*querypb.Field{
+			{
+				Name: "Views_in_test",
+				Type: querypb.Type_VARCHAR,
+			},
+		},
+		Rows: [][]sqltypes.Value{
+			{
+				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("v1-2024-10-25")),
+			},
+			{
+				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("v2-2024-10-25")),
+			},
+		},
+	}
+
 	databasesResult := &sqltypes.Result{
 		Fields: []*querypb.Field{
 			{
@@ -614,6 +685,8 @@ func TestDumperAll(t *testing.T) {
 		fakedbs.AddQueryPattern("use .*", &sqltypes.Result{})
 		fakedbs.AddQueryPattern("show create table .*", schemaResult)
 		fakedbs.AddQueryPattern("show tables from .*", tablesResult)
+		fakedbs.AddQueryPattern("select table_name \n\t\t\t from information_schema.tables \n\t\t\t where table_schema like 'test1' \n\t\t\t and table_type = 'view'\n\t\t\t", viewsResult)
+		fakedbs.AddQueryPattern("select table_name \n\t\t\t from information_schema.tables \n\t\t\t where table_schema like 'test2' \n\t\t\t and table_type = 'view'\n\t\t\t", viewsResult)
 		fakedbs.AddQueryPattern("show fields from .*", fieldsResult)
 		fakedbs.AddQueryPattern("select .* from `test1`\\..* .*", selectResult1)
 		fakedbs.AddQueryPattern("select .* from `test2`\\..* .*", selectResult2)
@@ -758,6 +831,23 @@ func TestDumperAllUseReplica(t *testing.T) {
 		},
 	}
 
+	viewsResult := &sqltypes.Result{
+		Fields: []*querypb.Field{
+			{
+				Name: "Views_in_test",
+				Type: querypb.Type_VARCHAR,
+			},
+		},
+		Rows: [][]sqltypes.Value{
+			{
+				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("v1-2024-10-25")),
+			},
+			{
+				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("v2-2024-10-25")),
+			},
+		},
+	}
+
 	databasesResult := &sqltypes.Result{
 		Fields: []*querypb.Field{
 			{
@@ -801,6 +891,8 @@ func TestDumperAllUseReplica(t *testing.T) {
 		fakedbs.AddQueryPattern("use .*", &sqltypes.Result{})
 		fakedbs.AddQueryPattern("show create table .*", schemaResult)
 		fakedbs.AddQueryPattern("show tables from .*", tablesResult)
+		fakedbs.AddQueryPattern("select table_name \n\t\t\t from information_schema.tables \n\t\t\t where table_schema like 'test1' \n\t\t\t and table_type = 'view'\n\t\t\t", viewsResult)
+		fakedbs.AddQueryPattern("select table_name \n\t\t\t from information_schema.tables \n\t\t\t where table_schema like 'test2' \n\t\t\t and table_type = 'view'\n\t\t\t", viewsResult)
 		fakedbs.AddQueryPattern("show fields from .*", fieldsResult)
 		fakedbs.AddQueryPattern("select .* from `test1@replica`\\..* .*", selectResult1)
 		fakedbs.AddQueryPattern("select .* from `test2@replica`\\..* .*", selectResult2)
@@ -946,6 +1038,23 @@ func TestDumperMultiple(t *testing.T) {
 		},
 	}
 
+	viewsResult := &sqltypes.Result{
+		Fields: []*querypb.Field{
+			{
+				Name: "Views_in_test",
+				Type: querypb.Type_VARCHAR,
+			},
+		},
+		Rows: [][]sqltypes.Value{
+			{
+				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("v1-2024-10-25")),
+			},
+			{
+				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("v2-2024-10-25")),
+			},
+		},
+	}
+
 	databasesResult := &sqltypes.Result{
 		Fields: []*querypb.Field{
 			{
@@ -989,6 +1098,8 @@ func TestDumperMultiple(t *testing.T) {
 		fakedbs.AddQueryPattern("use .*", &sqltypes.Result{})
 		fakedbs.AddQueryPattern("show create table .*", schemaResult)
 		fakedbs.AddQueryPattern("show tables from .*", tablesResult)
+		fakedbs.AddQueryPattern("select table_name \n\t\t\t from information_schema.tables \n\t\t\t where table_schema like 'test1' \n\t\t\t and table_type = 'view'\n\t\t\t", viewsResult)
+		fakedbs.AddQueryPattern("select table_name \n\t\t\t from information_schema.tables \n\t\t\t where table_schema like 'test2' \n\t\t\t and table_type = 'view'\n\t\t\t", viewsResult)
 		fakedbs.AddQueryPattern("show fields from .*", fieldsResult)
 		fakedbs.AddQueryPattern("select .* from `test1`\\..* .*", selectResult1)
 		fakedbs.AddQueryPattern("select .* from `test2`\\..* .*", selectResult2)
@@ -1134,6 +1245,23 @@ func TestDumperMultipleUseReplica(t *testing.T) {
 		},
 	}
 
+	viewsResult := &sqltypes.Result{
+		Fields: []*querypb.Field{
+			{
+				Name: "Views_in_test",
+				Type: querypb.Type_VARCHAR,
+			},
+		},
+		Rows: [][]sqltypes.Value{
+			{
+				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("v1-2024-10-25")),
+			},
+			{
+				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("v2-2024-10-25")),
+			},
+		},
+	}
+
 	databasesResult := &sqltypes.Result{
 		Fields: []*querypb.Field{
 			{
@@ -1177,6 +1305,8 @@ func TestDumperMultipleUseReplica(t *testing.T) {
 		fakedbs.AddQueryPattern("use .*", &sqltypes.Result{})
 		fakedbs.AddQueryPattern("show create table .*", schemaResult)
 		fakedbs.AddQueryPattern("show tables from .*", tablesResult)
+		fakedbs.AddQueryPattern("select table_name \n\t\t\t from information_schema.tables \n\t\t\t where table_schema like 'test1' \n\t\t\t and table_type = 'view'\n\t\t\t", viewsResult)
+		fakedbs.AddQueryPattern("select table_name \n\t\t\t from information_schema.tables \n\t\t\t where table_schema like 'test2' \n\t\t\t and table_type = 'view'\n\t\t\t", viewsResult)
 		fakedbs.AddQueryPattern("show fields from .*", fieldsResult)
 		fakedbs.AddQueryPattern("select .* from `test1@replica`\\..* .*", selectResult1)
 		fakedbs.AddQueryPattern("select .* from `test2@replica`\\..* .*", selectResult2)
@@ -1323,6 +1453,23 @@ func TestDumperSimpleRegexp(t *testing.T) {
 		},
 	}
 
+	viewsResult := &sqltypes.Result{
+		Fields: []*querypb.Field{
+			{
+				Name: "Views_in_test",
+				Type: querypb.Type_VARCHAR,
+			},
+		},
+		Rows: [][]sqltypes.Value{
+			{
+				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("v1-2024-10-25")),
+			},
+			{
+				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("v2-2024-10-25")),
+			},
+		},
+	}
+
 	databasesResult := &sqltypes.Result{
 		Fields: []*querypb.Field{
 			{
@@ -1375,6 +1522,8 @@ func TestDumperSimpleRegexp(t *testing.T) {
 		fakedbs.AddQueryPattern("use .*", &sqltypes.Result{})
 		fakedbs.AddQueryPattern("show create table .*", schemaResult)
 		fakedbs.AddQueryPattern("show tables from .*", tablesResult)
+		fakedbs.AddQueryPattern("select table_name \n\t\t\t from information_schema.tables \n\t\t\t where table_schema like 'test1' \n\t\t\t and table_type = 'view'\n\t\t\t", viewsResult)
+		fakedbs.AddQueryPattern("select table_name \n\t\t\t from information_schema.tables \n\t\t\t where table_schema like 'test2' \n\t\t\t and table_type = 'view'\n\t\t\t", viewsResult)
 		fakedbs.AddQueryPattern("show fields from .*", fieldsResult)
 		fakedbs.AddQueryPattern("select .* from `test1`\\..* .*", selectResult1)
 		fakedbs.AddQueryPattern("select .* from `test2`\\..* .*", selectResult2)
@@ -1520,6 +1669,23 @@ func TestDumperComplexRegexp(t *testing.T) {
 		},
 	}
 
+	viewsResult := &sqltypes.Result{
+		Fields: []*querypb.Field{
+			{
+				Name: "Views_in_test",
+				Type: querypb.Type_VARCHAR,
+			},
+		},
+		Rows: [][]sqltypes.Value{
+			{
+				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("v1-2024-10-25")),
+			},
+			{
+				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("v2-2024-10-25")),
+			},
+		},
+	}
+
 	databasesResult := &sqltypes.Result{
 		Fields: []*querypb.Field{
 			{
@@ -1572,6 +1738,8 @@ func TestDumperComplexRegexp(t *testing.T) {
 		fakedbs.AddQueryPattern("use .*", &sqltypes.Result{})
 		fakedbs.AddQueryPattern("show create table .*", schemaResult)
 		fakedbs.AddQueryPattern("show tables from .*", tablesResult)
+		fakedbs.AddQueryPattern("select table_name \n\t\t\t from information_schema.tables \n\t\t\t where table_schema like 'test1' \n\t\t\t and table_type = 'view'\n\t\t\t", viewsResult)
+		fakedbs.AddQueryPattern("select table_name \n\t\t\t from information_schema.tables \n\t\t\t where table_schema like 'test2' \n\t\t\t and table_type = 'view'\n\t\t\t", viewsResult)
 		fakedbs.AddQueryPattern("show fields from .*", fieldsResult)
 		fakedbs.AddQueryPattern("select .* from `test1`\\..* .*", selectResult1)
 		fakedbs.AddQueryPattern("select .* from `test2`\\..* .*", selectResult2)
@@ -1717,6 +1885,23 @@ func TestDumperInvertMatch(t *testing.T) {
 		},
 	}
 
+	viewsResult := &sqltypes.Result{
+		Fields: []*querypb.Field{
+			{
+				Name: "Views_in_test",
+				Type: querypb.Type_VARCHAR,
+			},
+		},
+		Rows: [][]sqltypes.Value{
+			{
+				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("v1-2024-10-25")),
+			},
+			{
+				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("v2-2024-10-25")),
+			},
+		},
+	}
+
 	databasesResult := &sqltypes.Result{
 		Fields: []*querypb.Field{
 			{
@@ -1773,6 +1958,8 @@ func TestDumperInvertMatch(t *testing.T) {
 		fakedbs.AddQueryPattern("use .*", &sqltypes.Result{})
 		fakedbs.AddQueryPattern("show create table .*", schemaResult)
 		fakedbs.AddQueryPattern("show tables from .*", tablesResult)
+		fakedbs.AddQueryPattern("select table_name \n\t\t\t from information_schema.tables \n\t\t\t where table_schema like 'test1' \n\t\t\t and table_type = 'view'\n\t\t\t", viewsResult)
+		fakedbs.AddQueryPattern("select table_name \n\t\t\t from information_schema.tables \n\t\t\t where table_schema like 'test2' \n\t\t\t and table_type = 'view'\n\t\t\t", viewsResult)
 		fakedbs.AddQueryPattern("show fields from .*", fieldsResult)
 		fakedbs.AddQueryPattern("select .* from `test1`\\..* .*", selectResult1)
 		fakedbs.AddQueryPattern("select .* from `test2`\\..* .*", selectResult2)
