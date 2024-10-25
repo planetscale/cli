@@ -20,12 +20,14 @@ import (
 type Files struct {
 	databases []string
 	schemas   []string
+	views     []string
 	tables    []string
 }
 
 const (
 	dbSuffix     = "-schema-create.sql"
 	schemaSuffix = "-schema.sql"
+	viewSuffix   = "-schema-view.sql"
 	tableSuffix  = ".sql"
 )
 
@@ -64,6 +66,13 @@ func (l *Loader) Run(ctx context.Context) error {
 	// tables.
 	conn = pool.Get()
 	if err := l.restoreTableSchema(l.cfg.OverwriteTables, files.schemas, conn); err != nil {
+		return err
+	}
+	pool.Put(conn)
+
+	// views.
+	conn = pool.Get()
+	if err := l.restoreViews(l.cfg.OverwriteTables, files.views, conn); err != nil {
 		return err
 	}
 	pool.Put(conn)
@@ -140,6 +149,8 @@ func (l *Loader) loadFiles(dir string) (*Files, error) {
 				files.databases = append(files.databases, path)
 			case strings.HasSuffix(path, schemaSuffix):
 				files.schemas = append(files.schemas, path)
+			case strings.HasSuffix(path, viewSuffix):
+				files.views = append(files.views, path)
 			default:
 				if strings.HasSuffix(path, tableSuffix) {
 					files.tables = append(files.tables, path)
@@ -228,6 +239,66 @@ func (l *Loader) restoreTableSchema(overwrite bool, tables []string, conn *Conne
 		l.log.Info("restoring schema",
 			zap.String("database", db),
 			zap.String("table ", tbl),
+		)
+	}
+
+	return nil
+}
+
+func (l *Loader) restoreViews(overwrite bool, views []string, conn *Connection) error {
+	for _, viewFilename := range views {
+		base := filepath.Base(viewFilename)
+		name := strings.TrimSuffix(base, viewSuffix)
+		db := strings.Split(name, ".")[0]
+		view := strings.Split(name, ".")[1]
+		name = fmt.Sprintf("`%v`.`%v`", db, view)
+
+		l.log.Info(
+			"working view",
+			zap.String("database", db),
+			zap.String("view ", view),
+		)
+
+		err := conn.Execute(fmt.Sprintf("USE `%s`", db))
+		if err != nil {
+			return err
+		}
+
+		err = conn.Execute("SET FOREIGN_KEY_CHECKS=0")
+		if err != nil {
+			return err
+		}
+
+		data, err := os.ReadFile(viewFilename)
+		if err != nil {
+			return err
+		}
+		query1 := string(data)
+		querys := strings.Split(query1, ";\n")
+		for _, query := range querys {
+			if !strings.HasPrefix(query, "/*") && query != "" {
+				if overwrite {
+					l.log.Info(
+						"drop(overwrite.is.true)",
+						zap.String("database", db),
+						zap.String("view ", view),
+					)
+
+					dropQuery := fmt.Sprintf("DROP VIEW IF EXISTS %s", name)
+					err = conn.Execute(dropQuery)
+					if err != nil {
+						return err
+					}
+				}
+				err = conn.Execute(query)
+				if err != nil {
+					return err
+				}
+			}
+		}
+		l.log.Info("restoring views",
+			zap.String("database", db),
+			zap.String("view ", view),
 		)
 	}
 
