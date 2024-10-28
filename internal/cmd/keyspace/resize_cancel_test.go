@@ -1,46 +1,37 @@
-package branch
+package keyspace
 
 import (
-	"bytes"
 	"context"
 	"testing"
 
+	qt "github.com/frankban/quicktest"
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/config"
 	"github.com/planetscale/cli/internal/mock"
 	"github.com/planetscale/cli/internal/printer"
-
-	qt "github.com/frankban/quicktest"
 	ps "github.com/planetscale/planetscale-go/planetscale"
 )
 
-func TestBranchKeyspacesCmd(t *testing.T) {
+func TestKeyspace_ResizeCancelCmd(t *testing.T) {
 	c := qt.New(t)
 
-	var buf bytes.Buffer
 	format := printer.JSON
+
 	p := printer.NewPrinter(&format)
-	p.SetResourceOutput(&buf)
 
 	org := "planetscale"
 	db := "planetscale"
-	branch := "feature"
+	branch := "main"
+	keyspace := "sharded"
 
-	res := []*ps.Keyspace{
-		{
-			Name:    "blah",
-			Shards:  1,
-			Sharded: false,
-		},
-	}
-
-	svc := &mock.DatabaseBranchesService{
-		KeyspacesFn: func(ctx context.Context, req *ps.BranchKeyspacesRequest) ([]*ps.Keyspace, error) {
-			c.Assert(req.Organization, qt.Equals, org)
+	svc := &mock.KeyspacesService{
+		CancelResizeFn: func(ctx context.Context, req *ps.CancelKeyspaceResizeRequest) error {
 			c.Assert(req.Database, qt.Equals, db)
+			c.Assert(req.Organization, qt.Equals, org)
 			c.Assert(req.Branch, qt.Equals, branch)
+			c.Assert(req.Keyspace, qt.Equals, keyspace)
 
-			return res, nil
+			return nil
 		},
 	}
 
@@ -51,17 +42,14 @@ func TestBranchKeyspacesCmd(t *testing.T) {
 		},
 		Client: func() (*ps.Client, error) {
 			return &ps.Client{
-				DatabaseBranches: svc,
+				Keyspaces: svc,
 			}, nil
 		},
 	}
 
-	cmd := KeyspaceCmd(ch)
-	cmd.SetArgs([]string{db, branch})
+	cmd := ResizeCancelCmd(ch)
+	cmd.SetArgs([]string{db, branch, keyspace})
 	err := cmd.Execute()
-
 	c.Assert(err, qt.IsNil)
-	c.Assert(svc.KeyspacesFnInvoked, qt.IsTrue)
-
-	c.Assert(buf.String(), qt.JSONEquals, res)
+	c.Assert(svc.CancelResizeFnInvoked, qt.IsTrue)
 }

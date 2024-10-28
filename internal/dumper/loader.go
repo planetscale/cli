@@ -104,7 +104,7 @@ func (l *Loader) Run(ctx context.Context) error {
 					l.cfg.Printer.Printf("%s: %s in thread %s (File %d of %d)\n", printer.BoldGreen("Started Processing Data File"), printer.BoldBlue(filepath.Base(table)), printer.BoldBlue(conn.ID), (idx + 1), numberOfDataFiles)
 				}
 				fileProcessingTimeStart := time.Now()
-				r, err := l.restoreTable(table, conn)
+				r, err := l.restoreTable(ctx, table, conn)
 
 				if err != nil {
 					return err
@@ -302,7 +302,7 @@ func (l *Loader) restoreTableSchema(overwrite bool, tables []string, conn *Conne
 	return nil
 }
 
-func (l *Loader) restoreTable(table string, conn *Connection) (int, error) {
+func (l *Loader) restoreTable(ctx context.Context, table string, conn *Connection) (int, error) {
 	bytes := 0
 	part := "0"
 	base := filepath.Base(table)
@@ -355,6 +355,11 @@ func (l *Loader) restoreTable(table string, conn *Connection) (int, error) {
 	queriesInFile := len(queries)
 
 	for idx, query := range queries {
+		// Allows for quicker exit when using Ctrl+C at the Terminal:
+		if ctx.Err() != nil {
+			return 0, ctx.Err()
+		}
+
 		if !strings.HasPrefix(query, "/*") && query != "" {
 			queryBytes := len(query)
 			if queryBytes <= l.cfg.MaxQuerySize {

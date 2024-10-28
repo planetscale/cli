@@ -27,7 +27,7 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Fetching keyspaces for %s/%s", printer.BoldBlue(database), printer.BoldBlue(branch)))
 			defer end()
 
-			keyspaces, err := client.Keyspaces.List(ctx, &planetscale.ListBranchKeyspacesRequest{
+			keyspaces, err := client.Keyspaces.List(ctx, &planetscale.ListKeyspacesRequest{
 				Organization: ch.Config.Organization,
 				Database:     database,
 				Branch:       branch,
@@ -42,7 +42,7 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 			end()
 
-			return ch.Printer.PrintResource(toBranchKeyspaces(keyspaces))
+			return ch.Printer.PrintResource(toKeyspaces(keyspaces))
 		},
 	}
 

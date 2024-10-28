@@ -15,6 +15,8 @@ import (
 	ps "github.com/planetscale/planetscale-go/planetscale"
 
 	"github.com/spf13/cobra"
+
+	"vitess.io/vitess/go/mysql"
 )
 
 type restoreFlags struct {
@@ -147,7 +149,7 @@ func restore(ch *cmdutil.Helper, cmd *cobra.Command, flags *restoreFlags, args [
 	defer l.Close()
 
 	go func() {
-		if err := proxy.Serve(l); err != nil {
+		if err := proxy.Serve(l, mysql.MysqlNativePassword); err != nil {
 			ch.Printer.Println("proxy error: ", err)
 		}
 	}()

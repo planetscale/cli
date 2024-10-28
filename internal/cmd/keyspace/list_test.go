@@ -31,8 +31,8 @@ func TestKeyspace_ListCmd(t *testing.T) {
 		{Name: keyspace},
 	}
 
-	svc := &mock.BranchKeyspacesService{
-		ListFn: func(ctx context.Context, req *ps.ListBranchKeyspacesRequest) ([]*ps.Keyspace, error) {
+	svc := &mock.KeyspacesService{
+		ListFn: func(ctx context.Context, req *ps.ListKeyspacesRequest) ([]*ps.Keyspace, error) {
 			c.Assert(req.Database, qt.Equals, db)
 			c.Assert(req.Organization, qt.Equals, org)
 			c.Assert(req.Branch, qt.Equals, branch)
