@@ -94,7 +94,7 @@ func (l *Loader) Run(ctx context.Context) error {
 		eg.Go(func() error {
 			defer pool.Put(conn)
 
-			r, err := l.restoreTable(table, conn)
+			r, err := l.restoreTable(ctx, table, conn)
 			if err != nil {
 				return err
 			}
@@ -305,7 +305,7 @@ func (l *Loader) restoreViews(overwrite bool, views []string, conn *Connection) 
 	return nil
 }
 
-func (l *Loader) restoreTable(table string, conn *Connection) (int, error) {
+func (l *Loader) restoreTable(ctx context.Context, table string, conn *Connection) (int, error) {
 	bytes := 0
 	part := "0"
 	base := filepath.Base(table)
@@ -348,6 +348,11 @@ func (l *Loader) restoreTable(table string, conn *Connection) (int, error) {
 	querys := strings.Split(query1, ";\n")
 	bytes = len(query1)
 	for _, query := range querys {
+		// Allows for quicker exit when using Ctrl+C at the Terminal:
+		if ctx.Err() != nil {
+			return 0, ctx.Err()
+		}
+
 		if !strings.HasPrefix(query, "/*") && query != "" {
 			err = conn.Execute(query)
 			if err != nil {
