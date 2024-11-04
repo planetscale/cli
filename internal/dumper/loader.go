@@ -85,15 +85,19 @@ func (l *Loader) Run(ctx context.Context) error {
 		}
 		pool.Put(conn)
 	} else {
-		l.cfg.Printer.Println("Skipping restoring schema files...")
+		l.cfg.Printer.Println("Skipping restoring table definitions...")
 	}
-  
-  // views.
-	conn = pool.Get()
-	if err := l.restoreViews(l.cfg.OverwriteTables, files.views, conn); err != nil {
-		return err
+
+	// views.
+	if l.canRestoreSchema() {
+		conn = pool.Get()
+		if err := l.restoreViews(l.cfg.OverwriteTables, files.views, conn); err != nil {
+			return err
+		}
+		pool.Put(conn)
+	} else {
+		l.cfg.Printer.Println("Skipping restoring view definitions...")
 	}
-	pool.Put(conn)
 
 	var eg errgroup.Group
 	var bytes uint64
@@ -195,6 +199,9 @@ func (l *Loader) loadFiles(dir string) (*Files, error) {
 				}
 			case strings.HasSuffix(path, viewSuffix):
 				files.views = append(files.views, path)
+				if l.cfg.ShowDetails {
+					l.cfg.Printer.Println("  |- View file: " + printer.BoldBlue(filepath.Base(path)))
+				}
 			default:
 				if strings.HasSuffix(path, tableSuffix) {
 					if l.canIncludeTable(tbl) {
@@ -314,7 +321,10 @@ func (l *Loader) restoreTableSchema(overwrite bool, tables []string, conn *Conne
 }
 
 func (l *Loader) restoreViews(overwrite bool, views []string, conn *Connection) error {
-	for _, viewFilename := range views {
+
+	numberOfViews := len(views)
+
+	for idx, viewFilename := range views {
 		base := filepath.Base(viewFilename)
 		name := strings.TrimSuffix(base, viewSuffix)
 		db := strings.Split(name, ".")[0]
@@ -352,11 +362,18 @@ func (l *Loader) restoreViews(overwrite bool, views []string, conn *Connection) 
 						zap.String("view ", view),
 					)
 
+					if l.cfg.ShowDetails {
+						l.cfg.Printer.Println("Dropping Existing View (if it exists): " + printer.BoldBlue(name))
+					}
 					dropQuery := fmt.Sprintf("DROP VIEW IF EXISTS %s", name)
 					err = conn.Execute(dropQuery)
 					if err != nil {
 						return err
 					}
+				}
+
+				if l.cfg.ShowDetails {
+					l.cfg.Printer.Printf("Creating View: %s (View %d of %d)\n", printer.BoldBlue(name), (idx + 1), numberOfViews)
 				}
 				err = conn.Execute(query)
 				if err != nil {
