@@ -116,11 +116,19 @@ func (d *Dumper) Run(ctx context.Context) error {
 	}
 
 	tables := make([][]string, len(databases))
+	views := make([]map[string]bool, len(databases))
 	for i, database := range databases {
 		if d.cfg.Table != "" {
 			tables[i] = strings.Split(d.cfg.Table, ",")
 		} else {
 			tables[i], err = d.allTables(conn, database)
+
+			if err != nil {
+				return err
+			}
+
+			views[i], err = d.allViews(conn, database)
+
 			if err != nil {
 				return err
 			}
@@ -144,12 +152,17 @@ func (d *Dumper) Run(ctx context.Context) error {
 			}
 
 			conn := initPool.Get()
-			err := d.dumpTableSchema(conn, database, table)
+			err := d.dumpTableSchema(conn, database, table, views[i])
 			if err != nil {
 				return err
 			}
 
 			initPool.Put(conn)
+
+			if _, ok := views[i][table]; ok {
+				// If we just processed a view we don't want to dump it so the next part is skipped:
+				continue
+			}
 
 			conn = pool.Get()
 			wg.Add(1)
@@ -209,7 +222,7 @@ func writeMetaData(outdir string) error {
 	return writeFile(file, "")
 }
 
-func (d *Dumper) dumpTableSchema(conn *Connection, database string, table string) error {
+func (d *Dumper) dumpTableSchema(conn *Connection, database string, table string, views map[string]bool) error {
 	qr, err := conn.Fetch(fmt.Sprintf("SHOW CREATE TABLE `%s`.`%s`", database, table))
 	if err != nil {
 		return err
@@ -218,6 +231,11 @@ func (d *Dumper) dumpTableSchema(conn *Connection, database string, table string
 	schema := qr.Rows[0][1].String() + ";\n"
 
 	file := fmt.Sprintf("%s/%s.%s-schema.sql", d.cfg.Outdir, database, table)
+	if _, ok := views[table]; ok {
+		// https://github.com/mydumper/mydumper/blob/e55612616d17281a45eed0a60a9b054cdd1fe064/src/myloader_common.c#L374
+		file = fmt.Sprintf("%s/%s.%s-schema-view.sql", d.cfg.Outdir, database, table)
+	}
+
 	err = writeFile(file, schema)
 	if err != nil {
 		return err
@@ -386,6 +404,24 @@ func (d *Dumper) allTables(conn *Connection, database string) ([]string, error) 
 		tables = append(tables, t[0].String())
 	}
 	return tables, nil
+}
+
+func (d *Dumper) allViews(conn *Connection, database string) (map[string]bool, error) {
+	query := `SELECT TABLE_NAME 
+			 FROM information_schema.TABLES 
+			 WHERE TABLE_SCHEMA LIKE '%s' 
+			 AND TABLE_TYPE = 'VIEW'
+			`
+	qr, err := conn.Fetch(fmt.Sprintf(query, database))
+	if err != nil {
+		return nil, err
+	}
+
+	views := make(map[string]bool)
+	for _, t := range qr.Rows {
+		views[t[0].String()] = true
+	}
+	return views, nil
 }
 
 func (d *Dumper) allDatabases(conn *Connection) ([]string, error) {
