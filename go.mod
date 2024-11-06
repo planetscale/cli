@@ -25,7 +25,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/planetscale/planetscale-go v0.115.0
 	github.com/planetscale/psdb v0.0.0-20240109164348-6848e728f6e7
-	github.com/planetscale/psdbproxy v0.0.0-20241009145102-7fdfa92ae3ca
+	github.com/planetscale/psdbproxy v0.0.0-20241106211041-dc5c7c72df26
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.19.0
@@ -39,7 +39,7 @@ require (
 	golang.org/x/sys v0.26.0
 	golang.org/x/text v0.19.0
 	gopkg.in/yaml.v2 v2.4.0
-	vitess.io/vitess v0.10.3-0.20240927074858-3e5371377b43
+	vitess.io/vitess v0.10.3-0.20241106191105-e87457ee2401
 )
 
 require (
