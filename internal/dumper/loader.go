@@ -107,6 +107,11 @@ func (l *Loader) Run(ctx context.Context) error {
 		numberOfDataFiles := len(files.tables)
 
 		for idx, table := range files.tables {
+			// Allows for quicker exit when using Ctrl+C at the Terminal:
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+
 			table := table
 			conn := pool.Get()
 
