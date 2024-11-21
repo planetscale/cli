@@ -99,7 +99,8 @@ func (l *Loader) Run(ctx context.Context) error {
 		l.cfg.Printer.Println("Skipping restoring view definitions...")
 	}
 
-	var eg errgroup.Group
+	// Adding the context here helps down below if a query issue is encountered to prevent further processing:
+	eg, egCtx := errgroup.WithContext(ctx)
 	var bytes uint64
 	t := time.Now()
 
@@ -108,8 +109,8 @@ func (l *Loader) Run(ctx context.Context) error {
 
 		for idx, table := range files.tables {
 			// Allows for quicker exit when using Ctrl+C at the Terminal:
-			if ctx.Err() != nil {
-				return ctx.Err()
+			if egCtx.Err() != nil {
+				return egCtx.Err()
 			}
 
 			table := table
@@ -118,11 +119,15 @@ func (l *Loader) Run(ctx context.Context) error {
 			eg.Go(func() error {
 				defer pool.Put(conn)
 
+				if egCtx.Err() != nil {
+					return egCtx.Err()
+				}
+
 				if l.cfg.ShowDetails {
 					l.cfg.Printer.Printf("%s: %s in thread %s (File %d of %d)\n", printer.BoldGreen("Started Processing Data File"), printer.BoldBlue(filepath.Base(table)), printer.BoldBlue(conn.ID), (idx + 1), numberOfDataFiles)
 				}
 				fileProcessingTimeStart := time.Now()
-				r, err := l.restoreTable(ctx, table, conn)
+				r, err := l.restoreTable(egCtx, table, conn)
 
 				if err != nil {
 					return err
@@ -462,6 +467,11 @@ func (l *Loader) restoreTable(ctx context.Context, table string, conn *Connectio
 
 				err = conn.Execute(query)
 				if err != nil {
+					if l.cfg.ShowDetails {
+						l.cfg.Printer.Printf("  Error executing Query %s out of %s within %s in thread %s\n", printer.BoldRed((idx + 1)), printer.BoldRed(queriesInFile), printer.BoldRed(base), printer.BoldRed(conn.ID))
+						l.cfg.Printer.Printf("  %s\n", printer.BoldBlack("Details:"))
+						l.cfg.Printer.Printf("  %s...\n", l.substringRunes(err.Error(), 0, 512))
+					}
 					return 0, err
 				}
 			} else {
@@ -541,4 +551,15 @@ func tableNameFromFilename(filename string) string {
 	tbl := splits[1]
 
 	return tbl
+}
+
+// https://stackoverflow.com/a/51196697
+func (l *Loader) substringRunes(s string, startIndex int, count int) string {
+	runes := []rune(s)
+	length := len(runes)
+	maxCount := length - startIndex
+	if count > maxCount {
+		count = maxCount
+	}
+	return string(runes[startIndex:count])
 }
