@@ -20,7 +20,7 @@ type Config struct {
 func New(cfg Config) *psdbproxy.Server {
 	return &psdbproxy.Server{
 		Addr:          cfg.LocalAddr,
-		Logger:        slog.New(zapslog.NewHandler(cfg.Logger.Core(), nil)),
+		Logger:        slog.New(zapslog.NewHandler(cfg.Logger.Core())),
 		UpstreamAddr:  cfg.UpstreamAddr,
 		Authorization: auth.NewBasicAuth(cfg.Username, cfg.Password),
 	}
