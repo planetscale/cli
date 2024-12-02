@@ -32,7 +32,7 @@ require (
 	github.com/stretchr/testify v1.9.0
 	github.com/xelabs/go-mysqlstack v1.0.0
 	go.uber.org/zap v1.27.0
-	go.uber.org/zap/exp v0.2.0
+	go.uber.org/zap/exp v0.3.0
 	golang.org/x/exp v0.0.0-20240909161429-701f63a606c0
 	golang.org/x/oauth2 v0.23.0
 	golang.org/x/sync v0.9.0
