@@ -13,6 +13,7 @@ import (
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
 	"golang.org/x/sync/errgroup"
+	"vitess.io/vitess/go/vt/sqlparser"
 
 	"go.uber.org/zap"
 )
@@ -292,7 +293,17 @@ func (l *Loader) restoreTableSchema(overwrite bool, tables []string, conn *Conne
 			return err
 		}
 		query1 := string(data)
-		queries := strings.Split(query1, ";\n")
+
+		parser, err := sqlparser.New(sqlparser.Options{})
+		if err != nil {
+			return err
+		}
+
+		queries, err := parser.SplitStatementToPieces(query1)
+		if err != nil {
+			return err
+		}
+
 		for _, query := range queries {
 			if !strings.HasPrefix(query, "/*") && query != "" {
 				if overwrite {
@@ -362,8 +373,18 @@ func (l *Loader) restoreViews(overwrite bool, views []string, conn *Connection) 
 			return err
 		}
 		query1 := string(data)
-		querys := strings.Split(query1, ";\n")
-		for _, query := range querys {
+
+		parser, err := sqlparser.New(sqlparser.Options{})
+		if err != nil {
+			return err
+		}
+
+		queries, err := parser.SplitStatementToPieces(query1)
+		if err != nil {
+			return err
+		}
+
+		for _, query := range queries {
 			if !strings.HasPrefix(query, "/*") && query != "" {
 				if overwrite {
 					l.log.Info(
@@ -441,12 +462,22 @@ func (l *Loader) restoreTable(ctx context.Context, table string, conn *Connectio
 		return 0, err
 	}
 	query1 := string(data)
-	queries := strings.Split(query1, ";\n")
-	lastQuery := queries[len(queries)-1]
+	//queries := strings.Split(query1, ";\n")
+	//lastQuery := queries[len(queries)-1]
 
 	// Commonly for our files the last entry is non-actionable so we should exclude it automatically:
-	if strings.HasPrefix(lastQuery, "/*") || lastQuery == "" {
-		queries = queries[:len(queries)-1]
+	//if strings.HasPrefix(lastQuery, "/*") || lastQuery == "" {
+	//	queries = queries[:len(queries)-1]
+	//}
+
+	parser, err := sqlparser.New(sqlparser.Options{})
+	if err != nil {
+		return 0, err
+	}
+
+	queries, err := parser.SplitStatementToPieces(query1)
+	if err != nil {
+		return 0, err
 	}
 
 	bytes = len(query1)
