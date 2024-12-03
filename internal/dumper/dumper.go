@@ -8,13 +8,13 @@ import (
 	"os"
 	"regexp"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
 	querypb "github.com/xelabs/go-mysqlstack/sqlparser/depends/query"
+	"golang.org/x/sync/errgroup"
 
 	"go.uber.org/zap"
 )
@@ -136,8 +136,8 @@ func (d *Dumper) Run(ctx context.Context) error {
 	}
 	initPool.Put(conn)
 
-	// TODO(fatih): use errgroup
-	var wg sync.WaitGroup
+	// Adding the context here helps down below if a query issue is encountered to prevent further processing:
+	eg, egCtx := errgroup.WithContext(ctx)
 	for i, database := range databases {
 		pool, err := NewPool(d.log, d.cfg.Threads/len(databases), d.cfg.Address, d.cfg.User, d.cfg.Password, d.cfg.SessionVars, database)
 		if err != nil {
@@ -149,6 +149,11 @@ func (d *Dumper) Run(ctx context.Context) error {
 			// Skip vitess ghost tables
 			if regexp.MustCompile(VITESS_GHOST_TABLE_REGEX).MatchString(table) {
 				continue
+			}
+
+			// Allows for quicker exit when using Ctrl+C at the Terminal:
+			if egCtx.Err() != nil {
+				return egCtx.Err()
 			}
 
 			conn := initPool.Get()
@@ -165,12 +170,13 @@ func (d *Dumper) Run(ctx context.Context) error {
 			}
 
 			conn = pool.Get()
-			wg.Add(1)
-			go func(conn *Connection, database string, table string) {
-				defer func() {
-					wg.Done()
-					pool.Put(conn)
-				}()
+
+			eg.Go(func() error {
+				defer pool.Put(conn)
+
+				if egCtx.Err() != nil {
+					return egCtx.Err()
+				}
 
 				d.log.Info(
 					"dumping table ...",
@@ -179,11 +185,13 @@ func (d *Dumper) Run(ctx context.Context) error {
 					zap.Int("thread_conn_id", conn.ID),
 				)
 
-				err := d.dumpTable(ctx, conn, database, table, d.cfg.UseReplica, d.cfg.UseRdonly)
+				err := d.dumpTable(egCtx, conn, database, table, d.cfg.UseReplica, d.cfg.UseRdonly)
 				if err != nil {
 					d.log.Error("error dumping table", zap.Error(err))
 				}
-			}(conn, database, table)
+
+				return nil
+			})
 		}
 	}
 
@@ -205,8 +213,13 @@ func (d *Dumper) Run(ctx context.Context) error {
 		}
 	}()
 
-	wg.Wait()
 	elapsed := time.Since(t)
+
+	if err := eg.Wait(); err != nil {
+		d.log.Error("error dumping", zap.Error(err))
+		return err
+	}
+
 	d.log.Info(
 		"dumping all done",
 		zap.Duration("elapsed_time", elapsed),
