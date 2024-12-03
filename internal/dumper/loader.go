@@ -462,13 +462,6 @@ func (l *Loader) restoreTable(ctx context.Context, table string, conn *Connectio
 		return 0, err
 	}
 	query1 := string(data)
-	//queries := strings.Split(query1, ";\n")
-	//lastQuery := queries[len(queries)-1]
-
-	// Commonly for our files the last entry is non-actionable so we should exclude it automatically:
-	//if strings.HasPrefix(lastQuery, "/*") || lastQuery == "" {
-	//	queries = queries[:len(queries)-1]
-	//}
 
 	parser, err := sqlparser.New(sqlparser.Options{})
 	if err != nil {
