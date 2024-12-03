@@ -45,6 +45,9 @@ type DeployRequestsService struct {
 
 	AutoApplyDeployFn        func(context.Context, *ps.AutoApplyDeployRequestRequest) (*ps.DeployRequest, error)
 	AutoApplyDeployFnInvoked bool
+
+	GetDeployOperationsFn        func(context.Context, *ps.GetDeployOperationsRequest) ([]*ps.DeployOperation, error)
+	GetDeployOperationsFnInvoked bool
 }
 
 func (d *DeployRequestsService) ApplyDeploy(ctx context.Context, req *ps.ApplyDeployRequestRequest) (*ps.DeployRequest, error) {
@@ -105,4 +108,9 @@ func (d *DeployRequestsService) RevertDeploy(ctx context.Context, req *ps.Revert
 func (d *DeployRequestsService) SkipRevertDeploy(ctx context.Context, req *ps.SkipRevertDeployRequestRequest) (*ps.DeployRequest, error) {
 	d.SkipRevertDeployFnInvoked = true
 	return d.SkipRevertDeployFn(ctx, req)
+}
+
+func (d *DeployRequestsService) GetDeployOperations(ctx context.Context, req *ps.GetDeployOperationsRequest) ([]*ps.DeployOperation, error) {
+	d.GetDeployOperationsFnInvoked = true
+	return d.GetDeployOperationsFn(ctx, req)
 }
