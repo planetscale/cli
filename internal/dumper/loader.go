@@ -2,8 +2,8 @@ package dumper
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,7 +11,9 @@ import (
 	"time"
 
 	"github.com/planetscale/cli/internal/cmdutil"
+	"github.com/planetscale/cli/internal/printer"
 	"golang.org/x/sync/errgroup"
+	"vitess.io/vitess/go/vt/sqlparser"
 
 	"go.uber.org/zap"
 )
@@ -51,6 +53,19 @@ func (l *Loader) Run(ctx context.Context) error {
 	}
 	defer pool.Close()
 
+	if l.cfg.ShowDetails && l.cfg.AllowDifferentDestination {
+		l.cfg.Printer.Println("The allow different destination option is enabled for this restore.")
+		l.cfg.Printer.Printf("Files that do not begin with the provided database name of %s will still be processed without having to rename them first.\n", printer.BoldBlue(l.cfg.Database))
+	}
+
+	if l.cfg.ShowDetails && l.cfg.SchemaOnly {
+		l.cfg.Printer.Println("The schema only option is enabled for this restore.")
+	}
+
+	if l.cfg.ShowDetails && l.cfg.DataOnly {
+		l.cfg.Printer.Println("The data only option is enabled for this restore.")
+	}
+
 	files, err := l.loadFiles(l.cfg.Outdir)
 	if err != nil {
 		return err
@@ -64,44 +79,73 @@ func (l *Loader) Run(ctx context.Context) error {
 	pool.Put(conn)
 
 	// tables.
-	conn = pool.Get()
-	if err := l.restoreTableSchema(l.cfg.OverwriteTables, files.schemas, conn); err != nil {
-		return err
+	if l.canRestoreSchema() {
+		conn = pool.Get()
+		if err := l.restoreTableSchema(l.cfg.OverwriteTables, files.schemas, conn); err != nil {
+			return err
+		}
+		pool.Put(conn)
+	} else {
+		l.cfg.Printer.Println("Skipping restoring table definitions...")
 	}
-	pool.Put(conn)
 
 	// views.
-	conn = pool.Get()
-	if err := l.restoreViews(l.cfg.OverwriteTables, files.views, conn); err != nil {
-		return err
-	}
-	pool.Put(conn)
-
-	// Shuffle the tables
-	for i := range files.tables {
-		j := rand.Intn(i + 1)
-		files.tables[i], files.tables[j] = files.tables[j], files.tables[i]
+	if l.canRestoreSchema() {
+		conn = pool.Get()
+		if err := l.restoreViews(l.cfg.OverwriteTables, files.views, conn); err != nil {
+			return err
+		}
+		pool.Put(conn)
+	} else {
+		l.cfg.Printer.Println("Skipping restoring view definitions...")
 	}
 
-	var eg errgroup.Group
+	// Adding the context here helps down below if a query issue is encountered to prevent further processing:
+	eg, egCtx := errgroup.WithContext(ctx)
 	var bytes uint64
 	t := time.Now()
 
-	for _, table := range files.tables {
-		table := table
-		conn := pool.Get()
+	if l.canRestoreData() {
+		numberOfDataFiles := len(files.tables)
 
-		eg.Go(func() error {
-			defer pool.Put(conn)
-
-			r, err := l.restoreTable(ctx, table, conn)
-			if err != nil {
-				return err
+		for idx, table := range files.tables {
+			// Allows for quicker exit when using Ctrl+C at the Terminal:
+			if egCtx.Err() != nil {
+				return egCtx.Err()
 			}
 
-			atomic.AddUint64(&bytes, uint64(r))
-			return nil
-		})
+			table := table
+			conn := pool.Get()
+
+			eg.Go(func() error {
+				defer pool.Put(conn)
+
+				if egCtx.Err() != nil {
+					return egCtx.Err()
+				}
+
+				if l.cfg.ShowDetails {
+					l.cfg.Printer.Printf("%s: %s in thread %s (File %d of %d)\n", printer.BoldGreen("Started Processing Data File"), printer.BoldBlue(filepath.Base(table)), printer.BoldBlue(conn.ID), (idx + 1), numberOfDataFiles)
+				}
+				fileProcessingTimeStart := time.Now()
+				r, err := l.restoreTable(egCtx, table, conn)
+
+				if err != nil {
+					return err
+				}
+
+				fileProcessingTimeFinish := time.Since(fileProcessingTimeStart)
+				timeElapsedSofar := time.Since(t)
+				if l.cfg.ShowDetails {
+					l.cfg.Printer.Printf("%s: %s in %s with %s elapsed so far (File %d of %d)\n", printer.BoldGreen("Finished Processing Data File"), printer.BoldBlue(filepath.Base(table)), printer.BoldBlue(fileProcessingTimeFinish), printer.BoldBlue(timeElapsedSofar), (idx + 1), numberOfDataFiles)
+				}
+
+				atomic.AddUint64(&bytes, uint64(r))
+				return nil
+			})
+		}
+	} else {
+		l.cfg.Printer.Println("Skipping restoring data files...")
 	}
 
 	tick := time.NewTicker(time.Millisecond * time.Duration(l.cfg.IntervalMs))
@@ -138,22 +182,45 @@ func (l *Loader) Run(ctx context.Context) error {
 
 func (l *Loader) loadFiles(dir string) (*Files, error) {
 	files := &Files{}
+	if l.cfg.ShowDetails {
+		l.cfg.Printer.Println("Collecting files from folder " + printer.BoldBlue(dir))
+	}
+
 	if err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return fmt.Errorf("loader.file.walk.error:%+v", err)
 		}
 
 		if !info.IsDir() {
+			tbl := tableNameFromFilename(path)
 			switch {
 			case strings.HasSuffix(path, dbSuffix):
 				files.databases = append(files.databases, path)
+				if l.cfg.ShowDetails {
+					l.cfg.Printer.Println("Database file: " + filepath.Base(path))
+				}
 			case strings.HasSuffix(path, schemaSuffix):
-				files.schemas = append(files.schemas, path)
+				if l.canIncludeTable(tbl) {
+					files.schemas = append(files.schemas, path)
+					if l.cfg.ShowDetails {
+						l.cfg.Printer.Println("  |- Table file: " + printer.BoldBlue(filepath.Base(path)))
+					}
+				} else {
+					l.cfg.Printer.Printf("Skipping files associated with the %s table...\n", printer.BoldBlue(tbl))
+				}
 			case strings.HasSuffix(path, viewSuffix):
 				files.views = append(files.views, path)
+				if l.cfg.ShowDetails {
+					l.cfg.Printer.Println("  |- View file: " + printer.BoldBlue(filepath.Base(path)))
+				}
 			default:
 				if strings.HasSuffix(path, tableSuffix) {
-					files.tables = append(files.tables, path)
+					if l.canIncludeTable(tbl) {
+						files.tables = append(files.tables, path)
+						if l.cfg.ShowDetails {
+							l.cfg.Printer.Println("    |- Data file: " + printer.BoldBlue(filepath.Base(path)))
+						}
+					}
 				}
 			}
 		}
@@ -174,6 +241,9 @@ func (l *Loader) restoreDatabaseSchema(dbs []string, conn *Connection) error {
 			return err
 		}
 
+		if l.cfg.ShowDetails {
+			l.cfg.Printer.Println("Restoring Database: " + base)
+		}
 		err = conn.Execute(string(data))
 		if err != nil {
 			return err
@@ -186,10 +256,19 @@ func (l *Loader) restoreDatabaseSchema(dbs []string, conn *Connection) error {
 }
 
 func (l *Loader) restoreTableSchema(overwrite bool, tables []string, conn *Connection) error {
-	for _, table := range tables {
+	if l.cfg.StartingTable != "" {
+		l.cfg.Printer.Printf("Restore will be starting from the %s table...\n", printer.BoldBlue(l.cfg.StartingTable))
+	}
+	if l.cfg.EndingTable != "" {
+		l.cfg.Printer.Printf("Restore will be ending at the %s table...\n", printer.BoldBlue(l.cfg.EndingTable))
+	}
+
+	numberOfTables := len(tables)
+
+	for idx, table := range tables {
 		base := filepath.Base(table)
 		name := strings.TrimSuffix(base, schemaSuffix)
-		db := strings.Split(name, ".")[0]
+		db := l.databaseNameFromFilename(name)
 		tbl := strings.Split(name, ".")[1]
 		name = fmt.Sprintf("`%v`.`%v`", db, tbl)
 
@@ -214,8 +293,18 @@ func (l *Loader) restoreTableSchema(overwrite bool, tables []string, conn *Conne
 			return err
 		}
 		query1 := string(data)
-		querys := strings.Split(query1, ";\n")
-		for _, query := range querys {
+
+		parser, err := sqlparser.New(sqlparser.Options{})
+		if err != nil {
+			return err
+		}
+
+		queries, err := parser.SplitStatementToPieces(query1)
+		if err != nil {
+			return err
+		}
+
+		for _, query := range queries {
 			if !strings.HasPrefix(query, "/*") && query != "" {
 				if overwrite {
 					l.log.Info(
@@ -224,11 +313,18 @@ func (l *Loader) restoreTableSchema(overwrite bool, tables []string, conn *Conne
 						zap.String("table ", tbl),
 					)
 
+					if l.cfg.ShowDetails {
+						l.cfg.Printer.Println("Dropping Existing Table (if it exists): " + printer.BoldBlue(name))
+					}
 					dropQuery := fmt.Sprintf("DROP TABLE IF EXISTS %s", name)
 					err = conn.Execute(dropQuery)
 					if err != nil {
 						return err
 					}
+				}
+
+				if l.cfg.ShowDetails {
+					l.cfg.Printer.Printf("Creating Table: %s (Table %d of %d)\n", printer.BoldBlue(name), (idx + 1), numberOfTables)
 				}
 				err = conn.Execute(query)
 				if err != nil {
@@ -246,7 +342,10 @@ func (l *Loader) restoreTableSchema(overwrite bool, tables []string, conn *Conne
 }
 
 func (l *Loader) restoreViews(overwrite bool, views []string, conn *Connection) error {
-	for _, viewFilename := range views {
+
+	numberOfViews := len(views)
+
+	for idx, viewFilename := range views {
 		base := filepath.Base(viewFilename)
 		name := strings.TrimSuffix(base, viewSuffix)
 		db := strings.Split(name, ".")[0]
@@ -274,8 +373,18 @@ func (l *Loader) restoreViews(overwrite bool, views []string, conn *Connection) 
 			return err
 		}
 		query1 := string(data)
-		querys := strings.Split(query1, ";\n")
-		for _, query := range querys {
+
+		parser, err := sqlparser.New(sqlparser.Options{})
+		if err != nil {
+			return err
+		}
+
+		queries, err := parser.SplitStatementToPieces(query1)
+		if err != nil {
+			return err
+		}
+
+		for _, query := range queries {
 			if !strings.HasPrefix(query, "/*") && query != "" {
 				if overwrite {
 					l.log.Info(
@@ -284,11 +393,18 @@ func (l *Loader) restoreViews(overwrite bool, views []string, conn *Connection) 
 						zap.String("view ", view),
 					)
 
+					if l.cfg.ShowDetails {
+						l.cfg.Printer.Println("Dropping Existing View (if it exists): " + printer.BoldBlue(name))
+					}
 					dropQuery := fmt.Sprintf("DROP VIEW IF EXISTS %s", name)
 					err = conn.Execute(dropQuery)
 					if err != nil {
 						return err
 					}
+				}
+
+				if l.cfg.ShowDetails {
+					l.cfg.Printer.Printf("Creating View: %s (View %d of %d)\n", printer.BoldBlue(name), (idx + 1), numberOfViews)
 				}
 				err = conn.Execute(query)
 				if err != nil {
@@ -316,7 +432,7 @@ func (l *Loader) restoreTable(ctx context.Context, table string, conn *Connectio
 		return 0, fmt.Errorf("expected database.table, but got: %q", name)
 	}
 
-	db := splits[0]
+	db := l.databaseNameFromFilename(splits[0])
 	tbl := splits[1]
 
 	if len(splits) > 2 {
@@ -330,6 +446,7 @@ func (l *Loader) restoreTable(ctx context.Context, table string, conn *Connectio
 		zap.String("part", part),
 		zap.Int("thread_conn_id", conn.ID),
 	)
+
 	err := conn.Execute(fmt.Sprintf("USE `%s`", db))
 	if err != nil {
 		return 0, err
@@ -345,19 +462,50 @@ func (l *Loader) restoreTable(ctx context.Context, table string, conn *Connectio
 		return 0, err
 	}
 	query1 := string(data)
-	querys := strings.Split(query1, ";\n")
+
+	parser, err := sqlparser.New(sqlparser.Options{})
+	if err != nil {
+		return 0, err
+	}
+
+	queries, err := parser.SplitStatementToPieces(query1)
+	if err != nil {
+		return 0, err
+	}
+
 	bytes = len(query1)
-	for _, query := range querys {
+	queriesInFile := len(queries)
+
+	for idx, query := range queries {
 		// Allows for quicker exit when using Ctrl+C at the Terminal:
 		if ctx.Err() != nil {
 			return 0, ctx.Err()
 		}
 
 		if !strings.HasPrefix(query, "/*") && query != "" {
-			err = conn.Execute(query)
-			if err != nil {
-				return 0, err
+			queryBytes := len(query)
+			if queryBytes <= l.cfg.MaxQuerySize {
+				if l.cfg.ShowDetails {
+					l.cfg.Printer.Printf("  Processing Query %s out of %s within %s in thread %s\n", printer.BoldBlue((idx + 1)), printer.BoldBlue(queriesInFile), printer.BoldBlue(base), printer.BoldBlue(conn.ID))
+				}
+
+				err = conn.Execute(query)
+				if err != nil {
+					if l.cfg.ShowDetails {
+						l.cfg.Printer.Printf("  Error executing Query %s out of %s within %s in thread %s\n", printer.BoldRed((idx + 1)), printer.BoldRed(queriesInFile), printer.BoldRed(base), printer.BoldRed(conn.ID))
+						l.cfg.Printer.Printf("  %s\n", printer.BoldBlack("Details:"))
+						l.cfg.Printer.Printf("  %s...\n", l.substringRunes(err.Error(), 0, 512))
+					}
+					return 0, err
+				}
+			} else {
+				// Encountering this error should be uncommon for our users.
+				// However, it may be encountered if users generate files manually to match our expected folder format.
+				l.cfg.Printer.Printf("%s: Query %s within %s in thread %s is larger than %d bytes. Please reduce query size to avoid pkt error.\n", printer.BoldRed("ERROR"), printer.BoldBlue((idx + 1)), printer.BoldBlue(base), printer.BoldBlue(conn.ID), l.cfg.MaxQuerySize)
+				return 0, errors.New("query is larger than " + fmt.Sprintf("%v", l.cfg.MaxQuerySize) + " bytes in size")
 			}
+		} else {
+			l.cfg.Printer.Printf("  Skipping Empty Query %s out of %s within %s in thread %s\n", printer.BoldBlue((idx + 1)), printer.BoldBlue(queriesInFile), printer.BoldBlue(base), printer.BoldBlue(conn.ID))
 		}
 	}
 	l.log.Info(
@@ -367,5 +515,75 @@ func (l *Loader) restoreTable(ctx context.Context, table string, conn *Connectio
 		zap.String("part", part),
 		zap.Int("thread_conn_id", conn.ID),
 	)
+
 	return bytes, nil
+}
+
+func (l *Loader) databaseNameFromFilename(filename string) string {
+	if l.cfg.AllowDifferentDestination {
+		return l.cfg.Database
+	}
+
+	return strings.Split(filename, ".")[0]
+}
+
+func (l *Loader) canIncludeTable(tbl string) bool {
+	if l.cfg.StartingTable != "" && l.cfg.EndingTable != "" {
+		return (tbl >= l.cfg.StartingTable && tbl <= l.cfg.EndingTable)
+	}
+
+	if l.cfg.StartingTable != "" {
+		return (tbl >= l.cfg.StartingTable)
+	}
+
+	if l.cfg.EndingTable != "" {
+		return (tbl <= l.cfg.EndingTable)
+	}
+
+	return true
+}
+
+func (l *Loader) canRestoreSchema() bool {
+	// Default state
+	if !l.cfg.SchemaOnly && !l.cfg.DataOnly {
+		return true
+	}
+
+	return l.cfg.SchemaOnly
+}
+
+func (l *Loader) canRestoreData() bool {
+	// Default state
+	if !l.cfg.SchemaOnly && !l.cfg.DataOnly {
+		return true
+	}
+
+	return l.cfg.DataOnly
+}
+
+func tableNameFromFilename(filename string) string {
+	base := filepath.Base(filename)
+	name := strings.TrimSuffix(base, dbSuffix)
+	name = strings.TrimSuffix(name, schemaSuffix)
+	name = strings.TrimSuffix(name, tableSuffix)
+
+	splits := strings.Split(name, ".")
+	if len(splits) < 2 {
+		return ""
+	}
+
+	tbl := splits[1]
+
+	return tbl
+}
+
+// https://stackoverflow.com/a/51196697
+func (l *Loader) substringRunes(s string, startIndex int, count int) string {
+	runes := []rune(s)
+	length := len(runes)
+	maxCount := length - startIndex
+	if count > maxCount {
+		count = maxCount
+	}
+	return string(runes[startIndex:count])
 }

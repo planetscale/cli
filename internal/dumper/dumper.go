@@ -8,12 +8,13 @@ import (
 	"os"
 	"regexp"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/planetscale/cli/internal/cmdutil"
+	"github.com/planetscale/cli/internal/printer"
 	querypb "github.com/xelabs/go-mysqlstack/sqlparser/depends/query"
+	"golang.org/x/sync/errgroup"
 
 	"go.uber.org/zap"
 )
@@ -22,34 +23,42 @@ const VITESS_GHOST_TABLE_REGEX = "_vt_EVAC_.*|_vt_DROP_.*|_vt_PURGE_.*|_vt_HOLD_
 
 // Config describes the settings to dump from a database.
 type Config struct {
-	User                 string
-	Password             string
-	Address              string
-	ToUser               string
-	ToPassword           string
-	ToAddress            string
-	ToDatabase           string
-	ToEngine             string
-	Database             string
-	DatabaseRegexp       string
-	DatabaseInvertRegexp bool
-	Shard                string
-	Table                string
-	Outdir               string
-	SessionVars          []string
-	Threads              int
-	ChunksizeInMB        int
-	StmtSize             int
-	Allbytes             uint64
-	Allrows              uint64
-	OverwriteTables      bool
-	Wheres               map[string]string
-	Selects              map[string]map[string]string
-	Filters              map[string]map[string]string
+	User                      string
+	Password                  string
+	Address                   string
+	ToUser                    string
+	ToPassword                string
+	ToAddress                 string
+	ToDatabase                string
+	ToEngine                  string
+	Database                  string
+	DatabaseRegexp            string
+	DatabaseInvertRegexp      bool
+	Shard                     string
+	Table                     string
+	Outdir                    string
+	SessionVars               []string
+	Threads                   int
+	ChunksizeInMB             int
+	StmtSize                  int
+	Allbytes                  uint64
+	Allrows                   uint64
+	OverwriteTables           bool
+	SchemaOnly                bool
+	DataOnly                  bool
+	ShowDetails               bool
+	StartingTable             string
+	EndingTable               string
+	AllowDifferentDestination bool
+	MaxQuerySize              int
+	Wheres                    map[string]string
+	Selects                   map[string]map[string]string
+	Filters                   map[string]map[string]string
 
 	// Interval in millisecond.
 	IntervalMs int
 	Debug      bool
+	Printer    *printer.Printer
 }
 
 func NewDefaultConfig() *Config {
@@ -125,8 +134,8 @@ func (d *Dumper) Run(ctx context.Context) error {
 	}
 	initPool.Put(conn)
 
-	// TODO(fatih): use errgroup
-	var wg sync.WaitGroup
+	// Adding the context here helps down below if a query issue is encountered to prevent further processing:
+	eg, egCtx := errgroup.WithContext(ctx)
 	for i, database := range databases {
 		pool, err := NewPool(d.log, d.cfg.Threads/len(databases), d.cfg.Address, d.cfg.User, d.cfg.Password, d.cfg.SessionVars, database)
 		if err != nil {
@@ -138,6 +147,11 @@ func (d *Dumper) Run(ctx context.Context) error {
 			// Skip vitess ghost tables
 			if regexp.MustCompile(VITESS_GHOST_TABLE_REGEX).MatchString(table) {
 				continue
+			}
+
+			// Allows for quicker exit when using Ctrl+C at the Terminal:
+			if egCtx.Err() != nil {
+				return egCtx.Err()
 			}
 
 			conn := initPool.Get()
@@ -154,12 +168,13 @@ func (d *Dumper) Run(ctx context.Context) error {
 			}
 
 			conn = pool.Get()
-			wg.Add(1)
-			go func(conn *Connection, database string, table string) {
-				defer func() {
-					wg.Done()
-					pool.Put(conn)
-				}()
+
+			eg.Go(func() error {
+				defer pool.Put(conn)
+
+				if egCtx.Err() != nil {
+					return egCtx.Err()
+				}
 
 				d.log.Info(
 					"dumping table ...",
@@ -172,7 +187,9 @@ func (d *Dumper) Run(ctx context.Context) error {
 				if err != nil {
 					d.log.Error("error dumping table", zap.Error(err))
 				}
-			}(conn, database, table)
+
+				return nil
+			})
 		}
 	}
 
@@ -194,8 +211,13 @@ func (d *Dumper) Run(ctx context.Context) error {
 		}
 	}()
 
-	wg.Wait()
 	elapsed := time.Since(t)
+
+	if err := eg.Wait(); err != nil {
+		d.log.Error("error dumping", zap.Error(err))
+		return err
+	}
+
 	d.log.Info(
 		"dumping all done",
 		zap.Duration("elapsed_time", elapsed),
