@@ -43,8 +43,6 @@ type Config struct {
 	Allbytes             uint64
 	Allrows              uint64
 	OverwriteTables      bool
-	UseReplica           bool
-	UseRdonly            bool
 	Wheres               map[string]string
 	Selects              map[string]map[string]string
 	Filters              map[string]map[string]string
@@ -170,7 +168,7 @@ func (d *Dumper) Run(ctx context.Context) error {
 					zap.Int("thread_conn_id", conn.ID),
 				)
 
-				err := d.dumpTable(ctx, conn, database, table, d.cfg.UseReplica, d.cfg.UseRdonly)
+				err := d.dumpTable(ctx, conn, database, table)
 				if err != nil {
 					d.log.Error("error dumping table", zap.Error(err))
 				}
@@ -237,20 +235,11 @@ func (d *Dumper) dumpTableSchema(conn *Connection, database string, table string
 }
 
 // Dump a table in "MySQL" (multi-inserts) format
-func (d *Dumper) dumpTable(ctx context.Context, conn *Connection, database string, table string, useReplica, useRdonly bool) error {
+func (d *Dumper) dumpTable(ctx context.Context, conn *Connection, database string, table string) error {
 	var allBytes uint64
 	var allRows uint64
 	var where string
 	var selfields []string
-
-	databaseHandle := database
-	if useReplica {
-		databaseHandle += "@replica"
-	}
-
-	if useRdonly {
-		databaseHandle += "@rdonly"
-	}
 
 	fields := make([]string, 0)
 	{
@@ -280,7 +269,7 @@ func (d *Dumper) dumpTable(ctx context.Context, conn *Connection, database strin
 		where = fmt.Sprintf(" WHERE %v", v)
 	}
 
-	cursor, err := conn.StreamFetch(fmt.Sprintf("SELECT %s FROM `%s`.`%s` %s", strings.Join(selfields, ", "), databaseHandle, table, where))
+	cursor, err := conn.StreamFetch(fmt.Sprintf("SELECT %s FROM `%s`.`%s` %s", strings.Join(selfields, ", "), database, table, where))
 	if err != nil {
 		return err
 	}

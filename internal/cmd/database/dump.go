@@ -250,11 +250,13 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 	}
 
 	if flags.replica && flags.shard == "" {
-		cfg.UseReplica = true
+		useCmd := "USE @replica;"
+		cfg.SessionVars = append([]string{useCmd}, cfg.SessionVars...)
 	}
 
 	if flags.rdonly && flags.shard == "" {
-		cfg.UseRdonly = true
+		useCmd := "USE @rdonly;"
+		cfg.SessionVars = append([]string{useCmd}, cfg.SessionVars...)
 	}
 
 	if flags.tables != "" {
