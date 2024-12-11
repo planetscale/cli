@@ -73,9 +73,17 @@ func LoginCmd(ch *cmdutil.Helper) *cobra.Command {
 			end()
 			ch.Printer.Println("Successfully logged in.")
 
-			err = writeDefaultOrganization(ctx, accessToken, authURL)
+			writeConfig := false
+			cfg, err := ch.ConfigFS.DefaultConfig()
 			if err != nil {
-				return err
+				writeConfig = true
+			}
+
+			if writeConfig || cfg.Organization == "" {
+				err = writeDefaultOrganization(ctx, accessToken, authURL)
+				if err != nil {
+					return err
+				}
 			}
 
 			return nil

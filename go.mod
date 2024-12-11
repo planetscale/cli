@@ -6,10 +6,10 @@ require (
 	github.com/99designs/keyring v1.2.2
 	github.com/AlecAivazis/survey/v2 v2.3.7
 	github.com/MakeNowJust/heredoc v1.0.0
-	github.com/adrg/xdg v0.5.1
+	github.com/adrg/xdg v0.5.3
 	github.com/benbjohnson/clock v1.3.5
 	github.com/briandowns/spinner v1.23.1
-	github.com/fatih/color v1.17.0
+	github.com/fatih/color v1.18.0
 	github.com/frankban/quicktest v1.14.6
 	github.com/go-sql-driver/mysql v1.8.1
 	github.com/gocarina/gocsv v0.0.0-20240520201108-78e41c74b4b1
@@ -23,23 +23,23 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/pkg/errors v0.9.1
-	github.com/planetscale/planetscale-go v0.115.0
+	github.com/planetscale/planetscale-go v0.116.0
 	github.com/planetscale/psdb v0.0.0-20240109164348-6848e728f6e7
-	github.com/planetscale/psdbproxy v0.0.0-20241009145102-7fdfa92ae3ca
+	github.com/planetscale/psdbproxy v0.0.0-20241106211041-dc5c7c72df26
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.19.0
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 	github.com/xelabs/go-mysqlstack v1.0.0
 	go.uber.org/zap v1.27.0
-	go.uber.org/zap/exp v0.2.0
+	go.uber.org/zap/exp v0.3.0
 	golang.org/x/exp v0.0.0-20240909161429-701f63a606c0
-	golang.org/x/oauth2 v0.23.0
-	golang.org/x/sync v0.8.0
-	golang.org/x/sys v0.26.0
-	golang.org/x/text v0.19.0
+	golang.org/x/oauth2 v0.24.0
+	golang.org/x/sync v0.9.0
+	golang.org/x/sys v0.27.0
+	golang.org/x/text v0.20.0
 	gopkg.in/yaml.v2 v2.4.0
-	vitess.io/vitess v0.10.3-0.20240927074858-3e5371377b43
+	vitess.io/vitess v0.10.3-0.20241106191105-e87457ee2401
 )
 
 require (
