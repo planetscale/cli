@@ -56,6 +56,10 @@ func (c *Config) IsAuthenticated() error {
 		return errors.New("both --service-token and --service-token-id are required for service token authentication")
 	}
 
+	if c.ServiceTokenIsSwapped() {
+		return errors.New("it looks like you swapped the --service-token and --service-token-id values")
+	}
+
 	if c.ServiceTokenIsSet() {
 		return nil
 	}
@@ -69,6 +73,10 @@ func (c *Config) IsAuthenticated() error {
 
 func (c *Config) ServiceTokenIsSet() bool {
 	return c.ServiceToken != "" && c.ServiceTokenID != ""
+}
+
+func (c *Config) ServiceTokenIsSwapped() bool {
+	return strings.HasPrefix(c.ServiceTokenID, "pscale_tkn_") && len(c.ServiceToken) == 12
 }
 
 // NewClientFromConfig creates a PlanetScale API client from our configuration
