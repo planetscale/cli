@@ -57,7 +57,7 @@ func (c *Config) IsAuthenticated() error {
 	}
 
 	if c.ServiceTokenIsSwapped() {
-		return errors.New("the --service-token and --service-token-id values are swapped")
+		return errors.New("it looks like you swapped the --service-token and --service-token-id values")
 	}
 
 	if c.ServiceTokenIsSet() {
