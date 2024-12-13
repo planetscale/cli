@@ -86,7 +86,6 @@ func (c *Config) NewClientFromConfig(clientOpts ...ps.ClientOption) (*ps.Client,
 	}
 
 	if c.ServiceTokenIsSwapped() {
-		fmt.Println("The --service-token and --service-token-id are currently swapped.")
 		var correctServiceTokenID = c.ServiceToken
 		var correctServiceToken = c.ServiceTokenID
 
