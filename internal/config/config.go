@@ -56,10 +56,6 @@ func (c *Config) IsAuthenticated() error {
 		return errors.New("both --service-token and --service-token-id are required for service token authentication")
 	}
 
-	if c.ServiceTokenIsSwapped() {
-		return errors.New("the --service-token and --service-token-id values are swapped")
-	}
-
 	if c.ServiceTokenIsSet() {
 		return nil
 	}
