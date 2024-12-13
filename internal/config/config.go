@@ -56,6 +56,10 @@ func (c *Config) IsAuthenticated() error {
 		return errors.New("both --service-token and --service-token-id are required for service token authentication")
 	}
 
+	if c.ServiceTokenIsSwapped() {
+		return errors.New("the --service-token and --service-token-id values are swapped")
+	}
+
 	if c.ServiceTokenIsSet() {
 		return nil
 	}
@@ -83,14 +87,6 @@ func (c *Config) NewClientFromConfig(clientOpts ...ps.ClientOption) (*ps.Client,
 
 	if (c.ServiceToken == "" && c.ServiceTokenID != "") || (c.ServiceToken != "" && c.ServiceTokenID == "") {
 		return nil, errors.New("both --service-token and --service-token-id are required for service token authentication")
-	}
-
-	if c.ServiceTokenIsSwapped() {
-		var correctServiceTokenID = c.ServiceToken
-		var correctServiceToken = c.ServiceTokenID
-
-		c.ServiceTokenID = correctServiceTokenID
-		c.ServiceToken = correctServiceToken
 	}
 
 	if c.ServiceTokenIsSet() {
