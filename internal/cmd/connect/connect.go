@@ -262,6 +262,7 @@ func runCommand(ctx context.Context, addr, command, protocol, databaseEnvURL, da
 
 	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
 	cmd.Env = os.Environ()
+	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
