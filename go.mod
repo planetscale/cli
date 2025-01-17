@@ -23,7 +23,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/pkg/errors v0.9.1
-	github.com/planetscale/planetscale-go v0.116.0
+	github.com/planetscale/planetscale-go v0.117.0
 	github.com/planetscale/psdb v0.0.0-20240109164348-6848e728f6e7
 	github.com/planetscale/psdbproxy v0.0.0-20241106211041-dc5c7c72df26
 	github.com/spf13/cobra v1.8.1
