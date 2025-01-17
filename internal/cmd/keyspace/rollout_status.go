@@ -70,7 +70,7 @@ type ShardRollout struct {
 	orig *ps.ShardRollout
 }
 
-func toShardRollout(sr *ps.ShardRollout) *ShardRollout {
+func toShardRollout(sr ps.ShardRollout) *ShardRollout {
 	return &ShardRollout{
 		Name:                  sr.Name,
 		State:                 cmdutil.SnakeToSentenceCase(sr.State),
