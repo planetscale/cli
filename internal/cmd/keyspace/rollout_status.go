@@ -2,6 +2,7 @@ package keyspace
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
@@ -71,10 +72,17 @@ type ShardRollout struct {
 }
 
 func toShardRollout(sr ps.ShardRollout) *ShardRollout {
+	var startedAt, finishedAt *time.Time
+	if !sr.LastRolloutStartedAt.IsZero() {
+		startedAt = &sr.LastRolloutStartedAt
+	}
+	if !sr.LastRolloutFinishedAt.IsZero() {
+		finishedAt = &sr.LastRolloutFinishedAt
+	}
 	return &ShardRollout{
 		Name:                  sr.Name,
 		State:                 cmdutil.SnakeToSentenceCase(sr.State),
-		LastRolloutStartedAt:  printer.GetMillisecondsIfExists(&sr.LastRolloutStartedAt),
-		LastRolloutFinishedAt: printer.GetMillisecondsIfExists(&sr.LastRolloutFinishedAt),
+		LastRolloutStartedAt:  printer.GetMillisecondsIfExists(startedAt),
+		LastRolloutFinishedAt: printer.GetMillisecondsIfExists(finishedAt),
 	}
 }

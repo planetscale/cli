@@ -32,20 +32,35 @@ func TestKeyspace_RolloutStatusCmd(t *testing.T) {
 
 	kr := &ps.KeyspaceRollout{
 		Name:  "sharded",
-		State: "complete",
+		State: "resizing",
 		Shards: []ps.ShardRollout{
 			{
 				Name:                  "-80",
-				State:                 "complete",
+				State:                 "resizing",
 				LastRolloutFinishedAt: time.Time{},
 				LastRolloutStartedAt:  ts,
 			},
 			{
 				Name:                  "80-",
-				State:                 "complete",
+				State:                 "resizing",
 				LastRolloutFinishedAt: time.Time{},
 				LastRolloutStartedAt:  ts,
 			},
+		},
+	}
+
+	expected := []ShardRollout{
+		{
+			Name:                  "-80",
+			State:                 cmdutil.SnakeToSentenceCase("resizing"),
+			LastRolloutFinishedAt: nil,
+			LastRolloutStartedAt:  printer.GetMillisecondsIfExists(&ts),
+		},
+		{
+			Name:                  "80-",
+			State:                 cmdutil.SnakeToSentenceCase("resizing"),
+			LastRolloutFinishedAt: nil,
+			LastRolloutStartedAt:  printer.GetMillisecondsIfExists(&ts),
 		},
 	}
 
@@ -77,5 +92,5 @@ func TestKeyspace_RolloutStatusCmd(t *testing.T) {
 	err := cmd.Execute()
 	c.Assert(err, qt.IsNil)
 	c.Assert(svc.RolloutStatusFnInvoked, qt.IsTrue)
-	c.Assert(buf.String(), qt.JSONEquals, kr.Shards)
+	c.Assert(buf.String(), qt.JSONEquals, expected)
 }
