@@ -83,5 +83,6 @@ func toShardRollout(sr ps.ShardRollout) *ShardRollout {
 		State:                 cmdutil.SnakeToSentenceCase(sr.State),
 		LastRolloutStartedAt:  printer.GetMillisecondsIfExists(startedAt),
 		LastRolloutFinishedAt: printer.GetMillisecondsIfExists(finishedAt),
+		orig:                  &sr,
 	}
 }
