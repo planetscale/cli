@@ -6,7 +6,6 @@ import (
 
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
-	"github.com/planetscale/planetscale-go/planetscale"
 	ps "github.com/planetscale/planetscale-go/planetscale"
 	"github.com/spf13/cobra"
 )
@@ -28,7 +27,7 @@ func RolloutStatusCmd(ch *cmdutil.Helper) *cobra.Command {
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Fetching rollout status for keyspace %s in %s/%s", printer.BoldBlue(keyspace), printer.BoldBlue(database), printer.BoldBlue(branch)))
 			defer end()
 
-			k, err := client.Keyspaces.RolloutStatus(ctx, &planetscale.KeyspaceRolloutStatusRequest{
+			k, err := client.Keyspaces.RolloutStatus(ctx, &ps.KeyspaceRolloutStatusRequest{
 				Organization: ch.Config.Organization,
 				Database:     database,
 				Branch:       branch,
@@ -36,7 +35,7 @@ func RolloutStatusCmd(ch *cmdutil.Helper) *cobra.Command {
 			})
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
-				case planetscale.ErrNotFound:
+				case ps.ErrNotFound:
 					return fmt.Errorf("keyspace %s does not exist in branch %s (database: %s, organization: %s)", printer.BoldBlue(keyspace), printer.BoldBlue(branch), printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
 				default:
 					return cmdutil.HandleError(err)
