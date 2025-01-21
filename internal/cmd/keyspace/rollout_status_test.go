@@ -55,12 +55,14 @@ func TestKeyspace_RolloutStatusCmd(t *testing.T) {
 			State:                 cmdutil.SnakeToSentenceCase("resizing"),
 			LastRolloutFinishedAt: nil,
 			LastRolloutStartedAt:  printer.GetMillisecondsIfExists(&ts),
+			orig:                  &kr.Shards[0],
 		},
 		{
 			Name:                  "80-",
 			State:                 cmdutil.SnakeToSentenceCase("resizing"),
 			LastRolloutFinishedAt: nil,
 			LastRolloutStartedAt:  printer.GetMillisecondsIfExists(&ts),
+			orig:                  &kr.Shards[1],
 		},
 	}
 
