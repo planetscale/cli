@@ -1,6 +1,7 @@
 package keyspace
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -85,4 +86,12 @@ func toShardRollout(sr ps.ShardRollout) *ShardRollout {
 		LastRolloutFinishedAt: printer.GetMillisecondsIfExists(finishedAt),
 		orig:                  &sr,
 	}
+}
+
+func (s *ShardRollout) MarshalJSON() ([]byte, error) {
+	return json.MarshalIndent(s.orig, "", "  ")
+}
+
+func (s *ShardRollout) MarshalCSVValue() interface{} {
+	return []*ShardRollout{s}
 }
