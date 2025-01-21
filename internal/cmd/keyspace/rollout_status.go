@@ -62,7 +62,7 @@ func toShardRollouts(keyspaceRollout *ps.KeyspaceRollout) []*ShardRollout {
 }
 
 type ShardRollout struct {
-	Name  string `header:"name" json:"name"`
+	Name  string `header:"shard" json:"name"`
 	State string `header:"state" json:"state"`
 
 	LastRolloutStartedAt  *int64 `header:"started,timestamp(ms|utc|human)" json:"last_rollout_started_at"`
