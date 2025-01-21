@@ -64,8 +64,8 @@ type ShardRollout struct {
 	Name  string `header:"name" json:"name"`
 	State string `header:"state" json:"state"`
 
-	LastRolloutStartedAt  int64 `header:"started,timestamp(ms|utc|human)" json:"last_rollout_started_at"`
-	LastRolloutFinishedAt int64 `header:"finished,timestamp(ms|utc|human)" json:"last_rollout_finished_at"`
+	LastRolloutStartedAt  *int64 `header:"started,timestamp(ms|utc|human)" json:"last_rollout_started_at"`
+	LastRolloutFinishedAt *int64 `header:"finished,timestamp(ms|utc|human)" json:"last_rollout_finished_at"`
 
 	orig *ps.ShardRollout
 }
@@ -74,7 +74,7 @@ func toShardRollout(sr ps.ShardRollout) *ShardRollout {
 	return &ShardRollout{
 		Name:                  sr.Name,
 		State:                 cmdutil.SnakeToSentenceCase(sr.State),
-		LastRolloutStartedAt:  cmdutil.TimeToMilliseconds(sr.LastRolloutStartedAt),
-		LastRolloutFinishedAt: cmdutil.TimeToMilliseconds(sr.LastRolloutFinishedAt),
+		LastRolloutStartedAt:  printer.GetMillisecondsIfExists(&sr.LastRolloutStartedAt),
+		LastRolloutFinishedAt: printer.GetMillisecondsIfExists(&sr.LastRolloutFinishedAt),
 	}
 }
