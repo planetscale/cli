@@ -20,6 +20,8 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	exec "golang.org/x/sys/execabs"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 
 	"vitess.io/vitess/go/mysql"
 )
@@ -296,4 +298,15 @@ func DeployRequestBranchToNumber(ctx context.Context, client *ps.Client, organiz
 
 func ToClusterSizeSlug(c ps.ClusterSize) string {
 	return strings.ReplaceAll(string(c), "_", "-")
+}
+
+func SnakeToSentenceCase(s string) string {
+	titleCaser := cases.Title(language.English)
+
+	words := strings.Split(s, "_")
+	if len(words) > 0 {
+		words[0] = titleCaser.String(words[0])
+	}
+
+	return strings.Join(words, " ")
 }
