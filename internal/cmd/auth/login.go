@@ -79,6 +79,11 @@ func LoginCmd(ch *cmdutil.Helper) *cobra.Command {
 				writeConfig = true
 			}
 
+			if !writeConfig && cfg.Organization != "" {
+				hasOrg, _ := hasOrg(ctx, cfg.Organization, accessToken, authURL)
+				writeConfig = !hasOrg
+			}
+
 			if writeConfig || cfg.Organization == "" {
 				err = writeDefaultOrganization(ctx, accessToken, authURL)
 				if err != nil {
@@ -98,18 +103,9 @@ func LoginCmd(ch *cmdutil.Helper) *cobra.Command {
 }
 
 func writeDefaultOrganization(ctx context.Context, accessToken, authURL string) error {
-	// After successfully logging in, attempt to set the org by default.
-	client, err := planetscale.NewClient(
-		planetscale.WithAccessToken(accessToken),
-		planetscale.WithBaseURL(authURL),
-	)
+	orgs, err := listCurrentOrgs(ctx, accessToken, authURL)
 	if err != nil {
 		return err
-	}
-
-	orgs, err := client.Organizations.List(ctx)
-	if err != nil {
-		return cmdutil.HandleError(err)
 	}
 
 	if len(orgs) > 0 {
@@ -125,4 +121,37 @@ func writeDefaultOrganization(ctx context.Context, accessToken, authURL string) 
 	}
 
 	return nil
+}
+
+func hasOrg(ctx context.Context, org, accessToken, authURL string) (bool, error) {
+	currentOrgs, err := listCurrentOrgs(ctx, accessToken, authURL)
+	if err != nil {
+		return false, err
+	}
+
+	for _, o := range currentOrgs {
+		if o.Name == org {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+func listCurrentOrgs(ctx context.Context, accessToken, authURL string) ([]*planetscale.Organization, error) {
+	client, err := planetscale.NewClient(
+		planetscale.WithAccessToken(accessToken),
+		planetscale.WithBaseURL(authURL),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	orgs, err := client.Organizations.List(ctx)
+	if err != nil {
+		return nil, cmdutil.HandleError(err)
+	}
+
+	return orgs, nil
+
 }
