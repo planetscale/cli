@@ -144,7 +144,7 @@ func listCurrentOrgs(ctx context.Context, accessToken, authURL string) ([]*plane
 		planetscale.WithBaseURL(authURL),
 	)
 	if err != nil {
-		return nil, err
+		return nil, cmdutil.HandleError(err)
 	}
 
 	orgs, err := client.Organizations.List(ctx)
