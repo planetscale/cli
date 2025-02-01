@@ -8,7 +8,7 @@ require (
 	github.com/MakeNowJust/heredoc v1.0.0
 	github.com/adrg/xdg v0.5.3
 	github.com/benbjohnson/clock v1.3.5
-	github.com/briandowns/spinner v1.23.1
+	github.com/briandowns/spinner v1.23.2
 	github.com/fatih/color v1.18.0
 	github.com/frankban/quicktest v1.14.6
 	github.com/go-sql-driver/mysql v1.8.1
