@@ -41,6 +41,7 @@ func BranchCmd(ch *cmdutil.Helper) *cobra.Command {
 type DatabaseBranch struct {
 	Name           string `header:"name" json:"name"`
 	ParentBranch   string `header:"parent branch,n/a" json:"parent_branch"`
+	Region         string `header:"region" json:"region"`
 	Production     bool   `header:"production" json:"production"`
 	SafeMigrations bool   `header:"safe migrations" json:"safe_migrations"`
 	Ready          bool   `header:"ready" json:"ready"`
@@ -64,6 +65,7 @@ func ToDatabaseBranch(db *ps.DatabaseBranch) *DatabaseBranch {
 	return &DatabaseBranch{
 		Name:           db.Name,
 		ParentBranch:   db.ParentBranch,
+		Region:         db.Region.Slug,
 		Production:     db.Production,
 		SafeMigrations: db.SafeMigrations,
 		Ready:          db.Ready,
