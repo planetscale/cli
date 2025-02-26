@@ -66,10 +66,10 @@ func RegionsCompletionFunc(ch *Helper, cmd *cobra.Command, args []string, toComp
 	regionStrs := make([]cobra.Completion, 0)
 
 	for _, r := range regions {
-		if r.Enabled && strings.Contains(r.Slug, toComplete) {
+		searchTerm := strings.ToLower(fmt.Sprintf("%s %s %s %s", r.Provider, r.Name, r.Location, r.Slug))
+		if r.Enabled && strings.Contains(searchTerm, strings.ToLower(toComplete)) {
 			description := fmt.Sprintf("%s (%s)", r.Name, r.Location)
 
-			cobra.CompDebugln(description, true)
 			regionStrs = append(regionStrs, cobra.CompletionWithDesc(r.Slug, description))
 		}
 	}
