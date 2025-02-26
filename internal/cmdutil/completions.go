@@ -38,7 +38,12 @@ func ClusterSizesCompletionFunc(ch *Helper, cmd *cobra.Command, args []string, t
 	clusterSizes := make([]cobra.Completion, 0)
 	for _, c := range clusterSKUs {
 		if c.Enabled && strings.Contains(c.Name, toComplete) && c.Rate != nil {
-			clusterSizes = append(clusterSizes, cobra.Completion(c.Name))
+			description := fmt.Sprintf("%s", c.DisplayName)
+			if *c.Rate > 0 {
+				description = fmt.Sprintf("%s ($%d/month)", c.DisplayName, *c.Rate)
+			}
+
+			clusterSizes = append(clusterSizes, cobra.CompletionWithDesc(c.Name, description))
 		}
 	}
 
