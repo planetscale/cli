@@ -70,3 +70,40 @@ func RegionsCompletionFunc(ch *Helper, cmd *cobra.Command, args []string, toComp
 
 	return regionStrs, cobra.ShellCompDirectiveNoFileComp
 }
+
+func DatabaseCompletionFunc(ch *Helper, cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	if len(args) != 0 {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+
+	client, err := ch.Client()
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+
+	org := ch.Config.Organization // --org flag
+	if org == "" {
+		cfg, err := ch.ConfigFS.DefaultConfig()
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+
+		org = cfg.Organization
+	}
+
+	databases, err := client.Databases.List(cmd.Context(), &ps.ListDatabasesRequest{
+		Organization: org,
+	})
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+
+	candidates := make([]string, 0, len(databases))
+	for _, db := range databases {
+		if strings.Contains(db.Name, toComplete) {
+			candidates = append(candidates, db.Name)
+		}
+	}
+
+	return candidates, cobra.ShellCompDirectiveNoFileComp
+}
