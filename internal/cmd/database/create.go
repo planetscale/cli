@@ -77,6 +77,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	cmd.RegisterFlagCompletionFunc("region", func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
 		ctx := cmd.Context()
+
 		client, err := ch.Client()
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveNoFileComp
