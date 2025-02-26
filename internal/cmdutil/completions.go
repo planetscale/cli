@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/planetscale/cli/internal/printer"
 	ps "github.com/planetscale/planetscale-go/planetscale"
 	"github.com/spf13/cobra"
 )
@@ -61,7 +60,7 @@ func RegionsCompletionFunc(ch *Helper, cmd *cobra.Command, args []string, toComp
 
 	for _, r := range regions {
 		if r.Enabled && strings.Contains(r.Slug, toComplete) {
-			description := fmt.Sprintf("%s (%s)", printer.Bold(r.Name), r.Location)
+			description := fmt.Sprintf("%s (%s)", r.Name, r.Location)
 
 			cobra.CompDebugln(description, true)
 			regionStrs = append(regionStrs, cobra.CompletionWithDesc(r.Slug, description))
