@@ -21,6 +21,8 @@ func ClusterSizesCompletionFunc(ch *Helper, cmd *cobra.Command, args []string, t
 		org = cfg.Organization
 	}
 
+	region, _ := cmd.Flags().GetString("region")
+
 	client, err := ch.Client()
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveNoFileComp
@@ -28,14 +30,14 @@ func ClusterSizesCompletionFunc(ch *Helper, cmd *cobra.Command, args []string, t
 
 	clusterSKUs, err := client.Organizations.ListClusterSKUs(ctx, &ps.ListOrganizationClusterSKUsRequest{
 		Organization: org,
-	})
+	}, ps.WithRegion(region), ps.WithRates())
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
 
 	clusterSizes := make([]cobra.Completion, 0)
 	for _, c := range clusterSKUs {
-		if c.Enabled && strings.Contains(c.Name, toComplete) {
+		if c.Enabled && strings.Contains(c.Name, toComplete) && c.Rate != nil {
 			clusterSizes = append(clusterSizes, cobra.Completion(c.Name))
 		}
 	}
