@@ -2,7 +2,6 @@ package database
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
@@ -76,62 +75,11 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().String("cluster-size", "PS_10", "cluster size for Scaler Pro databases. Options: PS_10, PS_20, PS_40, PS_80, PS_160, PS_320, PS_400")
 
 	cmd.RegisterFlagCompletionFunc("region", func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
-		ctx := cmd.Context()
-
-		client, err := ch.Client()
-		if err != nil {
-			return nil, cobra.ShellCompDirectiveNoFileComp
-		}
-
-		regions, err := client.Regions.List(ctx, &ps.ListRegionsRequest{})
-		if err != nil {
-			return nil, cobra.ShellCompDirectiveNoFileComp
-		}
-
-		regionStrs := make([]cobra.Completion, 0)
-
-		for _, r := range regions {
-			if r.Enabled && strings.Contains(r.Slug, toComplete) {
-				regionStrs = append(regionStrs, cobra.Completion(r.Slug))
-			}
-		}
-
-		return regionStrs, cobra.ShellCompDirectiveNoFileComp
+		return cmdutil.RegionsCompletionFunc(ch, cmd, args, toComplete)
 	})
 
 	cmd.RegisterFlagCompletionFunc("cluster-size", func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
-		ctx := cmd.Context()
-
-		org := ch.Config.Organization // --org flag
-		if org == "" {
-			cfg, err := ch.ConfigFS.DefaultConfig()
-			if err != nil {
-				return nil, cobra.ShellCompDirectiveNoFileComp
-			}
-
-			org = cfg.Organization
-		}
-
-		client, err := ch.Client()
-		if err != nil {
-			return nil, cobra.ShellCompDirectiveNoFileComp
-		}
-
-		clusterSKUs, err := client.Organizations.ListClusterSKUs(ctx, &ps.ListOrganizationClusterSKUsRequest{
-			Organization: org,
-		})
-		if err != nil {
-			return nil, cobra.ShellCompDirectiveNoFileComp
-		}
-
-		clusterSizes := make([]cobra.Completion, 0)
-		for _, c := range clusterSKUs {
-			if c.Enabled && strings.Contains(c.Name, toComplete) {
-				clusterSizes = append(clusterSizes, cobra.Completion(c.Name))
-			}
-		}
-
-		return clusterSizes, cobra.ShellCompDirectiveNoFileComp
+		return cmdutil.ClusterSizesCompletionFunc(ch, cmd, args, toComplete)
 	})
 
 	return cmd
