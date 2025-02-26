@@ -98,16 +98,39 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 		return regionStrs, cobra.ShellCompDirectiveNoFileComp
 	})
 
-	cmd.RegisterFlagCompletionFunc("cluster_size", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		clusterSizes := []string{"PS_10", "PS_20", "PS_40", "PS_80", "PS_160", "PS_320", "PS_400"}
+	cmd.RegisterFlagCompletionFunc("cluster-size", func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
+		ctx := cmd.Context()
 
-		return clusterSizes, cobra.ShellCompDirectiveDefault
-	})
+		org := ch.Config.Organization // --org flag
+		if org == "" {
+			cfg, err := ch.ConfigFS.DefaultConfig()
+			if err != nil {
+				return nil, cobra.ShellCompDirectiveNoFileComp
+			}
 
-	cmd.RegisterFlagCompletionFunc("plan", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		plans := []string{"hobby", "scaler", "scaler_pro"}
+			org = cfg.Organization
+		}
 
-		return plans, cobra.ShellCompDirectiveDefault
+		client, err := ch.Client()
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+
+		clusterSKUs, err := client.Organizations.ListClusterSKUs(ctx, &ps.ListOrganizationClusterSKUsRequest{
+			Organization: org,
+		})
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+
+		clusterSizes := make([]cobra.Completion, 0)
+		for _, c := range clusterSKUs {
+			if c.Enabled && strings.Contains(c.Name, toComplete) {
+				clusterSizes = append(clusterSizes, cobra.Completion(c.Name))
+			}
+		}
+
+		return clusterSizes, cobra.ShellCompDirectiveNoFileComp
 	})
 
 	return cmd
