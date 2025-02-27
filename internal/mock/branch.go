@@ -48,6 +48,9 @@ type DatabaseBranchesService struct {
 
 	LintSchemaFn        func(context.Context, *ps.LintSchemaRequest) ([]*ps.SchemaLintError, error)
 	LintSchemaFnInvoked bool
+
+	ListClusterSKUsFn        func(context.Context, *ps.ListBranchClusterSKUsRequest, ...ps.ListOption) ([]*ps.ClusterSKU, error)
+	ListClusterSKUsFnInvoked bool
 }
 
 func (d *DatabaseBranchesService) Create(ctx context.Context, req *ps.CreateDatabaseBranchRequest) (*ps.DatabaseBranch, error) {
@@ -118,4 +121,9 @@ func (d *DatabaseBranchesService) Promote(ctx context.Context, req *ps.PromoteRe
 func (d *DatabaseBranchesService) LintSchema(ctx context.Context, req *ps.LintSchemaRequest) ([]*ps.SchemaLintError, error) {
 	d.LintSchemaFnInvoked = true
 	return d.LintSchemaFn(ctx, req)
+}
+
+func (d *DatabaseBranchesService) ListClusterSKUs(ctx context.Context, req *ps.ListBranchClusterSKUsRequest, opts ...ps.ListOption) ([]*ps.ClusterSKU, error) {
+	d.ListClusterSKUsFnInvoked = true
+	return d.ListClusterSKUsFn(ctx, req, opts...)
 }

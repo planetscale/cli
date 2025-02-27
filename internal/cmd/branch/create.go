@@ -128,26 +128,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.MarkFlagsMutuallyExclusive("restore", "seed-data")
 
 	cmd.RegisterFlagCompletionFunc("region", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		ctx := cmd.Context()
-		client, err := ch.Client()
-		if err != nil {
-			return nil, cobra.ShellCompDirectiveNoFileComp
-		}
-
-		regions, err := client.Regions.List(ctx, &ps.ListRegionsRequest{})
-		if err != nil {
-			return nil, cobra.ShellCompDirectiveNoFileComp
-		}
-
-		regionStrs := make([]string, 0)
-
-		for _, r := range regions {
-			if r.Enabled {
-				regionStrs = append(regionStrs, r.Slug)
-			}
-		}
-
-		return regionStrs, cobra.ShellCompDirectiveDefault
+		return cmdutil.RegionsCompletionFunc(ch, cmd, args, toComplete)
 	})
 
 	return cmd

@@ -63,15 +63,13 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 		},
 	}
 	cmd.Flags().IntVar(&flags.shards, "shards", 1, "Number of shards in the keyspace")
-	cmd.Flags().StringVar(&flags.clusterSize, "cluster-size", "PS_10", "cluster size for the keyspace. Options: PS_10, PS_20, PS_40, PS_80, PS_160, PS_320, PS_400")
+	cmd.Flags().StringVar(&flags.clusterSize, "cluster-size", "PS_10", "cluster size for the keyspace")
 	cmd.Flags().IntVar(&flags.additionalReplicas, "additional-replicas", 0, "number of additional replicas per shard. By default, each production cluster includes 2 replicas.")
 
 	cmd.MarkFlagRequired("cluster-size")
 
-	cmd.RegisterFlagCompletionFunc("cluster-size", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		clusterSizes := []string{"PS_10", "PS_20", "PS_40", "PS_80", "PS_160", "PS_320", "PS_400"}
-
-		return clusterSizes, cobra.ShellCompDirectiveDefault
+	cmd.RegisterFlagCompletionFunc("cluster-size", func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
+		return cmdutil.BranchClusterSizesCompletionFunc(ch, cmd, args, toComplete)
 	})
 
 	return cmd

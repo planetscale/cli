@@ -72,41 +72,14 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().StringVar(&createReq.Region, "region", "", "region for the database")
 
 	cmd.Flags().String("plan", "", "plan for the database. Options: hobby or scaler_pro")
-	cmd.Flags().String("cluster-size", "PS_10", "cluster size for Scaler Pro databases. Options: PS_10, PS_20, PS_40, PS_80, PS_160, PS_320, PS_400")
+	cmd.Flags().String("cluster-size", "PS_10", "cluster size for Scaler Pro databases")
 
-	cmd.RegisterFlagCompletionFunc("region", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		ctx := cmd.Context()
-		client, err := ch.Client()
-		if err != nil {
-			return nil, cobra.ShellCompDirectiveNoFileComp
-		}
-
-		regions, err := client.Regions.List(ctx, &ps.ListRegionsRequest{})
-		if err != nil {
-			return nil, cobra.ShellCompDirectiveNoFileComp
-		}
-
-		regionStrs := make([]string, 0)
-
-		for _, r := range regions {
-			if r.Enabled {
-				regionStrs = append(regionStrs, r.Slug)
-			}
-		}
-
-		return regionStrs, cobra.ShellCompDirectiveDefault
+	cmd.RegisterFlagCompletionFunc("region", func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
+		return cmdutil.RegionsCompletionFunc(ch, cmd, args, toComplete)
 	})
 
-	cmd.RegisterFlagCompletionFunc("cluster_size", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		clusterSizes := []string{"PS_10", "PS_20", "PS_40", "PS_80", "PS_160", "PS_320", "PS_400"}
-
-		return clusterSizes, cobra.ShellCompDirectiveDefault
-	})
-
-	cmd.RegisterFlagCompletionFunc("plan", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		plans := []string{"hobby", "scaler", "scaler_pro"}
-
-		return plans, cobra.ShellCompDirectiveDefault
+	cmd.RegisterFlagCompletionFunc("cluster-size", func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
+		return cmdutil.ClusterSizesCompletionFunc(ch, cmd, args, toComplete)
 	})
 
 	return cmd

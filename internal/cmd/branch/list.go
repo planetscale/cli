@@ -18,6 +18,10 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 		Short:   "List all branches of a database",
 		Args:    cmdutil.RequiredArgs("database"),
 		Aliases: []string{"ls"},
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
+			return cmdutil.DatabaseCompletionFunc(ch, cmd, args, toComplete)
+		},
+
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			database := args[0]
