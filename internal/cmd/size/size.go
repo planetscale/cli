@@ -1,15 +1,9 @@
 package size
 
 import (
-	"fmt"
-
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/spf13/cobra"
 )
-
-func main() {
-	fmt.Println("vim-go")
-}
 
 func SizeCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
