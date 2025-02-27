@@ -59,7 +59,7 @@ func ClusterSizesCompletionFunc(ch *Helper, cmd *cobra.Command, args []string, t
 			}
 
 			if c.Storage != nil && *c.Storage > 0 {
-				description.WriteString(fmt.Sprintf(" · %s storage", FormatParts(*c.Storage).String()))
+				description.WriteString(fmt.Sprintf(" · %s storage", FormatPartsGB(*c.Storage).IntString()))
 			}
 
 			clusterSizes = append(clusterSizes, cobra.CompletionWithDesc(c.Name, description.String()))
@@ -119,7 +119,7 @@ func BranchClusterSizesCompletionFunc(ch *Helper, cmd *cobra.Command, args []str
 			}
 
 			if c.Storage != nil && *c.Storage > 0 {
-				description.WriteString(fmt.Sprintf(" · %s storage", FormatParts(*c.Storage).String()))
+				description.WriteString(fmt.Sprintf(" · %s storage", FormatPartsGB(*c.Storage).IntString()))
 			}
 
 			clusterSizes = append(clusterSizes, cobra.CompletionWithDesc(c.Name, description.String()))
@@ -225,5 +225,20 @@ func FormatParts(bytes int64) ByteFormat {
 		return ByteFormat{floatBytes / tb, "TB"}
 	} else {
 		return ByteFormat{floatBytes / pb, "PB"}
+	}
+}
+
+func FormatPartsGB(bytes int64) ByteFormat {
+	kb := float64(1024)
+	mb := float64(kb * 1024)
+	gb := float64(mb * 1024)
+
+	floatBytes := float64(bytes)
+	if floatBytes < mb {
+		return ByteFormat{floatBytes / kb, "KB"}
+	} else if floatBytes < gb {
+		return ByteFormat{floatBytes / mb, "MB"}
+	} else {
+		return ByteFormat{floatBytes / gb, "GB"}
 	}
 }
