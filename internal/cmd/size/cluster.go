@@ -89,7 +89,7 @@ func (c *ClusterSKU) MarshalCSVValue() interface{} {
 func toClusterSKU(clusterSKU *planetscale.ClusterSKU) *ClusterSKU {
 	storage := ""
 	if clusterSKU.Storage != nil {
-		storage = cmdutil.FormatParts(*clusterSKU.Storage).IntString()
+		storage = cmdutil.FormatParts(*clusterSKU.Storage).String()
 	}
 
 	cpu := fmt.Sprintf("%s vCPU", clusterSKU.CPU)
