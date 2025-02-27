@@ -2,6 +2,7 @@ package size
 
 import (
 	"cmp"
+	"encoding/json"
 	"fmt"
 	"slices"
 
@@ -74,6 +75,55 @@ type ClusterSKU struct {
 	CPU          string `header:"cpu" json:"cpu"`
 	Memory       string `header:"memory" json:"memory"`
 	Storage      string `header:"storage,n/a" json:"storage"`
+
+	orig *planetscale.ClusterSKU
+}
+
+func (c *ClusterSKU) MarshalJSON() ([]byte, error) {
+	return json.MarshalIndent(c.orig, "", " ")
+}
+
+func (c *ClusterSKU) MarshalCSVValue() interface{} {
+	return []*ClusterSKU{c}
+}
+
+func toClusterSKU(clusterSKU *planetscale.ClusterSKU) *ClusterSKU {
+	storage := ""
+	if clusterSKU.Storage != nil {
+		storage = cmdutil.FormatParts(*clusterSKU.Storage).IntString()
+	}
+
+	cpu := fmt.Sprintf("%s vCPU", clusterSKU.CPU)
+	memory := cmdutil.FormatParts(clusterSKU.Memory).IntString()
+	rate := fmt.Sprintf("$%d", *clusterSKU.Rate)
+	replicaRate := ""
+	if clusterSKU.ReplicaRate != nil {
+		replicaRate = fmt.Sprintf("$%d", *clusterSKU.ReplicaRate)
+	}
+
+	provider := ""
+	if clusterSKU.Provider != nil {
+		provider = *clusterSKU.Provider
+	}
+
+	instanceType := ""
+	if clusterSKU.ProviderInstanceType != nil {
+		instanceType = *clusterSKU.ProviderInstanceType
+	}
+
+	cluster := &ClusterSKU{
+		Name:         clusterSKU.Name,
+		Storage:      storage,
+		CPU:          cpu,
+		Provider:     provider,
+		InstanceType: instanceType,
+		Memory:       memory,
+		Price:        rate,
+		ReplicaPrice: replicaRate,
+		orig:         clusterSKU,
+	}
+
+	return cluster
 }
 
 func toClusterSKUs(clusterSKUs []*planetscale.ClusterSKU) []*ClusterSKU {
@@ -81,41 +131,7 @@ func toClusterSKUs(clusterSKUs []*planetscale.ClusterSKU) []*ClusterSKU {
 
 	for _, clusterSKU := range clusterSKUs {
 		if clusterSKU.Enabled && clusterSKU.Rate != nil {
-			storage := ""
-			if clusterSKU.Storage != nil {
-				storage = cmdutil.FormatParts(*clusterSKU.Storage).IntString()
-			}
-
-			cpu := fmt.Sprintf("%s vCPU", clusterSKU.CPU)
-			memory := cmdutil.FormatParts(clusterSKU.Memory).IntString()
-			rate := fmt.Sprintf("$%d", *clusterSKU.Rate)
-			replicaRate := ""
-			if clusterSKU.ReplicaRate != nil {
-				replicaRate = fmt.Sprintf("$%d", *clusterSKU.ReplicaRate)
-			}
-
-			provider := ""
-			if clusterSKU.Provider != nil {
-				provider = *clusterSKU.Provider
-			}
-
-			instanceType := ""
-			if clusterSKU.ProviderInstanceType != nil {
-				instanceType = *clusterSKU.ProviderInstanceType
-			}
-
-			cluster := &ClusterSKU{
-				Name:         clusterSKU.Name,
-				Storage:      storage,
-				CPU:          cpu,
-				Provider:     provider,
-				InstanceType: instanceType,
-				Memory:       memory,
-				Price:        rate,
-				ReplicaPrice: replicaRate,
-			}
-
-			clusters = append(clusters, cluster)
+			clusters = append(clusters, toClusterSKU(clusterSKU))
 		}
 	}
 
