@@ -63,7 +63,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 		},
 	}
 	cmd.Flags().IntVar(&flags.shards, "shards", 1, "Number of shards in the keyspace")
-	cmd.Flags().StringVar(&flags.clusterSize, "cluster-size", "PS_10", "cluster size for the keyspace")
+	cmd.Flags().StringVar(&flags.clusterSize, "cluster-size", "PS_10", "cluster size for the keyspace. Use `pscale size cluster list` to get a list of valid sizes.")
 	cmd.Flags().IntVar(&flags.additionalReplicas, "additional-replicas", 0, "number of additional replicas per shard. By default, each production cluster includes 2 replicas.")
 
 	cmd.MarkFlagRequired("cluster-size")

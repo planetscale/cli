@@ -55,11 +55,11 @@ func ClusterSizesCompletionFunc(ch *Helper, cmd *cobra.Command, args []string, t
 			}
 
 			if c.Memory > 0 {
-				description.WriteString(fmt.Sprintf(" · %s memory", formatParts(c.Memory).IntString()))
+				description.WriteString(fmt.Sprintf(" · %s memory", FormatParts(c.Memory).IntString()))
 			}
 
 			if c.Storage != nil && *c.Storage > 0 {
-				description.WriteString(fmt.Sprintf(" · %s storage", formatParts(*c.Storage).IntString()))
+				description.WriteString(fmt.Sprintf(" · %s storage", FormatParts(*c.Storage).IntString()))
 			}
 
 			clusterSizes = append(clusterSizes, cobra.CompletionWithDesc(c.Name, description.String()))
@@ -115,11 +115,11 @@ func BranchClusterSizesCompletionFunc(ch *Helper, cmd *cobra.Command, args []str
 			}
 
 			if c.Memory > 0 {
-				description.WriteString(fmt.Sprintf(" · %s memory", formatParts(c.Memory).IntString()))
+				description.WriteString(fmt.Sprintf(" · %s memory", FormatParts(c.Memory).IntString()))
 			}
 
 			if c.Storage != nil && *c.Storage > 0 {
-				description.WriteString(fmt.Sprintf(" · %s storage", formatParts(*c.Storage).IntString()))
+				description.WriteString(fmt.Sprintf(" · %s storage", FormatParts(*c.Storage).IntString()))
 			}
 
 			clusterSizes = append(clusterSizes, cobra.CompletionWithDesc(c.Name, description.String()))
@@ -206,7 +206,7 @@ func (b ByteFormat) IntString() string {
 	return fmt.Sprintf("%d %s", int64(b.value), b.unit)
 }
 
-func formatParts(bytes int64) ByteFormat {
+func FormatParts(bytes int64) ByteFormat {
 	kb := int64(1024)
 	mb := int64(kb * 1024)
 	gb := int64(mb * 1024)
