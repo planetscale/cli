@@ -67,14 +67,11 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 }
 
 type ClusterSKU struct {
-	Name         string `header:"name" json:"name"`
-	Price        string `header:"cost" json:"rate"`
-	ReplicaPrice string `header:"cost per extra replica" json:"replica_rate"`
-	Provider     string `header:"provider,-" json:"provider"`
-	InstanceType string `header:"instance type,n/a" json:"instance_type"`
-	CPU          string `header:"cpu" json:"cpu"`
-	Memory       string `header:"memory" json:"memory"`
-	Storage      string `header:"storage,n/a" json:"storage"`
+	Name    string `header:"name" json:"name"`
+	Price   string `header:"cost" json:"rate"`
+	CPU     string `header:"cpu" json:"cpu"`
+	Memory  string `header:"memory" json:"memory"`
+	Storage string `header:"storage,∞" json:"storage"`
 
 	orig *planetscale.ClusterSKU
 }
@@ -90,37 +87,23 @@ func (c *ClusterSKU) MarshalCSVValue() interface{} {
 func toClusterSKU(clusterSKU *planetscale.ClusterSKU) *ClusterSKU {
 	storage := ""
 	if clusterSKU.Storage != nil {
-		storage = cmdutil.FormatParts(*clusterSKU.Storage).IntString()
+		storage = cmdutil.FormatPartsGB(*clusterSKU.Storage).IntString()
 	}
 
 	cpu := fmt.Sprintf("%s vCPU", clusterSKU.CPU)
 	memory := cmdutil.FormatParts(clusterSKU.Memory).IntString()
-	rate := fmt.Sprintf("$%d", *clusterSKU.Rate)
-	replicaRate := ""
-	if clusterSKU.ReplicaRate != nil {
-		replicaRate = fmt.Sprintf("$%d", *clusterSKU.ReplicaRate)
-	}
-
-	provider := ""
-	if clusterSKU.Provider != nil {
-		provider = *clusterSKU.Provider
-	}
-
-	instanceType := ""
-	if clusterSKU.ProviderInstanceType != nil {
-		instanceType = *clusterSKU.ProviderInstanceType
+	rate := ""
+	if *clusterSKU.Rate > 0 {
+		rate = fmt.Sprintf("$%d", *clusterSKU.Rate)
 	}
 
 	cluster := &ClusterSKU{
-		Name:         clusterSKU.Name,
-		Storage:      storage,
-		CPU:          cpu,
-		Provider:     provider,
-		InstanceType: instanceType,
-		Memory:       memory,
-		Price:        rate,
-		ReplicaPrice: replicaRate,
-		orig:         clusterSKU,
+		Name:    clusterSKU.Name,
+		Storage: storage,
+		CPU:     cpu,
+		Memory:  memory,
+		Price:   rate,
+		orig:    clusterSKU,
 	}
 
 	return cluster

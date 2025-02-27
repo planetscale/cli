@@ -59,7 +59,7 @@ func ClusterSizesCompletionFunc(ch *Helper, cmd *cobra.Command, args []string, t
 			}
 
 			if c.Storage != nil && *c.Storage > 0 {
-				description.WriteString(fmt.Sprintf(" · %s storage", FormatParts(*c.Storage).IntString()))
+				description.WriteString(fmt.Sprintf(" · %s storage", FormatPartsGB(*c.Storage).IntString()))
 			}
 
 			clusterSizes = append(clusterSizes, cobra.CompletionWithDesc(c.Name, description.String()))
@@ -119,7 +119,7 @@ func BranchClusterSizesCompletionFunc(ch *Helper, cmd *cobra.Command, args []str
 			}
 
 			if c.Storage != nil && *c.Storage > 0 {
-				description.WriteString(fmt.Sprintf(" · %s storage", FormatParts(*c.Storage).IntString()))
+				description.WriteString(fmt.Sprintf(" · %s storage", FormatPartsGB(*c.Storage).IntString()))
 			}
 
 			clusterSizes = append(clusterSizes, cobra.CompletionWithDesc(c.Name, description.String()))
@@ -199,7 +199,7 @@ type ByteFormat struct {
 }
 
 func (b ByteFormat) String() string {
-	return fmt.Sprintf("%.2f %s", b.value, b.unit)
+	return fmt.Sprintf("%.2f %s", float64(b.value), b.unit)
 }
 
 func (b ByteFormat) IntString() string {
@@ -207,21 +207,38 @@ func (b ByteFormat) IntString() string {
 }
 
 func FormatParts(bytes int64) ByteFormat {
-	kb := int64(1024)
-	mb := int64(kb * 1024)
-	gb := int64(mb * 1024)
-	tb := int64(gb * 1024)
-	pb := int64(tb * 1024)
+	kb := float64(1024)
+	mb := float64(kb * 1024)
+	gb := float64(mb * 1024)
+	tb := float64(gb * 1024)
+	pb := float64(tb * 1024)
 
-	if bytes < mb {
-		return ByteFormat{float64(bytes / kb), "KB"}
-	} else if bytes < gb {
-		return ByteFormat{float64(bytes / mb), "MB"}
-	} else if bytes < tb {
-		return ByteFormat{float64(bytes / gb), "GB"}
-	} else if bytes < pb {
-		return ByteFormat{float64(bytes / tb), "TB"}
+	floatBytes := float64(bytes)
+
+	if floatBytes < mb {
+		return ByteFormat{floatBytes / kb, "KB"}
+	} else if floatBytes < gb {
+		return ByteFormat{floatBytes / mb, "MB"}
+	} else if floatBytes < tb {
+		return ByteFormat{floatBytes / gb, "GB"}
+	} else if floatBytes < pb {
+		return ByteFormat{floatBytes / tb, "TB"}
 	} else {
-		return ByteFormat{float64(bytes / pb), "PB"}
+		return ByteFormat{floatBytes / pb, "PB"}
+	}
+}
+
+func FormatPartsGB(bytes int64) ByteFormat {
+	kb := float64(1024)
+	mb := float64(kb * 1024)
+	gb := float64(mb * 1024)
+
+	floatBytes := float64(bytes)
+	if floatBytes < mb {
+		return ByteFormat{floatBytes / kb, "KB"}
+	} else if floatBytes < gb {
+		return ByteFormat{floatBytes / mb, "MB"}
+	} else {
+		return ByteFormat{floatBytes / gb, "GB"}
 	}
 }
