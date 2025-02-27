@@ -71,7 +71,6 @@ type ClusterSKU struct {
 	Price        string `header:"cost" json:"rate"`
 	ReplicaPrice string `header:"cost per extra replica" json:"replica_rate"`
 	Provider     string `header:"provider,-" json:"provider"`
-	InstanceType string `header:"instance type,n/a" json:"instance_type"`
 	CPU          string `header:"cpu" json:"cpu"`
 	Memory       string `header:"memory" json:"memory"`
 	Storage      string `header:"storage,n/a" json:"storage"`
@@ -106,17 +105,11 @@ func toClusterSKU(clusterSKU *planetscale.ClusterSKU) *ClusterSKU {
 		provider = *clusterSKU.Provider
 	}
 
-	instanceType := ""
-	if clusterSKU.ProviderInstanceType != nil {
-		instanceType = *clusterSKU.ProviderInstanceType
-	}
-
 	cluster := &ClusterSKU{
 		Name:         clusterSKU.Name,
 		Storage:      storage,
 		CPU:          cpu,
 		Provider:     provider,
-		InstanceType: instanceType,
 		Memory:       memory,
 		Price:        rate,
 		ReplicaPrice: replicaRate,
