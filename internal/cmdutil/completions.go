@@ -1,7 +1,9 @@
 package cmdutil
 
 import (
+	"cmp"
 	"fmt"
+	"slices"
 	"strings"
 
 	ps "github.com/planetscale/planetscale-go/planetscale"
@@ -35,19 +37,28 @@ func ClusterSizesCompletionFunc(ch *Helper, cmd *cobra.Command, args []string, t
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
 
+	slices.SortFunc(clusterSKUs, func(a, b *ps.ClusterSKU) int {
+		return cmp.Compare(a.SortOrder, b.SortOrder)
+	})
+
 	clusterSizes := make([]cobra.Completion, 0)
 	for _, c := range clusterSKUs {
 		if c.Enabled && strings.Contains(c.Name, toComplete) && c.Rate != nil {
 			description := fmt.Sprintf("%s", c.DisplayName)
 			if *c.Rate > 0 {
-				description = fmt.Sprintf("%s ($%d/month)", c.DisplayName, *c.Rate)
+				description = fmt.Sprintf("%s · $%d/month· %s vCPU · %s memory", c.DisplayName, *c.Rate, c.CPU, formatParts(c.Memory).String())
+
+				if c.Storage != nil && *c.Storage > 0 {
+					description = fmt.Sprintf("%s · $%d/month· %s vCPU · %s memory · %s storage", c.DisplayName, *c.Rate, c.CPU, formatParts(c.Memory).String(), formatParts(*c.Storage).String())
+				}
+
 			}
 
 			clusterSizes = append(clusterSizes, cobra.CompletionWithDesc(c.Name, description))
 		}
 	}
 
-	return clusterSizes, cobra.ShellCompDirectiveNoFileComp
+	return clusterSizes, cobra.ShellCompDirectiveNoFileComp | cobra.ShellCompDirectiveKeepOrder
 }
 
 func RegionsCompletionFunc(ch *Helper, cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
@@ -112,4 +123,33 @@ func DatabaseCompletionFunc(ch *Helper, cmd *cobra.Command, args []string, toCom
 	}
 
 	return candidates, cobra.ShellCompDirectiveNoFileComp
+}
+
+type ByteFormat struct {
+	value float64
+	unit  string
+}
+
+func (b ByteFormat) String() string {
+	return fmt.Sprintf("%.2f %s", b.value, b.unit)
+}
+
+func formatParts(bytes int64) ByteFormat {
+	kb := int64(1024)
+	mb := int64(kb * 1024)
+	gb := int64(mb * 1024)
+	tb := int64(gb * 1024)
+	pb := int64(tb * 1024)
+
+	if bytes < mb {
+		return ByteFormat{float64(bytes / kb), "KB"}
+	} else if bytes < gb {
+		return ByteFormat{float64(bytes / mb), "MB"}
+	} else if bytes < tb {
+		return ByteFormat{float64(bytes / gb), "GB"}
+	} else if bytes < pb {
+		return ByteFormat{float64(bytes / tb), "TB"}
+	} else {
+		return ByteFormat{float64(bytes / pb), "PB"}
+	}
 }
