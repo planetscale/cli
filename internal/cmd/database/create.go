@@ -72,7 +72,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().StringVar(&createReq.Region, "region", "", "region for the database")
 
 	cmd.Flags().String("plan", "", "plan for the database. Options: hobby or scaler_pro")
-	cmd.Flags().String("cluster-size", "PS_10", "cluster size for Scaler Pro databases")
+	cmd.Flags().String("cluster-size", "PS_10", "cluster size for Scaler Pro databases. Use `pscale size cluster list` to see the valid sizes.")
 
 	cmd.RegisterFlagCompletionFunc("region", func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
 		return cmdutil.RegionsCompletionFunc(ch, cmd, args, toComplete)

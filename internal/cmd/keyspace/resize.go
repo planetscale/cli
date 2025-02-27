@@ -89,7 +89,7 @@ func ResizeCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 
 	cmd.Flags().IntVar(&flags.additionalReplicas, "additional-replicas", 0, "number of additional replicas per shard. By default, each production cluster includes 2 replicas.")
-	cmd.Flags().StringVar(&flags.clusterSize, "cluster-size", "", "cluster size for the keyspace")
+	cmd.Flags().StringVar(&flags.clusterSize, "cluster-size", "", "cluster size for the keyspace. Use `pscale size cluster list` to get a list of valid sizes.")
 
 	cmd.RegisterFlagCompletionFunc("cluster-size", func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
 		return cmdutil.BranchClusterSizesCompletionFunc(ch, cmd, args, toComplete)
