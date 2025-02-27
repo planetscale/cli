@@ -15,6 +15,9 @@ type OrganizationsService struct {
 
 	ListRegionsFn        func(context.Context, *ps.ListOrganizationRegionsRequest) ([]*ps.Region, error)
 	ListRegionsFnInvoked bool
+
+	ListClusterSKUsFn        func(context.Context, *ps.ListOrganizationClusterSKUsRequest, ...ps.ListOption) ([]*ps.ClusterSKU, error)
+	ListClusterSKUsFnInvoked bool
 }
 
 func (o *OrganizationsService) Get(ctx context.Context, req *ps.GetOrganizationRequest) (*ps.Organization, error) {
@@ -30,4 +33,9 @@ func (o *OrganizationsService) List(ctx context.Context) ([]*ps.Organization, er
 func (o *OrganizationsService) ListRegions(ctx context.Context, req *ps.ListOrganizationRegionsRequest) ([]*ps.Region, error) {
 	o.ListRegionsFnInvoked = true
 	return o.ListRegionsFn(ctx, req)
+}
+
+func (o *OrganizationsService) ListClusterSKUs(ctx context.Context, req *ps.ListOrganizationClusterSKUsRequest, opts ...ps.ListOption) ([]*ps.ClusterSKU, error) {
+	o.ListClusterSKUsFnInvoked = true
+	return o.ListClusterSKUsFn(ctx, req, opts...)
 }
