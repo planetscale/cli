@@ -44,17 +44,25 @@ func ClusterSizesCompletionFunc(ch *Helper, cmd *cobra.Command, args []string, t
 	clusterSizes := make([]cobra.Completion, 0)
 	for _, c := range clusterSKUs {
 		if c.Enabled && strings.Contains(c.Name, toComplete) && c.Rate != nil {
-			description := fmt.Sprintf("%s", c.DisplayName)
+			var description strings.Builder
+			description.WriteString(c.DisplayName)
 			if *c.Rate > 0 {
-				description = fmt.Sprintf("%s · $%d/month· %s vCPU · %s memory", c.DisplayName, *c.Rate, c.CPU, formatParts(c.Memory).String())
-
-				if c.Storage != nil && *c.Storage > 0 {
-					description = fmt.Sprintf("%s · $%d/month· %s vCPU · %s memory · %s storage", c.DisplayName, *c.Rate, c.CPU, formatParts(c.Memory).String(), formatParts(*c.Storage).String())
-				}
-
+				description.WriteString(fmt.Sprintf(" · $%d/month", *c.Rate))
 			}
 
-			clusterSizes = append(clusterSizes, cobra.CompletionWithDesc(c.Name, description))
+			if c.CPU != "" {
+				description.WriteString(fmt.Sprintf(" · %s vCPU", c.CPU))
+			}
+
+			if c.Memory > 0 {
+				description.WriteString(fmt.Sprintf(" · %s memory", formatParts(c.Memory).String()))
+			}
+
+			if c.Storage != nil && *c.Storage > 0 {
+				description.WriteString(fmt.Sprintf(" · %s storage", formatParts(*c.Storage).String()))
+			}
+
+			clusterSizes = append(clusterSizes, cobra.CompletionWithDesc(c.Name, description.String()))
 		}
 	}
 
