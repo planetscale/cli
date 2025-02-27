@@ -94,9 +94,13 @@ func toClusterSKU(clusterSKU *planetscale.ClusterSKU) *ClusterSKU {
 
 	cpu := fmt.Sprintf("%s vCPU", clusterSKU.CPU)
 	memory := cmdutil.FormatParts(clusterSKU.Memory).IntString()
-	rate := fmt.Sprintf("$%d", *clusterSKU.Rate)
+	rate := ""
+	if *clusterSKU.Rate > 0 {
+		rate = fmt.Sprintf("$%d", *clusterSKU.Rate)
+	}
+
 	replicaRate := ""
-	if clusterSKU.ReplicaRate != nil {
+	if clusterSKU.ReplicaRate != nil && *clusterSKU.ReplicaRate > 0 {
 		replicaRate = fmt.Sprintf("$%d", *clusterSKU.ReplicaRate)
 	}
 
