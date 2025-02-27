@@ -1,5 +1,5 @@
 COMMIT := $(shell git rev-parse --short=7 HEAD 2>/dev/null)
-VERSION := $(shell git describe --abbrev=0 HEAD 2>/dev/null)
+VERSION := $(shell git describe --tags --abbrev=0 HEAD 2>/dev/null)
 DATE := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 
 ifeq ($(strip $(shell git status --porcelain 2>/dev/null)),)
