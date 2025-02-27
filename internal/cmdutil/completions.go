@@ -69,6 +69,66 @@ func ClusterSizesCompletionFunc(ch *Helper, cmd *cobra.Command, args []string, t
 	return clusterSizes, cobra.ShellCompDirectiveNoFileComp | cobra.ShellCompDirectiveKeepOrder
 }
 
+func BranchClusterSizesCompletionFunc(ch *Helper, cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
+	ctx := cmd.Context()
+
+	org := ch.Config.Organization // --org flag
+	if org == "" {
+		cfg, err := ch.ConfigFS.DefaultConfig()
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+
+		org = cfg.Organization
+	}
+
+	client, err := ch.Client()
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+
+	database, branch := args[0], args[1]
+	clusterSKUs, err := client.DatabaseBranches.ListClusterSKUs(ctx, &ps.ListBranchClusterSKUsRequest{
+		Organization: org,
+		Database:     database,
+		Branch:       branch,
+	}, ps.WithRates())
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+
+	slices.SortFunc(clusterSKUs, func(a, b *ps.ClusterSKU) int {
+		return cmp.Compare(a.SortOrder, b.SortOrder)
+	})
+
+	clusterSizes := make([]cobra.Completion, 0)
+	for _, c := range clusterSKUs {
+		if c.Enabled && strings.Contains(c.Name, toComplete) && c.Rate != nil {
+			var description strings.Builder
+			description.WriteString(c.DisplayName)
+			if *c.Rate > 0 {
+				description.WriteString(fmt.Sprintf(" · $%d/month", *c.Rate))
+			}
+
+			if c.CPU != "" {
+				description.WriteString(fmt.Sprintf(" · %s vCPU", c.CPU))
+			}
+
+			if c.Memory > 0 {
+				description.WriteString(fmt.Sprintf(" · %s memory", formatParts(c.Memory).IntString()))
+			}
+
+			if c.Storage != nil && *c.Storage > 0 {
+				description.WriteString(fmt.Sprintf(" · %s storage", formatParts(*c.Storage).IntString()))
+			}
+
+			clusterSizes = append(clusterSizes, cobra.CompletionWithDesc(c.Name, description.String()))
+		}
+	}
+
+	return clusterSizes, cobra.ShellCompDirectiveNoFileComp | cobra.ShellCompDirectiveKeepOrder
+}
+
 func RegionsCompletionFunc(ch *Helper, cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
 	ctx := cmd.Context()
 

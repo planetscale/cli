@@ -68,10 +68,8 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	cmd.MarkFlagRequired("cluster-size")
 
-	cmd.RegisterFlagCompletionFunc("cluster-size", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		clusterSizes := []string{"PS_10", "PS_20", "PS_40", "PS_80", "PS_160", "PS_320", "PS_400"}
-
-		return clusterSizes, cobra.ShellCompDirectiveDefault
+	cmd.RegisterFlagCompletionFunc("cluster-size", func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
+		return cmdutil.BranchClusterSizesCompletionFunc(ch, cmd, args, toComplete)
 	})
 
 	return cmd
