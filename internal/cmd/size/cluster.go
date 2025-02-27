@@ -67,12 +67,11 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 }
 
 type ClusterSKU struct {
-	Name         string `header:"name" json:"name"`
-	Price        string `header:"cost" json:"rate"`
-	ReplicaPrice string `header:"cost per extra replica" json:"replica_rate"`
-	CPU          string `header:"cpu" json:"cpu"`
-	Memory       string `header:"memory" json:"memory"`
-	Storage      string `header:"storage,∞" json:"storage"`
+	Name    string `header:"name" json:"name"`
+	Price   string `header:"cost" json:"rate"`
+	CPU     string `header:"cpu" json:"cpu"`
+	Memory  string `header:"memory" json:"memory"`
+	Storage string `header:"storage,∞" json:"storage"`
 
 	orig *planetscale.ClusterSKU
 }
@@ -98,19 +97,13 @@ func toClusterSKU(clusterSKU *planetscale.ClusterSKU) *ClusterSKU {
 		rate = fmt.Sprintf("$%d", *clusterSKU.Rate)
 	}
 
-	replicaRate := ""
-	if clusterSKU.ReplicaRate != nil && *clusterSKU.ReplicaRate > 0 {
-		replicaRate = fmt.Sprintf("$%d", *clusterSKU.ReplicaRate)
-	}
-
 	cluster := &ClusterSKU{
-		Name:         clusterSKU.Name,
-		Storage:      storage,
-		CPU:          cpu,
-		Memory:       memory,
-		Price:        rate,
-		ReplicaPrice: replicaRate,
-		orig:         clusterSKU,
+		Name:    clusterSKU.Name,
+		Storage: storage,
+		CPU:     cpu,
+		Memory:  memory,
+		Price:   rate,
+		orig:    clusterSKU,
 	}
 
 	return cluster
