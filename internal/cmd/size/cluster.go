@@ -73,7 +73,7 @@ type ClusterSKU struct {
 	Provider     string `header:"provider,-" json:"provider"`
 	CPU          string `header:"cpu" json:"cpu"`
 	Memory       string `header:"memory" json:"memory"`
-	Storage      string `header:"storage,n/a" json:"storage"`
+	Storage      string `header:"storage,∞" json:"storage"`
 
 	orig *planetscale.ClusterSKU
 }
