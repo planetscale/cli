@@ -22,13 +22,6 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
-			plan, err := cmd.Flags().GetString("plan")
-			if err != nil {
-				return err
-			}
-
-			createReq.Plan = ps.Plan(plan)
-
 			clusterSize, err := cmd.Flags().GetString("cluster-size")
 			if err != nil {
 				return err
@@ -71,7 +64,6 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().MarkDeprecated("notes", "is no longer available.")
 	cmd.Flags().StringVar(&createReq.Region, "region", "", "region for the database")
 
-	cmd.Flags().String("plan", "", "plan for the database. Options: hobby or scaler_pro")
 	cmd.Flags().String("cluster-size", "PS_10", "cluster size for Scaler Pro databases. Use `pscale size cluster list` to see the valid sizes.")
 
 	cmd.RegisterFlagCompletionFunc("region", func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
