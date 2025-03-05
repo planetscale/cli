@@ -113,7 +113,7 @@ func toClusterSKUs(clusterSKUs []*planetscale.ClusterSKU) []*ClusterSKU {
 	clusters := make([]*ClusterSKU, 0, len(clusterSKUs))
 
 	for _, clusterSKU := range clusterSKUs {
-		if clusterSKU.Enabled && clusterSKU.Rate != nil {
+		if clusterSKU.Enabled && clusterSKU.Rate != nil && clusterSKU.Name != "PS_DEV" {
 			clusters = append(clusters, toClusterSKU(clusterSKU))
 		}
 	}
