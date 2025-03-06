@@ -93,7 +93,7 @@ func BranchClusterSizesCompletionFunc(ch *Helper, cmd *cobra.Command, args []str
 
 	clusterSizes := make([]cobra.Completion, 0)
 	for _, c := range clusterSKUs {
-		if c.Enabled && strings.Contains(c.Name, toComplete) && c.Rate != nil {
+		if c.Enabled && strings.Contains(c.Name, toComplete) && c.Rate != nil && c.Name != "PS_DEV" {
 			var description strings.Builder
 			description.WriteString(c.DisplayName)
 			if *c.Rate > 0 {
