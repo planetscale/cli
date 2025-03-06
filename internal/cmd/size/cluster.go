@@ -1,10 +1,8 @@
 package size
 
 import (
-	"cmp"
 	"encoding/json"
 	"fmt"
-	"slices"
 
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/planetscale-go/planetscale"
@@ -48,10 +46,6 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 			if err != nil {
 				return err
 			}
-
-			slices.SortFunc(clusterSKUs, func(a, b *planetscale.ClusterSKU) int {
-				return cmp.Compare(a.SortOrder, b.SortOrder)
-			})
 
 			return ch.Printer.PrintResource(toClusterSKUs(clusterSKUs))
 		},

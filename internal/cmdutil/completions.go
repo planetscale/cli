@@ -1,9 +1,7 @@
 package cmdutil
 
 import (
-	"cmp"
 	"fmt"
-	"slices"
 	"strings"
 
 	ps "github.com/planetscale/planetscale-go/planetscale"
@@ -36,10 +34,6 @@ func ClusterSizesCompletionFunc(ch *Helper, cmd *cobra.Command, args []string, t
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
-
-	slices.SortFunc(clusterSKUs, func(a, b *ps.ClusterSKU) int {
-		return cmp.Compare(a.SortOrder, b.SortOrder)
-	})
 
 	clusterSizes := make([]cobra.Completion, 0)
 	for _, c := range clusterSKUs {
@@ -96,10 +90,6 @@ func BranchClusterSizesCompletionFunc(ch *Helper, cmd *cobra.Command, args []str
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
-
-	slices.SortFunc(clusterSKUs, func(a, b *ps.ClusterSKU) int {
-		return cmp.Compare(a.SortOrder, b.SortOrder)
-	})
 
 	clusterSizes := make([]cobra.Completion, 0)
 	for _, c := range clusterSKUs {
