@@ -1,9 +1,7 @@
 package cmdutil
 
 import (
-	"cmp"
 	"fmt"
-	"slices"
 	"strings"
 
 	ps "github.com/planetscale/planetscale-go/planetscale"
@@ -37,10 +35,6 @@ func ClusterSizesCompletionFunc(ch *Helper, cmd *cobra.Command, args []string, t
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
 
-	slices.SortFunc(clusterSKUs, func(a, b *ps.ClusterSKU) int {
-		return cmp.Compare(a.SortOrder, b.SortOrder)
-	})
-
 	clusterSizes := make([]cobra.Completion, 0)
 	for _, c := range clusterSKUs {
 		if c.Enabled && strings.Contains(c.Name, toComplete) && c.Rate != nil && c.Name != "PS_DEV" {
@@ -51,7 +45,7 @@ func ClusterSizesCompletionFunc(ch *Helper, cmd *cobra.Command, args []string, t
 			}
 
 			if c.CPU != "" {
-				description.WriteString(fmt.Sprintf(" · %s vCPU", c.CPU))
+				description.WriteString(fmt.Sprintf(" · %s vCPUs", c.CPU))
 			}
 
 			if c.Memory > 0 {
@@ -97,13 +91,9 @@ func BranchClusterSizesCompletionFunc(ch *Helper, cmd *cobra.Command, args []str
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
 
-	slices.SortFunc(clusterSKUs, func(a, b *ps.ClusterSKU) int {
-		return cmp.Compare(a.SortOrder, b.SortOrder)
-	})
-
 	clusterSizes := make([]cobra.Completion, 0)
 	for _, c := range clusterSKUs {
-		if c.Enabled && strings.Contains(c.Name, toComplete) && c.Rate != nil {
+		if c.Enabled && strings.Contains(c.Name, toComplete) && c.Rate != nil && c.Name != "PS_DEV" {
 			var description strings.Builder
 			description.WriteString(c.DisplayName)
 			if *c.Rate > 0 {
@@ -111,7 +101,7 @@ func BranchClusterSizesCompletionFunc(ch *Helper, cmd *cobra.Command, args []str
 			}
 
 			if c.CPU != "" {
-				description.WriteString(fmt.Sprintf(" · %s vCPU", c.CPU))
+				description.WriteString(fmt.Sprintf(" · %s vCPUs", c.CPU))
 			}
 
 			if c.Memory > 0 {

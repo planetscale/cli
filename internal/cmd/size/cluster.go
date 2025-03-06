@@ -1,10 +1,8 @@
 package size
 
 import (
-	"cmp"
 	"encoding/json"
 	"fmt"
-	"slices"
 
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/planetscale-go/planetscale"
@@ -49,10 +47,6 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
-			slices.SortFunc(clusterSKUs, func(a, b *planetscale.ClusterSKU) int {
-				return cmp.Compare(a.SortOrder, b.SortOrder)
-			})
-
 			return ch.Printer.PrintResource(toClusterSKUs(clusterSKUs))
 		},
 	}
@@ -90,7 +84,7 @@ func toClusterSKU(clusterSKU *planetscale.ClusterSKU) *ClusterSKU {
 		storage = cmdutil.FormatPartsGB(*clusterSKU.Storage).IntString()
 	}
 
-	cpu := fmt.Sprintf("%s vCPU", clusterSKU.CPU)
+	cpu := fmt.Sprintf("%s vCPUs", clusterSKU.CPU)
 	memory := cmdutil.FormatParts(clusterSKU.Memory).IntString()
 	rate := ""
 	if *clusterSKU.Rate > 0 {
