@@ -45,7 +45,7 @@ func ClusterSizesCompletionFunc(ch *Helper, cmd *cobra.Command, args []string, t
 			}
 
 			if c.CPU != "" {
-				description.WriteString(fmt.Sprintf(" · %s vCPU", c.CPU))
+				description.WriteString(fmt.Sprintf(" · %s vCPUs", c.CPU))
 			}
 
 			if c.Memory > 0 {
@@ -101,7 +101,7 @@ func BranchClusterSizesCompletionFunc(ch *Helper, cmd *cobra.Command, args []str
 			}
 
 			if c.CPU != "" {
-				description.WriteString(fmt.Sprintf(" · %s vCPU", c.CPU))
+				description.WriteString(fmt.Sprintf(" · %s vCPUs", c.CPU))
 			}
 
 			if c.Memory > 0 {
