@@ -25,9 +25,9 @@ func ClusterCmd(ch *cmdutil.Helper) *cobra.Command {
 
 func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
-		region   string
-		metal    bool
-		standard bool
+		region  string
+		metal   bool
+		network bool
 	}
 
 	cmd := &cobra.Command{
@@ -49,13 +49,13 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
-			return ch.Printer.PrintResource(toClusterSKUs(clusterSKUs, flags.standard, flags.metal))
+			return ch.Printer.PrintResource(toClusterSKUs(clusterSKUs, flags.network, flags.metal))
 		},
 	}
 
 	cmd.Flags().StringVar(&flags.region, "region", "", "view cluster sizes and rates for a specific region")
-	cmd.Flags().BoolVar(&flags.metal, "metal", false, "view cluster sizes and rates for metal clusters")
-	cmd.Flags().BoolVar(&flags.standard, "standard", false, "view cluster sizes and rates for standard clusters")
+	cmd.Flags().BoolVar(&flags.metal, "metal", false, "view cluster sizes and rates for clusters with metal storage")
+	cmd.Flags().BoolVar(&flags.network, "network", false, "view cluster sizes and rates for clusters with network attached storage")
 
 	cmd.RegisterFlagCompletionFunc("region", func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
 		return cmdutil.RegionsCompletionFunc(ch, cmd, args, toComplete)
@@ -107,15 +107,15 @@ func toClusterSKU(clusterSKU *planetscale.ClusterSKU) *ClusterSKU {
 	return cluster
 }
 
-func toClusterSKUs(clusterSKUs []*planetscale.ClusterSKU, filterStandard, filterMetal bool) []*ClusterSKU {
+func toClusterSKUs(clusterSKUs []*planetscale.ClusterSKU, filterNetwork, filterMetal bool) []*ClusterSKU {
 	clusters := make([]*ClusterSKU, 0, len(clusterSKUs))
 
 	for _, clusterSKU := range clusterSKUs {
 		if clusterSKU.Enabled && clusterSKU.Rate != nil && clusterSKU.Name != "PS_DEV" {
 			// If these flags match, that means we just want to list all clusters.
-			if filterStandard == filterMetal {
+			if filterNetwork == filterMetal {
 				clusters = append(clusters, toClusterSKU(clusterSKU))
-			} else if filterStandard && !clusterSKU.Metal {
+			} else if filterNetwork && !clusterSKU.Metal {
 				clusters = append(clusters, toClusterSKU(clusterSKU))
 			} else if filterMetal && clusterSKU.Metal {
 				clusters = append(clusters, toClusterSKU(clusterSKU))
