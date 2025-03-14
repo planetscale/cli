@@ -23,7 +23,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/pkg/errors v0.9.1
-	github.com/planetscale/planetscale-go v0.124.0
+	github.com/planetscale/planetscale-go v0.125.0
 	github.com/planetscale/psdb v0.0.0-20240109164348-6848e728f6e7
 	github.com/planetscale/psdbproxy v0.0.0-20250117221522-0c8e2b0e36e6
 	github.com/spf13/cobra v1.9.1
@@ -34,7 +34,7 @@ require (
 	go.uber.org/zap v1.27.0
 	go.uber.org/zap/exp v0.3.0
 	golang.org/x/exp v0.0.0-20240909161429-701f63a606c0
-	golang.org/x/oauth2 v0.27.0
+	golang.org/x/oauth2 v0.28.0
 	golang.org/x/sync v0.11.0
 	golang.org/x/sys v0.30.0
 	golang.org/x/text v0.22.0
