@@ -110,8 +110,10 @@ func toClusterSKUs(clusterSKUs []*planetscale.ClusterSKU, onlyMetal bool) []*Clu
 
 	for _, clusterSKU := range clusterSKUs {
 		if clusterSKU.Enabled && clusterSKU.Rate != nil && clusterSKU.Name != "PS_DEV" {
-			if onlyMetal && clusterSKU.Metal {
-				clusters = append(clusters, toClusterSKU(clusterSKU))
+			if onlyMetal {
+				if clusterSKU.Metal {
+					clusters = append(clusters, toClusterSKU(clusterSKU))
+				}
 			} else {
 				clusters = append(clusters, toClusterSKU(clusterSKU))
 			}
