@@ -30,7 +30,7 @@ func TestKeyspace_CreateCmd(t *testing.T) {
 	ks := &ps.Keyspace{
 		ID:          "wantid",
 		Name:        keyspace,
-		ClusterSize: ps.ClusterSize("PS-20"),
+		ClusterSize: "PS-20",
 		Replicas:    3,
 		Shards:      2,
 	}
@@ -41,7 +41,7 @@ func TestKeyspace_CreateCmd(t *testing.T) {
 			c.Assert(req.Organization, qt.Equals, org)
 			c.Assert(req.Branch, qt.Equals, branch)
 			c.Assert(req.Name, qt.Equals, keyspace)
-			c.Assert(req.ClusterSize, qt.Equals, ps.ClusterSize("PS-20"))
+			c.Assert(req.ClusterSize, qt.Equals, "PS-20")
 			c.Assert(req.ExtraReplicas, qt.Equals, 1)
 			c.Assert(req.Shards, qt.Equals, 2)
 
@@ -86,7 +86,7 @@ func TestKeyspace_CreateCmdOnlyClusterSize(t *testing.T) {
 	ks := &ps.Keyspace{
 		ID:            "wantid",
 		Name:          keyspace,
-		ClusterSize:   ps.ClusterSize("PS-10"),
+		ClusterSize:   "PS-10",
 		Replicas:      2,
 		ExtraReplicas: 0,
 		Shards:        1,
@@ -98,7 +98,7 @@ func TestKeyspace_CreateCmdOnlyClusterSize(t *testing.T) {
 			c.Assert(req.Organization, qt.Equals, org)
 			c.Assert(req.Branch, qt.Equals, branch)
 			c.Assert(req.Name, qt.Equals, keyspace)
-			c.Assert(req.ClusterSize, qt.Equals, ps.ClusterSize("PS-10"))
+			c.Assert(req.ClusterSize, qt.Equals, "PS-10")
 			c.Assert(req.ExtraReplicas, qt.Equals, 0)
 			c.Assert(req.Shards, qt.Equals, 1)
 

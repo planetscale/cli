@@ -27,7 +27,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
-			createReq.ClusterSize = ps.ClusterSize(clusterSize)
+			createReq.ClusterSize = clusterSize
 
 			createReq.Organization = ch.Config.Organization
 			createReq.Name = args[0]

@@ -26,6 +26,7 @@ func ClusterCmd(ch *cmdutil.Helper) *cobra.Command {
 func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
 		region string
+		metal  bool
 	}
 
 	cmd := &cobra.Command{
@@ -47,11 +48,12 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
-			return ch.Printer.PrintResource(toClusterSKUs(clusterSKUs))
+			return ch.Printer.PrintResource(toClusterSKUs(clusterSKUs, flags.metal))
 		},
 	}
 
 	cmd.Flags().StringVar(&flags.region, "region", "", "view cluster sizes and rates for a specific region")
+	cmd.Flags().BoolVar(&flags.metal, "metal", false, "view cluster sizes and rates for clusters with metal storage")
 
 	cmd.RegisterFlagCompletionFunc("region", func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
 		return cmdutil.RegionsCompletionFunc(ch, cmd, args, toComplete)
@@ -103,12 +105,18 @@ func toClusterSKU(clusterSKU *planetscale.ClusterSKU) *ClusterSKU {
 	return cluster
 }
 
-func toClusterSKUs(clusterSKUs []*planetscale.ClusterSKU) []*ClusterSKU {
+func toClusterSKUs(clusterSKUs []*planetscale.ClusterSKU, onlyMetal bool) []*ClusterSKU {
 	clusters := make([]*ClusterSKU, 0, len(clusterSKUs))
 
 	for _, clusterSKU := range clusterSKUs {
 		if clusterSKU.Enabled && clusterSKU.Rate != nil && clusterSKU.Name != "PS_DEV" {
-			clusters = append(clusters, toClusterSKU(clusterSKU))
+			if onlyMetal {
+				if clusterSKU.Metal {
+					clusters = append(clusters, toClusterSKU(clusterSKU))
+				}
+			} else {
+				clusters = append(clusters, toClusterSKU(clusterSKU))
+			}
 		}
 	}
 

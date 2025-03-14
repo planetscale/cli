@@ -33,7 +33,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			createReq.Name = keyspace
 			createReq.Shards = flags.shards
 			createReq.ExtraReplicas = flags.additionalReplicas
-			createReq.ClusterSize = planetscale.ClusterSize(flags.clusterSize)
+			createReq.ClusterSize = flags.clusterSize
 
 			client, err := ch.Client()
 			if err != nil {

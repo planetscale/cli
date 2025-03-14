@@ -296,8 +296,8 @@ func DeployRequestBranchToNumber(ctx context.Context, client *ps.Client, organiz
 	return deployRequests[0].Number, nil
 }
 
-func ToClusterSizeSlug(c ps.ClusterSize) string {
-	return strings.ReplaceAll(string(c), "_", "-")
+func ToClusterSizeSlug(c string) string {
+	return strings.ReplaceAll(c, "_", "-")
 }
 
 func SnakeToSentenceCase(s string) string {
