@@ -56,7 +56,7 @@ func ResizeCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			if cmd.Flags().Changed("cluster-size") {
-				size := ps.ClusterSize(flags.clusterSize)
+				size := flags.clusterSize
 				resizeReq.ClusterSize = &size
 			}
 
