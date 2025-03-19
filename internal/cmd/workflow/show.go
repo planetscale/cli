@@ -49,7 +49,7 @@ func ShowCmd(ch *cmdutil.Helper) *cobra.Command {
 				}
 			}
 			end()
-			return ch.Printer.PrintResource(toMinimalWorkflow(workflow))
+			return ch.Printer.PrintResource(toWorkflow(workflow))
 		},
 	}
 
@@ -71,7 +71,8 @@ type Workflow struct {
 	CopyDuration int64 `header:"copy duration,unixduration"`
 	Duration     int64 `header:"total duration,unixduration"`
 
-	FinishedBy string `header:"finished by"`
+	TrafficServing string `header:"traffic serving"`
+
 	FinishedAt *int64 `header:"finished at,timestamp(ms|utc|human)" json:"finished_at"`
 
 	orig *ps.Workflow
@@ -97,7 +98,24 @@ func toWorkflow(w *ps.Workflow) *Workflow {
 		SourceKeyspace: w.SourceKeyspace.Name,
 		TargetKeyspace: w.TargetKeyspace.Name,
 
+		TrafficServing: getTrafficServingState(w),
+
+		CreatedAt:    printer.GetMilliseconds(w.CreatedAt),
 		CopyDuration: copyDuration.Milliseconds(),
 		Duration:     duration.Milliseconds(),
+
+		FinishedAt: printer.GetMillisecondsIfExists(finishedAt),
+	}
+}
+
+func getTrafficServingState(w *ps.Workflow) string {
+	if (w.PrimariesSwitched && w.ReplicasSwitched) || w.CompletedAt != nil {
+		return "Primary & replicas"
+	} else if w.PrimariesSwitched {
+		return "Primary"
+	} else if w.ReplicasSwitched {
+		return "Replicas"
+	} else {
+		return ""
 	}
 }
