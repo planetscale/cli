@@ -1,6 +1,7 @@
 package workflow
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/planetscale/cli/internal/cmdutil"
@@ -68,4 +69,12 @@ func durationIfExists(start time.Time, end *time.Time) time.Duration {
 	}
 
 	return duration
+}
+
+func (w *MinimalWorkflow) MarshalJSON() ([]byte, error) {
+	return json.MarshalIndent(w.orig, "", " ")
+}
+
+func (w *MinimalWorkflow) MarshalCSVValue() interface{} {
+	return []*MinimalWorkflow{w}
 }
