@@ -50,30 +50,3 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	return cmd
 }
-
-type MinimalWorkflow struct {
-	Number      int64  `header:"#"`
-	Name        string `header:"name"`
-	State       string `header:"state"`
-	CreatedAt   int64  `header:"created_at,timestamp(ms|utc|human)" json:"created_at"`
-	Duration    *int64 `header:"duration,timestamp(ms|utc|human)" json:"duration"`
-	CompletedAt *int64 `header:"completed_at,timestamp(ms|utc|human)" json:"completed_at"`
-
-	orig *ps.Workflow
-}
-
-func toMinimalWorkflows(workflows []*ps.Workflow) []*MinimalWorkflow {
-	minimalWorkflows := make([]*MinimalWorkflow, 0, len(workflows))
-
-	for _, w := range workflows {
-		minimalWorkflows = append(minimalWorkflows, toMinimalWorkflow(w))
-	}
-
-	return minimalWorkflows
-}
-
-func toMinimalWorkflow(w *ps.Workflow) *MinimalWorkflow {
-	return &MinimalWorkflow{
-		orig: w,
-	}
-}
