@@ -22,6 +22,7 @@ func WorkflowCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
 
 	cmd.AddCommand(ListCmd(ch))
+	cmd.AddCommand(ShowCmd(ch))
 
 	return cmd
 }
