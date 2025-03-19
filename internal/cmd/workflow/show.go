@@ -3,6 +3,7 @@ package workflow
 import (
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
@@ -53,4 +54,50 @@ func ShowCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 
 	return cmd
+}
+
+type Workflow struct {
+	Number uint64 `header:"number"`
+	Name   string `header:"name"`
+	State  string `header:"state"`
+	Actor  string `header:"actor"`
+	Branch string `header:"branch"`
+
+	SourceKeyspace string `header:"source keyspace"`
+	TargetKeyspace string `header:"target keyspace"`
+
+	CreatedAt int64 `header:"created_at,timestamp(ms|utc|human)" json:"created_at"`
+
+	CopyDuration int64 `header:"copy duration,unixduration"`
+	Duration     int64 `header:"total duration,unixduration"`
+
+	FinishedBy string `header:"finished by"`
+	FinishedAt *int64 `header:"finished at,timestamp(ms|utc|human)" json:"finished_at"`
+
+	orig *ps.Workflow
+}
+
+func toWorkflow(w *ps.Workflow) *Workflow {
+	var finishedAt *time.Time
+	if w.CompletedAt != nil {
+		finishedAt = w.CompletedAt
+	} else if (w.CancelledAt) != nil {
+		finishedAt = w.CancelledAt
+	}
+
+	duration := durationIfExists(&w.CreatedAt, finishedAt)
+	copyDuration := durationIfExists(w.StartedAt, w.DataCopyCompletedAt)
+
+	return &Workflow{
+		Number:         w.Number,
+		Name:           w.Name,
+		State:          w.State,
+		Actor:          w.Actor.Name,
+		Branch:         w.Branch.Name,
+		SourceKeyspace: w.SourceKeyspace.Name,
+		TargetKeyspace: w.TargetKeyspace.Name,
+
+		CopyDuration: copyDuration.Milliseconds(),
+		Duration:     duration.Milliseconds(),
+	}
 }

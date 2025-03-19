@@ -49,7 +49,7 @@ func toMinimalWorkflows(workflows []*ps.Workflow) []*MinimalWorkflow {
 }
 
 func toMinimalWorkflow(w *ps.Workflow) *MinimalWorkflow {
-	duration := durationIfExists(w.CreatedAt, w.CompletedAt)
+	duration := durationIfExists(&w.CreatedAt, w.CompletedAt)
 
 	return &MinimalWorkflow{
 		Number:      w.Number,
@@ -62,11 +62,11 @@ func toMinimalWorkflow(w *ps.Workflow) *MinimalWorkflow {
 	}
 }
 
-func durationIfExists(start time.Time, end *time.Time) time.Duration {
+func durationIfExists(start *time.Time, end *time.Time) time.Duration {
 	var duration time.Duration
 
-	if end != nil {
-		duration = end.Sub(start)
+	if start != nil && end != nil {
+		duration = end.Sub(*start)
 	}
 
 	return duration
