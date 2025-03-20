@@ -63,6 +63,8 @@ type Workflow struct {
 	Actor  string `header:"actor"`
 	Branch string `header:"branch"`
 
+	Tables []string `header:"tables" json:"tables"`
+
 	SourceKeyspace string `header:"source keyspace"`
 	TargetKeyspace string `header:"target keyspace"`
 
@@ -98,6 +100,8 @@ func toWorkflow(w *ps.Workflow) *Workflow {
 		SourceKeyspace: w.SourceKeyspace.Name,
 		TargetKeyspace: w.TargetKeyspace.Name,
 
+		Tables: getTables(w),
+
 		TrafficServing: getTrafficServingState(w),
 
 		CreatedAt:    printer.GetMilliseconds(w.CreatedAt),
@@ -106,6 +110,16 @@ func toWorkflow(w *ps.Workflow) *Workflow {
 
 		FinishedAt: printer.GetMillisecondsIfExists(finishedAt),
 	}
+}
+
+func getTables(w *ps.Workflow) []string {
+	tables := make([]string, 0, len(w.Tables))
+
+	for _, table := range w.Tables {
+		tables = append(tables, table.Name)
+	}
+
+	return tables
 }
 
 func getTrafficServingState(w *ps.Workflow) string {
