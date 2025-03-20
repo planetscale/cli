@@ -3,7 +3,6 @@ package workflow
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"testing"
 
 	qt "github.com/frankban/quicktest"
@@ -55,9 +54,6 @@ func TestWorkflow_ShowCmd(t *testing.T) {
 	cmd := ShowCmd(ch)
 	cmd.SetArgs([]string{db, "1"})
 	err := cmd.Execute()
-
-	fmt.Println(buf.String())
-	fmt.Println(workflow)
 
 	c.Assert(err, qt.IsNil)
 	c.Assert(svc.GetFnInvoked, qt.IsTrue)
