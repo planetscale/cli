@@ -1,6 +1,7 @@
 package workflow
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"time"
@@ -132,4 +133,12 @@ func getTrafficServingState(w *ps.Workflow) string {
 	} else {
 		return ""
 	}
+}
+
+func (w *Workflow) MarshalJSON() ([]byte, error) {
+	return json.MarshalIndent(w.orig, "", " ")
+}
+
+func (w *Workflow) MarshalCSVValue() interface{} {
+	return []*Workflow{w}
 }
