@@ -111,6 +111,8 @@ func toWorkflow(w *ps.Workflow) *Workflow {
 		Duration:     duration.Milliseconds(),
 
 		FinishedAt: printer.GetMillisecondsIfExists(finishedAt),
+
+		orig: w,
 	}
 }
 
