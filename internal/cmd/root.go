@@ -27,6 +27,7 @@ import (
 
 	"github.com/planetscale/cli/internal/cmd/dataimports"
 	"github.com/planetscale/cli/internal/cmd/size"
+	"github.com/planetscale/cli/internal/cmd/workflow"
 
 	"github.com/fatih/color"
 	"github.com/planetscale/cli/internal/cmd/api"
@@ -228,6 +229,7 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 	rootCmd.AddCommand(size.SizeCmd(ch))
 	rootCmd.AddCommand(token.TokenCmd(ch))
 	rootCmd.AddCommand(version.VersionCmd(ch, ver, commit, buildDate))
+	rootCmd.AddCommand(workflow.WorkflowCmd(ch))
 
 	return rootCmd.ExecuteContext(ctx)
 }
