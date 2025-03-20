@@ -50,6 +50,7 @@ func ShowCmd(ch *cmdutil.Helper) *cobra.Command {
 				}
 			}
 			end()
+
 			return ch.Printer.PrintResource(toWorkflow(workflow))
 		},
 	}
@@ -72,7 +73,7 @@ type Workflow struct {
 	CreatedAt int64 `header:"created_at,timestamp(ms|utc|human)" json:"created_at"`
 
 	CopyDuration int64 `header:"copy duration,unixduration"`
-	Duration     int64 `header:"total duration,unixduration"`
+	Duration     int64 `header:"total duration,unixduration" json:"duration"`
 
 	TrafficServing string `header:"traffic serving"`
 

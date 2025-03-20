@@ -54,7 +54,7 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 }
 
 type MinimalWorkflow struct {
-	Number      uint64 `header:"Number"`
+	Number      uint64 `header:"number"`
 	Name        string `header:"name"`
 	State       string `header:"state"`
 	CreatedAt   int64  `header:"created_at,timestamp(ms|utc|human)" json:"created_at"`
