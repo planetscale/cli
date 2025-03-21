@@ -295,7 +295,7 @@ func createInteractive(ctx context.Context, ch *cmdutil.Helper, org, db, branch 
 		return err
 	}
 
-	ch.Printer.Printf("Successfully created workflow %s. It will copy %d tables from %s to %s.", printer.BoldBlue(workflow.Name), printer.Bold(len(workflow.Tables)), printer.BoldBlue(workflow.SourceKeyspace.Name), printer.BoldBlue(workflow.TargetKeyspace.Name))
+	ch.Printer.Printf("Successfully created workflow %s. It will copy %s tables from %s to %s.", printer.BoldBlue(workflow.Name), printer.Bold(len(workflow.Tables)), printer.BoldBlue(workflow.SourceKeyspace.Name), printer.BoldBlue(workflow.TargetKeyspace.Name))
 
 	return nil
 }
