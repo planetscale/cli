@@ -50,10 +50,9 @@ func VerifyDataCmd(ch *cmdutil.Helper) *cobra.Command {
 			end()
 
 			if ch.Printer.Format() == printer.Human {
-				ch.Printer.Println("Successfully started data verification for workflow %s in database %s.",
+				ch.Printer.Printf("Successfully started data verification for workflow %s in database %s.\n",
 					printer.BoldBlue(workflow.Name),
-					printer.BoldBlue(db),
-					printer.Bold(workflow.State))
+					printer.BoldBlue(db))
 				return nil
 			}
 
