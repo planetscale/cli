@@ -19,6 +19,7 @@ func WorkflowCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.AddCommand(ListCmd(ch))
 	cmd.AddCommand(ShowCmd(ch))
 	cmd.AddCommand(VerifyDataCmd(ch))
+	cmd.AddCommand(CreateCmd(ch))
 
 	return cmd
 }
