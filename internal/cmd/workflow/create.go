@@ -50,6 +50,10 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			workflow, err := createWorkflow(ctx, client, org, db, branch, flags)
 			end()
+			
+			if err != nil {
+				return err
+			}
 
 			if ch.Printer.Format() == printer.Human {
 				ch.Printer.Printf("Successfully created workflow %s to copy %d tables from %s to %s.\n", printer.BoldBlue(workflow.Name), len(flags.tables), printer.Bold(flags.sourceKeyspace), printer.Bold(flags.targetKeyspace))
@@ -65,7 +69,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().StringVar(&flags.targetKeyspace, "target-keyspace", "", "Keyspace where the tables will be copied to.")
 	cmd.Flags().StringVar(&flags.globalKeyspace, "global-keyspace", "", "Choose an unsharded keyspace where sequence tables will be created for any workflow table that contains `AUTO_INCREMENT`")
 	cmd.Flags().StringSliceVar(&flags.tables, "tables", []string{}, "Tables to migrate to the target keyspace")
-	cmd.Flags().BoolVar(&flags.deferSecondaryKeys, "defer-secondary-keys", true, "Don’t create secondary indexes for tables until they’ve been copied")
+	cmd.Flags().BoolVar(&flags.deferSecondaryKeys, "defer-secondary-keys", true, "Don't create secondary indexes for tables until they've been copied")
 	cmd.Flags().StringVar(&flags.onDDL, "on-ddl", "STOP", "Action to take when a DDL statement is encountered during a running workflow. Options: EXEC, EXEC_IGNORE, STOP, IGNORE")
 	cmd.Flags().BoolVarP(&flags.interactive, "interactive", "i", false, "Create the workflow in interactive mode")
 
@@ -211,7 +215,7 @@ func createInteractive(ctx context.Context, ch *cmdutil.Helper, org, db, branch 
 		huh.NewGroup(
 			huh.NewConfirm().
 				Title("Defer secondary index creation?").
-				Description("Don’t create secondary indexes for tables until they’ve been copied").
+				Description("Don't create secondary indexes for tables until they've been copied").
 				Value(&flags.deferSecondaryKeys),
 		).Title("Advanced options"),
 
