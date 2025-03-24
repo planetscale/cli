@@ -10,16 +10,16 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type switchFlags struct {
+type switchTrafficFlags struct {
 	replicasOnly bool
 }
 
-func SwitchCmd(ch *cmdutil.Helper) *cobra.Command {
-	var flags switchFlags
+func SwitchTrafficCmd(ch *cmdutil.Helper) *cobra.Command {
+	var flags switchTrafficFlags
 
 	cmd := &cobra.Command{
-		Use:   "switch <database> <number>",
-		Short: "Switch traffic for a specific workflow in a PlanetScale database",
+		Use:   "switch-traffic <database> <number>",
+		Short: "Route queries to the target keyspace for a specific workflow in a PlanetScale database",
 		Long: `Route queries to the target keyspace for a specific workflow in a PlanetScale database. 
 By default, this command will route all queries for primary, replica, and read-only tablet). Use the --replicas-only flag to only route read queries from the replica and read-only tablets.`,
 		Args: cmdutil.RequiredArgs("database", "number"),
@@ -41,7 +41,7 @@ By default, this command will route all queries for primary, replica, and read-o
 			var workflow *ps.Workflow
 
 			if flags.replicasOnly {
-				end := ch.Printer.PrintProgress(fmt.Sprintf("Requesting to switch queries from replica and read-only tablets to the target keyspace for workflow %s in database %s...", printer.BoldBlue(number), printer.BoldBlue(db)))
+				end := ch.Printer.PrintProgress(fmt.Sprintf("Requesting to route queries from replica and read-only tablets to the target keyspace for workflow %s in database %s...", printer.BoldBlue(number), printer.BoldBlue(db)))
 				defer end()
 
 				workflow, err = client.Workflows.SwitchReplicas(ctx, &ps.SwitchReplicasWorkflowRequest{
@@ -50,7 +50,7 @@ By default, this command will route all queries for primary, replica, and read-o
 					WorkflowNumber: number,
 				})
 			} else {
-				end := ch.Printer.PrintProgress(fmt.Sprintf("Requesting to switch queries from the primary, replica, and read-only tablets to the target keyspace for workflow %s in database %s...", printer.BoldBlue(number), printer.BoldBlue(db)))
+				end := ch.Printer.PrintProgress(fmt.Sprintf("Requesting to route queries from the primary, replica, and read-only tablets to the target keyspace for workflow %s in database %s...", printer.BoldBlue(number), printer.BoldBlue(db)))
 				defer end()
 
 				workflow, err = client.Workflows.SwitchPrimaries(ctx, &ps.SwitchPrimariesWorkflowRequest{

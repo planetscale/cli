@@ -14,7 +14,7 @@ import (
 	ps "github.com/planetscale/planetscale-go/planetscale"
 )
 
-func TestWorkflow_SwitchCmd_Primaries(t *testing.T) {
+func TestWorkflow_SwitchTrafficCmd_Primaries(t *testing.T) {
 	c := qt.New(t)
 
 	var buf bytes.Buffer
@@ -79,7 +79,7 @@ func TestWorkflow_SwitchCmd_Primaries(t *testing.T) {
 		},
 	}
 
-	cmd := SwitchCmd(ch)
+	cmd := SwitchTrafficCmd(ch)
 	cmd.SetArgs([]string{db, "123"})
 	err := cmd.Execute()
 
@@ -88,7 +88,7 @@ func TestWorkflow_SwitchCmd_Primaries(t *testing.T) {
 	c.Assert(buf.String(), qt.JSONEquals, expectedWorkflow)
 }
 
-func TestWorkflow_SwitchCmd_Replicas(t *testing.T) {
+func TestWorkflow_SwitchTrafficCmd_Replicas(t *testing.T) {
 	c := qt.New(t)
 
 	var buf bytes.Buffer
@@ -153,7 +153,7 @@ func TestWorkflow_SwitchCmd_Replicas(t *testing.T) {
 		},
 	}
 
-	cmd := SwitchCmd(ch)
+	cmd := SwitchTrafficCmd(ch)
 	cmd.SetArgs([]string{db, "123", "--replicas-only"})
 	err := cmd.Execute()
 
@@ -162,7 +162,7 @@ func TestWorkflow_SwitchCmd_Replicas(t *testing.T) {
 	c.Assert(buf.String(), qt.JSONEquals, expectedWorkflow)
 }
 
-func TestWorkflow_SwitchCmd_Error(t *testing.T) {
+func TestWorkflow_SwitchTrafficCmd_Error(t *testing.T) {
 	c := qt.New(t)
 
 	var buf bytes.Buffer
@@ -194,7 +194,7 @@ func TestWorkflow_SwitchCmd_Error(t *testing.T) {
 		},
 	}
 
-	cmd := SwitchCmd(ch)
+	cmd := SwitchTrafficCmd(ch)
 	cmd.SetArgs([]string{db, "123"})
 	err := cmd.Execute()
 
