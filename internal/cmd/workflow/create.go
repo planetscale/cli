@@ -286,10 +286,6 @@ func createInteractive(ctx context.Context, ch *cmdutil.Helper, org, db, branch 
 		return err
 	}
 
-	if flags.globalKeyspace == "" {
-		flags.globalKeyspace = flags.sourceKeyspace
-	}
-
 	workflow, err := createWorkflow(ctx, client, org, db, branch, flags)
 	if err != nil {
 		return err
