@@ -41,11 +41,6 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			org := ch.Config.Organization
 
-			// If there is no global keyspace, default to the source keyspace
-			if flags.globalKeyspace == "" {
-				flags.globalKeyspace = flags.sourceKeyspace
-			}
-
 			if flags.interactive {
 				return createInteractive(ctx, ch, org, db, branch, flags)
 			}
