@@ -48,6 +48,7 @@ func CutoverCmd(ch *cmdutil.Helper) *cobra.Command {
 					return cmdutil.HandleError(err)
 				}
 			}
+			end()
 
 			if ch.Printer.Format() == printer.Human {
 				ch.Printer.Printf("Workflow %s successfully completed.\n",

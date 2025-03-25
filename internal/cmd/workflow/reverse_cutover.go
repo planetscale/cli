@@ -50,6 +50,8 @@ This is useful if your application has errors and you need to rollback after a c
 				}
 			}
 
+			end()
+
 			if ch.Printer.Format() == printer.Human {
 				ch.Printer.Printf("Cutover reversed for workflow %s in database %s.\n",
 					printer.BoldBlue(workflow.Name),

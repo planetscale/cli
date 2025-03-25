@@ -49,6 +49,7 @@ This is useful when you need to rollback a traffic switch operation.`,
 					return cmdutil.HandleError(err)
 				}
 			}
+			end()
 
 			if ch.Printer.Format() == printer.Human {
 				ch.Printer.Printf("Successfully started reversing traffic for workflow %s in database %s.\n",

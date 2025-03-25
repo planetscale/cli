@@ -48,6 +48,7 @@ func RetryCmd(ch *cmdutil.Helper) *cobra.Command {
 					return cmdutil.HandleError(err)
 				}
 			}
+			end()
 
 			if ch.Printer.Format() == printer.Human {
 				ch.Printer.Printf("Workflow %s in database %s has been retried.\n",

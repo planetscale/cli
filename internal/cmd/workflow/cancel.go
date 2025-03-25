@@ -49,6 +49,7 @@ marks it as cancelled, allowing you to start a new workflow if needed.`,
 					return cmdutil.HandleError(err)
 				}
 			}
+			end()
 
 			if ch.Printer.Format() == printer.Human {
 				ch.Printer.Printf("Workflow %s in database %s has been cancelled.\n",

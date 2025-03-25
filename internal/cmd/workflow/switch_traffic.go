@@ -39,9 +39,10 @@ By default, this command will route all queries for primary, replica, and read-o
 			}
 
 			var workflow *ps.Workflow
+			var end func()
 
 			if flags.replicasOnly {
-				end := ch.Printer.PrintProgress(fmt.Sprintf("Requesting to route queries from replica and read-only tablets to the target keyspace for workflow %s in database %s...", printer.BoldBlue(number), printer.BoldBlue(db)))
+				end = ch.Printer.PrintProgress(fmt.Sprintf("Requesting to route queries from replica and read-only tablets to the target keyspace for workflow %s in database %s...", printer.BoldBlue(number), printer.BoldBlue(db)))
 				defer end()
 
 				workflow, err = client.Workflows.SwitchReplicas(ctx, &ps.SwitchReplicasWorkflowRequest{
@@ -49,9 +50,9 @@ By default, this command will route all queries for primary, replica, and read-o
 					Database:       db,
 					WorkflowNumber: number,
 				})
+				end()
 			} else {
-				end := ch.Printer.PrintProgress(fmt.Sprintf("Requesting to route queries from the primary, replica, and read-only tablets to the target keyspace for workflow %s in database %s...", printer.BoldBlue(number), printer.BoldBlue(db)))
-				defer end()
+				end = ch.Printer.PrintProgress(fmt.Sprintf("Requesting to route queries from the primary, replica, and read-only tablets to the target keyspace for workflow %s in database %s...", printer.BoldBlue(number), printer.BoldBlue(db)))
 
 				workflow, err = client.Workflows.SwitchPrimaries(ctx, &ps.SwitchPrimariesWorkflowRequest{
 					Organization:   ch.Config.Organization,
@@ -59,6 +60,8 @@ By default, this command will route all queries for primary, replica, and read-o
 					WorkflowNumber: number,
 				})
 			}
+
+			defer end()
 
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
@@ -69,6 +72,8 @@ By default, this command will route all queries for primary, replica, and read-o
 					return cmdutil.HandleError(err)
 				}
 			}
+
+			end()
 
 			if ch.Printer.Format() == printer.Human {
 				if flags.replicasOnly {
