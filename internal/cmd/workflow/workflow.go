@@ -22,6 +22,8 @@ func WorkflowCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.AddCommand(CreateCmd(ch))
 	cmd.AddCommand(SwitchTrafficCmd(ch))
 	cmd.AddCommand(ReverseTrafficCmd(ch))
+	cmd.AddCommand(CutoverCmd(ch))
+	cmd.AddCommand(ReverseCutoverCmd(ch))
 
 	return cmd
 }
