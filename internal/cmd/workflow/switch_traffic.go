@@ -42,27 +42,21 @@ By default, this command will route all queries for primary, replica, and read-o
 			var end func()
 
 			if flags.replicasOnly {
-				end = ch.Printer.PrintProgress(fmt.Sprintf("Requesting to route queries from replica and read-only tablets to the target keyspace for workflow %s in database %s...", printer.BoldBlue(number), printer.BoldBlue(db)))
-				defer end()
-
+				end = ch.Printer.PrintProgress(fmt.Sprintf("Switching query traffic from replica and read-only tablets to the target keyspace for workflow %s in database %s...", printer.BoldBlue(number), printer.BoldBlue(db)))
 				workflow, err = client.Workflows.SwitchReplicas(ctx, &ps.SwitchReplicasWorkflowRequest{
 					Organization:   ch.Config.Organization,
 					Database:       db,
 					WorkflowNumber: number,
 				})
-				end()
 			} else {
-				end = ch.Printer.PrintProgress(fmt.Sprintf("Requesting to route queries from the primary, replica, and read-only tablets to the target keyspace for workflow %s in database %s...", printer.BoldBlue(number), printer.BoldBlue(db)))
-
+				end = ch.Printer.PrintProgress(fmt.Sprintf("Switching query traffic from primary, replica, and read-only tablets to the target keyspace for workflow %s in database %s...", printer.BoldBlue(number), printer.BoldBlue(db)))
 				workflow, err = client.Workflows.SwitchPrimaries(ctx, &ps.SwitchPrimariesWorkflowRequest{
 					Organization:   ch.Config.Organization,
 					Database:       db,
 					WorkflowNumber: number,
 				})
 			}
-
 			defer end()
-
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case ps.ErrNotFound:
@@ -72,18 +66,17 @@ By default, this command will route all queries for primary, replica, and read-o
 					return cmdutil.HandleError(err)
 				}
 			}
-
 			end()
 
 			if ch.Printer.Format() == printer.Human {
 				if flags.replicasOnly {
-					ch.Printer.Printf("Successfully started switching queries from replica and read-only tablets to target keyspace for workflow %s in database %s.\n",
+					ch.Printer.Printf("Successfully switched query traffic from replica and read-only tablets to target keyspace for workflow %s in database %s.\n",
 						printer.BoldBlue(workflow.Name),
 						printer.BoldBlue(db),
 					)
 					return nil
 				}
-				ch.Printer.Printf("Successfully started switching queries from primary, replica, and read-only tablets to target keyspace for workflow %s in database %s.\n",
+				ch.Printer.Printf("Successfully switched queries from primary, replica, and read-only tablets to target keyspace for workflow %s in database %s.\n",
 					printer.BoldBlue(workflow.Name),
 					printer.BoldBlue(db),
 				)
