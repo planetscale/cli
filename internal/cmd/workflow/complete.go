@@ -31,7 +31,7 @@ func CompleteCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
-			end := ch.Printer.PrintProgress(fmt.Sprintf("Marking workflow %s in database %s as complete...", printer.BoldBlue(number), printer.BoldBlue(db)))
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Marking workflow %s in database %s as complete…", printer.BoldBlue(number), printer.BoldBlue(db)))
 			defer end()
 
 			workflow, err := client.Workflows.Complete(ctx, &ps.CompleteWorkflowRequest{

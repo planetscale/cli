@@ -31,7 +31,7 @@ func CutoverCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
-			end := ch.Printer.PrintProgress(fmt.Sprintf("Completing workflow workflow %s in database %s…", printer.BoldBlue(number), printer.BoldBlue(db)))
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Completing workflow %s in database %s…", printer.BoldBlue(number), printer.BoldBlue(db)))
 			defer end()
 
 			workflow, err := client.Workflows.Cutover(ctx, &ps.CutoverWorkflowRequest{

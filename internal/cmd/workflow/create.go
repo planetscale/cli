@@ -45,7 +45,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 				return createInteractive(ctx, ch, org, db, branch, flags)
 			}
 
-			end := ch.Printer.PrintProgress("Creating workflow...")
+			end := ch.Printer.PrintProgress("Creating workflow…")
 			defer end()
 
 			workflow, err := createWorkflow(ctx, client, org, db, branch, flags)

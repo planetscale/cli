@@ -32,7 +32,7 @@ This is useful when you need to rollback a traffic switch operation.`,
 				return err
 			}
 
-			end := ch.Printer.PrintProgress(fmt.Sprintf("Reversing traffic for workflow %s in database %s...", printer.BoldBlue(number), printer.BoldBlue(db)))
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Reversing traffic for workflow %s in database %s…", printer.BoldBlue(number), printer.BoldBlue(db)))
 			defer end()
 
 			workflow, err := client.Workflows.ReverseTraffic(ctx, &ps.ReverseTrafficWorkflowRequest{

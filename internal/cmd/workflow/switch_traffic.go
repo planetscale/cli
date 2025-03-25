@@ -42,14 +42,14 @@ By default, this command will route all queries for primary, replica, and read-o
 			var end func()
 
 			if flags.replicasOnly {
-				end = ch.Printer.PrintProgress(fmt.Sprintf("Switching query traffic from replica and read-only tablets to the target keyspace for workflow %s in database %s...", printer.BoldBlue(number), printer.BoldBlue(db)))
+				end = ch.Printer.PrintProgress(fmt.Sprintf("Switching query traffic from replica and read-only tablets to the target keyspace for workflow %s in database %s…", printer.BoldBlue(number), printer.BoldBlue(db)))
 				workflow, err = client.Workflows.SwitchReplicas(ctx, &ps.SwitchReplicasWorkflowRequest{
 					Organization:   ch.Config.Organization,
 					Database:       db,
 					WorkflowNumber: number,
 				})
 			} else {
-				end = ch.Printer.PrintProgress(fmt.Sprintf("Switching query traffic from primary, replica, and read-only tablets to the target keyspace for workflow %s in database %s...", printer.BoldBlue(number), printer.BoldBlue(db)))
+				end = ch.Printer.PrintProgress(fmt.Sprintf("Switching query traffic from primary, replica, and read-only tablets to the target keyspace for workflow %s in database %s…", printer.BoldBlue(number), printer.BoldBlue(db)))
 				workflow, err = client.Workflows.SwitchPrimaries(ctx, &ps.SwitchPrimariesWorkflowRequest{
 					Organization:   ch.Config.Organization,
 					Database:       db,

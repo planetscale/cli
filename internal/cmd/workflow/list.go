@@ -28,7 +28,7 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
-			end := ch.Printer.PrintProgress(fmt.Sprintf("Fetching workflows for database %s...", printer.BoldBlue(db)))
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Fetching workflows for database %s…", printer.BoldBlue(db)))
 			defer end()
 
 			workflows, err := client.Workflows.List(ctx, &ps.ListWorkflowsRequest{

@@ -32,7 +32,7 @@ marks it as cancelled, allowing you to start a new workflow if needed.`,
 				return err
 			}
 
-			end := ch.Printer.PrintProgress(fmt.Sprintf("Cancelling workflow %s in database %s...", printer.BoldBlue(number), printer.BoldBlue(db)))
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Cancelling workflow %s in database %s…", printer.BoldBlue(number), printer.BoldBlue(db)))
 			defer end()
 
 			workflow, err := client.Workflows.Cancel(ctx, &ps.CancelWorkflowRequest{
