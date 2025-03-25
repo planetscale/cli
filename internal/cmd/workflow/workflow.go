@@ -25,6 +25,7 @@ func WorkflowCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.AddCommand(CutoverCmd(ch))
 	cmd.AddCommand(ReverseCutoverCmd(ch))
 	cmd.AddCommand(CompleteCmd(ch))
+	cmd.AddCommand(CancelCmd(ch))
 
 	return cmd
 }
