@@ -13,9 +13,9 @@ import (
 func ReverseCutoverCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "reverse-cutover <database> <number>",
-		Short: "Reverse the cutover of a workflow",
-		Long: `Reverse the cutover of a workflow, redirecting traffic back to the source keyspace. 
-This is useful when you need to rollback after a cutover has been completed.`,
+		Short: "Reverse the cutover of a workflow back to the source keyspace by reverting the routing rules.",
+		Long: `Reverse the cutover of a workflow, redirecting traffic back to the source keyspace.  
+This is useful if your application has errors and you need to rollback after a cutover has been completed.`,
 		Args: cmdutil.RequiredArgs("database", "number"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -51,10 +51,10 @@ This is useful when you need to rollback after a cutover has been completed.`,
 			}
 
 			if ch.Printer.Format() == printer.Human {
-				ch.Printer.Printf("Cutover reversed for workflow %s in database %s.\nCurrent workflow state: %s\n",
+				ch.Printer.Printf("Cutover reversed for workflow %s in database %s.\n",
 					printer.BoldBlue(workflow.Name),
 					printer.BoldBlue(db),
-					printer.Bold(workflow.State))
+				)
 				return nil
 			}
 
