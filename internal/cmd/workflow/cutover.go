@@ -61,7 +61,7 @@ func CutoverCmd(ch *cmdutil.Helper) *cobra.Command {
 					}
 				}
 
-				confirmationMessage := fmt.Sprintf("Are you sure you want to the cutover? This will delete the moved tables for %s and replication between %s and %s will end.", workflow.SourceKeyspace.Name, workflow.SourceKeyspace.Name, workflow.TargetKeyspace.Name)
+				confirmationMessage := fmt.Sprintf("Are you sure you want to cutover? This will delete the moved tables from %s and replication between %s and %s will end.", workflow.SourceKeyspace.Name, workflow.SourceKeyspace.Name, workflow.TargetKeyspace.Name)
 				prompt := &survey.Confirm{
 					Message: confirmationMessage,
 					Default: false,
