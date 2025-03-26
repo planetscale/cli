@@ -14,8 +14,8 @@ type KeyspaceResizeRequest struct {
 	ID    string `json:"id"`
 	State string `header:"state" json:"state"`
 
-	ClusterSize         string `header:"cluster_size" json:"cluster_rate_name"`
-	PreviousClusterSize string `header:"previous_cluster_size" json:"previous_cluster_rate_name"`
+	ClusterSize        string `header:"cluster_size" json:"cluster_name"`
+	PeviousClusterSize string `header:"previous_cluster_size" json:"previous_cluster_name"`
 
 	PreviousReplicas uint `header:"previous_replicas" json:"previous_replicas"`
 	Replicas         uint `header:"replicas" json:"replicas"`
