@@ -1,9 +1,13 @@
 package workflow
 
 import (
+	"errors"
 	"fmt"
+	"os"
 	"strconv"
 
+	"github.com/AlecAivazis/survey/v2"
+	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
 	ps "github.com/planetscale/planetscale-go/planetscale"
@@ -12,6 +16,7 @@ import (
 
 type switchTrafficFlags struct {
 	replicasOnly bool
+	force        bool
 }
 
 func SwitchTrafficCmd(ch *cmdutil.Helper) *cobra.Command {
@@ -41,22 +46,58 @@ By default, this command will route all queries for primary, replica, and read-o
 			var workflow *ps.Workflow
 			var end func()
 
+			if !flags.force {
+				if ch.Printer.Format() != printer.Human {
+					return fmt.Errorf("cannot switch query traffic with the output format %q (run with -force to override)", ch.Printer.Format())
+				}
+
+				if !printer.IsTTY {
+					return fmt.Errorf("cannot confirm switching query traffic (run with -force to override)")
+				}
+
+				confirmationMessage := "Are you sure you want to enable primary mode for this database?"
+				if flags.replicasOnly {
+					confirmationMessage = "Are you sure you want to enable replica mode for this database?"
+				}
+
+				prompt := &survey.Confirm{
+					Message: confirmationMessage,
+					Default: false,
+				}
+
+				var userInput bool
+				err := survey.AskOne(prompt, &userInput)
+				if err != nil {
+					if err == terminal.InterruptErr {
+						os.Exit(0)
+					} else {
+						return err
+					}
+				}
+
+				if !userInput {
+					return errors.New("cancelled switching query traffic")
+				}
+			}
+
 			if flags.replicasOnly {
-				end = ch.Printer.PrintProgress(fmt.Sprintf("Switching query traffic from replica and read-only tablets to the target keyspace for workflow %s in database %s…", printer.BoldBlue(number), printer.BoldBlue(db)))
+				end = ch.Printer.PrintProgress(fmt.Sprintf("Switching query traffic from replica and read-only tablets to the target keyspace for workflow %s in database %s...", printer.BoldBlue(number), printer.BoldBlue(db)))
 				workflow, err = client.Workflows.SwitchReplicas(ctx, &ps.SwitchReplicasWorkflowRequest{
 					Organization:   ch.Config.Organization,
 					Database:       db,
 					WorkflowNumber: number,
 				})
 			} else {
-				end = ch.Printer.PrintProgress(fmt.Sprintf("Switching query traffic from primary, replica, and read-only tablets to the target keyspace for workflow %s in database %s…", printer.BoldBlue(number), printer.BoldBlue(db)))
+				end = ch.Printer.PrintProgress(fmt.Sprintf("Switching query traffic from primary, replica, and read-only tablets to the target keyspace for workflow %s in database %s...", printer.BoldBlue(number), printer.BoldBlue(db)))
 				workflow, err = client.Workflows.SwitchPrimaries(ctx, &ps.SwitchPrimariesWorkflowRequest{
 					Organization:   ch.Config.Organization,
 					Database:       db,
 					WorkflowNumber: number,
 				})
 			}
+
 			defer end()
+
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case ps.ErrNotFound:
@@ -88,6 +129,7 @@ By default, this command will route all queries for primary, replica, and read-o
 	}
 
 	cmd.Flags().BoolVar(&flags.replicasOnly, "replicas-only", false, "Route read queries from the replica and read-only tablets to the target keyspace.")
+	cmd.Flags().BoolVar(&flags.force, "force", false, "Force the switch traffic operation without prompting for confirmation.")
 
 	return cmd
 }
