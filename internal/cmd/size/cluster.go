@@ -94,7 +94,7 @@ func toClusterSKU(clusterSKU *planetscale.ClusterSKU) *ClusterSKU {
 	}
 
 	cluster := &ClusterSKU{
-		Name:    clusterSKU.Name,
+		Name:    cmdutil.ToClusterSizeSlug(clusterSKU.Name),
 		Storage: storage,
 		CPU:     cpu,
 		Memory:  memory,
