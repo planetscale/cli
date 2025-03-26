@@ -14,13 +14,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type switchTrafficFlags struct {
-	replicasOnly bool
-	force        bool
-}
-
 func SwitchTrafficCmd(ch *cmdutil.Helper) *cobra.Command {
-	var flags switchTrafficFlags
+	var replicasOnly bool
+	var force bool
 
 	cmd := &cobra.Command{
 		Use:   "switch-traffic <database> <number>",
@@ -46,7 +42,7 @@ By default, this command will route all queries for primary, replica, and read-o
 			var workflow *ps.Workflow
 			var end func()
 
-			if !flags.force {
+			if !force {
 				if ch.Printer.Format() != printer.Human {
 					return fmt.Errorf("cannot switch query traffic with the output format %q (run with -force to override)", ch.Printer.Format())
 				}
@@ -56,7 +52,7 @@ By default, this command will route all queries for primary, replica, and read-o
 				}
 
 				confirmationMessage := "Are you sure you want to enable primary mode for this database?"
-				if flags.replicasOnly {
+				if replicasOnly {
 					confirmationMessage = "Are you sure you want to enable replica mode for this database?"
 				}
 
@@ -80,7 +76,7 @@ By default, this command will route all queries for primary, replica, and read-o
 				}
 			}
 
-			if flags.replicasOnly {
+			if replicasOnly {
 				end = ch.Printer.PrintProgress(fmt.Sprintf("Switching query traffic from replica and read-only tablets to the target keyspace for workflow %s in database %s...", printer.BoldBlue(number), printer.BoldBlue(db)))
 				workflow, err = client.Workflows.SwitchReplicas(ctx, &ps.SwitchReplicasWorkflowRequest{
 					Organization:   ch.Config.Organization,
@@ -110,7 +106,7 @@ By default, this command will route all queries for primary, replica, and read-o
 			end()
 
 			if ch.Printer.Format() == printer.Human {
-				if flags.replicasOnly {
+				if replicasOnly {
 					ch.Printer.Printf("Successfully switched query traffic from replica and read-only tablets to target keyspace for workflow %s in database %s.\n",
 						printer.BoldBlue(workflow.Name),
 						printer.BoldBlue(db),
@@ -128,8 +124,8 @@ By default, this command will route all queries for primary, replica, and read-o
 		},
 	}
 
-	cmd.Flags().BoolVar(&flags.replicasOnly, "replicas-only", false, "Route read queries from the replica and read-only tablets to the target keyspace.")
-	cmd.Flags().BoolVar(&flags.force, "force", false, "Force the switch traffic operation without prompting for confirmation.")
+	cmd.Flags().BoolVar(&replicasOnly, "replicas-only", false, "Route read queries from the replica and read-only tablets to the target keyspace.")
+	cmd.Flags().BoolVar(&force, "force", false, "Force the switch traffic operation without prompting for confirmation.")
 
 	return cmd
 }
