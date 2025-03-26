@@ -1,9 +1,13 @@
 package workflow
 
 import (
+	"errors"
 	"fmt"
+	"os"
 	"strconv"
 
+	"github.com/AlecAivazis/survey/v2"
+	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
 	ps "github.com/planetscale/planetscale-go/planetscale"
@@ -34,7 +38,7 @@ marks it as cancelled, allowing you to start a new workflow if needed.`,
 				return err
 			}
 
-if !force {
+			if !force {
 				if ch.Printer.Format() != printer.Human {
 					return fmt.Errorf("cannot cancel workflow with the output format %q (run with -force to override)", ch.Printer.Format())
 				}
@@ -43,7 +47,7 @@ if !force {
 					return fmt.Errorf("cannot confirm cancellation (run with -force to override)")
 				}
 
-				confirmationMessage := fmt.Sprintf("Are you sure you want to cancel this workflow?)
+				confirmationMessage := fmt.Sprintf("Are you sure you want to cancel this workflow?")
 				prompt := &survey.Confirm{
 					Message: confirmationMessage,
 					Default: false,
@@ -63,7 +67,6 @@ if !force {
 					return errors.New("cancellation not confirmed, skipping workflow cancellation")
 				}
 			}
-
 
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Cancelling workflow %s in database %s…", printer.BoldBlue(number), printer.BoldBlue(db)))
 			defer end()
