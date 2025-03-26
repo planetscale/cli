@@ -47,9 +47,8 @@ marks it as cancelled, allowing you to start a new workflow if needed.`,
 					return fmt.Errorf("cannot confirm cancellation (run with -force to override)")
 				}
 
-				confirmationMessage := fmt.Sprintf("Are you sure you want to cancel this workflow?")
 				prompt := &survey.Confirm{
-					Message: confirmationMessage,
+					Message: "Are you sure you want to cancel this workflow?",
 					Default: false,
 				}
 
