@@ -112,7 +112,7 @@ func CutoverCmd(ch *cmdutil.Helper) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().BoolVar(&force, "force", false, "Force thecutover without prompting for confirmation.")
+	cmd.Flags().BoolVar(&force, "force", false, "Force the cutover without prompting for confirmation.")
 
 	return cmd
 }
