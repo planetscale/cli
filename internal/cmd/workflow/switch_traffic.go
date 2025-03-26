@@ -61,8 +61,8 @@ By default, this command will route all queries for primary, replica, and read-o
 					Default: false,
 				}
 
-				var userInput bool
-				err := survey.AskOne(prompt, &userInput)
+				var confirm bool
+				err := survey.AskOne(prompt, &confirm)
 				if err != nil {
 					if err == terminal.InterruptErr {
 						os.Exit(0)
@@ -71,8 +71,8 @@ By default, this command will route all queries for primary, replica, and read-o
 					}
 				}
 
-				if !userInput {
-					return errors.New("cancelled switching query traffic")
+				if !confirm {
+					return errors.New("switch traffic not confirmed, skipping switch traffic")
 				}
 			}
 

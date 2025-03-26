@@ -78,7 +78,7 @@ func CutoverCmd(ch *cmdutil.Helper) *cobra.Command {
 				}
 
 				if !confirm {
-					return errors.New("cancelled cutover")
+					return errors.New("cutover not confirmed, skipping cutover")
 				}
 			}
 
