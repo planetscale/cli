@@ -2,6 +2,8 @@ package auth
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"runtime"
 
 	"github.com/hashicorp/go-cleanhttp"
@@ -12,7 +14,6 @@ import (
 	"github.com/planetscale/planetscale-go/planetscale"
 
 	"github.com/fatih/color"
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -65,7 +66,7 @@ func LoginCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			err = config.WriteAccessToken(accessToken)
 			if err != nil {
-				return errors.Wrap(err, "error logging in")
+				return fmt.Errorf("error logging in: %w", err)
 			}
 
 			// We explicitly stop here so we can replace the spinner with our success

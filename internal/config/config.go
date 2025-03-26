@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -8,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/99designs/keyring"
-	"github.com/pkg/errors"
 	ps "github.com/planetscale/planetscale-go/planetscale"
 
 	"github.com/mitchellh/go-homedir"
@@ -293,7 +293,7 @@ func deleteAccessTokenPath() error {
 	err = os.Remove(tokenPath)
 	if err != nil {
 		if !os.IsNotExist(err) {
-			return errors.Wrap(err, "error removing access token file")
+			return fmt.Errorf("error removing access token file: %w", err)
 		}
 	}
 
@@ -305,7 +305,7 @@ func deleteAccessTokenPath() error {
 	err = os.Remove(configFile)
 	if err != nil {
 		if !os.IsNotExist(err) {
-			return errors.Wrap(err, "error removing default config file")
+			return fmt.Errorf("error removing default config file: %w", err)
 		}
 	}
 	return nil
@@ -332,7 +332,7 @@ func writeAccessTokenPath(accessToken string) error {
 	tokenBytes := []byte(accessToken)
 	err = os.WriteFile(tokenPath, tokenBytes, tokenFileMode)
 	if err != nil {
-		return errors.Wrap(err, "error writing token")
+		return fmt.Errorf("error writing token: %w", err)
 	}
 
 	return nil
