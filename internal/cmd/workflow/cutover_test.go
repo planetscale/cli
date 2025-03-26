@@ -83,7 +83,7 @@ func TestWorkflow_CutoverCmd(t *testing.T) {
 	}
 
 	cmd := CutoverCmd(ch)
-	cmd.SetArgs([]string{db, "123"})
+	cmd.SetArgs([]string{db, "123", "--force"})
 	err := cmd.Execute()
 
 	c.Assert(err, qt.IsNil)
@@ -124,7 +124,7 @@ func TestWorkflow_CutoverCmd_Error(t *testing.T) {
 	}
 
 	cmd := CutoverCmd(ch)
-	cmd.SetArgs([]string{db, "123"})
+	cmd.SetArgs([]string{db, "123", "--force"})
 	err := cmd.Execute()
 
 	c.Assert(err, qt.Not(qt.IsNil))
