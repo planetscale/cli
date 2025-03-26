@@ -1,9 +1,13 @@
 package workflow
 
 import (
+	"errors"
 	"fmt"
+	"os"
 	"strconv"
 
+	"github.com/AlecAivazis/survey/v2"
+	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
 	ps "github.com/planetscale/planetscale-go/planetscale"
@@ -11,6 +15,8 @@ import (
 )
 
 func CancelCmd(ch *cmdutil.Helper) *cobra.Command {
+	var force bool
+
 	cmd := &cobra.Command{
 		Use:   "cancel <database> <number>",
 		Short: "Cancel a workflow that is in progress",
@@ -30,6 +36,35 @@ marks it as cancelled, allowing you to start a new workflow if needed.`,
 			number, err = strconv.ParseUint(num, 10, 64)
 			if err != nil {
 				return err
+			}
+
+			if !force {
+				if ch.Printer.Format() != printer.Human {
+					return fmt.Errorf("cannot cancel workflow with the output format %q (run with -force to override)", ch.Printer.Format())
+				}
+
+				if !printer.IsTTY {
+					return fmt.Errorf("cannot confirm cancellation (run with -force to override)")
+				}
+
+				prompt := &survey.Confirm{
+					Message: "Are you sure you want to cancel this workflow?",
+					Default: false,
+				}
+
+				var confirm bool
+				err = survey.AskOne(prompt, &confirm)
+				if err != nil {
+					if err == terminal.InterruptErr {
+						os.Exit(0)
+					} else {
+						return err
+					}
+				}
+
+				if !confirm {
+					return errors.New("cancellation not confirmed, skipping workflow cancellation")
+				}
 			}
 
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Cancelling workflow %s in database %s…", printer.BoldBlue(number), printer.BoldBlue(db)))
@@ -62,6 +97,8 @@ marks it as cancelled, allowing you to start a new workflow if needed.`,
 			return ch.Printer.PrintResource(toWorkflow(workflow))
 		},
 	}
+
+	cmd.Flags().BoolVar(&force, "force", false, "Force cancel the workflow without confirmation")
 
 	return cmd
 }

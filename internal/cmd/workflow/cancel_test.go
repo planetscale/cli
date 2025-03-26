@@ -81,7 +81,7 @@ func TestWorkflow_CancelCmd(t *testing.T) {
 	}
 
 	cmd := CancelCmd(ch)
-	cmd.SetArgs([]string{db, "123"})
+	cmd.SetArgs([]string{db, "123", "--force"})
 	err := cmd.Execute()
 
 	c.Assert(err, qt.IsNil)
@@ -122,7 +122,7 @@ func TestWorkflow_CancelCmd_Error(t *testing.T) {
 	}
 
 	cmd := CancelCmd(ch)
-	cmd.SetArgs([]string{db, "123"})
+	cmd.SetArgs([]string{db, "123", "--force"})
 	err := cmd.Execute()
 
 	c.Assert(err, qt.Not(qt.IsNil))
