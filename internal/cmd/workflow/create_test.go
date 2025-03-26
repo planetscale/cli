@@ -6,11 +6,12 @@ import (
 	"testing"
 	"time"
 
-	qt "github.com/frankban/quicktest"
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/config"
 	"github.com/planetscale/cli/internal/mock"
 	"github.com/planetscale/cli/internal/printer"
+
+	qt "github.com/frankban/quicktest"
 	ps "github.com/planetscale/planetscale-go/planetscale"
 )
 
@@ -99,7 +100,7 @@ func TestWorkflow_CreateCmd(t *testing.T) {
 		"--defer-secondary-keys",
 		"--on-ddl", onDDL,
 	})
-	
+
 	err := cmd.Execute()
 
 	c.Assert(err, qt.IsNil)
@@ -160,7 +161,7 @@ func TestWorkflow_CreateCmd_Error(t *testing.T) {
 		"--defer-secondary-keys",
 		"--on-ddl", "STOP",
 	})
-	
+
 	err := cmd.Execute()
 
 	c.Assert(err, qt.Not(qt.IsNil))

@@ -5,11 +5,12 @@ import (
 	"context"
 	"testing"
 
-	qt "github.com/frankban/quicktest"
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/config"
 	"github.com/planetscale/cli/internal/mock"
 	"github.com/planetscale/cli/internal/printer"
+
+	qt "github.com/frankban/quicktest"
 	ps "github.com/planetscale/planetscale-go/planetscale"
 )
 

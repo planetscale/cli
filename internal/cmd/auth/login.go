@@ -2,6 +2,8 @@ package auth
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"runtime"
 
 	"github.com/hashicorp/go-cleanhttp"
@@ -12,7 +14,6 @@ import (
 	"github.com/planetscale/planetscale-go/planetscale"
 
 	"github.com/fatih/color"
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -28,7 +29,7 @@ func LoginCmd(ch *cmdutil.Helper) *cobra.Command {
 		Short: "Authenticate with the PlanetScale API",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !printer.IsTTY {
-				return errors.New("The 'login' command requires an interactive shell")
+				return errors.New("the 'login' command requires an interactive shell")
 			}
 
 			authenticator, err := auth.New(cleanhttp.DefaultClient(), clientID, clientSecret, auth.SetBaseURL(authURL))
@@ -65,7 +66,7 @@ func LoginCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			err = config.WriteAccessToken(accessToken)
 			if err != nil {
-				return errors.Wrap(err, "error logging in")
+				return fmt.Errorf("error logging in: %w", err)
 			}
 
 			// We explicitly stop here so we can replace the spinner with our success

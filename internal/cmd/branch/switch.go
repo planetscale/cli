@@ -3,7 +3,6 @@ package branch
 import (
 	"fmt"
 
-	"github.com/pkg/errors"
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/config"
 	"github.com/planetscale/cli/internal/printer"
@@ -65,7 +64,7 @@ func SwitchCmd(ch *cmdutil.Helper) *cobra.Command {
 					switch cmdutil.ErrCode(err) {
 					case ps.ErrNotFound:
 						return fmt.Errorf("database %s does not exist in organization %s",
-						printer.BoldBlue(ch.Config.Database), printer.BoldBlue(ch.Config.Organization))
+							printer.BoldBlue(ch.Config.Database), printer.BoldBlue(ch.Config.Organization))
 					default:
 						return cmdutil.HandleError(err)
 					}
@@ -95,7 +94,7 @@ func SwitchCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			if err := cfg.WriteProject(); err != nil {
-				return errors.Wrap(err, "error writing project configuration file")
+				return fmt.Errorf("error writing project configuration file: %w", err)
 			}
 
 			ch.Printer.Printf(

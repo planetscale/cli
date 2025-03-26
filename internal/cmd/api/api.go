@@ -3,17 +3,16 @@ package api
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
 	"os"
 	"path"
 	"strings"
 
-	"net/http/httputil"
-
 	"github.com/MakeNowJust/heredoc"
-	"github.com/pkg/errors"
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/spf13/cobra"
 	"golang.org/x/oauth2"
@@ -121,33 +120,33 @@ func ApiCmd(ch *cmdutil.Helper, userAgent string, defaultHeaders map[string]stri
 
 		u, err := parseURL(ch, opts, args[0])
 		if err != nil {
-			return errors.Wrap(err, "parsing URL")
+			return fmt.Errorf("parsing URL: %w", err)
 		}
 
 		body, err := parseBody(opts)
 		if err != nil {
-			return errors.Wrap(err, "parsing HTTP request body")
+			return fmt.Errorf("parsing HTTP request body: %w", err)
 		}
 
 		req, err := http.NewRequestWithContext(ctx, method, u.String(), body)
 		if err != nil {
-			return errors.Wrap(err, "preparing HTTP request")
+			return fmt.Errorf("preparing HTTP request: %w", err)
 		}
 
 		req.Header, err = parseHeader(opts, req.Method, userAgent, defaultHeaders)
 		if err != nil {
-			return errors.Wrap(err, "parsing HTTP request header")
+			return fmt.Errorf("parsing HTTP request header: %w", err)
 		}
 
 		if ch.Debug() {
 			debugReq, err := httputil.DumpRequestOut(req, true)
 			if err != nil {
-				return errors.Wrap(err, "dumping request output")
+				return fmt.Errorf("dumping request output: %w", err)
 			}
 			debugReq = append(debugReq, '\n')
 			_, err = os.Stderr.Write(debugReq)
 			if err != nil {
-				return errors.Wrap(err, "writing request output to stderr")
+				return fmt.Errorf("writing request output to stderr: %w", err)
 			}
 		}
 
@@ -161,16 +160,16 @@ func ApiCmd(ch *cmdutil.Helper, userAgent string, defaultHeaders map[string]stri
 		}
 		res, err := cl.Do(req)
 		if err != nil {
-			return errors.Wrap(err, "sending HTTP request")
+			return fmt.Errorf("sending HTTP request: %w", err)
 		}
 		defer res.Body.Close()
 
 		if _, err := io.Copy(os.Stdout, res.Body); err != nil {
-			return errors.Wrap(err, "reading HTTP response body")
+			return fmt.Errorf("reading HTTP response body: %w", err)
 		}
 
 		if res.StatusCode > 399 {
-			return errors.Errorf("HTTP %s", res.Status)
+			return fmt.Errorf("HTTP %s", res.Status)
 		}
 
 		return nil
@@ -187,7 +186,7 @@ func parseURL(ch *cmdutil.Helper, opts *ApiOpts, endpoint string) (*url.URL, err
 
 	u, err := url.Parse(ch.Config.BaseURL)
 	if err != nil {
-		return nil, errors.Wrap(err, "parsing base URL")
+		return nil, fmt.Errorf("parsing base URL: %w", err)
 	}
 	u = u.ResolveReference(&url.URL{Path: path.Join("v1", reqPath)})
 
@@ -195,7 +194,7 @@ func parseURL(ch *cmdutil.Helper, opts *ApiOpts, endpoint string) (*url.URL, err
 		for _, param := range opts.Query {
 			k, v, ok := strings.Cut(param, "=")
 			if !ok {
-				return nil, errors.Wrapf(err, "parsing query param %q", param)
+				return nil, fmt.Errorf("missing '=' in query param %q", param)
 			}
 			q := u.Query()
 			q.Add(k, v)
@@ -221,7 +220,7 @@ func parseHeader(opts *ApiOpts, method, userAgent string, defaultHeaders map[str
 	for _, header := range opts.Header {
 		k, v, ok := strings.Cut(header, ":")
 		if !ok {
-			return nil, errors.Errorf("invalid header: %q", header)
+			return nil, fmt.Errorf("invalid header: %q", header)
 		}
 		out.Set(k, strings.TrimPrefix(v, " "))
 	}
@@ -242,12 +241,12 @@ func parseBody(opts *ApiOpts) (io.Reader, error) {
 		if opts.Input == "-" {
 			raw, err = io.ReadAll(os.Stdin)
 			if err != nil {
-				return nil, errors.Wrap(err, "reading body from stdin")
+				return nil, fmt.Errorf("reading body from stdin: %w", err)
 			}
 		} else {
 			raw, err = os.ReadFile(opts.Input)
 			if err != nil {
-				return nil, errors.Wrapf(err, "reading body from file %q", opts.Input)
+				return nil, fmt.Errorf("reading body from file %q: %w", opts.Input, err)
 			}
 		}
 	}
@@ -256,7 +255,7 @@ func parseBody(opts *ApiOpts) (io.Reader, error) {
 		if err := json.Unmarshal(raw, &bodyMap); err != nil {
 			// body wasn't JSON
 			if len(opts.Field) > 0 {
-				return nil, errors.Wrap(err, "parsing input as JSON (--field/-F was specified)")
+				return nil, fmt.Errorf("parsing input as JSON (--field/-F was specified): %w", err)
 			}
 
 			return bytes.NewReader(raw), nil
@@ -266,12 +265,12 @@ func parseBody(opts *ApiOpts) (io.Reader, error) {
 
 	bodyMap, err = parseFields(bodyMap, opts.Field)
 	if err != nil {
-		return nil, errors.Wrap(err, "parsing body field")
+		return nil, fmt.Errorf("parsing body field: %w", err)
 	}
 	if bodyMap != nil {
 		jsonBody, err := json.MarshalIndent(bodyMap, "", "\t")
 		if err != nil {
-			return nil, errors.Wrap(err, "parsing body field")
+			return nil, fmt.Errorf("parsing body field: %w", err)
 		}
 		return bytes.NewReader(jsonBody), nil
 	}
@@ -285,7 +284,7 @@ func parseFields(out map[string]interface{}, fields []string) (map[string]interf
 	for _, field := range fields {
 		err := parseFieldInto(out, field)
 		if err != nil {
-			return nil, errors.Wrapf(err, "parsing field %q", field)
+			return nil, fmt.Errorf("parsing field %q: %w", field, err)
 		}
 	}
 	return out, nil
@@ -294,7 +293,7 @@ func parseFields(out map[string]interface{}, fields []string) (map[string]interf
 func parseFieldInto(tgt map[string]interface{}, field string) error {
 	k, v, ok := strings.Cut(field, "=")
 	if !ok {
-		return errors.Errorf("no `=` found in field %q", field)
+		return fmt.Errorf("no `=` found in field %q", field)
 	}
 	paths := strings.Split(k, ".")
 
@@ -311,7 +310,7 @@ func parseFieldInto(tgt map[string]interface{}, field string) error {
 	}
 	parsed, err := parseValue(v)
 	if err != nil {
-		return errors.Wrapf(err, "parsing value of field %q", field)
+		return fmt.Errorf("parsing value of field %q: %w", field, err)
 	}
 	tail[lastPath] = parsed
 	return nil
@@ -322,7 +321,7 @@ func parseValue(s string) (interface{}, error) {
 		filename := s[1:]
 		value, err := os.ReadFile(filename)
 		if err != nil {
-			return nil, errors.Wrapf(err, "reading value %q as file", s)
+			return nil, fmt.Errorf("reading value %q as file: %w", s, err)
 		}
 		return string(value), nil
 	}

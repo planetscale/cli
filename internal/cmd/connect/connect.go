@@ -287,7 +287,7 @@ func runCommand(ctx context.Context, addr, command, protocol, databaseEnvURL, da
 	if errors.As(err, &ee) {
 		return &cmdutil.Error{
 			Msg:      fmt.Sprintf("running command with --execute has failed: %s\n", err),
-			ExitCode: ee.ProcessState.ExitCode(),
+			ExitCode: ee.ExitCode(),
 		}
 	}
 
