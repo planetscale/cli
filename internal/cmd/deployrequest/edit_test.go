@@ -25,8 +25,8 @@ func TestDeployRequest_EditCmd(t *testing.T) {
 
 	org := "planetscale"
 	db := "planetscale"
-	var number uint64 = 10
-	var enable bool = true
+	number := uint64(10)
+	enable := true
 
 	svc := &mock.DeployRequestsService{
 		AutoApplyFn: func(ctx context.Context, req *ps.AutoApplyDeployRequestRequest) (*ps.DeployRequest, error) {

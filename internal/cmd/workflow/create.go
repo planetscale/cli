@@ -8,8 +8,9 @@ import (
 	"github.com/charmbracelet/huh"
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
-	ps "github.com/planetscale/planetscale-go/planetscale"
 	"github.com/spf13/cobra"
+
+	ps "github.com/planetscale/planetscale-go/planetscale"
 )
 
 type createFlags struct {
@@ -50,7 +51,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			workflow, err := createWorkflow(ctx, client, org, db, branch, flags)
 			end()
-			
+
 			if err != nil {
 				return err
 			}

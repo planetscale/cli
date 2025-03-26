@@ -29,7 +29,7 @@ func LoginCmd(ch *cmdutil.Helper) *cobra.Command {
 		Short: "Authenticate with the PlanetScale API",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !printer.IsTTY {
-				return errors.New("The 'login' command requires an interactive shell")
+				return errors.New("the 'login' command requires an interactive shell")
 			}
 
 			authenticator, err := auth.New(cleanhttp.DefaultClient(), clientID, clientSecret, auth.SetBaseURL(authURL))

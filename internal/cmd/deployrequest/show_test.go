@@ -70,8 +70,8 @@ func TestDeployRequest_ShowBranchName(t *testing.T) {
 
 	org := "planetscale"
 	db := "planetscale"
-	var number uint64 = 10
-	var branchName string = "dev"
+	number := uint64(10)
+	branchName := "dev"
 
 	svc := &mock.DeployRequestsService{
 		GetFn: func(ctx context.Context, req *ps.GetDeployRequestRequest) (*ps.DeployRequest, error) {

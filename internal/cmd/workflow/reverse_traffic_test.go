@@ -6,11 +6,12 @@ import (
 	"testing"
 	"time"
 
-	qt "github.com/frankban/quicktest"
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/config"
 	"github.com/planetscale/cli/internal/mock"
 	"github.com/planetscale/cli/internal/printer"
+
+	qt "github.com/frankban/quicktest"
 	ps "github.com/planetscale/planetscale-go/planetscale"
 )
 
@@ -31,16 +32,16 @@ func TestWorkflow_ReverseTrafficCmd(t *testing.T) {
 
 	// Create expected workflow response
 	expectedWorkflow := &ps.Workflow{
-		ID:              "workflow1",
-		Number:          workflowNumber,
-		Name:            "test-workflow",
-		State:           "traffic_reversed",
-		CreatedAt:       createdAt,
-		UpdatedAt:       createdAt,
-		ReversedAt:      &reversedAt,
-		ReplicasSwitched: false,  // Traffic has been reversed
+		ID:                "workflow1",
+		Number:            workflowNumber,
+		Name:              "test-workflow",
+		State:             "traffic_reversed",
+		CreatedAt:         createdAt,
+		UpdatedAt:         createdAt,
+		ReversedAt:        &reversedAt,
+		ReplicasSwitched:  false, // Traffic has been reversed
 		PrimariesSwitched: false, // Traffic has been reversed
-		Tables:          []*ps.WorkflowTable{{Name: "table1"}, {Name: "table2"}},
+		Tables:            []*ps.WorkflowTable{{Name: "table1"}, {Name: "table2"}},
 		SourceKeyspace: ps.Keyspace{
 			Name: "source_ks",
 		},
