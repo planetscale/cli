@@ -20,7 +20,7 @@ func CutoverCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "cutover <database> <number>",
 		Short: "Completes the workflow, cutting over all traffic to the target keyspace.",
-		Long:  `Completes the workflow, cutting over all traffic to the target keyspace. This will delete the moved tables from the source keyspace and replication between the source and target keyspace will end. If your application has errors related to the moved tables, use the reverse-cutover command to temporarily restore the routing rules.`,
+		Long:  `Completes the workflow, cutting over all traffic to the target keyspace. This will delete the moved tables from the source keyspace and replication between the source and target keyspace will end. If your application has errors related to the moved tables, use the reverse-cutover command to temporarily restore the routing rules. If you added '"require_explict_routing_rules": true' to your target keyspace's VSchema, you must remove it before completing your workflow.`,
 		Args:  cmdutil.RequiredArgs("database", "number"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
