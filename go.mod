@@ -1,7 +1,6 @@
 module github.com/planetscale/cli
 
 go 1.24.0
-
 require (
 	github.com/99designs/keyring v1.2.2
 	github.com/AlecAivazis/survey/v2 v2.3.7
@@ -36,9 +35,9 @@ require (
 	go.uber.org/zap/exp v0.3.0
 	golang.org/x/exp v0.0.0-20240909161429-701f63a606c0
 	golang.org/x/oauth2 v0.28.0
-	golang.org/x/sync v0.11.0
+	golang.org/x/sync v0.12.0
 	golang.org/x/sys v0.30.0
-	golang.org/x/text v0.22.0
+	golang.org/x/text v0.23.0
 	gopkg.in/yaml.v2 v2.4.0
 	vitess.io/vitess v0.10.3-0.20241106191105-e87457ee2401
 )
