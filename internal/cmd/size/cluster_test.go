@@ -26,7 +26,7 @@ func TestSizeCluster_ListCmd(t *testing.T) {
 	org := "planetscale"
 
 	orig := []*ps.ClusterSKU{
-		{Name: "PS_10", Enabled: true, Rate: testutil.Pointer[int64](39)},
+		{Name: "PS-10", Enabled: true, Rate: testutil.Pointer[int64](39)},
 	}
 	svc := &mock.OrganizationsService{
 		ListClusterSKUsFn: func(ctx context.Context, req *ps.ListOrganizationClusterSKUsRequest, opts ...ps.ListOption) ([]*ps.ClusterSKU, error) {

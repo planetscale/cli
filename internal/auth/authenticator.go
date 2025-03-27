@@ -3,6 +3,8 @@ package auth
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -10,7 +12,6 @@ import (
 
 	"github.com/benbjohnson/clock"
 	"github.com/hashicorp/go-cleanhttp"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -152,7 +153,7 @@ func (d *DeviceAuthenticator) VerifyDevice(ctx context.Context) (*DeviceVerifica
 	deviceCodeRes := &DeviceCodeResponse{}
 	err = json.NewDecoder(res.Body).Decode(deviceCodeRes)
 	if err != nil {
-		return nil, errors.Wrap(err, "error decoding device code response")
+		return nil, fmt.Errorf("error decoding device code response: %w", err)
 	}
 
 	checkInterval := time.Duration(deviceCodeRes.PollingInterval) * time.Second
@@ -219,12 +220,12 @@ func (d *DeviceAuthenticator) requestToken(ctx context.Context, deviceCode strin
 		"client_id":   []string{clientID},
 	})
 	if err != nil {
-		return "", errors.Wrap(err, "error creating request")
+		return "", fmt.Errorf("error creating request: %w", err)
 	}
 
 	res, err := d.client.Do(req)
 	if err != nil {
-		return "", errors.Wrap(err, "error performing http request")
+		return "", fmt.Errorf("error performing http request: %w", err)
 	}
 	defer res.Body.Close()
 
@@ -242,7 +243,7 @@ func (d *DeviceAuthenticator) requestToken(ctx context.Context, deviceCode strin
 
 	err = json.NewDecoder(res.Body).Decode(tokenRes)
 	if err != nil {
-		return "", errors.Wrap(err, "error decoding token response")
+		return "", fmt.Errorf("error decoding token response: %w", err)
 	}
 
 	return tokenRes.AccessToken, nil
@@ -256,12 +257,12 @@ func (d *DeviceAuthenticator) RevokeToken(ctx context.Context, token string) err
 		"token":         []string{token},
 	})
 	if err != nil {
-		return errors.Wrap(err, "error creating request")
+		return fmt.Errorf("error creating request: %w", err)
 	}
 
 	res, err := d.client.Do(req)
 	if err != nil {
-		return errors.Wrap(err, "error performing http request")
+		return fmt.Errorf("error performing http request: %w", err)
 	}
 	defer res.Body.Close()
 
@@ -311,7 +312,7 @@ func checkErrorResponse(res *http.Response) (bool, error) {
 	errorRes := &ErrorResponse{}
 	err := json.NewDecoder(res.Body).Decode(errorRes)
 	if err != nil {
-		return false, errors.Wrap(err, "error decoding error response")
+		return false, fmt.Errorf("error decoding error response: %w", err)
 	}
 
 	// If we're polling and haven't authorized yet or we need to slow down, we

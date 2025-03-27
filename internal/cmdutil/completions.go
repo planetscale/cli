@@ -39,13 +39,24 @@ func ClusterSizesCompletionFunc(ch *Helper, cmd *cobra.Command, args []string, t
 	for _, c := range clusterSKUs {
 		if c.Enabled && strings.Contains(c.Name, toComplete) && c.Rate != nil && c.Name != "PS_DEV" {
 			var description strings.Builder
-			description.WriteString(c.DisplayName)
+			if c.Metal {
+				description.WriteString(c.DisplayName)
+			}
+
 			if *c.Rate > 0 {
-				description.WriteString(fmt.Sprintf(" · $%d/month", *c.Rate))
+				if description.Len() > 0 {
+					description.WriteString(fmt.Sprintf(" · $%d/month", *c.Rate))
+				} else {
+					description.WriteString(fmt.Sprintf("$%d/month", *c.Rate))
+				}
 			}
 
 			if c.CPU != "" {
-				description.WriteString(fmt.Sprintf(" · %s vCPUs", c.CPU))
+				if description.Len() > 0 {
+					description.WriteString(fmt.Sprintf(" · %s vCPUs", c.CPU))
+				} else {
+					description.WriteString(fmt.Sprintf("%s vCPUs", c.CPU))
+				}
 			}
 
 			if c.Memory > 0 {
@@ -56,7 +67,7 @@ func ClusterSizesCompletionFunc(ch *Helper, cmd *cobra.Command, args []string, t
 				description.WriteString(fmt.Sprintf(" · %s storage", FormatPartsGB(*c.Storage).IntString()))
 			}
 
-			clusterSizes = append(clusterSizes, cobra.CompletionWithDesc(c.Name, description.String()))
+			clusterSizes = append(clusterSizes, cobra.CompletionWithDesc(ToClusterSizeSlug(c.Name), description.String()))
 		}
 	}
 

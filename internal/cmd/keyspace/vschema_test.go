@@ -111,7 +111,8 @@ func TestKeyspace_UpdateVSchemaCmd(t *testing.T) {
 
 	tmpFile, err := os.CreateTemp("", "vschema.json")
 	c.Assert(err, qt.IsNil)
-	tmpFile.Write([]byte(raw))
+	_, err = tmpFile.Write([]byte(raw))
+	c.Assert(err, qt.IsNil)
 	tmpFile.Close()
 
 	cmd := UpdateVSchemaCmd(ch)

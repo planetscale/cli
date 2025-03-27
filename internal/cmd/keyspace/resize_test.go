@@ -45,7 +45,7 @@ func TestKeyspace_ResizeCmd(t *testing.T) {
 			c.Assert(req.Branch, qt.Equals, branch)
 			c.Assert(req.Keyspace, qt.Equals, keyspace)
 			c.Assert(*req.ExtraReplicas, qt.Equals, uint(3))
-			c.Assert(*req.ClusterSize, qt.Equals, "PS_10")
+			c.Assert(*req.ClusterSize, qt.Equals, "PS-10")
 
 			return krr, nil
 		},
@@ -64,7 +64,7 @@ func TestKeyspace_ResizeCmd(t *testing.T) {
 	}
 
 	cmd := ResizeCmd(ch)
-	cmd.SetArgs([]string{db, branch, keyspace, "--additional-replicas", "3", "--cluster-size", "PS_10"})
+	cmd.SetArgs([]string{db, branch, keyspace, "--additional-replicas", "3", "--cluster-size", "PS-10"})
 	err := cmd.Execute()
 	c.Assert(err, qt.IsNil)
 	c.Assert(svc.ResizeFnInvoked, qt.IsTrue)
@@ -102,7 +102,7 @@ func TestKeyspace_ResizeCmdOnlyClusterSize(t *testing.T) {
 			c.Assert(req.Branch, qt.Equals, branch)
 			c.Assert(req.Keyspace, qt.Equals, keyspace)
 			c.Assert(req.ExtraReplicas, qt.IsNil)
-			c.Assert(*req.ClusterSize, qt.Equals, "PS_10")
+			c.Assert(*req.ClusterSize, qt.Equals, "PS-10")
 
 			return krr, nil
 		},
@@ -121,7 +121,7 @@ func TestKeyspace_ResizeCmdOnlyClusterSize(t *testing.T) {
 	}
 
 	cmd := ResizeCmd(ch)
-	cmd.SetArgs([]string{db, branch, keyspace, "--cluster-size", "PS_10"})
+	cmd.SetArgs([]string{db, branch, keyspace, "--cluster-size", "PS-10"})
 	err := cmd.Execute()
 	c.Assert(err, qt.IsNil)
 	c.Assert(svc.ResizeFnInvoked, qt.IsTrue)
