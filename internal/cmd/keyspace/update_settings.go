@@ -39,31 +39,8 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
-			end := ch.Printer.PrintProgress(fmt.Sprintf("Updating settings for keyspace %s in %s/%s", printer.BoldBlue(keyspace), printer.BoldBlue(database), printer.BoldBlue(branch)))
-			defer end()
-
-			ks, err := client.Keyspaces.Get(ctx, &ps.GetKeyspaceRequest{
-				Organization: ch.Config.Organization,
-				Database:     database,
-				Branch:       branch,
-				Keyspace:     keyspace,
-			})
-			if err != nil {
-				switch cmdutil.ErrCode(err) {
-				case ps.ErrNotFound:
-					return fmt.Errorf("keyspace %s does not exist in branch %s (database: %s, organization: %s)", printer.BoldBlue(keyspace), printer.BoldBlue(branch), printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
-				default:
-					return cmdutil.HandleError(err)
-				}
-			}
-
-			// Get initial defaults from the API, then update them using flags.
-			if ks.ReplicationDurabilityConstraints != nil {
-				updateReq.ReplicationDurabilityConstraints = ks.ReplicationDurabilityConstraints
-			}
-
-			if ks.VReplicationFlags != nil {
-				updateReq.VReplicationFlags = ks.VReplicationFlags
+			if err := setInitialSettings(ctx, ch, updateReq); err != nil {
+				return err
 			}
 
 			// Check if any relevant flags are changing replication durability constraints
@@ -98,6 +75,8 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 				}
 			}
 
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Updating settings for keyspace %s in %s/%s", printer.BoldBlue(keyspace), printer.BoldBlue(database), printer.BoldBlue(branch)))
+			defer end()
 			if !rdcChanged && !vrfChanged {
 				end()
 				ch.Printer.Println("No changes were requested. No update performed.")
@@ -119,8 +98,47 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().BoolVar(&flags.vreplicationFlags.OptimizeInserts, "vreplication-optimize-inserts", true, "When enabled, skips sending INSERT events for rows that have yet to be replicated.")
 	cmd.Flags().BoolVar(&flags.vreplicationFlags.AllowNoBlobBinlogRowImage, "vreplication-enable-noblob-binlog-mode", true, "When enabled, omits changed BLOB and TEXT columns from replication events, which reduces binlog sizes.")
 	cmd.Flags().BoolVar(&flags.vreplicationFlags.VPlayerBatching, "vreplication-batch-replication-events", false, "When enabled, sends fewer queries to MySQL to improve performance.")
+	cmd.Flags().BoolVarP(&flags.interactive, "interactive", "i", false, "Run the command in interactive mode")
 
 	return cmd
+}
+
+func setInitialSettings(ctx context.Context, ch *cmdutil.Helper, req *ps.UpdateKeyspaceSettingsRequest) error {
+	client, err := ch.Client()
+	if err != nil {
+		return err
+	}
+
+	organization := req.Organization
+	database := req.Database
+	branch := req.Branch
+	keyspace := req.Keyspace
+
+	ks, err := client.Keyspaces.Get(ctx, &ps.GetKeyspaceRequest{
+		Organization: organization,
+		Database:     database,
+		Branch:       branch,
+		Keyspace:     keyspace,
+	})
+	if err != nil {
+		switch cmdutil.ErrCode(err) {
+		case ps.ErrNotFound:
+			return fmt.Errorf("keyspace %s does not exist in branch %s (database: %s, organization: %s)", printer.BoldBlue(keyspace), printer.BoldBlue(branch), printer.BoldBlue(database), printer.BoldBlue(organization))
+		default:
+			return cmdutil.HandleError(err)
+		}
+	}
+
+	// Get initial defaults from the API
+	if ks.ReplicationDurabilityConstraints != nil {
+		req.ReplicationDurabilityConstraints = ks.ReplicationDurabilityConstraints
+	}
+
+	if ks.VReplicationFlags != nil {
+		req.VReplicationFlags = ks.VReplicationFlags
+	}
+
+	return nil
 }
 
 func updateKeyspaceSettings(ctx context.Context, client *ps.Client, updateReq *ps.UpdateKeyspaceSettingsRequest) (*ps.Keyspace, error) {
