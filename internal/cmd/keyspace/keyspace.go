@@ -27,6 +27,7 @@ func KeyspaceCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.AddCommand(ResizeCmd(ch))
 	cmd.AddCommand(RolloutStatusCmd(ch))
 	cmd.AddCommand(UpdateSettingsCmd(ch))
+	cmd.AddCommand(SettingsCmd(ch))
 
 	return cmd
 }
@@ -46,6 +47,27 @@ type Keyspace struct {
 	UpdatedAt   int64  `header:"updated_at,timestamp(ms|utc|human)" json:"updated_at"`
 
 	orig *ps.Keyspace
+}
+
+type KeyspaceSettings struct {
+	ReplicationDurabilityConstraintStrategy string            `header:"replication durability constraint strategy" json:"replication_durability_constraint"`
+	VReplicationFlags                       VReplicationFlags `header:"inline" json:"vreplication_flags"`
+
+	orig *ps.Keyspace
+}
+
+func (k *KeyspaceSettings) MarshalJSON() ([]byte, error) {
+	return json.MarshalIndent(k.orig, "", "  ")
+}
+
+func (k *KeyspaceSettings) MarshalCSVValue() interface{} {
+	return []*KeyspaceSettings{k}
+}
+
+type VReplicationFlags struct {
+	OptimizeInserts           bool `header:"optimize inserts" json:"optimize_inserts"`
+	AllowNoBlobBinlogRowImage bool `header:"no blob binlog row image" json:"allow_no_blob_binlog_row_image"`
+	VPlayerBatching           bool `header:"vplayer batching" json:"vplayer_batching"`
 }
 
 func toKeyspaces(keyspaces []*ps.Keyspace) []*Keyspace {
