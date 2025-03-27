@@ -17,6 +17,9 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 		vreplicationFlags                *ps.VReplicationFlags
 	}
 
+	flags.replicationDurabilityConstraints = &ps.ReplicationDurabilityConstraints{}
+	flags.vreplicationFlags = &ps.VReplicationFlags{}
+
 	cmd := &cobra.Command{
 		Use:   "update-settings <database> <branch> <keyspace>",
 		Short: "Update the settings for a keyspace",
