@@ -33,6 +33,9 @@ type KeyspacesService struct {
 
 	RolloutStatusFn        func(context.Context, *ps.KeyspaceRolloutStatusRequest) (*ps.KeyspaceRollout, error)
 	RolloutStatusFnInvoked bool
+
+	UpdateSettingsFn        func(context.Context, *ps.UpdateKeyspaceSettingsRequest) (*ps.Keyspace, error)
+	UpdateSettingsFnInvoked bool
 }
 
 func (s *KeyspacesService) List(ctx context.Context, req *ps.ListKeyspacesRequest) ([]*ps.Keyspace, error) {
@@ -79,4 +82,9 @@ func (s *KeyspacesService) ResizeStatus(ctx context.Context, req *ps.KeyspaceRes
 func (s *KeyspacesService) RolloutStatus(ctx context.Context, req *ps.KeyspaceRolloutStatusRequest) (*ps.KeyspaceRollout, error) {
 	s.RolloutStatusFnInvoked = true
 	return s.RolloutStatusFn(ctx, req)
+}
+
+func (s *KeyspacesService) UpdateSettings(ctx context.Context, req *ps.UpdateKeyspaceSettingsRequest) (*ps.Keyspace, error) {
+	s.UpdateSettingsFnInvoked = true
+	return s.UpdateSettingsFn(ctx, req)
 }
