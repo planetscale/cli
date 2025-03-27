@@ -65,20 +65,42 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 				updateReq.VReplicationFlags = ks.VReplicationFlags
 			}
 
-			if cmd.Flags().Changed("replication-durability-constraints-strategy") {
+			// Check if any relevant flags are changing replication durability constraints
+			rdcChanged := cmd.Flags().Changed("replication-durability-constraints-strategy")
+			if rdcChanged {
+				if updateReq.ReplicationDurabilityConstraints == nil {
+					updateReq.ReplicationDurabilityConstraints = &ps.ReplicationDurabilityConstraints{}
+				}
 				updateReq.ReplicationDurabilityConstraints.Strategy = constraintsToStrategy(flags.replicationDurabilityConstraints.Strategy)
 			}
 
-			if cmd.Flags().Changed("vreplication-optimize-inserts") {
-				updateReq.VReplicationFlags.OptimizeInserts = flags.vreplicationFlags.OptimizeInserts
+			// Check if any relevant flags are changing VReplication flags
+			vrfChanged := cmd.Flags().Changed("vreplication-optimize-inserts") ||
+				cmd.Flags().Changed("vreplication-enable-noblob-binlog-mode") ||
+				cmd.Flags().Changed("vreplication-batch-replication-events")
+
+			if vrfChanged {
+				if updateReq.VReplicationFlags == nil {
+					updateReq.VReplicationFlags = &ps.VReplicationFlags{}
+				}
+
+				if cmd.Flags().Changed("vreplication-optimize-inserts") {
+					updateReq.VReplicationFlags.OptimizeInserts = flags.vreplicationFlags.OptimizeInserts
+				}
+
+				if cmd.Flags().Changed("vreplication-enable-noblob-binlog-mode") {
+					updateReq.VReplicationFlags.AllowNoBlobBinlogRowImage = flags.vreplicationFlags.AllowNoBlobBinlogRowImage
+				}
+
+				if cmd.Flags().Changed("vreplication-batch-replication-events") {
+					updateReq.VReplicationFlags.VPlayerBatching = flags.vreplicationFlags.VPlayerBatching
+				}
 			}
 
-			if cmd.Flags().Changed("vreplication-enable-noblob-binlog-mode") {
-				updateReq.VReplicationFlags.AllowNoBlobBinlogRowImage = flags.vreplicationFlags.AllowNoBlobBinlogRowImage
-			}
-
-			if cmd.Flags().Changed("vreplication-batch-replication-events") {
-				updateReq.VReplicationFlags.VPlayerBatching = flags.vreplicationFlags.VPlayerBatching
+			if !rdcChanged && !vrfChanged {
+				end()
+				ch.Printer.Println("No changes were requested. No update performed.")
+				return nil
 			}
 
 			k, err := client.Keyspaces.UpdateSettings(ctx, updateReq)
