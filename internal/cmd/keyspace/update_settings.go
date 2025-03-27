@@ -1,6 +1,7 @@
 package keyspace
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/planetscale/cli/internal/cmdutil"
@@ -103,15 +104,11 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 				return nil
 			}
 
-			k, err := client.Keyspaces.UpdateSettings(ctx, updateReq)
+			k, err := updateKeyspaceSettings(ctx, client, updateReq)
 			if err != nil {
-				switch cmdutil.ErrCode(err) {
-				case ps.ErrNotFound:
-					return fmt.Errorf("keyspace %s does not exist in branch %s (database: %s, organization: %s)", printer.BoldBlue(keyspace), printer.BoldBlue(branch), printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
-				default:
-					return cmdutil.HandleError(err)
-				}
+				return err
 			}
+
 			end()
 
 			return ch.Printer.PrintResource(toKeyspace(k))
@@ -122,7 +119,22 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().BoolVar(&flags.vreplicationFlags.OptimizeInserts, "vreplication-optimize-inserts", true, "When enabled, skips sending INSERT events for rows that have yet to be replicated.")
 	cmd.Flags().BoolVar(&flags.vreplicationFlags.AllowNoBlobBinlogRowImage, "vreplication-enable-noblob-binlog-mode", true, "When enabled, omits changed BLOB and TEXT columns from replication events, which reduces binlog sizes.")
 	cmd.Flags().BoolVar(&flags.vreplicationFlags.VPlayerBatching, "vreplication-batch-replication-events", false, "When enabled, sends fewer queries to MySQL to improve performance.")
+
 	return cmd
+}
+
+func updateKeyspaceSettings(ctx context.Context, client *ps.Client, updateReq *ps.UpdateKeyspaceSettingsRequest) (*ps.Keyspace, error) {
+	k, err := client.Keyspaces.UpdateSettings(ctx, updateReq)
+	if err != nil {
+		switch cmdutil.ErrCode(err) {
+		case ps.ErrNotFound:
+			return nil, fmt.Errorf("keyspace %s does not exist in branch %s (database: %s, organization: %s)", printer.BoldBlue(updateReq.Keyspace), printer.BoldBlue(updateReq.Branch), printer.BoldBlue(updateReq.Database), printer.BoldBlue(updateReq.Organization))
+		default:
+			return nil, cmdutil.HandleError(err)
+		}
+	}
+
+	return k, nil
 }
 
 // Helper function for translating the API value to a more semantic string.
