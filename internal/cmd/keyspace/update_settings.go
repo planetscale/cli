@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/charmbracelet/huh"
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
 	ps "github.com/planetscale/planetscale-go/planetscale"
@@ -16,6 +17,7 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
 		replicationDurabilityConstraints *ps.ReplicationDurabilityConstraints
 		vreplicationFlags                *ps.VReplicationFlags
+		interactive                      bool
 	}
 
 	flags.replicationDurabilityConstraints = &ps.ReplicationDurabilityConstraints{}
@@ -34,10 +36,17 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 			updateReq.Branch = branch
 			updateReq.Keyspace = keyspace
 
+			if flags.interactive {
+				return updateInteractive(ctx, ch, updateReq)
+			}
+
 			client, err := ch.Client()
 			if err != nil {
 				return err
 			}
+
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Updating settings for keyspace %s in %s/%s", printer.BoldBlue(keyspace), printer.BoldBlue(database), printer.BoldBlue(branch)))
+			defer end()
 
 			if err := setInitialSettings(ctx, ch, updateReq); err != nil {
 				return err
@@ -75,8 +84,6 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 				}
 			}
 
-			end := ch.Printer.PrintProgress(fmt.Sprintf("Updating settings for keyspace %s in %s/%s", printer.BoldBlue(keyspace), printer.BoldBlue(database), printer.BoldBlue(branch)))
-			defer end()
 			if !rdcChanged && !vrfChanged {
 				end()
 				ch.Printer.Println("No changes were requested. No update performed.")
@@ -137,6 +144,74 @@ func setInitialSettings(ctx context.Context, ch *cmdutil.Helper, req *ps.UpdateK
 	if ks.VReplicationFlags != nil {
 		req.VReplicationFlags = ks.VReplicationFlags
 	}
+
+	return nil
+}
+
+func updateInteractive(ctx context.Context, ch *cmdutil.Helper, updateReq *ps.UpdateKeyspaceSettingsRequest) error {
+	client, err := ch.Client()
+	if err != nil {
+		return err
+	}
+
+	if err := setInitialSettings(ctx, ch, updateReq); err != nil {
+		return err
+	}
+
+	if updateReq.ReplicationDurabilityConstraints == nil {
+		updateReq.ReplicationDurabilityConstraints = &ps.ReplicationDurabilityConstraints{}
+	}
+
+	if updateReq.VReplicationFlags == nil {
+		updateReq.VReplicationFlags = &ps.VReplicationFlags{}
+	}
+
+	form := huh.NewForm(
+		// Replication Durability Constraints
+		huh.NewGroup(
+			huh.NewSelect[string]().
+				Title("Replication durability constraints").
+				Description("By default, replication is configured to maximize safety and data integrity. This setting may be relaxed to favor increased performance and reduced replication lag.").
+				Value(&updateReq.ReplicationDurabilityConstraints.Strategy).
+				Options(
+					huh.NewOption("Maximum - Uses the highest durability constraints to maximize safety and data integrity.", constraintsToStrategy("maximum")),
+					huh.NewOption("Dynamic - Uses maximum durability constraints when replication lag is less than 5 seconds. Automatically reduces durability settings when replication exceeds 5 seconds.", constraintsToStrategy("dynamic")),
+					huh.NewOption("Minimum - Optimizes for low lag and replica performance, but has the highest risk of data loss on crashed instances.", constraintsToStrategy("minimum")),
+				),
+		),
+
+		// VReplication Flags
+		huh.NewGroup(
+			huh.NewNote().Title("VReplication").
+				Description("Options for improving performance during deploy requests and workflows."),
+
+			huh.NewConfirm().
+				Title("Skip INSERT events during replication catch-up?").
+				Description("When enabled, skips sending INSERT events for rows that have yet to be replicated.").
+				Value(&updateReq.VReplicationFlags.OptimizeInserts),
+
+			huh.NewConfirm().
+				Title("Enable NOBLOB binlog mode?").
+				Description("When enabled, omits changed BLOB and TEXT columns from replication events, which reduces binlog sizes.").
+				Value(&updateReq.VReplicationFlags.AllowNoBlobBinlogRowImage),
+
+			huh.NewConfirm().
+				Title("Batch VPlayer events?").
+				Description("When enabled, sends fewer queries to MySQL to improve performance.").
+				Value(&updateReq.VReplicationFlags.VPlayerBatching),
+		).Title("VReplication").Description("Options for improving performance during deploy requests and workflows"),
+	).WithTheme(huh.ThemeBase16())
+
+	if err := form.Run(); err != nil {
+		return err
+	}
+
+	ks, err := updateKeyspaceSettings(ctx, client, updateReq)
+	if err != nil {
+		return err
+	}
+
+	ch.Printer.Printf("Updated settings for keyspace %s in %s/%s\n", printer.BoldBlue(ks.Name), printer.BoldBlue(updateReq.Database), printer.BoldBlue(updateReq.Branch))
 
 	return nil
 }
