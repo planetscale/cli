@@ -97,7 +97,7 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			end()
 
-			return ch.Printer.PrintResource(toKeyspace(k))
+			return ch.Printer.PrintResource(toKeyspaceSettings(k))
 		},
 	}
 

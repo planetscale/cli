@@ -43,15 +43,15 @@ func SettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			end()
-			return ch.Printer.PrintResource(buildKeyspaceSettings(ks))
+			return ch.Printer.PrintResource(toKeyspaceSettings(ks))
 		},
 	}
 
 	return cmd
 }
 
-// buildKeyspaceSettings converts a Keyspace API response to a KeyspaceSettings object for display
-func buildKeyspaceSettings(ks *ps.Keyspace) *KeyspaceSettings {
+// toKeyspaceSettings converts a Keyspace API response to a KeyspaceSettings object for display
+func toKeyspaceSettings(ks *ps.Keyspace) *KeyspaceSettings {
 	settings := &KeyspaceSettings{
 		orig: ks,
 	}

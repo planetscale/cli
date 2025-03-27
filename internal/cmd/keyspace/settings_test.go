@@ -76,7 +76,7 @@ func TestKeyspace_SettingsCmd(t *testing.T) {
 	c.Assert(err, qt.IsNil)
 	c.Assert(svc.GetFnInvoked, qt.IsTrue)
 
-	// Check that we get JSON output (the actual content is checked in the buildKeyspaceSettings test)
+	// Check that we get JSON output (the actual content is checked in the toKeyspaceSettings test)
 	c.Assert(buf.String(), qt.Not(qt.Equals), "")
 }
 
@@ -98,10 +98,10 @@ func TestKeyspace_SettingsCmd_NilSettings(t *testing.T) {
 
 	// Create a test keyspace with nil settings
 	ks := &ps.Keyspace{
-		ID:                            "ks1",
-		Name:                          keyspace,
-		CreatedAt:                     ts,
-		UpdatedAt:                     ts,
+		ID:                               "ks1",
+		Name:                             keyspace,
+		CreatedAt:                        ts,
+		UpdatedAt:                        ts,
 		ReplicationDurabilityConstraints: nil, // Deliberately nil
 		VReplicationFlags:                nil, // Deliberately nil
 	}
@@ -135,7 +135,7 @@ func TestKeyspace_SettingsCmd_NilSettings(t *testing.T) {
 	c.Assert(err, qt.IsNil)
 	c.Assert(svc.GetFnInvoked, qt.IsTrue)
 
-	// Check that we get JSON output (the actual content is checked in the buildKeyspaceSettings test)
+	// Check that we get JSON output (the actual content is checked in the toKeyspaceSettings test)
 	c.Assert(buf.String(), qt.Not(qt.Equals), "")
 }
 
@@ -200,7 +200,7 @@ func TestBuildKeyspaceSettings(t *testing.T) {
 		},
 	}
 
-	settings := buildKeyspaceSettings(fullKs)
+	settings := toKeyspaceSettings(fullKs)
 	c.Assert(settings.ReplicationDurabilityConstraintStrategy, qt.Equals, "maximum") // Should be translated
 	c.Assert(settings.VReplicationFlags.OptimizeInserts, qt.Equals, true)
 	c.Assert(settings.VReplicationFlags.AllowNoBlobBinlogRowImage, qt.Equals, true)
@@ -208,15 +208,15 @@ func TestBuildKeyspaceSettings(t *testing.T) {
 
 	// Test with nil settings
 	nilKs := &ps.Keyspace{
-		ID:                            "ks1",
-		Name:                          "test",
-		CreatedAt:                     ts,
-		UpdatedAt:                     ts,
+		ID:                               "ks1",
+		Name:                             "test",
+		CreatedAt:                        ts,
+		UpdatedAt:                        ts,
 		ReplicationDurabilityConstraints: nil,
 		VReplicationFlags:                nil,
 	}
 
-	nilSettings := buildKeyspaceSettings(nilKs)
+	nilSettings := toKeyspaceSettings(nilKs)
 	c.Assert(nilSettings.ReplicationDurabilityConstraintStrategy, qt.Equals, "not set")
 	c.Assert(nilSettings.VReplicationFlags.OptimizeInserts, qt.Equals, false) // Default values
 	c.Assert(nilSettings.VReplicationFlags.AllowNoBlobBinlogRowImage, qt.Equals, false)
