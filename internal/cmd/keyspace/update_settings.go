@@ -1,22 +1,20 @@
 package keyspace
 
 import (
+	"fmt"
+
 	"github.com/planetscale/cli/internal/cmdutil"
+	"github.com/planetscale/cli/internal/printer"
 	ps "github.com/planetscale/planetscale-go/planetscale"
 	"github.com/spf13/cobra"
 )
-
-type KeyspaceUpdateSettingsRequest struct {
-	ReplicationDurabilityConstraints *ps.ReplicationDurabilityConstraints `json:"replication_durability_constraints"`
-	BinlogReplication                *ps.BinlogReplication                `json:"binlog_replication"`
-}
 
 func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 	updateReq := &ps.UpdateKeyspaceSettingsRequest{}
 
 	var flags struct {
 		replicationDurabilityConstraints *ps.ReplicationDurabilityConstraints
-		binlogReplication                *ps.BinlogReplication
+		vreplicationFlags                *ps.VReplicationFlags
 	}
 
 	cmd := &cobra.Command{
@@ -32,39 +30,86 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 			updateReq.Branch = branch
 			updateReq.Keyspace = keyspace
 
-			if cmd.Flags().Changed("replication-durability-constraints-strategy") {
-				updateReq.ReplicationDurabilityConstraints.Strategy = flags.replicationDurabilityConstraints.Strategy
-			}
-
-			if cmd.Flags().Changed("binlog-replication-optimize-inserts") {
-				updateReq.BinlogReplication.OptimizeInserts = flags.binlogReplication.OptimizeInserts
-			}
-
-			if cmd.Flags().Changed("binlog-replication-allow-no-blob-binlog-row-image") {
-				updateReq.BinlogReplication.AllowNoBlobBinlogRowImage = flags.binlogReplication.AllowNoBlobBinlogRowImage
-			}
-
-			if cmd.Flags().Changed("binlog-replication-batch-binlog-statements") {
-				updateReq.BinlogReplication.BatchBinlogStatements = flags.binlogReplication.BatchBinlogStatements
-			}
-
 			client, err := ch.Client()
 			if err != nil {
 				return err
 			}
 
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Updating settings for keyspace %s in %s/%s", printer.BoldBlue(keyspace), printer.BoldBlue(database), printer.BoldBlue(branch)))
+			defer end()
+
+			ks, err := client.Keyspaces.Get(ctx, &ps.GetKeyspaceRequest{
+				Organization: ch.Config.Organization,
+				Database:     database,
+				Branch:       branch,
+				Keyspace:     keyspace,
+			})
+			if err != nil {
+				switch cmdutil.ErrCode(err) {
+				case ps.ErrNotFound:
+					return fmt.Errorf("keyspace %s does not exist in branch %s (database: %s, organization: %s)", printer.BoldBlue(keyspace), printer.BoldBlue(branch), printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
+				default:
+					return cmdutil.HandleError(err)
+				}
+			}
+
+			// Get initial defaults from the API, then update them using flags.
+			if ks.ReplicationDurabilityConstraints != nil {
+				updateReq.ReplicationDurabilityConstraints = ks.ReplicationDurabilityConstraints
+			}
+
+			if ks.VReplicationFlags != nil {
+				updateReq.VReplicationFlags = ks.VReplicationFlags
+			}
+
+			if cmd.Flags().Changed("replication-durability-constraints-strategy") {
+				updateReq.ReplicationDurabilityConstraints.Strategy = constraintsToStrategy(flags.replicationDurabilityConstraints.Strategy)
+			}
+
+			if cmd.Flags().Changed("vreplication-optimize-inserts") {
+				updateReq.VReplicationFlags.OptimizeInserts = flags.vreplicationFlags.OptimizeInserts
+			}
+
+			if cmd.Flags().Changed("vreplication-enable-noblob-binlog-mode") {
+				updateReq.VReplicationFlags.AllowNoBlobBinlogRowImage = flags.vreplicationFlags.AllowNoBlobBinlogRowImage
+			}
+
+			if cmd.Flags().Changed("vreplication-batch-replication-events") {
+				updateReq.VReplicationFlags.VPlayerBatching = flags.vreplicationFlags.VPlayerBatching
+			}
+
 			k, err := client.Keyspaces.UpdateSettings(ctx, updateReq)
 			if err != nil {
-				return err
+				switch cmdutil.ErrCode(err) {
+				case ps.ErrNotFound:
+					return fmt.Errorf("keyspace %s does not exist in branch %s (database: %s, organization: %s)", printer.BoldBlue(keyspace), printer.BoldBlue(branch), printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
+				default:
+					return cmdutil.HandleError(err)
+				}
 			}
+			end()
 
 			return ch.Printer.PrintResource(toKeyspace(k))
 		},
 	}
 
-	cmd.Flags().StringVar(&flags.replicationDurabilityConstraints.Strategy, "replication-durability-constraints-strategy", "maximum", "replication durability constraints strategy")
-	cmd.Flags().BoolVar(&flags.binlogReplication.OptimizeInserts, "binlog-replication-optimize-inserts", true, "binlog replication optimize inserts")
-	cmd.Flags().BoolVar(&flags.binlogReplication.AllowNoBlobBinlogRowImage, "binlog-replication-allow-no-blob-binlog-row-image", true, "binlog replication allow no blob binlog row image")
-	cmd.Flags().BoolVar(&flags.binlogReplication.BatchBinlogStatements, "binlog-replication-batch-binlog-statements", false, "binlog replication batch binlog statements")
+	cmd.Flags().StringVar(&flags.replicationDurabilityConstraints.Strategy, "replication-durability-constraints-strategy", "maximum", "By default, replication is configured to maximize safety and data integrity. This setting may be relaxed to favor increased performance and reduced replication lag. Options: maximum, dynamic, minimum")
+	cmd.Flags().BoolVar(&flags.vreplicationFlags.OptimizeInserts, "vreplication-optimize-inserts", true, "When enabled, skips sending INSERT events for rows that have yet to be replicated.")
+	cmd.Flags().BoolVar(&flags.vreplicationFlags.AllowNoBlobBinlogRowImage, "vreplication-enable-noblob-binlog-mode", true, "When enabled, omits changed BLOB and TEXT columns from replication events, which reduces binlog sizes.")
+	cmd.Flags().BoolVar(&flags.vreplicationFlags.VPlayerBatching, "vreplication-batch-replication-events", false, "When enabled, sends fewer queries to MySQL to improve performance.")
 	return cmd
+}
+
+// Helper function for translating the API value to a more semantic string.
+func constraintsToStrategy(constraint string) string {
+	switch constraint {
+	case "maximum":
+		return "available"
+	case "minimum":
+		return "always"
+	case "dynamic":
+		return "lag"
+	default:
+		return constraint
+	}
 }
