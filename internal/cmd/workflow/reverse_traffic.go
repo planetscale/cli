@@ -53,7 +53,7 @@ This is useful when you need to rollback a traffic switch operation.`,
 
 			if ch.Printer.Format() == printer.Human {
 				ch.Printer.Printf("Successfully reversed traffic for workflow %s in database %s.\n",
-					printer.BoldBlue(workflow.Name),
+					printer.BoldBlue(printer.Number(workflow.Number)),
 					printer.BoldBlue(db),
 				)
 				return nil

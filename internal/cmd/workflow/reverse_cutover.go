@@ -32,7 +32,7 @@ This is useful if your application has errors and you need to rollback after a c
 				return err
 			}
 
-			end := ch.Printer.PrintProgress(fmt.Sprintf("Reversing cutover for workflow %s in database %s…", printer.BoldBlue(number), printer.BoldBlue(db)))
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Reversing cutover for workflow %s in database %s…", printer.BoldBlue(printer.Number(number)), printer.BoldBlue(db)))
 			defer end()
 
 			workflow, err := client.Workflows.ReverseCutover(ctx, &ps.ReverseCutoverWorkflowRequest{
@@ -54,7 +54,7 @@ This is useful if your application has errors and you need to rollback after a c
 
 			if ch.Printer.Format() == printer.Human {
 				ch.Printer.Printf("Cutover reversed for workflow %s in database %s.\n",
-					printer.BoldBlue(workflow.Name),
+					printer.BoldBlue(printer.Number(workflow.Number)),
 					printer.BoldBlue(db),
 				)
 				return nil

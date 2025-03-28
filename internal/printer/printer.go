@@ -325,3 +325,8 @@ func Bold(msg interface{}) string {
 	// the 'color' package already handles IsTTY gracefully
 	return color.New(color.Bold).Sprint(msg)
 }
+
+// Number returns a formatted number with the # prefix
+func Number(number uint64) string {
+	return fmt.Sprintf("#%d", number)
+}

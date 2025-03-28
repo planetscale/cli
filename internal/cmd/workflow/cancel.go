@@ -67,7 +67,7 @@ marks it as cancelled, allowing you to start a new workflow if needed.`,
 				}
 			}
 
-			end := ch.Printer.PrintProgress(fmt.Sprintf("Cancelling workflow %s in database %s…", printer.BoldBlue(number), printer.BoldBlue(db)))
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Cancelling workflow %s in database %s…", printer.BoldBlue(printer.Number(number)), printer.BoldBlue(db)))
 			defer end()
 
 			workflow, err := client.Workflows.Cancel(ctx, &ps.CancelWorkflowRequest{
@@ -88,7 +88,7 @@ marks it as cancelled, allowing you to start a new workflow if needed.`,
 
 			if ch.Printer.Format() == printer.Human {
 				ch.Printer.Printf("Workflow %s in database %s has been cancelled.\n",
-					printer.BoldBlue(workflow.Name),
+					printer.BoldBlue(printer.Number(workflow.Number)),
 					printer.BoldBlue(db),
 				)
 				return nil
