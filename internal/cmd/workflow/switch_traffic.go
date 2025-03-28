@@ -108,13 +108,13 @@ By default, this command will route all queries for primary, replica, and read-o
 			if ch.Printer.Format() == printer.Human {
 				if replicasOnly {
 					ch.Printer.Printf("Successfully switched query traffic from replica and read-only tablets to target keyspace for workflow %s in database %s.\n",
-						printer.BoldBlue(workflow.Name),
+						printer.BoldBlue(printer.Number(workflow.Number)),
 						printer.BoldBlue(db),
 					)
 					return nil
 				}
 				ch.Printer.Printf("Successfully switched queries from primary, replica, and read-only tablets to target keyspace for workflow %s in database %s.\n",
-					printer.BoldBlue(workflow.Name),
+					printer.BoldBlue(printer.Number(workflow.Number)),
 					printer.BoldBlue(db),
 				)
 				return nil
