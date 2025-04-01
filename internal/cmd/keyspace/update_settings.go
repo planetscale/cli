@@ -24,10 +24,9 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 	flags.vreplicationFlags = &ps.VReplicationFlags{}
 
 	cmd := &cobra.Command{
-		Use:    "update-settings <database> <branch> <keyspace>",
-		Short:  "Update the settings for a keyspace",
-		Args:   cmdutil.RequiredArgs("database", "branch", "keyspace"),
-		Hidden: true,
+		Use:   "update-settings <database> <branch> <keyspace>",
+		Short: "Update the settings for a keyspace",
+		Args:  cmdutil.RequiredArgs("database", "branch", "keyspace"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			database, branch, keyspace := args[0], args[1], args[2]
