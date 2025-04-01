@@ -12,10 +12,9 @@ import (
 // SettingsCmd is a command that shows the settings for a keyspace
 func SettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:    "settings <database> <branch> <keyspace>",
-		Short:  "Show the settings for a keyspace",
-		Args:   cmdutil.RequiredArgs("database", "branch", "keyspace"),
-		Hidden: true,
+		Use:   "settings <database> <branch> <keyspace>",
+		Short: "Show the settings for a keyspace",
+		Args:  cmdutil.RequiredArgs("database", "branch", "keyspace"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			database, branch, keyspace := args[0], args[1], args[2]
