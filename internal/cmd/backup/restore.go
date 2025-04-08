@@ -13,6 +13,8 @@ import (
 )
 
 func RestoreCmd(ch *cmdutil.Helper) *cobra.Command {
+	var clusterSize string
+
 	cmd := &cobra.Command{
 		Use:   "restore <database> <branch> <backup>",
 		Short: "Restore a backup to a new branch",
@@ -35,6 +37,7 @@ func RestoreCmd(ch *cmdutil.Helper) *cobra.Command {
 				Database:     database,
 				Name:         branchName,
 				BackupID:     backup,
+				ClusterSize:  clusterSize,
 			})
 			if err != nil {
 				return cmdutil.HandleError(err)
@@ -44,6 +47,11 @@ func RestoreCmd(ch *cmdutil.Helper) *cobra.Command {
 			return ch.Printer.PrintResource(branch.ToDatabaseBranch(newBranch))
 		},
 	}
+
+	cmd.Flags().StringVar(&clusterSize, "cluster-size", "PS-10", "Cluster size for restored backup branch. Use `pscale size cluster list` to see the valid sizes.")
+	cmd.RegisterFlagCompletionFunc("cluster-size", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return cmdutil.ClusterSizesCompletionFunc(ch, cmd, args, toComplete)
+	})
 
 	return cmd
 }
