@@ -129,7 +129,6 @@ func TestBranch_CreateCmdWithSeedData(t *testing.T) {
 			c.Assert(req.Region, qt.Equals, "us-east")
 			c.Assert(req.Organization, qt.Equals, org)
 			c.Assert(req.SeedData, qt.Equals, "last_successful_backup")
-			c.Assert(req.ClusterSize, qt.Equals, "PS-20")
 
 			return res, nil
 		},
@@ -148,7 +147,7 @@ func TestBranch_CreateCmdWithSeedData(t *testing.T) {
 	}
 
 	cmd := CreateCmd(ch)
-	cmd.SetArgs([]string{db, branch, "--region", "us-east", "--seed-data", "--cluster-size", "PS-20"})
+	cmd.SetArgs([]string{db, branch, "--region", "us-east", "--seed-data"})
 	err := cmd.Execute()
 
 	c.Assert(err, qt.IsNil)
