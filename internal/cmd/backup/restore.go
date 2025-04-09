@@ -49,6 +49,7 @@ func RestoreCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&clusterSize, "cluster-size", "PS-10", "Cluster size for restored backup branch. Use `pscale size cluster list` to see the valid sizes.")
+	cmd.MarkFlagRequired("cluster-size")
 	cmd.RegisterFlagCompletionFunc("cluster-size", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return cmdutil.ClusterSizesCompletionFunc(ch, cmd, args, toComplete)
 	})
