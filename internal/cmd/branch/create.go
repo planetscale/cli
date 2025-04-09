@@ -85,8 +85,13 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case ps.ErrNotFound:
-					return fmt.Errorf("source database %s does not exist in organization %s",
-						printer.BoldBlue(source), printer.BoldBlue(ch.Config.Organization))
+					if createReq.ParentBranch != "" {
+						return fmt.Errorf("source branch %s or database %s does not exist (organization: %s)",
+							printer.BoldBlue(createReq.ParentBranch), printer.BoldBlue(source), printer.BoldBlue(ch.Config.Organization))
+					} else {
+						return fmt.Errorf("source database %s does not exist in organization %s",
+							printer.BoldBlue(source), printer.BoldBlue(ch.Config.Organization))
+					}
 				default:
 					return cmdutil.HandleError(err)
 				}
