@@ -60,8 +60,6 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&createReq.Notes, "notes", "", "notes for the database")
-	cmd.Flags().MarkDeprecated("notes", "is no longer available.")
 	cmd.Flags().StringVar(&createReq.Region, "region", "", "region for the database")
 
 	cmd.Flags().String("cluster-size", "PS-10", "cluster size for Scaler Pro databases. Use `pscale size cluster list` to see the valid sizes.")

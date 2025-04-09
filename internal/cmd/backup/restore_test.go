@@ -35,6 +35,7 @@ func TestBackup_RestoreCmd(t *testing.T) {
 			c.Assert(req.Database, qt.Equals, db)
 			c.Assert(req.Name, qt.Equals, branch)
 			c.Assert(req.BackupID, qt.Equals, backup)
+			c.Assert(req.ClusterSize, qt.Equals, "PS-20")
 			return res, nil
 		},
 	}
@@ -52,7 +53,7 @@ func TestBackup_RestoreCmd(t *testing.T) {
 	}
 
 	cmd := RestoreCmd(ch)
-	cmd.SetArgs([]string{db, branch, backup})
+	cmd.SetArgs([]string{db, branch, backup, "--cluster-size", "PS-20"})
 	err := cmd.Execute()
 
 	c.Assert(err, qt.IsNil)
