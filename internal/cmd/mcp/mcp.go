@@ -1,8 +1,6 @@
 package mcp
 
 import (
-	"fmt"
-
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/spf13/cobra"
 )
@@ -13,11 +11,10 @@ func McpCmd(ch *cmdutil.Helper) *cobra.Command {
 		Use:   "mcp <command>",
 		Short: "Manage and use the MCP server",
 		Long:  `Manage and use the PlanetScale model context protocol (MCP) server.`,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			fmt.Println("hello mcp")
-			return nil
-		},
 	}
+
+	cmd.AddCommand(InstallCmd(ch))
+	cmd.AddCommand(ServerCmd(ch))
 
 	return cmd
 }
