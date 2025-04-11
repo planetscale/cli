@@ -2,6 +2,7 @@ package mcp
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -23,15 +24,39 @@ func ServerCmd(ch *cmdutil.Helper) *cobra.Command {
 				"0.1.0",
 			)
 
-			// Create a simple hello tool without parameters
-			helloTool := mcp.NewTool("hello",
-				mcp.WithDescription("A simple hello world tool"),
+			// Create a list_orgs tool without parameters
+			listOrgsTool := mcp.NewTool("list_orgs",
+				mcp.WithDescription("List all available organizations"),
 			)
 
-			// Add the hello tool handler
-			s.AddTool(helloTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-				// Simply return "world" when called
-				return mcp.NewToolResultText("world"), nil
+			// Add the list_orgs tool handler
+			s.AddTool(listOrgsTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+				// Get the PlanetScale client
+				client, err := ch.Client()
+				if err != nil {
+					return nil, fmt.Errorf("failed to initialize PlanetScale client: %w", err)
+				}
+
+				// Get the list of organizations
+				orgs, err := client.Organizations.List(ctx)
+				if err != nil {
+					return nil, fmt.Errorf("failed to list organizations: %w", err)
+				}
+
+				// Extract only the organization names
+				orgNames := make([]string, 0, len(orgs))
+				for _, org := range orgs {
+					orgNames = append(orgNames, org.Name)
+				}
+
+				// Convert to JSON
+				orgNamesJSON, err := json.Marshal(orgNames)
+				if err != nil {
+					return nil, fmt.Errorf("failed to marshal organization names: %w", err)
+				}
+
+				// Return the JSON array as text
+				return mcp.NewToolResultText(string(orgNamesJSON)), nil
 			})
 
 			// Start the server
