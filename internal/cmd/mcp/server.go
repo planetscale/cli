@@ -51,14 +51,8 @@ func HandleListOrgs(ctx context.Context, request mcp.CallToolRequest, ch *cmduti
 	return mcp.NewToolResultText(string(orgNamesJSON)), nil
 }
 
-// HandleListDatabases implements the list_databases tool
-func HandleListDatabases(ctx context.Context, request mcp.CallToolRequest, ch *cmdutil.Helper) (*mcp.CallToolResult, error) {
-	// Get the PlanetScale client
-	client, err := ch.Client()
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize PlanetScale client: %w", err)
-	}
-
+// getOrganization extracts the organization from the request parameters or falls back to defaults
+func getOrganization(request mcp.CallToolRequest, ch *cmdutil.Helper) (string, error) {
 	// Get the organization from the parameters or use the default
 	var orgName string
 	if org, ok := request.Params.Arguments["org"].(string); ok && org != "" {
@@ -75,7 +69,24 @@ func HandleListDatabases(ctx context.Context, request mcp.CallToolRequest, ch *c
 	}
 
 	if orgName == "" {
-		return nil, fmt.Errorf("no organization specified and no default organization set")
+		return "", fmt.Errorf("no organization specified and no default organization set")
+	}
+	
+	return orgName, nil
+}
+
+// HandleListDatabases implements the list_databases tool
+func HandleListDatabases(ctx context.Context, request mcp.CallToolRequest, ch *cmdutil.Helper) (*mcp.CallToolResult, error) {
+	// Get the PlanetScale client
+	client, err := ch.Client()
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize PlanetScale client: %w", err)
+	}
+
+	// Get the organization
+	orgName, err := getOrganization(request, ch)
+	if err != nil {
+		return nil, err
 	}
 
 	// Get the list of databases
@@ -122,23 +133,10 @@ func HandleListBranches(ctx context.Context, request mcp.CallToolRequest, ch *cm
 	}
 	database := dbArg.(string)
 
-	// Get the organization from the parameters or use the default
-	var orgName string
-	if org, ok := request.Params.Arguments["org"].(string); ok && org != "" {
-		orgName = org
-	} else {
-		// Try to load from default config file
-		fileConfig, err := ch.ConfigFS.DefaultConfig()
-		if err == nil && fileConfig.Organization != "" {
-			orgName = fileConfig.Organization
-		} else {
-			// Fall back to the config passed to the helper
-			orgName = ch.Config.Organization
-		}
-	}
-
-	if orgName == "" {
-		return nil, fmt.Errorf("no organization specified and no default organization set")
+	// Get the organization
+	orgName, err := getOrganization(request, ch)
+	if err != nil {
+		return nil, err
 	}
 
 	// Get the list of branches
