@@ -107,6 +107,70 @@ func HandleListDatabases(ctx context.Context, request mcp.CallToolRequest, ch *c
 	return mcp.NewToolResultText(string(dbNamesJSON)), nil
 }
 
+// HandleListBranches implements the list_branches tool
+func HandleListBranches(ctx context.Context, request mcp.CallToolRequest, ch *cmdutil.Helper) (*mcp.CallToolResult, error) {
+	// Get the PlanetScale client
+	client, err := ch.Client()
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize PlanetScale client: %w", err)
+	}
+
+	// Get the required database parameter
+	dbArg, ok := request.Params.Arguments["database"]
+	if !ok || dbArg == "" {
+		return nil, fmt.Errorf("database parameter is required")
+	}
+	database := dbArg.(string)
+
+	// Get the organization from the parameters or use the default
+	var orgName string
+	if org, ok := request.Params.Arguments["org"].(string); ok && org != "" {
+		orgName = org
+	} else {
+		// Try to load from default config file
+		fileConfig, err := ch.ConfigFS.DefaultConfig()
+		if err == nil && fileConfig.Organization != "" {
+			orgName = fileConfig.Organization
+		} else {
+			// Fall back to the config passed to the helper
+			orgName = ch.Config.Organization
+		}
+	}
+
+	if orgName == "" {
+		return nil, fmt.Errorf("no organization specified and no default organization set")
+	}
+
+	// Get the list of branches
+	branches, err := client.DatabaseBranches.List(ctx, &planetscale.ListDatabaseBranchesRequest{
+		Organization: orgName,
+		Database:     database,
+	})
+	if err != nil {
+		switch cmdutil.ErrCode(err) {
+		case planetscale.ErrNotFound:
+			return nil, fmt.Errorf("database %s does not exist in organization %s", database, orgName)
+		default:
+			return nil, fmt.Errorf("failed to list branches: %w", err)
+		}
+	}
+
+	// Extract the branch names
+	branchNames := make([]string, 0, len(branches))
+	for _, branch := range branches {
+		branchNames = append(branchNames, branch.Name)
+	}
+
+	// Convert to JSON
+	branchNamesJSON, err := json.Marshal(branchNames)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal branch names: %w", err)
+	}
+
+	// Return the JSON array as text
+	return mcp.NewToolResultText(string(branchNamesJSON)), nil
+}
+
 // getToolDefinitions returns the list of all available MCP tools
 func getToolDefinitions() []ToolDef {
 	return []ToolDef{
@@ -124,6 +188,19 @@ func getToolDefinitions() []ToolDef {
 				),
 			),
 			handler: HandleListDatabases,
+		},
+		{
+			tool: mcp.NewTool("list_branches",
+				mcp.WithDescription("List all branches for a database"),
+				mcp.WithString("database",
+					mcp.Description("The database name"),
+					mcp.Required(),
+				),
+				mcp.WithString("org",
+					mcp.Description("The organization name (uses default organization if not specified)"),
+				),
+			),
+			handler: HandleListBranches,
 		},
 	}
 }
