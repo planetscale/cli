@@ -2,14 +2,21 @@ package mcp
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
+	"net"
+	"time"
 
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/planetscale/cli/internal/cmdutil"
+	"github.com/planetscale/cli/internal/passwordutil"
+	"github.com/planetscale/cli/internal/proxyutil"
 	"github.com/planetscale/planetscale-go/planetscale"
 	"github.com/spf13/cobra"
+	"vitess.io/vitess/go/mysql"
 )
 
 // Tool handler function type
@@ -228,6 +235,193 @@ func HandleListKeyspaces(ctx context.Context, request mcp.CallToolRequest, ch *c
 	return mcp.NewToolResultText(string(keyspaceNamesJSON)), nil
 }
 
+// HandleRunQuery implements the run_query tool
+func HandleRunQuery(ctx context.Context, request mcp.CallToolRequest, ch *cmdutil.Helper) (*mcp.CallToolResult, error) {
+	// Get the PlanetScale client
+	client, err := ch.Client()
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize PlanetScale client: %w", err)
+	}
+
+	// Get the required database parameter
+	dbArg, ok := request.Params.Arguments["database"]
+	if !ok || dbArg == "" {
+		return nil, fmt.Errorf("database parameter is required")
+	}
+	database := dbArg.(string)
+
+	// Get the required branch parameter
+	branchArg, ok := request.Params.Arguments["branch"]
+	if !ok || branchArg == "" {
+		return nil, fmt.Errorf("branch parameter is required")
+	}
+	branch := branchArg.(string)
+
+	// Get the required keyspace parameter
+	keyspaceArg, ok := request.Params.Arguments["keyspace"]
+	if !ok || keyspaceArg == "" {
+		return nil, fmt.Errorf("keyspace parameter is required")
+	}
+	keyspace := keyspaceArg.(string)
+
+	// Get the required query parameter
+	queryArg, ok := request.Params.Arguments["query"]
+	if !ok || queryArg == "" {
+		return nil, fmt.Errorf("query parameter is required")
+	}
+	query := queryArg.(string)
+
+	// Get the organization
+	orgName, err := getOrganization(request, ch)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check if database and branch exist
+	dbBranch, err := client.DatabaseBranches.Get(ctx, &planetscale.GetDatabaseBranchRequest{
+		Organization: orgName,
+		Database:     database,
+		Branch:       branch,
+	})
+	if err != nil {
+		switch cmdutil.ErrCode(err) {
+		case planetscale.ErrNotFound:
+			return nil, fmt.Errorf("database %s and branch %s does not exist in organization %s",
+				database, branch, orgName)
+		default:
+			return nil, fmt.Errorf("failed to get database branch: %w", err)
+		}
+	}
+
+	if !dbBranch.Ready {
+		return nil, fmt.Errorf("database branch is not ready yet")
+	}
+
+	// Create a temporary password with reader role
+	pw, err := passwordutil.New(ctx, client, passwordutil.Options{
+		Organization: orgName,
+		Database:     database,
+		Branch:       branch,
+		Role:         cmdutil.ReaderRole, // Use reader role for safety
+		Name:         passwordutil.GenerateName("pscale-cli-mcp-query"),
+		TTL:          5 * time.Minute,
+		Replica:      true, // Use replica for read-only queries
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create temporary password: %w", err)
+	}
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		if err := pw.Cleanup(ctx); err != nil {
+			// Just log the error, don't return it
+			fmt.Printf("failed to delete credentials: %v\n", err)
+		}
+	}()
+
+	// Create a proxy for the connection
+	proxy := proxyutil.New(proxyutil.Config{
+		Logger:       cmdutil.NewZapLogger(ch.Debug()),
+		UpstreamAddr: pw.Password.Hostname,
+		Username:     pw.Password.Username,
+		Password:     pw.Password.PlainText,
+	})
+	defer proxy.Close()
+
+	// Create a local listener
+	l, err := net.Listen("tcp", "127.0.0.1:0") // Use random port
+	if err != nil {
+		return nil, fmt.Errorf("failed to create listener: %w", err)
+	}
+	defer l.Close()
+
+	// Start serving the proxy
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- proxy.Serve(l, mysql.CachingSha2Password)
+	}()
+
+	// Get the local address
+	localAddr := l.Addr().String()
+
+	// Create a MySQL connection to the local proxy
+	db, err := sql.Open("mysql", fmt.Sprintf("root@tcp(%s)/%s", localAddr, keyspace))
+	if err != nil {
+		return nil, fmt.Errorf("failed to open MySQL connection: %w", err)
+	}
+	defer db.Close()
+
+	// Set a timeout for the connection
+	db.SetConnMaxLifetime(30 * time.Second)
+
+	// Execute the query
+	rows, err := db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute query: %w", err)
+	}
+	defer rows.Close()
+
+	// Get column names
+	columns, err := rows.Columns()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get column names: %w", err)
+	}
+
+	// Prepare a slice of interface{} to hold the row values
+	values := make([]interface{}, len(columns))
+	scanArgs := make([]interface{}, len(columns))
+	for i := range values {
+		scanArgs[i] = &values[i]
+	}
+
+	// Convert rows to JSON objects
+	var results []map[string]interface{}
+	for rows.Next() {
+		// Scan the row into the values slice
+		err = rows.Scan(scanArgs...)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan row: %w", err)
+		}
+
+		// Create a map for the row
+		rowMap := make(map[string]interface{})
+		for i, col := range columns {
+			val := values[i]
+
+			// Handle different types
+			switch v := val.(type) {
+			case []byte:
+				// Try to convert to string
+				rowMap[col] = string(v)
+			case nil:
+				rowMap[col] = nil
+			default:
+				rowMap[col] = v
+			}
+		}
+
+		results = append(results, rowMap)
+	}
+
+	// Check for errors from iterating over rows
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error while iterating over query results: %w", err)
+	}
+
+	// Convert to JSON
+	resultsJSON, err := json.Marshal(results)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal query results: %w", err)
+	}
+
+	// Stop the proxy
+	proxy.Close()
+
+	// Return the JSON array as text
+	return mcp.NewToolResultText(string(resultsJSON)), nil
+}
+
 // getToolDefinitions returns the list of all available MCP tools
 func getToolDefinitions() []ToolDef {
 	return []ToolDef{
@@ -275,6 +469,31 @@ func getToolDefinitions() []ToolDef {
 				),
 			),
 			handler: HandleListKeyspaces,
+		},
+		{
+			tool: mcp.NewTool("run_query",
+				mcp.WithDescription("Run a SQL query against a database branch keyspace"),
+				mcp.WithString("database",
+					mcp.Description("The database name"),
+					mcp.Required(),
+				),
+				mcp.WithString("branch",
+					mcp.Description("The branch name"),
+					mcp.Required(),
+				),
+				mcp.WithString("keyspace",
+					mcp.Description("The keyspace name"),
+					mcp.Required(),
+				),
+				mcp.WithString("query",
+					mcp.Description("The SQL query to run (read-only queries only)"),
+					mcp.Required(),
+				),
+				mcp.WithString("org",
+					mcp.Description("The organization name (uses default organization if not specified)"),
+				),
+			),
+			handler: HandleRunQuery,
 		},
 	}
 }
