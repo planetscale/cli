@@ -248,7 +248,41 @@ type DatabaseConnection struct {
 }
 
 // createDatabaseConnection establishes a connection to a PlanetScale database
-func createDatabaseConnection(ctx context.Context, client *planetscale.Client, orgName, database, branch, keyspace string, ch *cmdutil.Helper) (*DatabaseConnection, error) {
+// It extracts all required parameters (org, database, branch, keyspace) from the request
+func createDatabaseConnection(ctx context.Context, request mcp.CallToolRequest, ch *cmdutil.Helper) (*DatabaseConnection, error) {
+	// Get the PlanetScale client
+	client, err := ch.Client()
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize PlanetScale client: %w", err)
+	}
+
+	// Extract the required database parameter
+	dbArg, ok := request.Params.Arguments["database"]
+	if !ok || dbArg == "" {
+		return nil, fmt.Errorf("database parameter is required")
+	}
+	database := dbArg.(string)
+
+	// Extract the required branch parameter
+	branchArg, ok := request.Params.Arguments["branch"]
+	if !ok || branchArg == "" {
+		return nil, fmt.Errorf("branch parameter is required")
+	}
+	branch := branchArg.(string)
+
+	// Extract the required keyspace parameter
+	keyspaceArg, ok := request.Params.Arguments["keyspace"]
+	if !ok || keyspaceArg == "" {
+		return nil, fmt.Errorf("keyspace parameter is required")
+	}
+	keyspace := keyspaceArg.(string)
+
+	// Get the organization
+	orgName, err := getOrganization(request, ch)
+	if err != nil {
+		return nil, err
+	}
+
 	// Check if database and branch exist
 	dbBranch, err := client.DatabaseBranches.Get(ctx, &planetscale.GetDatabaseBranchRequest{
 		Organization: orgName,
@@ -409,33 +443,6 @@ func executeQuery(ctx context.Context, conn *DatabaseConnection, query string) (
 
 // HandleRunQuery implements the run_query tool
 func HandleRunQuery(ctx context.Context, request mcp.CallToolRequest, ch *cmdutil.Helper) (*mcp.CallToolResult, error) {
-	// Get the PlanetScale client
-	client, err := ch.Client()
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize PlanetScale client: %w", err)
-	}
-
-	// Get the required database parameter
-	dbArg, ok := request.Params.Arguments["database"]
-	if !ok || dbArg == "" {
-		return nil, fmt.Errorf("database parameter is required")
-	}
-	database := dbArg.(string)
-
-	// Get the required branch parameter
-	branchArg, ok := request.Params.Arguments["branch"]
-	if !ok || branchArg == "" {
-		return nil, fmt.Errorf("branch parameter is required")
-	}
-	branch := branchArg.(string)
-
-	// Get the required keyspace parameter
-	keyspaceArg, ok := request.Params.Arguments["keyspace"]
-	if !ok || keyspaceArg == "" {
-		return nil, fmt.Errorf("keyspace parameter is required")
-	}
-	keyspace := keyspaceArg.(string)
-
 	// Get the required query parameter
 	queryArg, ok := request.Params.Arguments["query"]
 	if !ok || queryArg == "" {
@@ -443,14 +450,8 @@ func HandleRunQuery(ctx context.Context, request mcp.CallToolRequest, ch *cmduti
 	}
 	query := queryArg.(string)
 
-	// Get the organization
-	orgName, err := getOrganization(request, ch)
-	if err != nil {
-		return nil, err
-	}
-
 	// Create a database connection
-	conn, err := createDatabaseConnection(ctx, client, orgName, database, branch, keyspace, ch)
+	conn, err := createDatabaseConnection(ctx, request, ch)
 	if err != nil {
 		return nil, err
 	}
@@ -474,41 +475,8 @@ func HandleRunQuery(ctx context.Context, request mcp.CallToolRequest, ch *cmduti
 
 // HandleListTables implements the list_tables tool
 func HandleListTables(ctx context.Context, request mcp.CallToolRequest, ch *cmdutil.Helper) (*mcp.CallToolResult, error) {
-	// Get the PlanetScale client
-	client, err := ch.Client()
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize PlanetScale client: %w", err)
-	}
-
-	// Get the required database parameter
-	dbArg, ok := request.Params.Arguments["database"]
-	if !ok || dbArg == "" {
-		return nil, fmt.Errorf("database parameter is required")
-	}
-	database := dbArg.(string)
-
-	// Get the required branch parameter
-	branchArg, ok := request.Params.Arguments["branch"]
-	if !ok || branchArg == "" {
-		return nil, fmt.Errorf("branch parameter is required")
-	}
-	branch := branchArg.(string)
-
-	// Get the required keyspace parameter
-	keyspaceArg, ok := request.Params.Arguments["keyspace"]
-	if !ok || keyspaceArg == "" {
-		return nil, fmt.Errorf("keyspace parameter is required")
-	}
-	keyspace := keyspaceArg.(string)
-
-	// Get the organization
-	orgName, err := getOrganization(request, ch)
-	if err != nil {
-		return nil, err
-	}
-
 	// Create a database connection
-	conn, err := createDatabaseConnection(ctx, client, orgName, database, branch, keyspace, ch)
+	conn, err := createDatabaseConnection(ctx, request, ch)
 	if err != nil {
 		return nil, err
 	}
@@ -544,33 +512,6 @@ func HandleListTables(ctx context.Context, request mcp.CallToolRequest, ch *cmdu
 
 // HandleGetSchema implements the get_schema tool
 func HandleGetSchema(ctx context.Context, request mcp.CallToolRequest, ch *cmdutil.Helper) (*mcp.CallToolResult, error) {
-	// Get the PlanetScale client
-	client, err := ch.Client()
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize PlanetScale client: %w", err)
-	}
-
-	// Get the required database parameter
-	dbArg, ok := request.Params.Arguments["database"]
-	if !ok || dbArg == "" {
-		return nil, fmt.Errorf("database parameter is required")
-	}
-	database := dbArg.(string)
-
-	// Get the required branch parameter
-	branchArg, ok := request.Params.Arguments["branch"]
-	if !ok || branchArg == "" {
-		return nil, fmt.Errorf("branch parameter is required")
-	}
-	branch := branchArg.(string)
-
-	// Get the required keyspace parameter
-	keyspaceArg, ok := request.Params.Arguments["keyspace"]
-	if !ok || keyspaceArg == "" {
-		return nil, fmt.Errorf("keyspace parameter is required")
-	}
-	keyspace := keyspaceArg.(string)
-
 	// Get the required tables parameter
 	tablesArg, ok := request.Params.Arguments["tables"]
 	if !ok || tablesArg == "" {
@@ -578,14 +519,8 @@ func HandleGetSchema(ctx context.Context, request mcp.CallToolRequest, ch *cmdut
 	}
 	tables := tablesArg.(string)
 
-	// Get the organization
-	orgName, err := getOrganization(request, ch)
-	if err != nil {
-		return nil, err
-	}
-
 	// Create a database connection
-	conn, err := createDatabaseConnection(ctx, client, orgName, database, branch, keyspace, ch)
+	conn, err := createDatabaseConnection(ctx, request, ch)
 	if err != nil {
 		return nil, err
 	}
