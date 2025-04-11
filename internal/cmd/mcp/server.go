@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"strings"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -541,6 +542,120 @@ func HandleListTables(ctx context.Context, request mcp.CallToolRequest, ch *cmdu
 	return mcp.NewToolResultText(string(tableNamesJSON)), nil
 }
 
+// HandleGetSchema implements the get_schema tool
+func HandleGetSchema(ctx context.Context, request mcp.CallToolRequest, ch *cmdutil.Helper) (*mcp.CallToolResult, error) {
+	// Get the PlanetScale client
+	client, err := ch.Client()
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize PlanetScale client: %w", err)
+	}
+
+	// Get the required database parameter
+	dbArg, ok := request.Params.Arguments["database"]
+	if !ok || dbArg == "" {
+		return nil, fmt.Errorf("database parameter is required")
+	}
+	database := dbArg.(string)
+
+	// Get the required branch parameter
+	branchArg, ok := request.Params.Arguments["branch"]
+	if !ok || branchArg == "" {
+		return nil, fmt.Errorf("branch parameter is required")
+	}
+	branch := branchArg.(string)
+
+	// Get the required keyspace parameter
+	keyspaceArg, ok := request.Params.Arguments["keyspace"]
+	if !ok || keyspaceArg == "" {
+		return nil, fmt.Errorf("keyspace parameter is required")
+	}
+	keyspace := keyspaceArg.(string)
+
+	// Get the required tables parameter
+	tablesArg, ok := request.Params.Arguments["tables"]
+	if !ok || tablesArg == "" {
+		return nil, fmt.Errorf("tables parameter is required")
+	}
+	tables := tablesArg.(string)
+
+	// Get the organization
+	orgName, err := getOrganization(request, ch)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create a database connection
+	conn, err := createDatabaseConnection(ctx, client, orgName, database, branch, keyspace, ch)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.close()
+
+	// Define a list of tables to get schemas for
+	var tableList []string
+
+	// If tables is "*", fetch all tables in the keyspace
+	if tables == "*" {
+		// Execute the SHOW TABLES query
+		results, err := executeQuery(ctx, conn, "SHOW TABLES")
+		if err != nil {
+			return nil, err
+		}
+
+		// Extract the table names from the results
+		for _, row := range results {
+			for _, value := range row {
+				if tableName, ok := value.(string); ok {
+					tableList = append(tableList, tableName)
+					break // Only need the first value
+				}
+			}
+		}
+	} else {
+		// Split the comma-separated list of tables
+		for _, table := range strings.Split(tables, ",") {
+			trimmedTable := strings.TrimSpace(table)
+			if trimmedTable != "" {
+				tableList = append(tableList, trimmedTable)
+			}
+		}
+	}
+
+	// Create a map to store table schemas
+	schemas := make(map[string]string)
+
+	// For each table, get the schema
+	for _, table := range tableList {
+		query := fmt.Sprintf("SHOW CREATE TABLE `%s`", table)
+		results, err := executeQuery(ctx, conn, query)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get schema for table %s: %w", table, err)
+		}
+
+		// Extract the schema from the results
+		if len(results) > 0 {
+			// The second column has the CREATE TABLE statement
+			for colName, value := range results[0] {
+				if colName == "Create Table" {
+					if schema, ok := value.(string); ok {
+						schemas[table] = schema
+						break
+					}
+				}
+			}
+		}
+	}
+
+	// Convert to JSON
+	schemasJSON, err := json.Marshal(schemas)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal schemas: %w", err)
+	}
+
+	// Return the JSON object as text
+	return mcp.NewToolResultText(string(schemasJSON)), nil
+}
+
 // getToolDefinitions returns the list of all available MCP tools
 func getToolDefinitions() []ToolDef {
 	return []ToolDef{
@@ -609,6 +724,31 @@ func getToolDefinitions() []ToolDef {
 				),
 			),
 			handler: HandleListTables,
+		},
+		{
+			tool: mcp.NewTool("get_schema",
+				mcp.WithDescription("Get the SQL schema for tables in a keyspace"),
+				mcp.WithString("database",
+					mcp.Description("The database name"),
+					mcp.Required(),
+				),
+				mcp.WithString("branch",
+					mcp.Description("The branch name"),
+					mcp.Required(),
+				),
+				mcp.WithString("keyspace",
+					mcp.Description("The keyspace name"),
+					mcp.Required(),
+				),
+				mcp.WithString("tables",
+					mcp.Description("Tables to get schemas for (single name, comma-separated list, or '*' for all tables)"),
+					mcp.Required(),
+				),
+				mcp.WithString("org",
+					mcp.Description("The organization name (uses default organization if not specified)"),
+				),
+			),
+			handler: HandleGetSchema,
 		},
 		{
 			tool: mcp.NewTool("run_query",
