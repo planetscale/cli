@@ -169,6 +169,65 @@ func HandleListBranches(ctx context.Context, request mcp.CallToolRequest, ch *cm
 	return mcp.NewToolResultText(string(branchNamesJSON)), nil
 }
 
+// HandleListKeyspaces implements the list_keyspaces tool
+func HandleListKeyspaces(ctx context.Context, request mcp.CallToolRequest, ch *cmdutil.Helper) (*mcp.CallToolResult, error) {
+	// Get the PlanetScale client
+	client, err := ch.Client()
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize PlanetScale client: %w", err)
+	}
+
+	// Get the required database parameter
+	dbArg, ok := request.Params.Arguments["database"]
+	if !ok || dbArg == "" {
+		return nil, fmt.Errorf("database parameter is required")
+	}
+	database := dbArg.(string)
+
+	// Get the required branch parameter
+	branchArg, ok := request.Params.Arguments["branch"]
+	if !ok || branchArg == "" {
+		return nil, fmt.Errorf("branch parameter is required")
+	}
+	branch := branchArg.(string)
+
+	// Get the organization
+	orgName, err := getOrganization(request, ch)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get the list of keyspaces
+	keyspaces, err := client.Keyspaces.List(ctx, &planetscale.ListKeyspacesRequest{
+		Organization: orgName,
+		Database:     database,
+		Branch:       branch,
+	})
+	if err != nil {
+		switch cmdutil.ErrCode(err) {
+		case planetscale.ErrNotFound:
+			return nil, fmt.Errorf("database %s or branch %s does not exist in organization %s", database, branch, orgName)
+		default:
+			return nil, fmt.Errorf("failed to list keyspaces: %w", err)
+		}
+	}
+
+	// Extract the keyspace names
+	keyspaceNames := make([]string, 0, len(keyspaces))
+	for _, keyspace := range keyspaces {
+		keyspaceNames = append(keyspaceNames, keyspace.Name)
+	}
+
+	// Convert to JSON
+	keyspaceNamesJSON, err := json.Marshal(keyspaceNames)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal keyspace names: %w", err)
+	}
+
+	// Return the JSON array as text
+	return mcp.NewToolResultText(string(keyspaceNamesJSON)), nil
+}
+
 // getToolDefinitions returns the list of all available MCP tools
 func getToolDefinitions() []ToolDef {
 	return []ToolDef{
@@ -199,6 +258,23 @@ func getToolDefinitions() []ToolDef {
 				),
 			),
 			handler: HandleListBranches,
+		},
+		{
+			tool: mcp.NewTool("list_keyspaces",
+				mcp.WithDescription("List all keyspaces within a branch"),
+				mcp.WithString("database",
+					mcp.Description("The database name"),
+					mcp.Required(),
+				),
+				mcp.WithString("branch",
+					mcp.Description("The branch name"),
+					mcp.Required(),
+				),
+				mcp.WithString("org",
+					mcp.Description("The organization name (uses default organization if not specified)"),
+				),
+			),
+			handler: HandleListKeyspaces,
 		},
 	}
 }
