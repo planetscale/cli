@@ -52,7 +52,7 @@ func InstallCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			// Check if the directory exists
 			if _, err := os.Stat(configDir); os.IsNotExist(err) {
-				return fmt.Errorf("Claude Desktop is not installed: path %s not found", configDir)
+				return fmt.Errorf("no Claude Desktop installation: path %s not found", configDir)
 			}
 
 			configPath := filepath.Join(configDir, "claude_desktop_config.json")
