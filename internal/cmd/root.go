@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/planetscale/cli/internal/cmd/dataimports"
+	"github.com/planetscale/cli/internal/cmd/mcp"
 	"github.com/planetscale/cli/internal/cmd/size"
 	"github.com/planetscale/cli/internal/cmd/workflow"
 
@@ -220,6 +221,7 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 	rootCmd.AddCommand(dataimports.DataImportsCmd(ch))
 	rootCmd.AddCommand(deployrequest.DeployRequestCmd(ch))
 	rootCmd.AddCommand(keyspace.KeyspaceCmd(ch))
+	rootCmd.AddCommand(mcp.McpCmd(ch))
 	rootCmd.AddCommand(org.OrgCmd(ch))
 	rootCmd.AddCommand(password.PasswordCmd(ch))
 	rootCmd.AddCommand(ping.PingCmd(ch))
