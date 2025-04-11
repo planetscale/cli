@@ -46,7 +46,7 @@ func getOrganization(request mcp.CallToolRequest, ch *cmdutil.Helper) (string, e
 	if orgName == "" {
 		return "", fmt.Errorf("no organization specified and no default organization set")
 	}
-	
+
 	return orgName, nil
 }
 
@@ -98,6 +98,10 @@ func createDatabaseConnection(ctx context.Context, request mcp.CallToolRequest, 
 			return nil, fmt.Errorf("database %s and branch %s does not exist in organization %s",
 				database, branch, orgName)
 		default:
+			handledErr := cmdutil.HandleError(err)
+			if handledErr != err {
+				return nil, handledErr
+			}
 			return nil, fmt.Errorf("failed to get database branch: %w", err)
 		}
 	}
@@ -117,6 +121,10 @@ func createDatabaseConnection(ctx context.Context, request mcp.CallToolRequest, 
 		Replica:      true, // Use replica for read-only queries
 	})
 	if err != nil {
+		handledErr := cmdutil.HandleError(err)
+		if handledErr != err {
+			return nil, handledErr
+		}
 		return nil, fmt.Errorf("failed to create temporary password: %w", err)
 	}
 

@@ -22,6 +22,10 @@ func HandleListOrgs(ctx context.Context, request mcp.CallToolRequest, ch *cmduti
 	// Get the list of organizations
 	orgs, err := client.Organizations.List(ctx)
 	if err != nil {
+		handledErr := cmdutil.HandleError(err)
+		if handledErr != err {
+			return nil, handledErr
+		}
 		return nil, fmt.Errorf("failed to list organizations: %w", err)
 	}
 
@@ -64,6 +68,10 @@ func HandleListDatabases(ctx context.Context, request mcp.CallToolRequest, ch *c
 		case planetscale.ErrNotFound:
 			return nil, fmt.Errorf("organization %s does not exist or your account is not authorized to access it", orgName)
 		default:
+			handledErr := cmdutil.HandleError(err)
+			if handledErr != err {
+				return nil, handledErr
+			}
 			return nil, fmt.Errorf("failed to list databases: %w", err)
 		}
 	}
@@ -115,6 +123,10 @@ func HandleListBranches(ctx context.Context, request mcp.CallToolRequest, ch *cm
 		case planetscale.ErrNotFound:
 			return nil, fmt.Errorf("database %s does not exist in organization %s", database, orgName)
 		default:
+			handledErr := cmdutil.HandleError(err)
+			if handledErr != err {
+				return nil, handledErr
+			}
 			return nil, fmt.Errorf("failed to list branches: %w", err)
 		}
 	}
@@ -174,6 +186,10 @@ func HandleListKeyspaces(ctx context.Context, request mcp.CallToolRequest, ch *c
 		case planetscale.ErrNotFound:
 			return nil, fmt.Errorf("database %s or branch %s does not exist in organization %s", database, branch, orgName)
 		default:
+			handledErr := cmdutil.HandleError(err)
+			if handledErr != err {
+				return nil, handledErr
+			}
 			return nil, fmt.Errorf("failed to list keyspaces: %w", err)
 		}
 	}
@@ -206,6 +222,10 @@ func HandleRunQuery(ctx context.Context, request mcp.CallToolRequest, ch *cmduti
 	// Create a database connection
 	conn, err := createDatabaseConnection(ctx, request, ch)
 	if err != nil {
+		handledErr := cmdutil.HandleError(err)
+		if handledErr != err {
+			return nil, handledErr
+		}
 		return nil, err
 	}
 	defer conn.close()
@@ -231,6 +251,10 @@ func HandleListTables(ctx context.Context, request mcp.CallToolRequest, ch *cmdu
 	// Create a database connection
 	conn, err := createDatabaseConnection(ctx, request, ch)
 	if err != nil {
+		handledErr := cmdutil.HandleError(err)
+		if handledErr != err {
+			return nil, handledErr
+		}
 		return nil, err
 	}
 	defer conn.close()
@@ -275,6 +299,10 @@ func HandleGetSchema(ctx context.Context, request mcp.CallToolRequest, ch *cmdut
 	// Create a database connection
 	conn, err := createDatabaseConnection(ctx, request, ch)
 	if err != nil {
+		handledErr := cmdutil.HandleError(err)
+		if handledErr != err {
+			return nil, handledErr
+		}
 		return nil, err
 	}
 	defer conn.close()
