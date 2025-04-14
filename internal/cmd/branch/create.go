@@ -131,7 +131,6 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().BoolVar(&flags.wait, "wait", false, "Wait until the branch is ready")
 	cmd.MarkFlagsMutuallyExclusive("from", "restore")
 	cmd.MarkFlagsMutuallyExclusive("restore", "seed-data")
-	cmd.MarkFlagsRequiredTogether("restore", "cluster-size")
 
 	cmd.RegisterFlagCompletionFunc("region", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return cmdutil.RegionsCompletionFunc(ch, cmd, args, toComplete)
