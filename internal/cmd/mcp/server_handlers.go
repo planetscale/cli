@@ -4,11 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"path"
 	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/planetscale-go/planetscale"
+	"golang.org/x/oauth2"
 )
 
 // HandleListOrgs implements the list_orgs tool
@@ -370,4 +375,79 @@ func HandleGetSchema(ctx context.Context, request mcp.CallToolRequest, ch *cmdut
 
 	// Return the JSON object as text
 	return mcp.NewToolResultText(string(schemasJSON)), nil
+}
+
+// HandleGetInsights implements the get_insights tool
+func HandleGetInsights(ctx context.Context, request mcp.CallToolRequest, ch *cmdutil.Helper) (*mcp.CallToolResult, error) {
+	// Get the required parameters
+	dbArg, ok := request.Params.Arguments["database"]
+	if !ok || dbArg == "" {
+		return nil, fmt.Errorf("database parameter is required")
+	}
+	database := dbArg.(string)
+
+	branchArg, ok := request.Params.Arguments["branch"]
+	if !ok || branchArg == "" {
+		return nil, fmt.Errorf("branch parameter is required")
+	}
+	branch := branchArg.(string)
+
+	// Get the organization
+	orgName, err := getOrganization(request, ch)
+	if err != nil {
+		return nil, err
+	}
+
+	// Construct the API path
+	apiPath := fmt.Sprintf("organizations/%s/databases/%s/branches/%s/insights", orgName, database, branch)
+
+	// Build the URL
+	u, err := url.Parse(ch.Config.BaseURL)
+	if err != nil {
+		return nil, fmt.Errorf("parsing base URL: %w", err)
+	}
+	u = u.ResolveReference(&url.URL{Path: path.Join("v1", apiPath)})
+
+	// Create the request
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("creating HTTP request: %w", err)
+	}
+
+	// Add headers
+	req.Header.Set("User-Agent", "pscale-cli-mcp")
+	req.Header.Set("Accept", "application/json")
+
+	// Create an HTTP client with authentication
+	var cl *http.Client
+	if ch.Config.AccessToken != "" {
+		tok := &oauth2.Token{AccessToken: ch.Config.AccessToken}
+		cl = oauth2.NewClient(ctx, oauth2.StaticTokenSource(tok))
+	} else if ch.Config.ServiceToken != "" && ch.Config.ServiceTokenID != "" {
+		req.Header.Set("Authorization", ch.Config.ServiceTokenID+":"+ch.Config.ServiceToken)
+		cl = &http.Client{}
+	} else {
+		return nil, fmt.Errorf("not authenticated")
+	}
+
+	// Send the request
+	resp, err := cl.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("sending HTTP request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// Read the response body
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("reading HTTP response body: %w", err)
+	}
+
+	// Check for errors (anything above 299 is an error)
+	if resp.StatusCode > 299 {
+		return nil, fmt.Errorf("HTTP %s: %s", resp.Status, string(body))
+	}
+
+	// Return a message with the size of the JSON data
+	return mcp.NewToolResultText(fmt.Sprintf("retrieved %d bytes of JSON", len(body))), nil
 }
