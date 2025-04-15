@@ -153,26 +153,7 @@ func ApiCmd(ch *cmdutil.Helper, userAgent string, defaultHeaders map[string]stri
 
 		// Store the original domain for detecting cross-domain redirects
 		originalDomain := extractRootDomain(req.URL.Host)
-
-		// Create a custom redirect check function that blocks cross-domain redirects
-		redirectCheck := func(req *http.Request, via []*http.Request) error {
-			// Check if this is a redirect to a different domain
-			currentDomain := extractRootDomain(req.URL.Host)
-			if originalDomain != currentDomain {
-				// For cross-domain redirects, don't follow automatically
-				// We'll handle this manually without sending auth headers
-				if ch.Debug() {
-					fmt.Fprintf(os.Stderr, "Cross-domain redirect detected to %s. Will handle without auth headers.\n", req.URL.Host)
-				}
-				return http.ErrUseLastResponse
-			}
-
-			// Standard Go redirect policy (max 10 redirects)
-			if len(via) >= 10 {
-				return http.ErrUseLastResponse
-			}
-			return nil
-		}
+		redirectCheck := makeRedirectCheck(originalDomain)
 
 		var cl *http.Client
 		if ch.Config.AccessToken != "" {
@@ -181,7 +162,7 @@ func ApiCmd(ch *cmdutil.Helper, userAgent string, defaultHeaders map[string]stri
 			cl = oauth2.NewClient(ctx, oauth2.StaticTokenSource(tok))
 
 			// Set our custom redirect policy
-			cl.CheckRedirect = redirectCheck
+			cl.CheckRedirect = makeRedirectCheck(originalDomain)
 		} else if ch.Config.ServiceToken != "" && ch.Config.ServiceTokenID != "" {
 			// For service tokens, manually set the auth header
 			req.Header.Set("Authorization", ch.Config.ServiceTokenID+":"+ch.Config.ServiceToken)
@@ -190,12 +171,8 @@ func ApiCmd(ch *cmdutil.Helper, userAgent string, defaultHeaders map[string]stri
 			cl = &http.Client{
 				CheckRedirect: redirectCheck,
 			}
-		}
-
-		if cl == nil {
-			cl = &http.Client{
-				CheckRedirect: redirectCheck,
-			}
+		} else {
+			cl = &http.Client{}
 		}
 
 		res, err := cl.Do(req)
@@ -233,6 +210,29 @@ func ApiCmd(ch *cmdutil.Helper, userAgent string, defaultHeaders map[string]stri
 	}
 
 	return cmd
+}
+
+// Create a custom redirect check function that blocks cross-domain redirects.
+// The OAuth2 transport adds the Authorization header to every
+// request, even after a cross-domain redirect, which is really bad.
+// So we detect cross-domain redirects and handle them with a
+// separate, auth-less http.Client.
+func makeRedirectCheck(originalDomain string) func(req *http.Request, via []*http.Request) error {
+	return func(req *http.Request, via []*http.Request) error {
+		// Check if this is a redirect to a different domain
+		currentDomain := extractRootDomain(req.URL.Host)
+		if originalDomain != currentDomain {
+			// For cross-domain redirects, don't follow automatically
+			// We'll handle this manually without sending auth headers
+			return http.ErrUseLastResponse
+		}
+
+		// Standard Go redirect policy (max 10 redirects)
+		if len(via) >= 10 {
+			return http.ErrUseLastResponse
+		}
+		return nil
+	}
 }
 
 func parseURL(ch *cmdutil.Helper, opts *ApiOpts, endpoint string) (*url.URL, error) {
@@ -417,18 +417,18 @@ func handleRedirect(ctx context.Context, originalReq *http.Request, originalRes 
 	return redirectRes, nil
 }
 
-// extractRootDomain gets the root domain from a host string
+// extractRootDomain gets the root domain from a host string.  This just
+// assumes that the last two parts of the domain name are the root domain,
+// which is fine for planetscale.com but would break down under compound
+// TLDs like .co.uk.
 func extractRootDomain(host string) string {
 	// Remove port if present
 	host, _, _ = strings.Cut(host, ":")
 
-	// Split by dots and get the root domain (usually last two parts)
 	parts := strings.Split(host, ".")
 	if len(parts) <= 2 {
-		return host // Return full host if it's already a root domain
+		return host
 	}
 
-	// For domains like example.co.uk, we want to return co.uk
-	// This is a simplified approach - a full implementation would use a public suffix list
 	return strings.Join(parts[len(parts)-2:], ".")
 }

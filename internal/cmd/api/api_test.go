@@ -152,21 +152,7 @@ func TestRedirectCheck(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			originalDomain := extractRootDomain(tt.originalHost)
-
-			// Create the redirect check function like in the main code
-			redirectCheck := func(req *http.Request, via []*http.Request) error {
-				// Check if this is a redirect to a different domain
-				currentDomain := extractRootDomain(req.URL.Host)
-				if originalDomain != currentDomain {
-					return http.ErrUseLastResponse
-				}
-
-				// Standard Go redirect policy (max 10 redirects)
-				if len(via) >= 10 {
-					return http.ErrUseLastResponse
-				}
-				return nil
-			}
+			redirectCheck := makeRedirectCheck(originalDomain)
 
 			// Create a test request simulating a redirect
 			req, _ := http.NewRequest("GET", "https://"+tt.redirectHost+"/path", nil)
