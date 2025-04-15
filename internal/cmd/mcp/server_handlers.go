@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
-	"path"
 	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -398,56 +396,111 @@ func HandleGetInsights(ctx context.Context, request mcp.CallToolRequest, ch *cmd
 		return nil, err
 	}
 
-	// Construct the API path
-	apiPath := fmt.Sprintf("organizations/%s/databases/%s/branches/%s/insights", orgName, database, branch)
+	// Fetch the /insights endpoint several times, to get the top queries by
+	// each of these metrics
+	fetchMetrics := []string{
+		"totalTime",
+		"rowsReadPerReturned",
+		"rowsRead",
+		"p99Latency",
+		"rowsAffected",
+	}
 
-	// Build the URL
-	u, err := url.Parse(ch.Config.BaseURL)
+	// Fields to include in the result
+	resultFields := []string{
+		"sum_total_duration_millis",
+		"rows_read_per_returned",
+		"sum_rows_read",
+		"p99_latency",
+		"sum_rows_affected",
+		"normalized_sql",
+		"tables",
+		"index_usages",
+		"keyspace",
+		"last_run_at",
+	}
+
+	// Create a set to track unique entries
+	uniqueEntries := make(map[string]bool)
+	var topEntries []map[string]interface{}
+
+	for _, metric := range fetchMetrics {
+		// Construct the API path
+		apiPath := fmt.Sprintf("organizations/%s/databases/%s/branches/%s/insights?per_page=5&sort=%s&dir=desc", orgName, database, branch, metric)
+
+		// Build the URL
+		urlStr := fmt.Sprintf("%s/v1/%s", ch.Config.BaseURL, apiPath);
+
+		// Create the request
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, urlStr, nil)
+		if err != nil {
+			return nil, fmt.Errorf("creating HTTP request: %w", err)
+		}
+
+		// Add headers
+		req.Header.Set("User-Agent", "pscale-cli-mcp")
+		req.Header.Set("Accept", "application/json")
+
+		// Create an HTTP client with authentication
+		var cl *http.Client
+		if ch.Config.AccessToken != "" {
+			tok := &oauth2.Token{AccessToken: ch.Config.AccessToken}
+			cl = oauth2.NewClient(ctx, oauth2.StaticTokenSource(tok))
+		} else if ch.Config.ServiceToken != "" && ch.Config.ServiceTokenID != "" {
+			req.Header.Set("Authorization", ch.Config.ServiceTokenID+":"+ch.Config.ServiceToken)
+			cl = &http.Client{}
+		} else {
+			return nil, fmt.Errorf("not authenticated")
+		}
+
+		// Send the request
+		resp, err := cl.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("sending HTTP request: %w", err)
+		}
+		defer resp.Body.Close()
+
+		// Read the response body
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("reading HTTP response body: %w", err)
+		}
+
+		// Check for errors (anything above 299 is an error)
+		if resp.StatusCode > 299 {
+			return nil, fmt.Errorf("HTTP %s: %s", resp.Status, string(body))
+		}
+
+		// Parse the JSON response
+		var response struct {
+			Data []map[string]interface{} `json:"data"`
+		}
+		if err := json.Unmarshal(body, &response); err != nil {
+			return nil, fmt.Errorf("parsing JSON response: %w", err)
+		}
+
+		for _, entry := range response.Data {
+			id, _ := entry["id"].(string)
+			if !uniqueEntries[id] {
+				// Create a filtered entry with just the fields we want
+				filteredEntry := make(map[string]interface{})
+				for _, field := range resultFields {
+					if value, ok := entry[field]; ok {
+						filteredEntry[field] = value
+					}
+				}
+
+				topEntries = append(topEntries, filteredEntry)
+				uniqueEntries[id] = true
+			}
+		}
+	}
+	
+	// Convert to JSON for the response
+	resultJSON, err := json.MarshalIndent(topEntries, "", "  ")
 	if err != nil {
-		return nil, fmt.Errorf("parsing base URL: %w", err)
+		return nil, fmt.Errorf("marshaling result to JSON: %w", err)
 	}
-	u = u.ResolveReference(&url.URL{Path: path.Join("v1", apiPath)})
-
-	// Create the request
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
-	if err != nil {
-		return nil, fmt.Errorf("creating HTTP request: %w", err)
-	}
-
-	// Add headers
-	req.Header.Set("User-Agent", "pscale-cli-mcp")
-	req.Header.Set("Accept", "application/json")
-
-	// Create an HTTP client with authentication
-	var cl *http.Client
-	if ch.Config.AccessToken != "" {
-		tok := &oauth2.Token{AccessToken: ch.Config.AccessToken}
-		cl = oauth2.NewClient(ctx, oauth2.StaticTokenSource(tok))
-	} else if ch.Config.ServiceToken != "" && ch.Config.ServiceTokenID != "" {
-		req.Header.Set("Authorization", ch.Config.ServiceTokenID+":"+ch.Config.ServiceToken)
-		cl = &http.Client{}
-	} else {
-		return nil, fmt.Errorf("not authenticated")
-	}
-
-	// Send the request
-	resp, err := cl.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("sending HTTP request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	// Read the response body
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("reading HTTP response body: %w", err)
-	}
-
-	// Check for errors (anything above 299 is an error)
-	if resp.StatusCode > 299 {
-		return nil, fmt.Errorf("HTTP %s: %s", resp.Status, string(body))
-	}
-
-	// Return a message with the size of the JSON data
-	return mcp.NewToolResultText(fmt.Sprintf("retrieved %d bytes of JSON", len(body))), nil
+	
+	return mcp.NewToolResultText(string(resultJSON)), nil
 }
