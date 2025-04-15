@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -150,19 +151,75 @@ func ApiCmd(ch *cmdutil.Helper, userAgent string, defaultHeaders map[string]stri
 			}
 		}
 
+		// Store the original domain for detecting cross-domain redirects
+		originalDomain := extractRootDomain(req.URL.Host)
+
+		// Create a custom redirect check function that blocks cross-domain redirects
+		redirectCheck := func(req *http.Request, via []*http.Request) error {
+			// Check if this is a redirect to a different domain
+			currentDomain := extractRootDomain(req.URL.Host)
+			if originalDomain != currentDomain {
+				// For cross-domain redirects, don't follow automatically
+				// We'll handle this manually without sending auth headers
+				if ch.Debug() {
+					fmt.Fprintf(os.Stderr, "Cross-domain redirect detected to %s. Will handle without auth headers.\n", req.URL.Host)
+				}
+				return http.ErrUseLastResponse
+			}
+
+			// Standard Go redirect policy (max 10 redirects)
+			if len(via) >= 10 {
+				return http.ErrUseLastResponse
+			}
+			return nil
+		}
+
 		var cl *http.Client
 		if ch.Config.AccessToken != "" {
+			// Create a transport chain that uses OAuth2 token but honors our redirect policy
 			tok := &oauth2.Token{AccessToken: ch.Config.AccessToken}
 			cl = oauth2.NewClient(ctx, oauth2.StaticTokenSource(tok))
+
+			// Set our custom redirect policy
+			cl.CheckRedirect = redirectCheck
 		} else if ch.Config.ServiceToken != "" && ch.Config.ServiceTokenID != "" {
+			// For service tokens, manually set the auth header
 			req.Header.Set("Authorization", ch.Config.ServiceTokenID+":"+ch.Config.ServiceToken)
-			cl = &http.Client{}
+
+			// Create client with our redirect policy
+			cl = &http.Client{
+				CheckRedirect: redirectCheck,
+			}
 		}
+
+		if cl == nil {
+			cl = &http.Client{
+				CheckRedirect: redirectCheck,
+			}
+		}
+
 		res, err := cl.Do(req)
 		if err != nil {
 			return fmt.Errorf("sending HTTP request: %w", err)
 		}
 		defer res.Body.Close()
+
+		// Check if we received a redirect response
+		if res.StatusCode >= 300 && res.StatusCode < 400 {
+			location := res.Header.Get("Location")
+			if location != "" {
+				newRes, handleErr := handleRedirect(ctx, req, res, location, ch.Debug())
+				if handleErr != nil {
+					return handleErr
+				}
+
+				// If handleRedirect returned a new response, use it instead
+				if newRes != nil {
+					res.Body.Close()
+					res = newRes
+				}
+			}
+		}
 
 		if _, err := io.Copy(os.Stdout, res.Body); err != nil {
 			return fmt.Errorf("reading HTTP response body: %w", err)
@@ -328,4 +385,50 @@ func parseValue(s string) (interface{}, error) {
 
 	var v interface{}
 	return v, json.Unmarshal([]byte(s), &v)
+}
+
+// handleRedirect processes cross-domain redirects by following the redirect
+// manually without sending authentication headers
+func handleRedirect(ctx context.Context, originalReq *http.Request, originalRes *http.Response, location string, debug bool) (*http.Response, error) {
+	// Create a new request without auth headers
+	redirectReq, err := http.NewRequestWithContext(ctx, "GET", location, nil)
+	if err != nil {
+		return nil, fmt.Errorf("preparing redirect request: %w", err)
+	}
+
+	// Copy all headers except Authorization
+	for k, v := range originalReq.Header {
+		if !strings.EqualFold(k, "Authorization") {
+			redirectReq.Header[k] = v
+		}
+	}
+
+	if debug {
+		fmt.Fprintf(os.Stderr, "Following cross-domain redirect to %s without auth headers\n", location)
+	}
+
+	// Use a new client without auth for the redirect
+	redirectClient := &http.Client{}
+	redirectRes, err := redirectClient.Do(redirectReq)
+	if err != nil {
+		return nil, fmt.Errorf("following redirect: %w", err)
+	}
+
+	return redirectRes, nil
+}
+
+// extractRootDomain gets the root domain from a host string
+func extractRootDomain(host string) string {
+	// Remove port if present
+	host, _, _ = strings.Cut(host, ":")
+
+	// Split by dots and get the root domain (usually last two parts)
+	parts := strings.Split(host, ".")
+	if len(parts) <= 2 {
+		return host // Return full host if it's already a root domain
+	}
+
+	// For domains like example.co.uk, we want to return co.uk
+	// This is a simplified approach - a full implementation would use a public suffix list
+	return strings.Join(parts[len(parts)-2:], ".")
 }
