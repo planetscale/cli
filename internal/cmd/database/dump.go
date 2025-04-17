@@ -331,16 +331,5 @@ func getDatabaseName(name, addr string) (string, error) {
 		return "", fmt.Errorf("failed getting database names: %s", err)
 	}
 
-	hasDatabaseName := map[string]bool{
-		"onboarding-demo": true,
-	}
-
-	for _, v := range dbs {
-		if hasDatabaseName[v] {
-			return v, nil
-		}
-	}
-
-	// this means we didn't find a match.
-	return "", errors.New("could not find a valid database name for this database")
+	return "", fmt.Errorf("could not find a valid database name for this database: %v", dbs)
 }
