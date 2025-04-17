@@ -58,7 +58,7 @@ second argument:
 			runForeground := true
 			if !printer.IsTTY || ch.Printer.Format() != printer.Human {
 				if _, exists := os.LookupEnv("PSCALE_ALLOW_NONINTERACTIVE_SHELL"); !exists {
-					return errors.New("pscale shell only works in interactive mode")
+					return errors.New("pscale shell only works in interactive mode unless PSCALE_ALLOW_NONINTERACTIVE_SHELL is set")
 				}
 				runForeground = false
 			}
