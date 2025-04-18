@@ -467,6 +467,21 @@ func HandleGetDoc(ctx context.Context, request mcp.CallToolRequest, ch *cmdutil.
 		docPath = "/" + docPath
 	}
 	
+	// Validate that the path starts with /mcp/docs/
+	if !strings.HasPrefix(docPath, "/mcp/docs/") {
+		return nil, fmt.Errorf("path must start with /mcp/docs/")
+	}
+	
+	// Validate that the path does not contain ? characters
+	if strings.Contains(docPath, "?") {
+		return nil, fmt.Errorf("path must not contain ? characters")
+	}
+	
+	// Validate that the path does not contain .. sequences
+	if strings.Contains(docPath, "..") {
+		return nil, fmt.Errorf("path must not contain .. sequences")
+	}
+	
 	// Base URL for the documentation
 	baseURL := "https://planetscale.com"
 	
