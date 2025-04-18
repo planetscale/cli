@@ -371,3 +371,84 @@ func HandleGetSchema(ctx context.Context, request mcp.CallToolRequest, ch *cmdut
 	// Return the JSON object as text
 	return mcp.NewToolResultText(string(schemasJSON)), nil
 }
+
+// HandleListDocs implements the list_docs tool
+func HandleListDocs(ctx context.Context, request mcp.CallToolRequest, ch *cmdutil.Helper) (*mcp.CallToolResult, error) {
+	// Create an HTTP client
+	client := &http.Client{}
+	
+	// Base URL for the docs API
+	baseURL := "https://planetscale.com/mcp/docs"
+	
+	// Slice to hold all doc entries from all pages
+	var allDocs []map[string]interface{}
+	
+	// Start with page 1
+	currentPage := 1
+	totalPages := 1 // Will be updated after first request
+	
+	// Loop through all pages
+	for currentPage <= totalPages {
+		// Construct the URL with page parameter
+		urlStr := fmt.Sprintf("%s?page=%d", baseURL, currentPage)
+		
+		// Create the request
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, urlStr, nil)
+		if err != nil {
+			return nil, fmt.Errorf("creating HTTP request: %w", err)
+		}
+		
+		// Add headers
+		req.Header.Set("User-Agent", "pscale-cli-mcp")
+		req.Header.Set("Accept", "application/json")
+		
+		// Send the request
+		resp, err := client.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("sending HTTP request to %s: %w", urlStr, err)
+		}
+		defer resp.Body.Close()
+		
+		// Read the response body
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("reading HTTP response body: %w", err)
+		}
+		
+		// Check for errors (anything above 299 is an error)
+		if resp.StatusCode > 299 {
+			return nil, fmt.Errorf("HTTP %s: %s", resp.Status, string(body))
+		}
+		
+		// Parse the JSON response
+		var response struct {
+			Data       []map[string]interface{} `json:"docs"`
+			Pagination struct {
+				TotalPages int `json:"totalPages"`
+			} `json:"pagination"`
+		}
+		
+		if err := json.Unmarshal(body, &response); err != nil {
+			return nil, fmt.Errorf("parsing JSON response: %w", err)
+		}
+		
+		// Update total pages from the first response
+		if currentPage == 1 {
+			totalPages = response.Pagination.TotalPages
+		}
+		
+		// Append the docs from this page to our collection
+		allDocs = append(allDocs, response.Data...)
+		
+		// Move to the next page
+		currentPage++
+	}
+	
+	// Convert to JSON for the response
+	resultJSON, err := json.MarshalIndent(allDocs, "", "  ")
+	if err != nil {
+		return nil, fmt.Errorf("marshaling result to JSON: %w", err)
+	}
+	
+	return mcp.NewToolResultText(string(resultJSON)), nil
+}

@@ -139,6 +139,12 @@ func getToolDefinitions() []ToolDef {
 			),
 			handler: HandleRunQuery,
 		},
+		{
+			tool: mcp.NewTool("list_docs",
+				mcp.WithDescription("List available documentation"),
+			),
+			handler: HandleListDocs,
+		},
 	}
 }
 
