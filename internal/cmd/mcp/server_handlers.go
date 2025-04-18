@@ -495,12 +495,12 @@ func HandleGetInsights(ctx context.Context, request mcp.CallToolRequest, ch *cmd
 			}
 		}
 	}
-	
+
 	// Convert to JSON for the response
 	resultJSON, err := json.MarshalIndent(topEntries, "", "  ")
 	if err != nil {
 		return nil, fmt.Errorf("marshaling result to JSON: %w", err)
 	}
-	
+
 	return mcp.NewToolResultText(string(resultJSON)), nil
 }
