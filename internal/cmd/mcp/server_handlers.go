@@ -452,3 +452,57 @@ func HandleListDocs(ctx context.Context, request mcp.CallToolRequest, ch *cmduti
 	
 	return mcp.NewToolResultText(string(resultJSON)), nil
 }
+
+// HandleGetDoc implements the get_doc tool
+func HandleGetDoc(ctx context.Context, request mcp.CallToolRequest, ch *cmdutil.Helper) (*mcp.CallToolResult, error) {
+	// Get the required path parameter
+	pathArg, ok := request.Params.Arguments["path"]
+	if !ok || pathArg == "" {
+		return nil, fmt.Errorf("path parameter is required")
+	}
+	docPath := pathArg.(string)
+	
+	// Ensure the path starts with a slash if not already
+	if !strings.HasPrefix(docPath, "/") {
+		docPath = "/" + docPath
+	}
+	
+	// Base URL for the documentation
+	baseURL := "https://planetscale.com"
+	
+	// Construct the full URL
+	urlStr := baseURL + docPath
+	
+	// Create an HTTP client
+	client := &http.Client{}
+	
+	// Create the request
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, urlStr, nil)
+	if err != nil {
+		return nil, fmt.Errorf("creating HTTP request: %w", err)
+	}
+	
+	// Add headers
+	req.Header.Set("User-Agent", "pscale-cli-mcp")
+	
+	// Send the request
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("sending HTTP request to %s: %w", urlStr, err)
+	}
+	defer resp.Body.Close()
+	
+	// Read the response body
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("reading HTTP response body: %w", err)
+	}
+	
+	// Check for errors (anything above 299 is an error)
+	if resp.StatusCode > 299 {
+		return nil, fmt.Errorf("HTTP %s: %s", resp.Status, string(body))
+	}
+	
+	// Return the response body unchanged
+	return mcp.NewToolResultText(string(body)), nil
+}
