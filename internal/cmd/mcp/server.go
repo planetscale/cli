@@ -139,6 +139,23 @@ func getToolDefinitions() []ToolDef {
 			),
 			handler: HandleRunQuery,
 		},
+		{
+			tool: mcp.NewTool("get_insights",
+				mcp.WithDescription("Get recent performance data for a database branch"),
+				mcp.WithString("database",
+					mcp.Description("The database name"),
+					mcp.Required(),
+				),
+				mcp.WithString("branch",
+					mcp.Description("The branch name"),
+					mcp.Required(),
+				),
+				mcp.WithString("org",
+					mcp.Description("The organization name (uses default organization if not specified)"),
+				),
+			),
+			handler: HandleGetInsights,
+		},
 	}
 }
 
