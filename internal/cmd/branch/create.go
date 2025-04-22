@@ -127,7 +127,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().StringVar(&createReq.Region, "region", "", "Region for the branch to be created in.")
 	cmd.Flags().StringVar(&createReq.BackupID, "restore", "", "ID of Backup to restore into branch.")
 	cmd.Flags().StringVar(&createReq.ClusterSize, "cluster-size", "PS-10", "Cluster size for branches being created from a backup or seeded with data. Use `pscale size cluster list` to see the valid sizes.")
-	cmd.Flags().BoolVar(&flags.dataBranching, "seed-data", false, "Add seed data using the Data Branching™ feature")
+	cmd.Flags().BoolVar(&flags.dataBranching, "seed-data", false, "Add seed data using the Data Branching™ feature. This branch will be created with the same resources as the base branch.")
 	cmd.Flags().BoolVar(&flags.wait, "wait", false, "Wait until the branch is ready")
 	cmd.MarkFlagsMutuallyExclusive("from", "restore")
 	cmd.MarkFlagsMutuallyExclusive("restore", "seed-data")
