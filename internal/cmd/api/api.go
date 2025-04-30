@@ -106,9 +106,9 @@ func ApiCmd(ch *cmdutil.Helper, userAgent string, defaultHeaders map[string]stri
 
 	opts := &ApiOpts{}
 	cmd.Flags().StringVarP(&opts.Method, "method", "X", "GET", "HTTP method to use for the request.  Defaults to GET for requests without a body, or POST when a body is specified with --field/-F or --input/-I")
-	cmd.Flags().StringArrayVarP(&opts.Query, "query", "Q", nil, "query to append to the URL path, in key=value format")
+	cmd.Flags().StringArrayVarP(&opts.Query, "query", "Q", nil, "query to append to the URL path, in `key=value` format")
 	cmd.Flags().StringArrayVarP(&opts.Header, "header", "H", nil, "HTTP headers to add to the request")
-	cmd.Flags().StringArrayVarP(&opts.Field, "field", "F", nil, "HTTP body to send with the request, in key=value format where value is a JSON entity, unless value starts with a @ in which case the string after @ represents a file that will be read. Nested types are represented as 'root.depth1.depth2=value'")
+	cmd.Flags().StringArrayVarP(&opts.Field, "field", "F", nil, "HTTP body to send with the request, in `key=value` format where value is a JSON entity, unless value starts with a @ in which case the string after @ represents a file that will be read. Nested types are represented as 'root.depth1.depth2=value'")
 	cmd.Flags().StringVarP(&opts.Input, "input", "I", "", "HTTP body to send with the request, as a file that will be read and then sent.")
 
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
