@@ -29,7 +29,7 @@ type DatabaseConnection struct {
 // getOrganization extracts the organization from the request parameters or falls back to defaults
 func getOrganization(request mcp.CallToolRequest, ch *cmdutil.Helper) (string, error) {
 	args := request.GetArguments()
-	
+
 	// Get the organization from the parameters or use the default
 	var orgName string
 	if org, ok := args["org"].(string); ok && org != "" {
@@ -122,7 +122,7 @@ func createDatabaseConnection(ctx context.Context, request mcp.CallToolRequest, 
 		Role:         cmdutil.ReaderRole, // Use reader role for safety
 		Name:         passwordutil.GenerateName("pscale-cli-mcp-query"),
 		TTL:          5 * time.Minute,
-		Replica:      true, // Use replica for read-only queries
+		Replica:      dbBranch.Production, // Use replica if branch is production
 	})
 	if err != nil {
 		handledErr := cmdutil.HandleError(err)
