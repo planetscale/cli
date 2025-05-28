@@ -66,7 +66,11 @@ func LoginCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			err = config.WriteAccessToken(accessToken)
 			if err != nil {
-				return fmt.Errorf("error logging in: %w", err)
+				configDir, configErr := config.ConfigDir()
+				if configErr != nil {
+					ch.Printer.Printf("Error looking up configuration directory: %s\n", printer.BoldRed(configErr.Error()))
+				}
+				return fmt.Errorf("error logging in: %w\n\nPlease ensure you have write permissions to the configuration directory: %s", err, configDir)
 			}
 
 			// We explicitly stop here so we can replace the spinner with our success
