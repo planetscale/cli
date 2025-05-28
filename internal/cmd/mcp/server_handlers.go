@@ -103,8 +103,10 @@ func HandleListBranches(ctx context.Context, request mcp.CallToolRequest, ch *cm
 		return nil, fmt.Errorf("failed to initialize PlanetScale client: %w", err)
 	}
 
+	args := request.GetArguments()
+
 	// Get the required database parameter
-	dbArg, ok := request.Params.Arguments["database"]
+	dbArg, ok := args["database"]
 	if !ok || dbArg == "" {
 		return nil, fmt.Errorf("database parameter is required")
 	}
@@ -158,15 +160,17 @@ func HandleListKeyspaces(ctx context.Context, request mcp.CallToolRequest, ch *c
 		return nil, fmt.Errorf("failed to initialize PlanetScale client: %w", err)
 	}
 
+	args := request.GetArguments()
+
 	// Get the required database parameter
-	dbArg, ok := request.Params.Arguments["database"]
+	dbArg, ok := args["database"]
 	if !ok || dbArg == "" {
 		return nil, fmt.Errorf("database parameter is required")
 	}
 	database := dbArg.(string)
 
 	// Get the required branch parameter
-	branchArg, ok := request.Params.Arguments["branch"]
+	branchArg, ok := args["branch"]
 	if !ok || branchArg == "" {
 		return nil, fmt.Errorf("branch parameter is required")
 	}
@@ -215,8 +219,10 @@ func HandleListKeyspaces(ctx context.Context, request mcp.CallToolRequest, ch *c
 
 // HandleRunQuery implements the run_query tool
 func HandleRunQuery(ctx context.Context, request mcp.CallToolRequest, ch *cmdutil.Helper) (*mcp.CallToolResult, error) {
+	args := request.GetArguments()
+
 	// Get the required query parameter
-	queryArg, ok := request.Params.Arguments["query"]
+	queryArg, ok := args["query"]
 	if !ok || queryArg == "" {
 		return nil, fmt.Errorf("query parameter is required")
 	}
@@ -292,8 +298,10 @@ func HandleListTables(ctx context.Context, request mcp.CallToolRequest, ch *cmdu
 
 // HandleGetSchema implements the get_schema tool
 func HandleGetSchema(ctx context.Context, request mcp.CallToolRequest, ch *cmdutil.Helper) (*mcp.CallToolResult, error) {
+	args := request.GetArguments()
+
 	// Get the required tables parameter
-	tablesArg, ok := request.Params.Arguments["tables"]
+	tablesArg, ok := args["tables"]
 	if !ok || tablesArg == "" {
 		return nil, fmt.Errorf("tables parameter is required")
 	}
@@ -377,14 +385,16 @@ func HandleGetSchema(ctx context.Context, request mcp.CallToolRequest, ch *cmdut
 
 // HandleGetInsights implements the get_insights tool
 func HandleGetInsights(ctx context.Context, request mcp.CallToolRequest, ch *cmdutil.Helper) (*mcp.CallToolResult, error) {
+	args := request.GetArguments()
+
 	// Get the required parameters
-	dbArg, ok := request.Params.Arguments["database"]
+	dbArg, ok := args["database"]
 	if !ok || dbArg == "" {
 		return nil, fmt.Errorf("database parameter is required")
 	}
 	database := dbArg.(string)
 
-	branchArg, ok := request.Params.Arguments["branch"]
+	branchArg, ok := args["branch"]
 	if !ok || branchArg == "" {
 		return nil, fmt.Errorf("branch parameter is required")
 	}
