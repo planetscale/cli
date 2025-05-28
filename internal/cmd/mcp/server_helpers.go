@@ -28,9 +28,11 @@ type DatabaseConnection struct {
 
 // getOrganization extracts the organization from the request parameters or falls back to defaults
 func getOrganization(request mcp.CallToolRequest, ch *cmdutil.Helper) (string, error) {
+	args := request.GetArguments()
+	
 	// Get the organization from the parameters or use the default
 	var orgName string
-	if org, ok := request.Params.Arguments["org"].(string); ok && org != "" {
+	if org, ok := args["org"].(string); ok && org != "" {
 		orgName = org
 	} else {
 		// Try to load from default config file
@@ -59,22 +61,24 @@ func createDatabaseConnection(ctx context.Context, request mcp.CallToolRequest, 
 		return nil, fmt.Errorf("failed to initialize PlanetScale client: %w", err)
 	}
 
+	args := request.GetArguments()
+
 	// Extract the required database parameter
-	dbArg, ok := request.Params.Arguments["database"]
+	dbArg, ok := args["database"]
 	if !ok || dbArg == "" {
 		return nil, fmt.Errorf("database parameter is required")
 	}
 	database := dbArg.(string)
 
 	// Extract the required branch parameter
-	branchArg, ok := request.Params.Arguments["branch"]
+	branchArg, ok := args["branch"]
 	if !ok || branchArg == "" {
 		return nil, fmt.Errorf("branch parameter is required")
 	}
 	branch := branchArg.(string)
 
 	// Extract the required keyspace parameter
-	keyspaceArg, ok := request.Params.Arguments["keyspace"]
+	keyspaceArg, ok := args["keyspace"]
 	if !ok || keyspaceArg == "" {
 		return nil, fmt.Errorf("keyspace parameter is required")
 	}
