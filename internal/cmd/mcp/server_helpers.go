@@ -122,7 +122,6 @@ func createDatabaseConnection(ctx context.Context, request mcp.CallToolRequest, 
 		Role:         cmdutil.ReaderRole, // Use reader role for safety
 		Name:         passwordutil.GenerateName("pscale-cli-mcp-query"),
 		TTL:          5 * time.Minute,
-		Replica:      true, // Use replica for read-only queries
 	})
 	if err != nil {
 		handledErr := cmdutil.HandleError(err)
