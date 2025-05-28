@@ -1,5 +1,7 @@
-FROM alpine:latest  
-RUN apk --no-cache add ca-certificates mysql-client openssh-client
+FROM ubuntu:noble
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates mysql-client openssh-client \
+    && rm -rf /var/lib/apt/lists/*
 EXPOSE 3306
 
 ENTRYPOINT ["/usr/bin/pscale"] 
