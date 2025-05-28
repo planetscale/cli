@@ -429,7 +429,7 @@ func HandleGetInsights(ctx context.Context, request mcp.CallToolRequest, ch *cmd
 		apiPath := fmt.Sprintf("organizations/%s/databases/%s/branches/%s/insights?per_page=5&sort=%s&dir=desc", orgName, database, branch, metric)
 
 		// Build the URL
-		urlStr := fmt.Sprintf("%s/v1/%s", ch.Config.BaseURL, apiPath);
+		urlStr := fmt.Sprintf("%s/v1/%s", ch.Config.BaseURL, apiPath)
 
 		// Create the request
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, urlStr, nil)

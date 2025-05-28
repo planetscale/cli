@@ -36,6 +36,7 @@ type dumpFlags struct {
 	wheres     string
 	output     string
 	threads    int
+	schemaOnly bool
 }
 
 // DumpCmd encapsulates the commands for dumping a database
@@ -64,6 +65,7 @@ func DumpCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.PersistentFlags().StringVar(&f.output, "output", "",
 		"Output directory of the dump. By default the dump is saved to a folder in the current directory.")
 	cmd.PersistentFlags().IntVar(&f.threads, "threads", 16, "Number of concurrent threads to use to dump the database.")
+	cmd.PersistentFlags().BoolVar(&f.schemaOnly, "schema-only", false, "Only dump schema, skip table data.")
 
 	return cmd
 }
@@ -235,6 +237,7 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 	cfg.ChunksizeInMB = 128
 	cfg.SessionVars = []string{"set workload=olap;"}
 	cfg.Outdir = dir
+	cfg.SchemaOnly = flags.schemaOnly
 
 	if flags.shard != "" {
 		if flags.replica {

@@ -118,33 +118,33 @@ func TestExtractRootDomain(t *testing.T) {
 
 func TestRedirectCheck(t *testing.T) {
 	tests := []struct {
-		name           string
-		originalHost   string
-		redirectHost   string
+		name                  string
+		originalHost          string
+		redirectHost          string
 		expectUseLastResponse bool
 	}{
 		{
-			name:           "same domain",
-			originalHost:   "api.example.com",
-			redirectHost:   "www.example.com",
+			name:                  "same domain",
+			originalHost:          "api.example.com",
+			redirectHost:          "www.example.com",
 			expectUseLastResponse: false,
 		},
 		{
-			name:           "different domain",
-			originalHost:   "api.example.com",
-			redirectHost:   "api.another.com",
+			name:                  "different domain",
+			originalHost:          "api.example.com",
+			redirectHost:          "api.another.com",
 			expectUseLastResponse: true,
 		},
 		{
-			name:           "localhost to domain",
-			originalHost:   "localhost:8080",
-			redirectHost:   "example.com",
+			name:                  "localhost to domain",
+			originalHost:          "localhost:8080",
+			redirectHost:          "example.com",
 			expectUseLastResponse: true,
 		},
 		{
-			name:           "domain to localhost",
-			originalHost:   "example.com",
-			redirectHost:   "localhost:8080",
+			name:                  "domain to localhost",
+			originalHost:          "example.com",
+			redirectHost:          "localhost:8080",
 			expectUseLastResponse: true,
 		},
 	}
