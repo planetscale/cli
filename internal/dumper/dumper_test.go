@@ -1436,6 +1436,122 @@ func TestWriteFile(t *testing.T) {
 	}
 }
 
+func TestDumperSchemaOnly(t *testing.T) {
+	c := qt.New(t)
+
+	log := xlog.NewStdLog(xlog.Level(xlog.PANIC))
+	fakedbs := driver.NewTestHandler(log)
+	server, err := driver.MockMysqlServer(log, fakedbs)
+	c.Assert(err, qt.IsNil)
+	defer server.Close()
+	address := server.Addr()
+
+	databasesResult := &sqltypes.Result{
+		Fields: []*querypb.Field{
+			{Name: "Database", Type: querypb.Type_VARCHAR},
+		},
+		Rows: [][]sqltypes.Value{
+			{sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("test1"))},
+		},
+	}
+
+	tablesResult := &sqltypes.Result{
+		Fields: []*querypb.Field{
+			{Name: "Tables_in_test1", Type: querypb.Type_VARCHAR},
+		},
+		Rows: [][]sqltypes.Value{
+			{sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("t1"))},
+		},
+	}
+
+	viewsResult := &sqltypes.Result{
+		Fields: []*querypb.Field{
+			{Name: "TABLE_NAME", Type: querypb.Type_VARCHAR},
+		},
+		Rows: [][]sqltypes.Value{},
+	}
+
+	schemaResult := &sqltypes.Result{
+		Fields: []*querypb.Field{
+			{Name: "Table", Type: querypb.Type_VARCHAR},
+			{Name: "Create Table", Type: querypb.Type_VARCHAR},
+		},
+		Rows: [][]sqltypes.Value{
+			{
+				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("t1")),
+				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("CREATE TABLE `t1` (\n  `id` int(11) DEFAULT NULL\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4")),
+			},
+		},
+	}
+
+	fieldsResult := &sqltypes.Result{
+		Fields: []*querypb.Field{
+			{Name: "Field", Type: querypb.Type_VARCHAR},
+			{Name: "Type", Type: querypb.Type_VARCHAR},
+			{Name: "Null", Type: querypb.Type_VARCHAR},
+			{Name: "Key", Type: querypb.Type_VARCHAR},
+			{Name: "Default", Type: querypb.Type_VARCHAR},
+			{Name: "Extra", Type: querypb.Type_VARCHAR},
+		},
+		Rows: [][]sqltypes.Value{
+			testRow("id", ""),
+		},
+	}
+
+	// fakedbs setup
+	{
+		fakedbs.AddQueryPattern("show databases", databasesResult)
+		fakedbs.AddQueryPattern("use .*", &sqltypes.Result{})
+		fakedbs.AddQueryPattern("show create table .*", schemaResult)
+		fakedbs.AddQueryPattern("show tables from .*", tablesResult)
+		fakedbs.AddQueryPattern("select table_name \n\t\t\t from information_schema.tables \n\t\t\t where table_schema like 'test1' \n\t\t\t and table_type = 'view'\n\t\t\t", viewsResult)
+		fakedbs.AddQueryPattern("show fields from .*", fieldsResult)
+		fakedbs.AddQueryPattern("set .*", &sqltypes.Result{})
+		// Note: No SELECT queries for data since we're in schema-only mode
+	}
+
+	cfg := &Config{
+		Database:      "test1",
+		Outdir:        c.TempDir(),
+		User:          "mock",
+		Password:      "mock",
+		Address:       address,
+		ChunksizeInMB: 1,
+		Threads:       16,
+		StmtSize:      10000,
+		IntervalMs:    500,
+		SessionVars:   []string{"SET @@radon_streaming_fetch='ON', @@xx=1"},
+		SchemaOnly:    true, // Enable schema-only mode
+	}
+
+	d, err := NewDumper(cfg)
+	c.Assert(err, qt.IsNil)
+
+	err = d.Run(context.Background())
+	c.Assert(err, qt.IsNil)
+
+	// Verify schema file exists
+	schemaFile := cfg.Outdir + "/test1.t1-schema.sql"
+	schemaData, err := os.ReadFile(schemaFile)
+	c.Assert(err, qt.IsNil)
+	c.Assert(strings.Contains(string(schemaData), "CREATE TABLE"), qt.IsTrue)
+
+	// Verify no data files exist (since schema-only mode)
+	dataFiles := []string{
+		cfg.Outdir + "/test1.t1.00001.sql",
+		cfg.Outdir + "/test1.t1.00002.sql",
+	}
+	for _, file := range dataFiles {
+		_, err := os.ReadFile(file)
+		c.Assert(os.IsNotExist(err), qt.IsTrue, qt.Commentf("Data file should not exist in schema-only mode: %s", file))
+	}
+
+	// Verify metadata file exists
+	metadataFile := cfg.Outdir + "/metadata"
+	_, err = os.ReadFile(metadataFile)
+	c.Assert(err, qt.IsNil)
+}
+
 func TestEscapeBytes(t *testing.T) {
 	c := qt.New(t)
 

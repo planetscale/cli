@@ -167,6 +167,11 @@ func (d *Dumper) Run(ctx context.Context) error {
 				continue
 			}
 
+			// Skip data dumping if schema-only mode is enabled
+			if d.cfg.SchemaOnly {
+				continue
+			}
+
 			conn = pool.Get()
 
 			eg.Go(func() error {

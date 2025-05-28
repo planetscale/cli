@@ -38,7 +38,7 @@ func getCursorConfigPath() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("could not determine user home directory: %w", err)
 	}
-	
+
 	// Cursor uses ~/.cursor/mcp.json for its MCP configuration
 	return filepath.Join(homeDir, ".cursor", "mcp.json"), nil
 }
@@ -46,7 +46,7 @@ func getCursorConfigPath() (string, error) {
 // InstallCmd returns a new cobra.Command for the mcp install command.
 func InstallCmd(ch *cmdutil.Helper) *cobra.Command {
 	var target string
-	
+
 	cmd := &cobra.Command{
 		Use:   "install",
 		Short: "Install the MCP server",
@@ -54,26 +54,26 @@ func InstallCmd(ch *cmdutil.Helper) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var configPath string
 			var err error
-			
+
 			switch target {
 			case "claude":
 				configDir, err := getClaudeConfigDir()
 				if err != nil {
 					return fmt.Errorf("failed to determine Claude config directory: %w", err)
 				}
-				
+
 				// Check if the directory exists
 				if _, err := os.Stat(configDir); os.IsNotExist(err) {
 					return fmt.Errorf("no Claude Desktop installation: path %s not found", configDir)
 				}
-				
+
 				configPath = filepath.Join(configDir, "claude_desktop_config.json")
 			case "cursor":
 				configPath, err = getCursorConfigPath()
 				if err != nil {
 					return fmt.Errorf("failed to determine Cursor config path: %w", err)
 				}
-				
+
 				// Ensure the .cursor directory exists
 				configDir := filepath.Dir(configPath)
 				if _, err := os.Stat(configDir); os.IsNotExist(err) {
@@ -84,9 +84,9 @@ func InstallCmd(ch *cmdutil.Helper) *cobra.Command {
 			default:
 				return fmt.Errorf("invalid target vendor: %s (supported values: claude, cursor)", target)
 			}
-			
+
 			config := make(ClaudeConfig) // Same config structure for both tools
-			
+
 			// Check if the file exists
 			if _, err := os.Stat(configPath); err == nil {
 				// File exists, read it
@@ -94,12 +94,12 @@ func InstallCmd(ch *cmdutil.Helper) *cobra.Command {
 				if err != nil {
 					return fmt.Errorf("failed to read %s config file: %w", target, err)
 				}
-				
+
 				if err := json.Unmarshal(configData, &config); err != nil {
 					return fmt.Errorf("failed to parse %s config file: %w", target, err)
 				}
 			}
-			
+
 			// Get or initialize the mcpServers map
 			var mcpServers map[string]interface{}
 			if existingServers, ok := config["mcpServers"].(map[string]interface{}); ok {
@@ -107,26 +107,26 @@ func InstallCmd(ch *cmdutil.Helper) *cobra.Command {
 			} else {
 				mcpServers = make(map[string]interface{})
 			}
-			
+
 			// Add or update the planetscale server configuration
 			mcpServers["planetscale"] = map[string]interface{}{
 				"command": "pscale",
 				"args":    []string{"mcp", "server"},
 			}
-			
+
 			// Update the config with the new mcpServers
 			config["mcpServers"] = mcpServers
-			
+
 			// Write the updated config back to file
 			configJSON, err := json.MarshalIndent(config, "", "  ")
 			if err != nil {
 				return fmt.Errorf("failed to marshal %s config: %w", target, err)
 			}
-			
+
 			if err := os.WriteFile(configPath, configJSON, 0644); err != nil {
 				return fmt.Errorf("failed to write %s config file: %w", target, err)
 			}
-			
+
 			fmt.Printf("MCP server successfully configured for %s at %s\n", target, configPath)
 			return nil
 		},

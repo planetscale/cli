@@ -181,7 +181,7 @@ func TestKeyspace_UpdateSettingsCmd(t *testing.T) {
 			c.Assert(req.Organization, qt.Equals, org)
 			c.Assert(req.Branch, qt.Equals, branch)
 			c.Assert(req.Keyspace, qt.Equals, keyspace)
-			
+
 			// All settings should be changed
 			c.Assert(req.ReplicationDurabilityConstraints.Strategy, qt.Equals, updatedRdcStrategy)
 			c.Assert(req.VReplicationFlags.OptimizeInserts, qt.Equals, false)
@@ -206,9 +206,9 @@ func TestKeyspace_UpdateSettingsCmd(t *testing.T) {
 
 	cmd := UpdateSettingsCmd(ch)
 	cmd.SetArgs([]string{
-		db, 
-		branch, 
-		keyspace, 
+		db,
+		branch,
+		keyspace,
 		"--replication-durability-constraints-strategy=dynamic",
 		"--vreplication-optimize-inserts=false",
 		"--vreplication-enable-noblob-binlog-mode=false",
@@ -383,11 +383,11 @@ func TestKeyspace_UpdateSettingsCmd_NilVReplicationFlags(t *testing.T) {
 			c.Assert(req.Organization, qt.Equals, org)
 			c.Assert(req.Branch, qt.Equals, branch)
 			c.Assert(req.Keyspace, qt.Equals, keyspace)
-			
+
 			// Check that ReplicationDurabilityConstraints is unchanged and not nil
 			c.Assert(req.ReplicationDurabilityConstraints, qt.Not(qt.IsNil))
 			c.Assert(req.ReplicationDurabilityConstraints.Strategy, qt.Equals, rdcStrategy)
-			
+
 			// Check that VReplication flags are initialized (since flags were provided)
 			c.Assert(req.VReplicationFlags, qt.Not(qt.IsNil))
 			c.Assert(req.VReplicationFlags.OptimizeInserts, qt.Equals, false)
@@ -412,9 +412,9 @@ func TestKeyspace_UpdateSettingsCmd_NilVReplicationFlags(t *testing.T) {
 
 	cmd := UpdateSettingsCmd(ch)
 	cmd.SetArgs([]string{
-		db, 
-		branch, 
-		keyspace, 
+		db,
+		branch,
+		keyspace,
 		"--vreplication-optimize-inserts=false",
 		"--vreplication-enable-noblob-binlog-mode=false",
 		"--vreplication-batch-replication-events=true",
@@ -446,10 +446,10 @@ func TestKeyspace_UpdateSettingsCmd_NilReplicationDurabilityConstraints(t *testi
 
 	// Initial keyspace state with nil ReplicationDurabilityConstraints
 	ks := &ps.Keyspace{
-		ID:        "ks1",
-		Name:      keyspace,
-		CreatedAt: ts,
-		UpdatedAt: ts,
+		ID:                               "ks1",
+		Name:                             keyspace,
+		CreatedAt:                        ts,
+		UpdatedAt:                        ts,
 		ReplicationDurabilityConstraints: nil, // Deliberately set to nil
 		VReplicationFlags: &ps.VReplicationFlags{
 			OptimizeInserts:           true,
@@ -488,7 +488,7 @@ func TestKeyspace_UpdateSettingsCmd_NilReplicationDurabilityConstraints(t *testi
 			c.Assert(req.Organization, qt.Equals, org)
 			c.Assert(req.Branch, qt.Equals, branch)
 			c.Assert(req.Keyspace, qt.Equals, keyspace)
-			
+
 			// Check that durability constraints are applied despite initial nil value
 			c.Assert(req.ReplicationDurabilityConstraints, qt.Not(qt.IsNil))
 			c.Assert(req.ReplicationDurabilityConstraints.Strategy, qt.Equals, updatedRdcStrategy)
@@ -517,9 +517,9 @@ func TestKeyspace_UpdateSettingsCmd_NilReplicationDurabilityConstraints(t *testi
 
 	cmd := UpdateSettingsCmd(ch)
 	cmd.SetArgs([]string{
-		db, 
-		branch, 
-		keyspace, 
+		db,
+		branch,
+		keyspace,
 		"--replication-durability-constraints-strategy=dynamic",
 	})
 	err := cmd.Execute()
@@ -547,10 +547,10 @@ func TestKeyspace_UpdateSettingsCmd_PreserveNilValues(t *testing.T) {
 
 	// Initial keyspace state with both structures nil
 	ks := &ps.Keyspace{
-		ID:                            "ks1",
-		Name:                          keyspace,
-		CreatedAt:                     ts,
-		UpdatedAt:                     ts,
+		ID:                               "ks1",
+		Name:                             keyspace,
+		CreatedAt:                        ts,
+		UpdatedAt:                        ts,
 		ReplicationDurabilityConstraints: nil, // Deliberately set to nil
 		VReplicationFlags:                nil, // Deliberately set to nil
 	}
@@ -581,7 +581,7 @@ func TestKeyspace_UpdateSettingsCmd_PreserveNilValues(t *testing.T) {
 			c.Assert(req.Organization, qt.Equals, org)
 			c.Assert(req.Branch, qt.Equals, branch)
 			c.Assert(req.Keyspace, qt.Equals, keyspace)
-			
+
 			// ReplicationDurabilityConstraints should be initialized (flag modified it)
 			c.Assert(req.ReplicationDurabilityConstraints, qt.Not(qt.IsNil))
 			c.Assert(req.ReplicationDurabilityConstraints.Strategy, qt.Equals, "lag")
@@ -607,9 +607,9 @@ func TestKeyspace_UpdateSettingsCmd_PreserveNilValues(t *testing.T) {
 
 	cmd := UpdateSettingsCmd(ch)
 	cmd.SetArgs([]string{
-		db, 
-		branch, 
-		keyspace, 
+		db,
+		branch,
+		keyspace,
 		"--replication-durability-constraints-strategy=dynamic",
 	})
 	err := cmd.Execute()
