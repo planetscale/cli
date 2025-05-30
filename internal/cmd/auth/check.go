@@ -17,9 +17,16 @@ func CheckCmd(ch *cmdutil.Helper) *cobra.Command {
 		Args:  cobra.NoArgs,
 		Short: "Check if you are authenticated",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			errorMessage := "You are not authenticated. Please run `pscale auth login` to authenticate."
+			var errorMessage string
 
-			if ch.Config.AccessToken == "" {
+			if ch.Config.ServiceTokenIsSet() {
+				errorMessage = "You are not authenticated. Please ensure your service token is valid and properly configured."
+			} else if ch.Config.AccessToken != "" {
+				errorMessage = "You are not authenticated. Please run `pscale auth login` to authenticate."
+			} else {
+				errorMessage = "You are not authenticated. Please run `pscale auth login` to authenticate or set a service token."
+			}
+			if err := ch.Config.IsAuthenticated(); err != nil {
 				return &cmdutil.Error{
 					Msg:      errorMessage,
 					ExitCode: cmdutil.ActionRequestedExitCode,
