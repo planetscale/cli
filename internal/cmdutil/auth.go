@@ -119,7 +119,7 @@ func HandleNotFoundWithServiceTokenCheck(ctx context.Context, cmd *cobra.Command
 
 	// If using service tokens and a required permission is specified, add permission guidance
 	if cfg.ServiceTokenIsSet() && requiredPermission != "" {
-		return fmt.Errorf("%s\n\nNote: You are using a service token for authentication. If this resource exists, your service token may not have the required '%s' permission to access it. Please check your service token permissions.", baseMsg, requiredPermission)
+		return fmt.Errorf("%s\n\nNote: You are using a service token for authentication. If this resource exists, your service token may not have the required '%s' permission to access it. Please check your service token permissions", baseMsg, requiredPermission)
 	}
 
 	return errors.New(baseMsg)
