@@ -86,10 +86,14 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 				switch cmdutil.ErrCode(err) {
 				case ps.ErrNotFound:
 					if createReq.ParentBranch != "" {
-						return fmt.Errorf("source branch %s or database %s does not exist (organization: %s)",
+						return cmdutil.HandleNotFoundWithServiceTokenCheck(
+							ctx, cmd, ch.Config, ch.Client, err, "create_branch",
+							"source branch %s or database %s does not exist (organization: %s)",
 							printer.BoldBlue(createReq.ParentBranch), printer.BoldBlue(source), printer.BoldBlue(ch.Config.Organization))
 					} else {
-						return fmt.Errorf("source database %s does not exist in organization %s",
+						return cmdutil.HandleNotFoundWithServiceTokenCheck(
+							ctx, cmd, ch.Config, ch.Client, err, "create_branch",
+							"source database %s does not exist in organization %s",
 							printer.BoldBlue(source), printer.BoldBlue(ch.Config.Organization))
 					}
 				default:

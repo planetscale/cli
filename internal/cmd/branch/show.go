@@ -51,7 +51,9 @@ func ShowCmd(ch *cmdutil.Helper) *cobra.Command {
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
-					return fmt.Errorf("branch %s does not exist in database %s (organization: %s)",
+					return cmdutil.HandleNotFoundWithServiceTokenCheck(
+						ctx, cmd, ch.Config, ch.Client, err, "read_branch",
+						"branch %s does not exist in database %s (organization: %s)",
 						printer.BoldBlue(branch), printer.BoldBlue(source), printer.BoldBlue(ch.Config.Organization))
 				default:
 					return cmdutil.HandleError(err)
