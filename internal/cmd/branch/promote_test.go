@@ -61,3 +61,56 @@ func TestBranch_PromoteCmd(t *testing.T) {
 	c.Assert(svc.PromoteFnInvoked, qt.IsTrue)
 	c.Assert(buf.String(), qt.JSONEquals, res)
 }
+
+func TestBranch_PromoteCmd_ServiceTokenPermissionError(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	db := "planetscale"
+	branch := "development"
+
+	// Mock service that returns 404 for branch promotion
+	branchSvc := &mock.DatabaseBranchesService{
+		PromoteFn: func(ctx context.Context, req *ps.PromoteRequest) (*ps.DatabaseBranch, error) {
+			return nil, &ps.Error{Code: ps.ErrNotFound}
+		},
+	}
+
+	// Mock organization service that succeeds (simulating valid service token)
+	orgSvc := &mock.OrganizationsService{
+		ListFn: func(ctx context.Context) ([]*ps.Organization, error) {
+			return []*ps.Organization{{Name: org}}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization:   org,
+			ServiceTokenID: "valid-token-id",
+			ServiceToken:   "valid-token",
+		},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{
+				DatabaseBranches: branchSvc,
+				Organizations:    orgSvc,
+			}, nil
+		},
+	}
+
+	cmd := PromoteCmd(ch)
+	cmd.SetArgs([]string{db, branch})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNotNil)
+	c.Assert(err.Error(), qt.Contains, "does not exist")
+	c.Assert(err.Error(), qt.Contains, "service token for authentication")
+	c.Assert(err.Error(), qt.Contains, "connect_production_branch")
+	c.Assert(branchSvc.PromoteFnInvoked, qt.IsTrue)
+	c.Assert(orgSvc.ListFnInvoked, qt.IsTrue)
+}

@@ -35,7 +35,9 @@ func DemoteCmd(ch *cmdutil.Helper) *cobra.Command {
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case ps.ErrNotFound:
-					return fmt.Errorf("branch %s does not exist in database %s",
+					return cmdutil.HandleNotFoundWithServiceTokenCheck(
+						cmd.Context(), cmd, ch.Config, ch.Client, err, "connect_production_branch",
+						"branch %s does not exist in database %s",
 						printer.BoldBlue(req.Branch), printer.BoldBlue(req.Database))
 				default:
 					return cmdutil.HandleError(err)
