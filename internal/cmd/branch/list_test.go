@@ -60,3 +60,55 @@ func TestBranch_ListCmd(t *testing.T) {
 	c.Assert(svc.ListFnInvoked, qt.IsTrue)
 	c.Assert(buf.String(), qt.JSONEquals, branches)
 }
+
+func TestBranch_ListCmd_ServiceTokenPermissionError(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	db := "planetscale"
+
+	// Mock service that returns 404 for branch listing
+	branchSvc := &mock.DatabaseBranchesService{
+		ListFn: func(ctx context.Context, req *ps.ListDatabaseBranchesRequest) ([]*ps.DatabaseBranch, error) {
+			return nil, &ps.Error{Code: ps.ErrNotFound}
+		},
+	}
+
+	// Mock organization service that succeeds (simulating valid service token)
+	orgSvc := &mock.OrganizationsService{
+		ListFn: func(ctx context.Context) ([]*ps.Organization, error) {
+			return []*ps.Organization{{Name: org}}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization:   org,
+			ServiceTokenID: "valid-token-id",
+			ServiceToken:   "valid-token",
+		},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{
+				DatabaseBranches: branchSvc,
+				Organizations:    orgSvc,
+			}, nil
+		},
+	}
+
+	cmd := ListCmd(ch)
+	cmd.SetArgs([]string{db})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNotNil)
+	c.Assert(err.Error(), qt.Contains, "does not exist")
+	c.Assert(err.Error(), qt.Contains, "service token for authentication")
+	c.Assert(err.Error(), qt.Contains, "read_branch")
+	c.Assert(branchSvc.ListFnInvoked, qt.IsTrue)
+	c.Assert(orgSvc.ListFnInvoked, qt.IsTrue)
+}
