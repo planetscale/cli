@@ -9,7 +9,7 @@ import (
 type PasswordsService struct {
 	CreateFn        func(context.Context, *ps.DatabaseBranchPasswordRequest) (*ps.DatabaseBranchPassword, error)
 	CreateFnInvoked bool
-	ListFn          func(context.Context, *ps.ListDatabaseBranchPasswordRequest) ([]*ps.DatabaseBranchPassword, error)
+	ListFn          func(context.Context, *ps.ListDatabaseBranchPasswordRequest, ...ps.ListOption) ([]*ps.DatabaseBranchPassword, error)
 	ListFnInvoked   bool
 	GetFn           func(context.Context, *ps.GetDatabaseBranchPasswordRequest) (*ps.DatabaseBranchPassword, error)
 	GetFnInvoked    bool
@@ -24,9 +24,9 @@ func (b *PasswordsService) Create(ctx context.Context, req *ps.DatabaseBranchPas
 	return b.CreateFn(ctx, req)
 }
 
-func (b *PasswordsService) List(ctx context.Context, req *ps.ListDatabaseBranchPasswordRequest) ([]*ps.DatabaseBranchPassword, error) {
+func (b *PasswordsService) List(ctx context.Context, req *ps.ListDatabaseBranchPasswordRequest, opts ...ps.ListOption) ([]*ps.DatabaseBranchPassword, error) {
 	b.ListFnInvoked = true
-	return b.ListFn(ctx, req)
+	return b.ListFn(ctx, req, opts...)
 }
 
 func (b *PasswordsService) Get(ctx context.Context, req *ps.GetDatabaseBranchPasswordRequest) (*ps.DatabaseBranchPassword, error) {
