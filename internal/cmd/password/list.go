@@ -52,20 +52,36 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Fetching passwords for %s", forMsg))
 			defer end()
 
-			passwords, err := client.Passwords.List(ctx, &planetscale.ListDatabaseBranchPasswordRequest{
-				Organization: ch.Config.Organization,
-				Database:     database,
-				Branch:       branch,
-			})
-			if err != nil {
-				switch cmdutil.ErrCode(err) {
-				case planetscale.ErrNotFound:
-					return fmt.Errorf("branch %s does not exist in database %s (organization: %s)",
-						printer.BoldBlue(branch), printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
-				default:
-					return cmdutil.HandleError(err)
+			var allPasswords []*planetscale.DatabaseBranchPassword
+			page := 1
+			perPage := 100
+			
+			for {
+				passwords, err := client.Passwords.List(ctx, &planetscale.ListDatabaseBranchPasswordRequest{
+					Organization: ch.Config.Organization,
+					Database:     database,
+					Branch:       branch,
+				}, planetscale.WithPage(page), planetscale.WithPerPage(perPage))
+				if err != nil {
+					switch cmdutil.ErrCode(err) {
+					case planetscale.ErrNotFound:
+						return fmt.Errorf("branch %s does not exist in database %s (organization: %s)",
+							printer.BoldBlue(branch), printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
+					default:
+						return cmdutil.HandleError(err)
+					}
 				}
+				
+				allPasswords = append(allPasswords, passwords...)
+				
+				// Check if there are more pages - if we got fewer results than perPage, we're done
+				if len(passwords) < perPage {
+					break
+				}
+				page++
 			}
+			
+			passwords := allPasswords
 			end()
 
 			if len(passwords) == 0 && ch.Printer.Format() == printer.Human {
