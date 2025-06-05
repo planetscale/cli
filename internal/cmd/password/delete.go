@@ -17,21 +17,87 @@ import (
 
 func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 	var force bool
+	var name string
 
 	cmd := &cobra.Command{
-		Use:     "delete <database> <branch> <password-id>",
+		Use:     "delete <database> <branch> [<password-id>]",
 		Short:   "Delete a branch password",
-		Args:    cmdutil.RequiredArgs("database", "branch", "password-id"),
+		Args:    cobra.RangeArgs(2, 3),
 		Aliases: []string{"rm"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			database := args[0]
 			branch := args[1]
-			passwordId := args[2]
-
+			
+			// Validate that either password-id is provided as arg or --name flag is used
+			var passwordId string
+			if name != "" && len(args) == 3 {
+				return errors.New("cannot specify both password-id argument and --name flag")
+			}
+			if name == "" && len(args) != 3 {
+				return errors.New("must provide either password-id argument or --name flag")
+			}
+			
 			client, err := ch.Client()
 			if err != nil {
 				return err
+			}
+			
+			// If using --name flag, find the password by name
+			if name != "" {
+				end := ch.Printer.PrintProgress(fmt.Sprintf("Finding password %s in %s/%s",
+					printer.BoldBlue(name), printer.BoldBlue(database), printer.BoldBlue(branch)))
+				
+				// Fetch all passwords to find the one with matching name
+				var allPasswords []*ps.DatabaseBranchPassword
+				page := 1
+				perPage := 100
+				
+				for {
+					passwords, err := client.Passwords.List(ctx, &ps.ListDatabaseBranchPasswordRequest{
+						Organization: ch.Config.Organization,
+						Database:     database,
+						Branch:       branch,
+					}, ps.WithPage(page), ps.WithPerPage(perPage))
+					if err != nil {
+						end()
+						switch cmdutil.ErrCode(err) {
+						case ps.ErrNotFound:
+							return fmt.Errorf("branch %s does not exist in database %s (organization: %s)",
+								printer.BoldBlue(branch), printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
+						default:
+							return cmdutil.HandleError(err)
+						}
+					}
+					
+					allPasswords = append(allPasswords, passwords...)
+					
+					// Check if there are more pages
+					if len(passwords) < perPage {
+						break
+					}
+					page++
+				}
+				
+				end()
+				
+				// Find password with matching name
+				var foundPassword *ps.DatabaseBranchPassword
+				for _, password := range allPasswords {
+					if password.Name == name {
+						foundPassword = password
+						break
+					}
+				}
+				
+				if foundPassword == nil {
+					return fmt.Errorf("password with name %s does not exist in branch %s of %s (organization: %s)",
+						printer.BoldBlue(name), printer.BoldBlue(branch), printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
+				}
+				
+				passwordId = foundPassword.PublicID
+			} else {
+				passwordId = args[2]
 			}
 
 			if !force {
@@ -39,7 +105,12 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 					return fmt.Errorf("cannot delete password with the output format %q (run with -force to override)", ch.Printer.Format())
 				}
 
-				confirmationName := fmt.Sprintf("%s/%s/%s", database, branch, passwordId)
+				var confirmationName string
+				if name != "" {
+					confirmationName = fmt.Sprintf("%s/%s/%s", database, branch, name)
+				} else {
+					confirmationName = fmt.Sprintf("%s/%s/%s", database, branch, passwordId)
+				}
 				if !printer.IsTTY {
 					return fmt.Errorf("cannot confirm deletion of password %q (run with -force to override)", confirmationName)
 				}
@@ -66,8 +137,15 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 				}
 			}
 
-			end := ch.Printer.PrintProgress(fmt.Sprintf("Deleting password %s from %s/%s",
-				printer.BoldBlue(passwordId), printer.BoldBlue(database), printer.BoldBlue(branch)))
+			var deleteMsg string
+			if name != "" {
+				deleteMsg = fmt.Sprintf("Deleting password %s from %s/%s",
+					printer.BoldBlue(name), printer.BoldBlue(database), printer.BoldBlue(branch))
+			} else {
+				deleteMsg = fmt.Sprintf("Deleting password %s from %s/%s",
+					printer.BoldBlue(passwordId), printer.BoldBlue(database), printer.BoldBlue(branch))
+			}
+			end := ch.Printer.PrintProgress(deleteMsg)
 			defer end()
 
 			err = client.Passwords.Delete(ctx, &ps.DeleteDatabaseBranchPasswordRequest{
@@ -89,8 +167,13 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 			end()
 
 			if ch.Printer.Format() == printer.Human {
-				ch.Printer.Printf("Password %s was successfully deleted from %s.\n",
-					printer.BoldBlue(passwordId), printer.BoldBlue(branch))
+				if name != "" {
+					ch.Printer.Printf("Password %s was successfully deleted from %s.\n",
+						printer.BoldBlue(name), printer.BoldBlue(branch))
+				} else {
+					ch.Printer.Printf("Password %s was successfully deleted from %s.\n",
+						printer.BoldBlue(passwordId), printer.BoldBlue(branch))
+				}
 				return nil
 			}
 
@@ -105,5 +188,6 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 
 	cmd.Flags().BoolVar(&force, "force", false, "Delete a password without confirmation")
+	cmd.Flags().StringVar(&name, "name", "", "Delete password by name instead of ID")
 	return cmd
 }
