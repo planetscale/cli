@@ -2,9 +2,10 @@ package deployrequest
 
 import (
 	"encoding/json"
+	"fmt"
+	"time"
 
 	"github.com/planetscale/cli/internal/cmdutil"
-	"github.com/planetscale/cli/internal/printer"
 	"github.com/planetscale/planetscale-go/planetscale"
 	"github.com/spf13/cobra"
 )
@@ -42,17 +43,17 @@ func DeployRequestCmd(ch *cmdutil.Helper) *cobra.Command {
 type DeployRequest struct {
 	ID         string `header:"id" json:"id"`
 	Number     uint64 `header:"number" json:"number"`
-	Branch     string `header:"branch,timestamp(ms|utc|human)" json:"branch"`
-	IntoBranch string `header:"into_branch,timestamp(ms|utc|human)" json:"into_branch"`
+	Branch     string `header:"branch" json:"branch"`
+	IntoBranch string `header:"into_branch" json:"into_branch"`
 
 	Approved bool `header:"approved" json:"approved"`
 
 	State string `header:"state" json:"state"`
 
 	Deployment inlineDeployment `header:"inline" json:"deployment"`
-	CreatedAt  int64            `header:"created_at,timestamp(ms|utc|human)" json:"created_at"`
-	UpdatedAt  int64            `header:"updated_at,timestamp(ms|utc|human)" json:"updated_at"`
-	ClosedAt   *int64           `header:"closed_at,timestamp(ms|utc|human),-" json:"closed_at"`
+	CreatedAt  string           `header:"created_at" json:"created_at"`
+	UpdatedAt  string           `header:"updated_at" json:"updated_at"`
+	ClosedAt   string           `header:"closed_at" json:"closed_at"`
 
 	orig *planetscale.DeployRequest
 }
@@ -62,9 +63,9 @@ type inlineDeployment struct {
 	Deployable         bool   `header:"deployable" json:"deployable"`
 	InstantDDLEligible bool   `header:"instant ddl eligible" json:"instant_ddl_eligible"`
 
-	QueuedAt   *int64 `header:"queued_at,timestamp(ms|utc|human),-" json:"queued_at"`
-	StartedAt  *int64 `header:"started_at,timestamp(ms|utc|human),-" json:"started_at"`
-	FinishedAt *int64 `header:"finished_at,timestamp(ms|utc|human),-" json:"finished_at"`
+	QueuedAt   string `header:"queued_at" json:"queued_at"`
+	StartedAt  string `header:"started_at" json:"started_at"`
+	FinishedAt string `header:"finished_at" json:"finished_at"`
 
 	orig *planetscale.Deployment
 }
@@ -73,21 +74,59 @@ func (d *DeployRequest) MarshalCSVValue() interface{} {
 	return []*DeployRequest{d}
 }
 
+// formatTimestamp formats a timestamp to human readable "X ago" format
+func formatTimestamp(t *time.Time) string {
+	if t == nil || t.IsZero() {
+		return ""
+	}
+	
+	duration := time.Since(*t)
+	
+	switch {
+	case duration < time.Minute:
+		return "less than a minute ago"
+	case duration < time.Hour:
+		minutes := int(duration.Minutes())
+		if minutes == 1 {
+			return "1 minute ago"
+		}
+		return fmt.Sprintf("%d minutes ago", minutes)
+	case duration < 24*time.Hour:
+		hours := int(duration.Hours())
+		if hours == 1 {
+			return "1 hour ago"
+		}
+		return fmt.Sprintf("%d hours ago", hours)
+	default:
+		days := int(duration.Hours() / 24)
+		if days == 1 {
+			return "1 day ago"
+		}
+		return fmt.Sprintf("%d days ago", days)
+	}
+}
+
+// formatTimestampRequired formats a required timestamp (non-pointer)
+func formatTimestampRequired(t time.Time) string {
+	if t.IsZero() {
+		return ""
+	}
+	return formatTimestamp(&t)
+}
+
 func toInlineDeployment(d *planetscale.Deployment) inlineDeployment {
 	if d == nil {
 		return inlineDeployment{}
 	}
 
 	return inlineDeployment{
-		State: d.State,
-
+		State:              d.State,
 		Deployable:         d.Deployable,
 		InstantDDLEligible: d.InstantDDLEligible,
-		FinishedAt:         printer.GetMillisecondsIfExists(d.FinishedAt),
-		StartedAt:          printer.GetMillisecondsIfExists(d.StartedAt),
-		QueuedAt:           printer.GetMillisecondsIfExists(d.QueuedAt),
-
-		orig: d,
+		QueuedAt:           formatTimestamp(d.QueuedAt),
+		StartedAt:          formatTimestamp(d.StartedAt),
+		FinishedAt:         formatTimestamp(d.FinishedAt),
+		orig:               d,
 	}
 }
 
@@ -100,9 +139,9 @@ func toDeployRequest(dr *planetscale.DeployRequest) *DeployRequest {
 		Approved:   dr.Approved,
 		State:      dr.State,
 		Deployment: toInlineDeployment(dr.Deployment),
-		CreatedAt:  printer.GetMilliseconds(dr.CreatedAt),
-		UpdatedAt:  printer.GetMilliseconds(dr.UpdatedAt),
-		ClosedAt:   printer.GetMillisecondsIfExists(dr.ClosedAt),
+		CreatedAt:  formatTimestampRequired(dr.CreatedAt),
+		UpdatedAt:  formatTimestampRequired(dr.UpdatedAt),
+		ClosedAt:   formatTimestamp(dr.ClosedAt),
 		orig:       dr,
 	}
 }
