@@ -12,14 +12,13 @@ import (
 	"github.com/planetscale/cli/internal/passwordutil"
 	"github.com/planetscale/cli/internal/proxyutil"
 	"github.com/planetscale/planetscale-go/planetscale"
-	"github.com/planetscale/psdbproxy"
 	"vitess.io/vitess/go/mysql"
 )
 
 // DatabaseConnection represents a connection to a PlanetScale database
 type DatabaseConnection struct {
 	db        *sql.DB
-	proxy     *psdbproxy.Server
+	proxy     proxyutil.Proxy
 	listener  net.Listener
 	password  *passwordutil.Password
 	keyspace  string

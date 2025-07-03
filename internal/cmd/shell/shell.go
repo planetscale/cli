@@ -20,6 +20,7 @@ import (
 	"github.com/planetscale/cli/internal/printer"
 	"github.com/planetscale/cli/internal/promptutil"
 	"github.com/planetscale/cli/internal/proxyutil"
+	"vitess.io/vitess/go/mysql"
 )
 
 func ShellCmd(ch *cmdutil.Helper, sigc chan os.Signal, signals ...os.Signal) *cobra.Command {
@@ -34,10 +35,12 @@ func ShellCmd(ch *cmdutil.Helper, sigc chan os.Signal, signals ...os.Signal) *co
 		Use: "shell [database] [branch]",
 		// we only require database, because we deduct branch automatically
 		Args:  cmdutil.RequiredArgs("database"),
-		Short: "Open a MySQL shell instance to a database and branch",
-		Example: `The shell subcommand opens a secure MySQL shell instance to your database.
+		Short: "Open a shell instance to a database and branch",
+		Example: `The shell subcommand opens a secure shell instance to your database.
 
-It uses the MySQL command-line client ("mysql"), which needs to be installed.
+For MySQL databases, it uses the MySQL command-line client ("mysql").
+For PostgreSQL databases, it uses the PostgreSQL command-line client ("psql").
+
 By default, if no branch names are given and there is only one branch, it
 automatically opens a shell to that branch:
 
@@ -63,14 +66,45 @@ second argument:
 				runForeground = false
 			}
 
-			mysqlPath, authMethod, err := cmdutil.MySQLClientPath()
+			client, err := ch.Client()
 			if err != nil {
 				return err
 			}
 
-			client, err := ch.Client()
+			// Get database info to determine the database kind
+			dbInfo, err := client.Databases.Get(ctx, &ps.GetDatabaseRequest{
+				Organization: ch.Config.Organization,
+				Database:     database,
+			})
 			if err != nil {
-				return err
+				switch cmdutil.ErrCode(err) {
+				case ps.ErrNotFound:
+					return fmt.Errorf("database %s does not exist in organization %s",
+						printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
+				default:
+					return cmdutil.HandleError(err)
+				}
+			}
+
+			// Check database kind and get appropriate client path
+			var clientPath string
+			var authMethod mysql.AuthMethodDescription
+			var isPostgreSQL bool
+
+			switch dbInfo.Kind {
+			case "mysql":
+				clientPath, authMethod, err = cmdutil.MySQLClientPath()
+				if err != nil {
+					return err
+				}
+			case "postgresql", "horizon":
+				clientPath, err = cmdutil.PostgreSQLClientPath()
+				if err != nil {
+					return err
+				}
+				isPostgreSQL = true
+			default:
+				return fmt.Errorf("unsupported database kind: %s. Only 'mysql', 'postgresql', and 'horizon' are supported", dbInfo.Kind)
 			}
 
 			var branch string
@@ -162,60 +196,93 @@ second argument:
 				remoteAddr = pw.Password.Hostname
 			}
 
-			proxy := proxyutil.New(proxyutil.Config{
+			proxyConfig := proxyutil.Config{
 				Logger:       cmdutil.NewZapLogger(ch.Debug()),
 				UpstreamAddr: remoteAddr,
 				Username:     pw.Password.Username,
 				Password:     pw.Password.PlainText,
-			})
-			defer proxy.Close()
-
-			l, err := net.Listen("tcp", localAddr)
-			if err != nil {
-				return cmdutil.HandleError(err)
-			}
-			defer l.Close()
-
-			proxyAddr := l.Addr().String()
-			host, port, err := net.SplitHostPort(proxyAddr)
-			if err != nil {
-				return cmdutil.HandleError(err)
 			}
 
-			mysqlArgs := []string{
-				"-u",
-				"root",
-				"-c", // allow comments to pass to the server
-				"-s",
-				"-t", // the -s (silent) flag disables tabular output, re-enable it.
-				"-h", host,
-				"-P", port,
-			}
-			if replica {
-				mysqlArgs = append([]string{"--no-defaults"}, mysqlArgs...)
-			} else {
-				mysqlArgs = append(mysqlArgs, "-D", "@primary")
-			}
-
+			// Different flows for PostgreSQL vs MySQL
 			historyFile := historyFilePath(ch.Config.Organization, database, branch)
-			styledBranch := formatMySQLBranch(database, dbBranch)
-
-			m := &mysql{
-				mysqlPath:    mysqlPath,
-				historyFile:  historyFile,
-				styledBranch: styledBranch,
-				debug:        ch.Debug(),
-				printer:      ch.Printer,
-			}
-
+			styledBranch := formatBranch(database, dbBranch)
 			errCh := make(chan error, 1)
-			go func() {
-				errCh <- proxy.Serve(l, authMethod)
-			}()
 
-			go func() {
-				errCh <- m.Run(ctx, sigc, signals, runForeground, mysqlArgs...)
-			}()
+			if isPostgreSQL {
+				// For PostgreSQL, connect directly to the remote host without proxy
+				remoteHost, _, err := net.SplitHostPort(remoteAddr)
+				if err != nil {
+					// If remoteAddr doesn't have port, use it as is
+					remoteHost = remoteAddr
+				}
+
+				psqlArgs := []string{
+					"-h", remoteHost,
+					"-p", "5432",
+					"-U", pw.Password.Username,
+					"-d", "postgres",
+				}
+
+				psql := &postgresql{
+					psqlPath:     clientPath,
+					historyFile:  historyFile,
+					styledBranch: styledBranch,
+					debug:        ch.Debug(),
+					printer:      ch.Printer,
+					password:     pw.Password.PlainText,
+				}
+
+				go func() {
+					errCh <- psql.Run(ctx, sigc, signals, runForeground, psqlArgs...)
+				}()
+			} else {
+				// MySQL mode - create proxy
+				proxy := proxyutil.New(proxyConfig)
+				defer proxy.Close()
+
+				l, err := net.Listen("tcp", localAddr)
+				if err != nil {
+					return cmdutil.HandleError(err)
+				}
+				defer l.Close()
+
+				proxyAddr := l.Addr().String()
+				host, port, err := net.SplitHostPort(proxyAddr)
+				if err != nil {
+					return cmdutil.HandleError(err)
+				}
+
+				mysqlArgs := []string{
+					"-u",
+					"root",
+					"-c", // allow comments to pass to the server
+					"-s",
+					"-t", // the -s (silent) flag disables tabular output, re-enable it.
+					"-h", host,
+					"-P", port,
+				}
+				if replica {
+					mysqlArgs = append([]string{"--no-defaults"}, mysqlArgs...)
+				} else {
+					mysqlArgs = append(mysqlArgs, "-D", "@primary")
+				}
+
+				m := &mysqlClient{
+					mysqlPath:    clientPath,
+					historyFile:  historyFile,
+					styledBranch: styledBranch,
+					debug:        ch.Debug(),
+					printer:      ch.Printer,
+				}
+
+				go func() {
+					errCh <- proxy.Serve(l, authMethod)
+				}()
+
+				go func() {
+					errCh <- m.Run(ctx, sigc, signals, runForeground, mysqlArgs...)
+				}()
+			}
 
 			go func() {
 				errCh <- pw.Renew(ctx)
@@ -247,7 +314,7 @@ second argument:
 	return cmd
 }
 
-type mysql struct {
+type mysqlClient struct {
 	mysqlPath    string
 	dir          string
 	styledBranch string
@@ -256,8 +323,18 @@ type mysql struct {
 	printer      *printer.Printer
 }
 
+type postgresql struct {
+	psqlPath     string
+	dir          string
+	styledBranch string
+	historyFile  string
+	debug        bool
+	printer      *printer.Printer
+	password     string
+}
+
 // Run runs the `mysql` client with the given arguments.
-func (m *mysql) Run(ctx context.Context, sigc chan os.Signal, signals []os.Signal, runForeground bool, args ...string) error {
+func (m *mysqlClient) Run(ctx context.Context, sigc chan os.Signal, signals []os.Signal, runForeground bool, args ...string) error {
 	c := exec.CommandContext(ctx, m.mysqlPath, args...)
 	if m.dir != "" {
 		c.Dir = m.dir
@@ -284,7 +361,36 @@ func (m *mysql) Run(ctx context.Context, sigc chan os.Signal, signals []os.Signa
 	return c.Run()
 }
 
-func formatMySQLBranch(database string, branch *ps.DatabaseBranch) string {
+// Run runs the `psql` client with the given arguments.
+func (p *postgresql) Run(ctx context.Context, sigc chan os.Signal, signals []os.Signal, runForeground bool, args ...string) error {
+	c := exec.CommandContext(ctx, p.psqlPath, args...)
+	if p.dir != "" {
+		c.Dir = p.dir
+	}
+
+	c.Env = append(os.Environ(),
+		fmt.Sprintf("PSQL_HISTORY=%s", p.historyFile),
+		fmt.Sprintf("PGPASSWORD=%s", p.password),
+	)
+
+	c.Env = append(c.Env, fmt.Sprintf("PSQL_PROMPT1=%s", p.styledBranch))
+
+	c.Stdout = os.Stdout
+	c.Stderr = os.Stderr
+	c.Stdin = os.Stdin
+
+	if runForeground {
+		c.SysProcAttr = sysProcAttr()
+		cancel := setupSignals(ctx, c, sigc, signals)
+		if cancel != nil {
+			defer cancel()
+		}
+	}
+
+	return c.Run()
+}
+
+func formatBranch(database string, branch *ps.DatabaseBranch) string {
 	branchStr := branch.Name
 
 	if branch.Production {
