@@ -175,6 +175,7 @@ func HasHomebrew() bool {
 }
 
 var versionRegex = regexp.MustCompile(`Ver ([0-9]+)\.([0-9]+)\.([0-9]+)`)
+var psqlVersionRegex = regexp.MustCompile(`psql \(PostgreSQL\) ([0-9]+)\.([0-9]+)`)
 
 // MySQLClientPath checks whether the 'mysql' client exists and returns the
 // path to the binary. The returned error contains instructions to install the
@@ -210,7 +211,7 @@ func MySQLClientPath() (string, mysql.AuthMethodDescription, error) {
 
 	path, err := exec.LookPath("mysql")
 	if err != nil {
-		return installInstructions("couldn't find the 'mysql' command-line tool required to run this command.")
+		return installInstructions("couldn't find the 'mysql' command-line tool required to run this command.", "mysql-client@8.4")
 	}
 
 	cmd := exec.Command("mysql", "--version")
@@ -235,13 +236,13 @@ func MySQLClientPath() (string, mysql.AuthMethodDescription, error) {
 	return path, authMethod, nil
 }
 
-func installInstructions(msg string) (string, mysql.AuthMethodDescription, error) {
+func installInstructions(msg, pkg string) (string, mysql.AuthMethodDescription, error) {
 	installURL := "https://planetscale.com/docs/reference/planetscale-environment-setup"
 
 	switch runtime.GOOS {
 	case "darwin":
 		if HasHomebrew() {
-			return "", mysql.CachingSha2Password, fmt.Errorf("%s\nTo install, run: brew install mysql-client@8.4", msg)
+			return "", mysql.CachingSha2Password, fmt.Errorf("%s\nTo install, run: brew install %s", msg, pkg)
 		}
 
 		installURL = "https://planetscale.com/docs/reference/planetscale-environment-setup#macos-instructions"
@@ -252,6 +253,29 @@ func installInstructions(msg string) (string, mysql.AuthMethodDescription, error
 	}
 
 	return "", mysql.CachingSha2Password, fmt.Errorf("%s\nTo install, follow the instructions: %s", msg, installURL)
+}
+
+func PostgreSQLClientPath() (string, error) {
+	// Look for psql-17 first, then fall back to psql
+	for _, cmd := range []string{"psql-17", "psql"} {
+		path, err := exec.LookPath(cmd)
+		if err == nil {
+			// Verify it's a working PostgreSQL client
+			cmd := exec.Command(path, "--version")
+			out, err := cmd.Output()
+			if err != nil {
+				continue
+			}
+
+			// Check if it's PostgreSQL (not just any psql)
+			if strings.Contains(string(out), "PostgreSQL") {
+				return path, nil
+			}
+		}
+	}
+
+	_, _, e := installInstructions("couldn't find the 'psql' command-line tool required to run this command.", "postgresql@17")
+	return "", e
 }
 
 func ParseSSLMode(sslMode string) ps.ExternalDataSourceSSLVerificationMode {
