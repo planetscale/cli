@@ -43,26 +43,64 @@ func ShowCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Fetching branch %s for %s", printer.BoldBlue(branch), printer.BoldBlue(source)))
 			defer end()
-			b, err := client.DatabaseBranches.Get(ctx, &planetscale.GetDatabaseBranchRequest{
+			db, err := client.Databases.Get(ctx, &planetscale.GetDatabaseRequest{
 				Organization: ch.Config.Organization,
 				Database:     source,
-				Branch:       branch,
 			})
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
 					return cmdutil.HandleNotFoundWithServiceTokenCheck(
 						ctx, cmd, ch.Config, ch.Client, err, "read_branch",
-						"branch %s does not exist in database %s (organization: %s)",
-						printer.BoldBlue(branch), printer.BoldBlue(source), printer.BoldBlue(ch.Config.Organization))
+						"database %s does not exist (organization: %s)",
+						printer.BoldBlue(source), printer.BoldBlue(ch.Config.Organization))
 				default:
 					return cmdutil.HandleError(err)
 				}
 			}
 
-			end()
+			if db.Kind == "mysql" {
+				b, err := client.DatabaseBranches.Get(ctx, &planetscale.GetDatabaseBranchRequest{
+					Organization: ch.Config.Organization,
+					Database:     source,
+					Branch:       branch,
+				})
+				if err != nil {
+					switch cmdutil.ErrCode(err) {
+					case planetscale.ErrNotFound:
+						return cmdutil.HandleNotFoundWithServiceTokenCheck(
+							ctx, cmd, ch.Config, ch.Client, err, "read_branch",
+							"branch %s does not exist in database %s (organization: %s)",
+							printer.BoldBlue(branch), printer.BoldBlue(source), printer.BoldBlue(ch.Config.Organization))
+					default:
+						return cmdutil.HandleError(err)
+					}
+				}
 
-			return ch.Printer.PrintResource(ToDatabaseBranch(b))
+				end()
+
+				return ch.Printer.PrintResource(ToDatabaseBranch(b))
+			} else {
+				b, err := client.PostgresBranches.Get(ctx, &planetscale.GetPostgresBranchRequest{
+					Organization: ch.Config.Organization,
+					Database:     source,
+					Branch:       branch,
+				})
+				if err != nil {
+					switch cmdutil.ErrCode(err) {
+					case planetscale.ErrNotFound:
+						return cmdutil.HandleNotFoundWithServiceTokenCheck(
+							ctx, cmd, ch.Config, ch.Client, err, "read_branch",
+							"branch %s does not exist in database %s (organization: %s)",
+							printer.BoldBlue(branch), printer.BoldBlue(source), printer.BoldBlue(ch.Config.Organization))
+					default:
+						return cmdutil.HandleError(err)
+					}
+				}
+				end()
+
+				return ch.Printer.PrintResource(ToPostgresBranch(b))
+			}
 		},
 	}
 
