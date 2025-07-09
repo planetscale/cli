@@ -22,15 +22,15 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
+			createReq.Organization = ch.Config.Organization
+			createReq.Name = args[0]
+
 			clusterSize, err := cmd.Flags().GetString("cluster-size")
 			if err != nil {
 				return err
 			}
 
 			createReq.ClusterSize = clusterSize
-
-			createReq.Organization = ch.Config.Organization
-			createReq.Name = args[0]
 
 			client, err := ch.Client()
 			if err != nil {
@@ -63,6 +63,14 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().StringVar(&createReq.Region, "region", "", "region for the database")
 
 	cmd.Flags().String("cluster-size", "PS-10", "cluster size for Scaler Pro databases. Use `pscale size cluster list` to see the valid sizes.")
+
+	cmd.Flags().StringVar(&createReq.Kind, "kind", "mysql", "Kind of database to create. Supported values: mysql, postgresql. Defaults to mysql.")
+	cmd.RegisterFlagCompletionFunc("kind", func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
+		return []cobra.Completion{
+			cobra.CompletionWithDesc("mysql", "A Vitess database"),
+			cobra.CompletionWithDesc("postgresql", "The fastest cloud Postgres"),
+		}, cobra.ShellCompDirectiveNoFileComp
+	})
 
 	cmd.RegisterFlagCompletionFunc("region", func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
 		return cmdutil.RegionsCompletionFunc(ch, cmd, args, toComplete)
