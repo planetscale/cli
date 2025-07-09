@@ -32,25 +32,60 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
+			db, err := client.Databases.Get(ctx, &planetscale.GetDatabaseRequest{
+				Organization: ch.Config.Organization,
+				Database:     source,
+			})
+			if err != nil {
+				switch cmdutil.ErrCode(err) {
+				case planetscale.ErrNotFound:
+					return cmdutil.HandleNotFoundWithServiceTokenCheck(
+						ctx, cmd, ch.Config, ch.Client, err, "delete_branch",
+						"database %s does not exist in organization %s",
+						printer.BoldBlue(source), printer.BoldBlue(ch.Config.Organization))
+				default:
+					return cmdutil.HandleError(err)
+				}
+			}
+
 			if !force {
 				if ch.Printer.Format() != printer.Human {
 					return fmt.Errorf("cannot delete branch with the output format %q (run with -force to override)", ch.Printer.Format())
 				}
 
-				_, err := client.DatabaseBranches.Get(ctx, &planetscale.GetDatabaseBranchRequest{
-					Organization: ch.Config.Organization,
-					Database:     source,
-					Branch:       branch,
-				})
-				if err != nil {
-					switch cmdutil.ErrCode(err) {
-					case planetscale.ErrNotFound:
-						return cmdutil.HandleNotFoundWithServiceTokenCheck(
-							ctx, cmd, ch.Config, ch.Client, err, "delete_branch",
-							"branch %s does not exist in database %s (organization: %s)",
-							printer.BoldBlue(branch), printer.BoldBlue(source), printer.BoldBlue(ch.Config.Organization))
-					default:
-						return cmdutil.HandleError(err)
+				if db.Kind == "mysql" {
+					_, err := client.DatabaseBranches.Get(ctx, &planetscale.GetDatabaseBranchRequest{
+						Organization: ch.Config.Organization,
+						Database:     source,
+						Branch:       branch,
+					})
+					if err != nil {
+						switch cmdutil.ErrCode(err) {
+						case planetscale.ErrNotFound:
+							return cmdutil.HandleNotFoundWithServiceTokenCheck(
+								ctx, cmd, ch.Config, ch.Client, err, "delete_branch",
+								"branch %s does not exist in database %s (organization: %s)",
+								printer.BoldBlue(branch), printer.BoldBlue(source), printer.BoldBlue(ch.Config.Organization))
+						default:
+							return cmdutil.HandleError(err)
+						}
+					}
+				} else {
+					_, err := client.PostgresBranches.Get(ctx, &planetscale.GetPostgresBranchRequest{
+						Organization: ch.Config.Organization,
+						Database:     source,
+						Branch:       branch,
+					})
+					if err != nil {
+						switch cmdutil.ErrCode(err) {
+						case planetscale.ErrNotFound:
+							return cmdutil.HandleNotFoundWithServiceTokenCheck(
+								ctx, cmd, ch.Config, ch.Client, err, "delete_branch",
+								"branch %s does not exist in database %s (organization: %s)",
+								printer.BoldBlue(branch), printer.BoldBlue(source), printer.BoldBlue(ch.Config.Organization))
+						default:
+							return cmdutil.HandleError(err)
+						}
 					}
 				}
 
@@ -84,11 +119,21 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Deleting branch %s from %s", printer.BoldBlue(branch), printer.BoldBlue(source)))
 			defer end()
-			err = client.DatabaseBranches.Delete(ctx, &planetscale.DeleteDatabaseBranchRequest{
-				Organization: ch.Config.Organization,
-				Database:     source,
-				Branch:       branch,
-			})
+			
+			if db.Kind == "mysql" {
+				err = client.DatabaseBranches.Delete(ctx, &planetscale.DeleteDatabaseBranchRequest{
+					Organization: ch.Config.Organization,
+					Database:     source,
+					Branch:       branch,
+				})
+			} else {
+				err = client.PostgresBranches.Delete(ctx, &planetscale.DeletePostgresBranchRequest{
+					Organization: ch.Config.Organization,
+					Database:     source,
+					Branch:       branch,
+				})
+			}
+			
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
