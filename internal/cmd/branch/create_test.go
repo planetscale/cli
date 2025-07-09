@@ -39,6 +39,14 @@ func TestBranch_CreateCmd(t *testing.T) {
 		},
 	}
 
+	dbSvc := &mock.DatabaseService{
+		GetFn: func(ctx context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
+			c.Assert(req.Database, qt.Equals, db)
+			c.Assert(req.Organization, qt.Equals, org)
+			return &ps.Database{Kind: "mysql"}, nil
+		},
+	}
+
 	ch := &cmdutil.Helper{
 		Printer: p,
 		Config: &config.Config{
@@ -47,6 +55,7 @@ func TestBranch_CreateCmd(t *testing.T) {
 		Client: func() (*ps.Client, error) {
 			return &ps.Client{
 				DatabaseBranches: svc,
+				Databases:        dbSvc,
 			}, nil
 		},
 	}
