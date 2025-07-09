@@ -96,6 +96,14 @@ func TestBranch_CreateCmdWithRestore(t *testing.T) {
 		},
 	}
 
+	dbSvc := &mock.DatabaseService{
+		GetFn: func(ctx context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
+			c.Assert(req.Database, qt.Equals, db)
+			c.Assert(req.Organization, qt.Equals, org)
+			return &ps.Database{Kind: "mysql"}, nil
+		},
+	}
+
 	ch := &cmdutil.Helper{
 		Printer: p,
 		Config: &config.Config{
@@ -104,6 +112,7 @@ func TestBranch_CreateCmdWithRestore(t *testing.T) {
 		Client: func() (*ps.Client, error) {
 			return &ps.Client{
 				DatabaseBranches: svc,
+				Databases:        dbSvc,
 			}, nil
 		},
 	}
@@ -144,6 +153,14 @@ func TestBranch_CreateCmdWithRestoreNoSize(t *testing.T) {
 		},
 	}
 
+	dbSvc := &mock.DatabaseService{
+		GetFn: func(ctx context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
+			c.Assert(req.Database, qt.Equals, db)
+			c.Assert(req.Organization, qt.Equals, org)
+			return &ps.Database{Kind: "mysql"}, nil
+		},
+	}
+
 	ch := &cmdutil.Helper{
 		Printer: p,
 		Config: &config.Config{
@@ -152,6 +169,7 @@ func TestBranch_CreateCmdWithRestoreNoSize(t *testing.T) {
 		Client: func() (*ps.Client, error) {
 			return &ps.Client{
 				DatabaseBranches: svc,
+				Databases:        dbSvc,
 			}, nil
 		},
 	}
@@ -191,6 +209,14 @@ func TestBranch_CreateCmdWithSeedData(t *testing.T) {
 		},
 	}
 
+	dbSvc := &mock.DatabaseService{
+		GetFn: func(ctx context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
+			c.Assert(req.Database, qt.Equals, db)
+			c.Assert(req.Organization, qt.Equals, org)
+			return &ps.Database{Kind: "mysql"}, nil
+		},
+	}
+
 	ch := &cmdutil.Helper{
 		Printer: p,
 		Config: &config.Config{
@@ -199,6 +225,7 @@ func TestBranch_CreateCmdWithSeedData(t *testing.T) {
 		Client: func() (*ps.Client, error) {
 			return &ps.Client{
 				DatabaseBranches: svc,
+				Databases:        dbSvc,
 			}, nil
 		},
 	}
@@ -238,6 +265,14 @@ func TestBranch_CreateCmd_ServiceTokenAuthError(t *testing.T) {
 		},
 	}
 
+	dbSvc := &mock.DatabaseService{
+		GetFn: func(ctx context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
+			c.Assert(req.Database, qt.Equals, db)
+			c.Assert(req.Organization, qt.Equals, org)
+			return &ps.Database{Kind: "mysql"}, nil
+		},
+	}
+
 	ch := &cmdutil.Helper{
 		Printer: p,
 		Config: &config.Config{
@@ -249,6 +284,7 @@ func TestBranch_CreateCmd_ServiceTokenAuthError(t *testing.T) {
 			return &ps.Client{
 				DatabaseBranches: branchSvc,
 				Organizations:    orgSvc,
+				Databases:        dbSvc,
 			}, nil
 		},
 	}
@@ -291,6 +327,14 @@ func TestBranch_CreateCmd_GenuineNotFound(t *testing.T) {
 		},
 	}
 
+	dbSvc := &mock.DatabaseService{
+		GetFn: func(ctx context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
+			c.Assert(req.Database, qt.Equals, db)
+			c.Assert(req.Organization, qt.Equals, org)
+			return &ps.Database{Kind: "mysql"}, nil
+		},
+	}
+
 	ch := &cmdutil.Helper{
 		Printer: p,
 		Config: &config.Config{
@@ -302,6 +346,7 @@ func TestBranch_CreateCmd_GenuineNotFound(t *testing.T) {
 			return &ps.Client{
 				DatabaseBranches: branchSvc,
 				Organizations:    orgSvc,
+				Databases:        dbSvc,
 			}, nil
 		},
 	}

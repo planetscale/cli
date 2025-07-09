@@ -35,6 +35,14 @@ func TestBranch_DeleteCmd(t *testing.T) {
 		},
 	}
 
+	dbSvc := &mock.DatabaseService{
+		GetFn: func(ctx context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
+			c.Assert(req.Database, qt.Equals, db)
+			c.Assert(req.Organization, qt.Equals, org)
+			return &ps.Database{Kind: "mysql"}, nil
+		},
+	}
+
 	ch := &cmdutil.Helper{
 		Printer: p,
 		Config: &config.Config{
@@ -43,6 +51,7 @@ func TestBranch_DeleteCmd(t *testing.T) {
 		Client: func() (*ps.Client, error) {
 			return &ps.Client{
 				DatabaseBranches: svc,
+				Databases:        dbSvc,
 			}, nil
 		},
 	}
@@ -80,6 +89,13 @@ func TestBranch_DeleteCmd_ServiceTokenPermissionError(t *testing.T) {
 		},
 	}
 
+	// Mock database service that succeeds
+	dbSvc := &mock.DatabaseService{
+		GetFn: func(ctx context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
+			return &ps.Database{Kind: "mysql"}, nil
+		},
+	}
+
 	// Mock organization service that succeeds (simulating valid service token)
 	orgSvc := &mock.OrganizationsService{
 		ListFn: func(ctx context.Context) ([]*ps.Organization, error) {
@@ -97,6 +113,7 @@ func TestBranch_DeleteCmd_ServiceTokenPermissionError(t *testing.T) {
 		Client: func() (*ps.Client, error) {
 			return &ps.Client{
 				DatabaseBranches: branchSvc,
+				Databases:        dbSvc,
 				Organizations:    orgSvc,
 			}, nil
 		},
@@ -112,4 +129,60 @@ func TestBranch_DeleteCmd_ServiceTokenPermissionError(t *testing.T) {
 	c.Assert(err.Error(), qt.Contains, "delete_branch")
 	c.Assert(branchSvc.DeleteFnInvoked, qt.IsTrue)
 	c.Assert(orgSvc.ListFnInvoked, qt.IsTrue)
+}
+
+func TestBranch_DeleteCmd_PostgreSQL(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	db := "planetscale"
+	branch := "development"
+
+	svc := &mock.PostgresBranchesService{
+		DeleteFn: func(ctx context.Context, req *ps.DeletePostgresBranchRequest) error {
+			c.Assert(req.Branch, qt.Equals, branch)
+			c.Assert(req.Database, qt.Equals, db)
+			c.Assert(req.Organization, qt.Equals, org)
+			return nil
+		},
+	}
+
+	dbSvc := &mock.DatabaseService{
+		GetFn: func(ctx context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
+			c.Assert(req.Database, qt.Equals, db)
+			c.Assert(req.Organization, qt.Equals, org)
+			return &ps.Database{Kind: "postgres"}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: org,
+		},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{
+				PostgresBranches: svc,
+				Databases:        dbSvc,
+			}, nil
+		},
+	}
+
+	cmd := DeleteCmd(ch)
+	cmd.SetArgs([]string{db, branch, "--force"})
+	err := cmd.Execute()
+
+	res := map[string]string{
+		"result": "branch deleted",
+		"branch": branch,
+	}
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.DeleteFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.JSONEquals, res)
 }
