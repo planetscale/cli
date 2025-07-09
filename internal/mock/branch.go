@@ -127,3 +127,53 @@ func (d *DatabaseBranchesService) ListClusterSKUs(ctx context.Context, req *ps.L
 	d.ListClusterSKUsFnInvoked = true
 	return d.ListClusterSKUsFn(ctx, req, opts...)
 }
+
+type PostgresBranchesService struct {
+	CreateFn        func(context.Context, *ps.CreatePostgresBranchRequest) (*ps.PostgresBranch, error)
+	CreateFnInvoked bool
+
+	ListFn        func(context.Context, *ps.ListPostgresBranchesRequest) ([]*ps.PostgresBranch, error)
+	ListFnInvoked bool
+
+	GetFn        func(context.Context, *ps.GetPostgresBranchRequest) (*ps.PostgresBranch, error)
+	GetFnInvoked bool
+
+	DeleteFn        func(context.Context, *ps.DeletePostgresBranchRequest) error
+	DeleteFnInvoked bool
+
+	SchemaFn        func(context.Context, *ps.PostgresBranchSchemaRequest) ([]*ps.PostgresBranchSchema, error)
+	SchemaFnInvoked bool
+
+	ListClusterSKUsFn        func(context.Context, *ps.ListBranchClusterSKUsRequest, ...ps.ListOption) ([]*ps.ClusterSKU, error)
+	ListClusterSKUsFnInvoked bool
+}
+
+func (p *PostgresBranchesService) Create(ctx context.Context, req *ps.CreatePostgresBranchRequest) (*ps.PostgresBranch, error) {
+	p.CreateFnInvoked = true
+	return p.CreateFn(ctx, req)
+}
+
+func (p *PostgresBranchesService) List(ctx context.Context, req *ps.ListPostgresBranchesRequest) ([]*ps.PostgresBranch, error) {
+	p.ListFnInvoked = true
+	return p.ListFn(ctx, req)
+}
+
+func (p *PostgresBranchesService) Get(ctx context.Context, req *ps.GetPostgresBranchRequest) (*ps.PostgresBranch, error) {
+	p.GetFnInvoked = true
+	return p.GetFn(ctx, req)
+}
+
+func (p *PostgresBranchesService) Delete(ctx context.Context, req *ps.DeletePostgresBranchRequest) error {
+	p.DeleteFnInvoked = true
+	return p.DeleteFn(ctx, req)
+}
+
+func (p *PostgresBranchesService) Schema(ctx context.Context, req *ps.PostgresBranchSchemaRequest) ([]*ps.PostgresBranchSchema, error) {
+	p.SchemaFnInvoked = true
+	return p.SchemaFn(ctx, req)
+}
+
+func (p *PostgresBranchesService) ListClusterSKUs(ctx context.Context, req *ps.ListBranchClusterSKUsRequest, opts ...ps.ListOption) ([]*ps.ClusterSKU, error) {
+	p.ListClusterSKUsFnInvoked = true
+	return p.ListClusterSKUsFn(ctx, req, opts...)
+}

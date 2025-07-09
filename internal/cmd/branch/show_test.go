@@ -38,6 +38,14 @@ func TestBranch_ShowCmd(t *testing.T) {
 		},
 	}
 
+	dbSvc := &mock.DatabaseService{
+		GetFn: func(ctx context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
+			c.Assert(req.Database, qt.Equals, db)
+			c.Assert(req.Organization, qt.Equals, org)
+			return &ps.Database{Kind: "mysql"}, nil
+		},
+	}
+
 	ch := &cmdutil.Helper{
 		Printer: p,
 		Config: &config.Config{
@@ -46,6 +54,7 @@ func TestBranch_ShowCmd(t *testing.T) {
 		Client: func() (*ps.Client, error) {
 			return &ps.Client{
 				DatabaseBranches: svc,
+				Databases:        dbSvc,
 			}, nil
 		},
 	}
@@ -78,6 +87,13 @@ func TestBranch_ShowCmd_ServiceTokenAuthError(t *testing.T) {
 		},
 	}
 
+	// Mock database service that succeeds
+	dbSvc := &mock.DatabaseService{
+		GetFn: func(ctx context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
+			return &ps.Database{Kind: "mysql"}, nil
+		},
+	}
+
 	// Mock organization service that returns error for auth check (simulating invalid service token)
 	orgSvc := &mock.OrganizationsService{
 		ListFn: func(ctx context.Context) ([]*ps.Organization, error) {
@@ -95,6 +111,7 @@ func TestBranch_ShowCmd_ServiceTokenAuthError(t *testing.T) {
 		Client: func() (*ps.Client, error) {
 			return &ps.Client{
 				DatabaseBranches: branchSvc,
+				Databases:        dbSvc,
 				Organizations:    orgSvc,
 			}, nil
 		},
@@ -131,6 +148,13 @@ func TestBranch_ShowCmd_GenuineNotFound(t *testing.T) {
 		},
 	}
 
+	// Mock database service that succeeds
+	dbSvc := &mock.DatabaseService{
+		GetFn: func(ctx context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
+			return &ps.Database{Kind: "mysql"}, nil
+		},
+	}
+
 	// Mock organization service that succeeds (simulating valid service token)
 	orgSvc := &mock.OrganizationsService{
 		ListFn: func(ctx context.Context) ([]*ps.Organization, error) {
@@ -148,6 +172,7 @@ func TestBranch_ShowCmd_GenuineNotFound(t *testing.T) {
 		Client: func() (*ps.Client, error) {
 			return &ps.Client{
 				DatabaseBranches: branchSvc,
+				Databases:        dbSvc,
 				Organizations:    orgSvc,
 			}, nil
 		},
@@ -185,6 +210,13 @@ func TestBranch_ShowCmd_GenuineNotFound_NoServiceToken(t *testing.T) {
 		},
 	}
 
+	// Mock database service that succeeds
+	dbSvc := &mock.DatabaseService{
+		GetFn: func(ctx context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
+			return &ps.Database{Kind: "mysql"}, nil
+		},
+	}
+
 	ch := &cmdutil.Helper{
 		Printer: p,
 		Config: &config.Config{
@@ -194,6 +226,7 @@ func TestBranch_ShowCmd_GenuineNotFound_NoServiceToken(t *testing.T) {
 		Client: func() (*ps.Client, error) {
 			return &ps.Client{
 				DatabaseBranches: branchSvc,
+				Databases:        dbSvc,
 			}, nil
 		},
 	}
@@ -229,6 +262,13 @@ func TestBranch_ShowCmd_GenuineNotFound_EmptyPermission(t *testing.T) {
 		},
 	}
 
+	// Mock database service that succeeds
+	dbSvc := &mock.DatabaseService{
+		GetFn: func(ctx context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
+			return &ps.Database{Kind: "mysql"}, nil
+		},
+	}
+
 	// Mock organization service that succeeds (simulating valid service token)
 	orgSvc := &mock.OrganizationsService{
 		ListFn: func(ctx context.Context) ([]*ps.Organization, error) {
@@ -246,6 +286,7 @@ func TestBranch_ShowCmd_GenuineNotFound_EmptyPermission(t *testing.T) {
 		Client: func() (*ps.Client, error) {
 			return &ps.Client{
 				DatabaseBranches: branchSvc,
+				Databases:        dbSvc,
 				Organizations:    orgSvc,
 			}, nil
 		},
@@ -262,4 +303,58 @@ func TestBranch_ShowCmd_GenuineNotFound_EmptyPermission(t *testing.T) {
 	c.Assert(err.Error(), qt.Contains, "does not exist")
 	c.Assert(err.Error(), qt.Not(qt.Contains), "service token for authentication")
 	c.Assert(err.Error(), qt.Not(qt.Contains), "permission")
+}
+
+func TestBranch_ShowCmd_PostgreSQL(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	db := "planetscale"
+	branch := "development"
+
+	res := &ps.PostgresBranch{Name: branch}
+
+	svc := &mock.PostgresBranchesService{
+		GetFn: func(ctx context.Context, req *ps.GetPostgresBranchRequest) (*ps.PostgresBranch, error) {
+			c.Assert(req.Branch, qt.Equals, branch)
+			c.Assert(req.Database, qt.Equals, db)
+			c.Assert(req.Organization, qt.Equals, org)
+
+			return res, nil
+		},
+	}
+
+	dbSvc := &mock.DatabaseService{
+		GetFn: func(ctx context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
+			c.Assert(req.Database, qt.Equals, db)
+			c.Assert(req.Organization, qt.Equals, org)
+			return &ps.Database{Kind: "postgresql"}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: org,
+		},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{
+				PostgresBranches: svc,
+				Databases:        dbSvc,
+			}, nil
+		},
+	}
+
+	cmd := ShowCmd(ch)
+	cmd.SetArgs([]string{db, branch})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.GetFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.JSONEquals, res)
 }

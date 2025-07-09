@@ -48,7 +48,7 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Fetching branches for %s", printer.BoldBlue(database)))
 			defer end()
 
-			branches, err := client.DatabaseBranches.List(ctx, &planetscale.ListDatabaseBranchesRequest{
+			db, err := client.Databases.Get(ctx, &planetscale.GetDatabaseRequest{
 				Organization: ch.Config.Organization,
 				Database:     database,
 			})
@@ -63,14 +63,56 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 					return cmdutil.HandleError(err)
 				}
 			}
-			end()
 
-			if len(branches) == 0 && ch.Printer.Format() == printer.Human {
-				ch.Printer.Printf("No branches exist in %s.\n", printer.BoldBlue(database))
-				return nil
+			if db.Kind == "mysql" {
+				branches, err := client.DatabaseBranches.List(ctx, &planetscale.ListDatabaseBranchesRequest{
+					Organization: ch.Config.Organization,
+					Database:     database,
+				})
+				if err != nil {
+					switch cmdutil.ErrCode(err) {
+					case planetscale.ErrNotFound:
+						return cmdutil.HandleNotFoundWithServiceTokenCheck(
+							ctx, cmd, ch.Config, ch.Client, err, "read_branch",
+							"database %s does not exist in organization %s",
+							printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
+					default:
+						return cmdutil.HandleError(err)
+					}
+				}
+				end()
+
+				if len(branches) == 0 && ch.Printer.Format() == printer.Human {
+					ch.Printer.Printf("No branches exist in %s.\n", printer.BoldBlue(database))
+					return nil
+				}
+
+				return ch.Printer.PrintResource(toDatabaseBranches(branches))
+			} else {
+				branches, err := client.PostgresBranches.List(ctx, &planetscale.ListPostgresBranchesRequest{
+					Organization: ch.Config.Organization,
+					Database:     database,
+				})
+				if err != nil {
+					switch cmdutil.ErrCode(err) {
+					case planetscale.ErrNotFound:
+						return cmdutil.HandleNotFoundWithServiceTokenCheck(
+							ctx, cmd, ch.Config, ch.Client, err, "read_branch",
+							"database %s does not exist in organization %s",
+							printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
+					default:
+						return cmdutil.HandleError(err)
+					}
+				}
+				end()
+
+				if len(branches) == 0 && ch.Printer.Format() == printer.Human {
+					ch.Printer.Printf("No branches exist in %s.\n", printer.BoldBlue(database))
+					return nil
+				}
+
+				return ch.Printer.PrintResource(toPostgresBranches(branches))
 			}
-
-			return ch.Printer.PrintResource(toDatabaseBranches(branches))
 		},
 	}
 

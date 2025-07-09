@@ -16,8 +16,9 @@ import (
 // SchemaCmd is the command for showing the schema of a branch.
 func SchemaCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
-		web      bool
-		keyspace string
+		web       bool
+		keyspace  string
+		namespace string
 	}
 
 	cmd := &cobra.Command{
@@ -37,42 +38,97 @@ func SchemaCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
-			schemas, err := client.DatabaseBranches.Schema(ctx, &planetscale.BranchSchemaRequest{
+			db, err := client.Databases.Get(ctx, &planetscale.GetDatabaseRequest{
 				Organization: ch.Config.Organization,
 				Database:     database,
-				Branch:       branch,
-				Keyspace:     flags.keyspace,
 			})
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
-					return fmt.Errorf("branch %s does not exist in database %s (organization: %s)",
-						printer.BoldBlue(branch), printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
+					return fmt.Errorf("database %s does not exist in organization %s",
+						printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
 				default:
 					return cmdutil.HandleError(err)
 				}
 			}
 
-			if ch.Printer.Format() != printer.Human {
-				return ch.Printer.PrintResource(schemas)
-			}
-
-			// human readable output
-			for _, df := range schemas {
-				ch.Printer.Println("--", printer.BoldBlue(df.Name), "--")
-				scanner := bufio.NewScanner(strings.NewReader(strings.TrimSpace(df.Raw)))
-				for scanner.Scan() {
-					txt := scanner.Text()
-					if strings.HasPrefix(txt, "+") {
-						ch.Printer.Println(color.New(color.FgGreen).Add(color.Bold).Sprint(txt))
-					} else if strings.HasPrefix(txt, "-") {
-						ch.Printer.Println(color.New(color.FgRed).Add(color.Bold).Sprint(txt))
-					} else {
-						ch.Printer.Println(txt)
+			if db.Kind == "mysql" {
+				schemas, err := client.DatabaseBranches.Schema(ctx, &planetscale.BranchSchemaRequest{
+					Organization: ch.Config.Organization,
+					Database:     database,
+					Branch:       branch,
+					Keyspace:     flags.keyspace,
+				})
+				if err != nil {
+					switch cmdutil.ErrCode(err) {
+					case planetscale.ErrNotFound:
+						return fmt.Errorf("branch %s does not exist in database %s (organization: %s)",
+							printer.BoldBlue(branch), printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
+					default:
+						return cmdutil.HandleError(err)
 					}
 				}
-				if err := scanner.Err(); err != nil {
-					return fmt.Errorf("reading schema raw: %s", err)
+
+				if ch.Printer.Format() != printer.Human {
+					return ch.Printer.PrintResource(schemas)
+				}
+
+				// human readable output
+				for _, df := range schemas {
+					ch.Printer.Println("--", printer.BoldBlue(df.Name), "--")
+					scanner := bufio.NewScanner(strings.NewReader(strings.TrimSpace(df.Raw)))
+					for scanner.Scan() {
+						txt := scanner.Text()
+						if strings.HasPrefix(txt, "+") {
+							ch.Printer.Println(color.New(color.FgGreen).Add(color.Bold).Sprint(txt))
+						} else if strings.HasPrefix(txt, "-") {
+							ch.Printer.Println(color.New(color.FgRed).Add(color.Bold).Sprint(txt))
+						} else {
+							ch.Printer.Println(txt)
+						}
+					}
+					if err := scanner.Err(); err != nil {
+						return fmt.Errorf("reading schema raw: %s", err)
+					}
+				}
+			} else {
+				schemas, err := client.PostgresBranches.Schema(ctx, &planetscale.PostgresBranchSchemaRequest{
+					Organization: ch.Config.Organization,
+					Database:     database,
+					Branch:       branch,
+					Namespace:    flags.namespace,
+				})
+				if err != nil {
+					switch cmdutil.ErrCode(err) {
+					case planetscale.ErrNotFound:
+						return fmt.Errorf("branch %s does not exist in database %s (organization: %s)",
+							printer.BoldBlue(branch), printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
+					default:
+						return cmdutil.HandleError(err)
+					}
+				}
+
+				if ch.Printer.Format() != printer.Human {
+					return ch.Printer.PrintResource(schemas)
+				}
+
+				// human readable output for PostgreSQL
+				for _, schema := range schemas {
+					ch.Printer.Println("--", printer.BoldBlue(schema.Name), "--")
+					scanner := bufio.NewScanner(strings.NewReader(strings.TrimSpace(schema.Raw)))
+					for scanner.Scan() {
+						txt := scanner.Text()
+						if strings.HasPrefix(txt, "+") {
+							ch.Printer.Println(color.New(color.FgGreen).Add(color.Bold).Sprint(txt))
+						} else if strings.HasPrefix(txt, "-") {
+							ch.Printer.Println(color.New(color.FgRed).Add(color.Bold).Sprint(txt))
+						} else {
+							ch.Printer.Println(txt)
+						}
+					}
+					if err := scanner.Err(); err != nil {
+						return fmt.Errorf("reading schema raw: %s", err)
+					}
 				}
 			}
 
@@ -81,7 +137,8 @@ func SchemaCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 
 	cmd.PersistentFlags().BoolVar(&flags.web, "web", false, "Open in your web browser")
-	cmd.Flags().StringVar(&flags.keyspace, "keyspace", "", "The keyspace in the branch")
+	cmd.Flags().StringVar(&flags.keyspace, "keyspace", "", "The keyspace in the branch (MySQL only)")
+	cmd.Flags().StringVar(&flags.namespace, "namespace", "", "The namespace in the branch (PostgreSQL only)")
 
 	return cmd
 }

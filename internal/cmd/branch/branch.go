@@ -86,3 +86,47 @@ func toDatabaseBranches(branches []*ps.DatabaseBranch) []*DatabaseBranch {
 
 	return bs
 }
+
+type PostgresBranch struct {
+	ID           string `header:"id" json:"id"`
+	Name         string `header:"name" json:"name"`
+	ParentBranch string `header:"parent branch,n/a" json:"parent_branch"`
+	Region       string `header:"region" json:"region"`
+	Production   bool   `header:"production" json:"production"`
+	Ready        bool   `header:"ready" json:"ready"`
+	CreatedAt    int64  `header:"created_at,timestamp(ms|utc|human)" json:"created_at"`
+	UpdatedAt    int64  `header:"updated_at,timestamp(ms|utc|human)" json:"updated_at"`
+	orig         *ps.PostgresBranch
+}
+
+func ToPostgresBranch(b *ps.PostgresBranch) *PostgresBranch {
+	return &PostgresBranch{
+		ID:           b.ID,
+		Name:         b.Name,
+		ParentBranch: b.ParentBranch,
+		Region:       b.Region.Slug,
+		Production:   b.Production,
+		Ready:        b.Ready,
+		CreatedAt:    b.CreatedAt.UTC().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond)),
+		UpdatedAt:    b.UpdatedAt.UTC().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond)),
+		orig:         b,
+	}
+}
+
+func toPostgresBranches(branches []*ps.PostgresBranch) []*PostgresBranch {
+	bs := make([]*PostgresBranch, 0, len(branches))
+
+	for _, db := range branches {
+		bs = append(bs, ToPostgresBranch(db))
+	}
+
+	return bs
+}
+
+func (p *PostgresBranch) MarshalJSON() ([]byte, error) {
+	return json.MarshalIndent(p.orig, "", "  ")
+}
+
+func (p *PostgresBranch) MarshalCSVValue() interface{} {
+	return []*PostgresBranch{p}
+}
