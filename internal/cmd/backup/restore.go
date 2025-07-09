@@ -30,21 +30,52 @@ func RestoreCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
-			end := ch.Printer.PrintProgress(fmt.Sprintf("Restoring backup %s to %s", printer.BoldBlue(backup), printer.BoldBlue(branchName)))
-			defer end()
-			newBranch, err := client.DatabaseBranches.Create(ctx, &planetscale.CreateDatabaseBranchRequest{
+			db, err := client.Databases.Get(ctx, &planetscale.GetDatabaseRequest{
 				Organization: ch.Config.Organization,
 				Database:     database,
-				Name:         branchName,
-				BackupID:     backup,
-				ClusterSize:  clusterSize,
 			})
 			if err != nil {
-				return cmdutil.HandleError(err)
+				switch cmdutil.ErrCode(err) {
+				case planetscale.ErrNotFound:
+					return fmt.Errorf("database %s does not exist in organization %s",
+						printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
+				default:
+					return cmdutil.HandleError(err)
+				}
 			}
 
-			end()
-			return ch.Printer.PrintResource(branch.ToDatabaseBranch(newBranch))
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Restoring backup %s to %s", printer.BoldBlue(backup), printer.BoldBlue(branchName)))
+			defer end()
+
+			if db.Kind == "mysql" {
+				newBranch, err := client.DatabaseBranches.Create(ctx, &planetscale.CreateDatabaseBranchRequest{
+					Organization: ch.Config.Organization,
+					Database:     database,
+					Name:         branchName,
+					BackupID:     backup,
+					ClusterSize:  clusterSize,
+				})
+				if err != nil {
+					return cmdutil.HandleError(err)
+				}
+
+				end()
+				return ch.Printer.PrintResource(branch.ToDatabaseBranch(newBranch))
+			} else {
+				newBranch, err := client.PostgresBranches.Create(ctx, &planetscale.CreatePostgresBranchRequest{
+					Organization: ch.Config.Organization,
+					Database:     database,
+					Name:         branchName,
+					BackupID:     backup,
+					ClusterName:  clusterSize,
+				})
+				if err != nil {
+					return cmdutil.HandleError(err)
+				}
+
+				end()
+				return ch.Printer.PrintResource(branch.ToPostgresBranch(newBranch))
+			}
 		},
 	}
 
