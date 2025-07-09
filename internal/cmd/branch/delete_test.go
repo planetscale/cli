@@ -156,7 +156,7 @@ func TestBranch_DeleteCmd_PostgreSQL(t *testing.T) {
 		GetFn: func(ctx context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
 			c.Assert(req.Database, qt.Equals, db)
 			c.Assert(req.Organization, qt.Equals, org)
-			return &ps.Database{Kind: "postgres"}, nil
+			return &ps.Database{Kind: "postgresql"}, nil
 		},
 	}
 
