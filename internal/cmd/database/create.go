@@ -64,8 +64,8 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	cmd.Flags().String("cluster-size", "PS-10", "cluster size for Scaler Pro databases. Use `pscale size cluster list` to see the valid sizes.")
 
-	cmd.Flags().StringVar(&createReq.Kind, "kind", "mysql", "Kind of database to create. Supported values: mysql, postgresql. Defaults to mysql.")
-	cmd.RegisterFlagCompletionFunc("kind", func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
+	cmd.Flags().StringVar(&createReq.Kind, "engine", "mysql", "The database engine for the database. Supported values: mysql, postgresql. Defaults to mysql.")
+	cmd.RegisterFlagCompletionFunc("engine", func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
 		return []cobra.Completion{
 			cobra.CompletionWithDesc("mysql", "A Vitess database"),
 			cobra.CompletionWithDesc("postgresql", "The fastest cloud Postgres"),
