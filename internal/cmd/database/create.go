@@ -15,6 +15,11 @@ import (
 func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	createReq := &ps.CreateDatabaseRequest{}
 
+	var flags struct {
+		clusterSize string
+		engine      string
+	}
+
 	cmd := &cobra.Command{
 		Use:   "create <database>",
 		Short: "Create a database instance",
@@ -25,12 +30,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			createReq.Organization = ch.Config.Organization
 			createReq.Name = args[0]
 
-			clusterSize, err := cmd.Flags().GetString("cluster-size")
-			if err != nil {
-				return err
-			}
-
-			createReq.ClusterSize = clusterSize
+			createReq.Kind = ps.DatabaseEngine(flags.engine)
 
 			client, err := ch.Client()
 			if err != nil {
@@ -62,9 +62,9 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	cmd.Flags().StringVar(&createReq.Region, "region", "", "region for the database")
 
-	cmd.Flags().String("cluster-size", "PS-10", "cluster size for Scaler Pro databases. Use `pscale size cluster list` to see the valid sizes.")
+	cmd.Flags().StringVar(&createReq.ClusterSize, "cluster-size", "", "cluster size for Scaler Pro databases. Use `pscale size cluster list` to see the valid sizes.")
 
-	cmd.Flags().StringVar(&createReq.Kind, "engine", "mysql", "The database engine for the database. Supported values: mysql, postgresql. Defaults to mysql.")
+	cmd.Flags().StringVar((*string)(&createReq.Kind), "engine", string(ps.DatabaseEngineMySQL), "The database engine for the database. Supported values: mysql, postgresql. Defaults to mysql.")
 	cmd.RegisterFlagCompletionFunc("engine", func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
 		return []cobra.Completion{
 			cobra.CompletionWithDesc("mysql", "A Vitess database"),
