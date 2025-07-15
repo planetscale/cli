@@ -50,7 +50,7 @@ func ResetDefaultCmd(ch *cmdutil.Helper) *cobra.Command {
 			end()
 
 			if ch.Printer.Format() == printer.Human {
-				saveWarning := printer.BoldRed("Please save the values below as they will not be shown again")
+				saveWarning := printer.BoldRed("Please save the values below as they will not be shown again. We recommend using these credentials only for creating usernames and passwords for accesssing your database.")
 
 				ch.Printer.Printf("Role was successfully reset for %s in %s.\n%s\n\n", printer.BoldBlue(branch), printer.BoldBlue(database), saveWarning)
 			}
