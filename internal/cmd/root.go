@@ -27,6 +27,7 @@ import (
 
 	"github.com/planetscale/cli/internal/cmd/dataimports"
 	"github.com/planetscale/cli/internal/cmd/mcp"
+	"github.com/planetscale/cli/internal/cmd/role"
 	"github.com/planetscale/cli/internal/cmd/size"
 	"github.com/planetscale/cli/internal/cmd/workflow"
 
@@ -232,6 +233,7 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 	rootCmd.AddCommand(token.TokenCmd(ch))
 	rootCmd.AddCommand(version.VersionCmd(ch, ver, commit, buildDate))
 	rootCmd.AddCommand(workflow.WorkflowCmd(ch))
+	rootCmd.AddCommand(role.RoleCmd(ch))
 
 	return rootCmd.ExecuteContext(ctx)
 }
