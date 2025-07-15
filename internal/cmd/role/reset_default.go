@@ -1,8 +1,12 @@
 package role
 
 import (
+	"errors"
 	"fmt"
+	"os"
 
+	"github.com/AlecAivazis/survey/v2"
+	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
 	ps "github.com/planetscale/planetscale-go/planetscale"
@@ -27,6 +31,40 @@ func ResetDefaultCmd(ch *cmdutil.Helper) *cobra.Command {
 			client, err := ch.Client()
 			if err != nil {
 				return err
+			}
+
+			if !flags.force {
+				if ch.Printer.Format() != printer.Human {
+					return fmt.Errorf("cannot delete password with the output format %q (run with -force to override)", ch.Printer.Format())
+				}
+
+				confirmationName := fmt.Sprintf("%s/%s", database, branch)
+				if !printer.IsTTY {
+					return fmt.Errorf("cannot confirm deletion of branch %q (run with -force to override)", confirmationName)
+				}
+
+				confirmationMessage := fmt.Sprintf("%s %s %s", printer.Bold("Please type"),
+					printer.BoldBlue(confirmationName), printer.Bold("to confirm:"))
+
+				prompt := &survey.Input{
+					Message: confirmationMessage,
+				}
+
+				var userInput string
+				err = survey.AskOne(prompt, &userInput)
+				if err != nil {
+					if err == terminal.InterruptErr {
+						os.Exit(0)
+					} else {
+						return err
+					}
+				}
+
+				// If the confirmations don't match up, let's return an error.
+				if userInput != confirmationName {
+					return errors.New("incorrect database and branch name entered, skipping reset")
+				}
+
 			}
 
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Resetting default postgres role for %s/%s...", printer.BoldBlue(database), printer.BoldBlue(branch)))
