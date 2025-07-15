@@ -12,6 +12,9 @@ func RoleCmd(ch *cmdutil.Helper) *cobra.Command {
 		PersistentPreRunE: cmdutil.CheckAuthentication(ch.Config),
 	}
 
+	cmd.PersistentFlags().StringVar(&ch.Config.Organization, "org", ch.Config.Organization, "The organization for the current user")
+	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
+
 	cmd.AddCommand(
 		ResetDefaultCmd(ch),
 	)
