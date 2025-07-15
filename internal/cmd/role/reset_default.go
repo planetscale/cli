@@ -15,7 +15,7 @@ func ResetDefaultCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:   "reset-default",
+		Use:   "reset-default <database> <branch>",
 		Short: "Reset the credentials for the default `postgres` role",
 		Long:  "This command resets the credentials for the default `postgres` role in the database, allowing you to reconfigure access. Any connections using the `postgres` role will need to be updated with the new credentials.",
 		Args:  cmdutil.RequiredArgs("database", "branch"),
