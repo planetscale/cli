@@ -39,9 +39,9 @@ type Databases []*Database
 // Database returns a table-serializable database model.
 type Database struct {
 	Name      string `header:"name" json:"name"`
+	Kind      string `header:"kind" json:"kind"`
 	CreatedAt int64  `header:"created_at,timestamp(ms|utc|human)" json:"created_at"`
 	UpdatedAt int64  `header:"updated_at,timestamp(ms|utc|human)" json:"updated_at"`
-	Notes     string `header:"notes" json:"notes"`
 
 	orig *ps.Database
 }
@@ -51,6 +51,7 @@ type Database struct {
 func toDatabase(db *ps.Database) *Database {
 	return &Database{
 		Name:      db.Name,
+		Kind:      string(db.Kind),
 		CreatedAt: db.CreatedAt.UTC().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond)),
 		UpdatedAt: db.UpdatedAt.UTC().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond)),
 		orig:      db,
