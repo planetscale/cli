@@ -13,6 +13,7 @@ func KeyspaceCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "keyspace <command>",
 		Short:             "List, show, and manage keyspaces",
+		Long:              "List, show, and manage keyspaces.\n\nThis command is only supported for Vitess databases.",
 		PersistentPreRunE: cmdutil.CheckAuthentication(ch.Config),
 	}
 

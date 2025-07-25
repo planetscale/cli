@@ -35,6 +35,7 @@ func ShellCmd(ch *cmdutil.Helper, sigc chan os.Signal, signals ...os.Signal) *co
 		// we only require database, because we deduct branch automatically
 		Args:  cmdutil.RequiredArgs("database"),
 		Short: "Open a MySQL shell instance to a database and branch",
+		Long:  "Open a MySQL shell instance to a database and branch.\n\nThis command is only supported for Vitess databases.",
 		Example: `The shell subcommand opens a secure MySQL shell instance to your database.
 
 It uses the MySQL command-line client ("mysql"), which needs to be installed.
