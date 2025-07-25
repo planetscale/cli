@@ -44,7 +44,8 @@ func DumpCmd(ch *cmdutil.Helper) *cobra.Command {
 	f := &dumpFlags{}
 	cmd := &cobra.Command{
 		Use:   "dump <database> <branch> [options]",
-		Short: "Backup and dump your database",
+		Short: "Backup and dump your database (Vitess databases only)",
+		Long:  "Backup and dump your database.\n\nThis command is only supported for Vitess databases. For Postgres databases, use standard PostgreSQL tools like pg_dump. See: https://planetscale.com/docs/postgres/imports/postgres-migrate-dumprestore",
 		Args:  cmdutil.RequiredArgs("database", "branch"),
 		RunE:  func(cmd *cobra.Command, args []string) error { return dump(ch, cmd, f, args) },
 	}

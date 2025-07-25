@@ -9,6 +9,7 @@ func RoleCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "role",
 		Short:             "Manage database roles for a Postgres database branch",
+		Long:              "Manage database roles for a Postgres database branch.\n\nThis command is only supported for Postgres databases.",
 		PersistentPreRunE: cmdutil.CheckAuthentication(ch.Config),
 	}
 

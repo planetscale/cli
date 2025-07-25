@@ -44,6 +44,7 @@ func ConnectCmd(ch *cmdutil.Helper) *cobra.Command {
 		// we only require database, because we deduct branch automatically
 		Args:  cmdutil.RequiredArgs("database"),
 		Short: "Create a secure connection to a database and branch for a local client",
+		Long:  "Create a secure connection to a database and branch for a local client.\n\nThis command is only supported for Vitess databases.",
 		Example: `The connect subcommand establishes a secure connection between your host and PlanetScale.
 
 By default, if no branch names are given and there is only one branch, it

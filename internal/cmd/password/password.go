@@ -17,6 +17,7 @@ func PasswordCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "password <command>",
 		Short:             "Create, list, and delete branch passwords",
+		Long:              "Create, list, and delete branch passwords.\n\nThis command is only supported for Vitess databases.",
 		PersistentPreRunE: cmdutil.CheckAuthentication(ch.Config),
 	}
 

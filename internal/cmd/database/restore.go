@@ -39,7 +39,8 @@ func RestoreCmd(ch *cmdutil.Helper) *cobra.Command {
 	f := &restoreFlags{}
 	cmd := &cobra.Command{
 		Use:   "restore-dump <database> <branch> [options]",
-		Short: "Restore your database from a local dump directory",
+		Short: "Restore your database from a local dump directory (Vitess databases only)",
+		Long:  "Restore your database from a local dump directory.\n\nThis command is only supported for Vitess databases. For Postgres databases, use standard PostgreSQL tools like pg_restore. See: https://planetscale.com/docs/postgres/imports/postgres-migrate-dumprestore",
 		Args:  cmdutil.RequiredArgs("database", "branch"),
 		RunE:  func(cmd *cobra.Command, args []string) error { return restore(ch, cmd, f, args) },
 	}

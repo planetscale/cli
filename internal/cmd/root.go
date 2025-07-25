@@ -205,6 +205,12 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 	// We don't want to show the default value
 	rootCmd.PersistentFlags().Lookup("api-token").DefValue = ""
 
+	// Add command groups for better organization
+	rootCmd.AddGroup(&cobra.Group{ID: "database", Title: printer.Bold("Database management:")})
+	rootCmd.AddGroup(&cobra.Group{ID: "vitess", Title: printer.Bold("Vitess-specific commands:")})
+	rootCmd.AddGroup(&cobra.Group{ID: "postgres", Title: printer.Bold("Postgres-specific commands:")})
+	rootCmd.AddGroup(&cobra.Group{ID: "platform", Title: printer.Bold("Platform & account management:")})
+
 	loginCmd := auth.LoginCmd(ch)
 	loginCmd.Hidden = true
 	logoutCmd := auth.LogoutCmd(ch)
@@ -212,28 +218,102 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 
 	rootCmd.AddCommand(loginCmd)
 	rootCmd.AddCommand(logoutCmd)
-	rootCmd.AddCommand(api.ApiCmd(ch, userAgent, headers))
-	rootCmd.AddCommand(auditlog.AuditLogCmd(ch))
-	rootCmd.AddCommand(auth.AuthCmd(ch))
-	rootCmd.AddCommand(backup.BackupCmd(ch))
-	rootCmd.AddCommand(branch.BranchCmd(ch))
-	rootCmd.AddCommand(connect.ConnectCmd(ch))
-	rootCmd.AddCommand(database.DatabaseCmd(ch))
-	rootCmd.AddCommand(dataimports.DataImportsCmd(ch))
-	rootCmd.AddCommand(deployrequest.DeployRequestCmd(ch))
-	rootCmd.AddCommand(keyspace.KeyspaceCmd(ch))
-	rootCmd.AddCommand(mcp.McpCmd(ch))
-	rootCmd.AddCommand(org.OrgCmd(ch))
-	rootCmd.AddCommand(password.PasswordCmd(ch))
-	rootCmd.AddCommand(ping.PingCmd(ch))
-	rootCmd.AddCommand(region.RegionCmd(ch))
-	rootCmd.AddCommand(shell.ShellCmd(ch, sigc, signals...))
-	rootCmd.AddCommand(signup.SignupCmd(ch))
-	rootCmd.AddCommand(size.SizeCmd(ch))
-	rootCmd.AddCommand(token.TokenCmd(ch))
-	rootCmd.AddCommand(version.VersionCmd(ch, ver, commit, buildDate))
-	rootCmd.AddCommand(workflow.WorkflowCmd(ch))
-	rootCmd.AddCommand(role.RoleCmd(ch))
+
+	// Platform & Account Management commands
+	apiCmd := api.ApiCmd(ch, userAgent, headers)
+	apiCmd.GroupID = "platform"
+	rootCmd.AddCommand(apiCmd)
+
+	auditlogCmd := auditlog.AuditLogCmd(ch)
+	auditlogCmd.GroupID = "platform"
+	rootCmd.AddCommand(auditlogCmd)
+
+	authCmd := auth.AuthCmd(ch)
+	authCmd.GroupID = "platform"
+	rootCmd.AddCommand(authCmd)
+
+	completionCmd := CompletionCmd()
+	completionCmd.GroupID = "platform"
+	rootCmd.AddCommand(completionCmd)
+
+	mcpCmd := mcp.McpCmd(ch)
+	mcpCmd.GroupID = "platform"
+	rootCmd.AddCommand(mcpCmd)
+
+	orgCmd := org.OrgCmd(ch)
+	orgCmd.GroupID = "platform"
+	rootCmd.AddCommand(orgCmd)
+
+	pingCmd := ping.PingCmd(ch)
+	pingCmd.GroupID = "platform"
+	rootCmd.AddCommand(pingCmd)
+
+	regionCmd := region.RegionCmd(ch)
+	regionCmd.GroupID = "platform"
+	rootCmd.AddCommand(regionCmd)
+
+	signupCmd := signup.SignupCmd(ch)
+	signupCmd.GroupID = "platform"
+	rootCmd.AddCommand(signupCmd)
+
+	sizeCmd := size.SizeCmd(ch)
+	sizeCmd.GroupID = "platform"
+	rootCmd.AddCommand(sizeCmd)
+
+	tokenCmd := token.TokenCmd(ch)
+	tokenCmd.GroupID = "platform"
+	rootCmd.AddCommand(tokenCmd)
+
+	versionCmd := version.VersionCmd(ch, ver, commit, buildDate)
+	versionCmd.GroupID = "platform"
+	rootCmd.AddCommand(versionCmd)
+
+	// Database management commands (Both databases)
+	backupCmd := backup.BackupCmd(ch)
+	backupCmd.GroupID = "database"
+	rootCmd.AddCommand(backupCmd)
+
+	branchCmd := branch.BranchCmd(ch)
+	branchCmd.GroupID = "database"
+	rootCmd.AddCommand(branchCmd)
+
+	databaseCmd := database.DatabaseCmd(ch)
+	databaseCmd.GroupID = "database"
+	rootCmd.AddCommand(databaseCmd)
+
+	// Vitess-specific commands
+	connectCmd := connect.ConnectCmd(ch)
+	connectCmd.GroupID = "vitess"
+	rootCmd.AddCommand(connectCmd)
+
+	dataimportsCmd := dataimports.DataImportsCmd(ch)
+	dataimportsCmd.GroupID = "vitess"
+	rootCmd.AddCommand(dataimportsCmd)
+
+	deployRequestCmd := deployrequest.DeployRequestCmd(ch)
+	deployRequestCmd.GroupID = "vitess"
+	rootCmd.AddCommand(deployRequestCmd)
+
+	keyspaceCmd := keyspace.KeyspaceCmd(ch)
+	keyspaceCmd.GroupID = "vitess"
+	rootCmd.AddCommand(keyspaceCmd)
+
+	passwordCmd := password.PasswordCmd(ch)
+	passwordCmd.GroupID = "vitess"
+	rootCmd.AddCommand(passwordCmd)
+
+	shellCmd := shell.ShellCmd(ch, sigc, signals...)
+	shellCmd.GroupID = "vitess"
+	rootCmd.AddCommand(shellCmd)
+
+	workflowCmd := workflow.WorkflowCmd(ch)
+	workflowCmd.GroupID = "vitess"
+	rootCmd.AddCommand(workflowCmd)
+
+	// Postgres-specific commands
+	roleCmd := role.RoleCmd(ch)
+	roleCmd.GroupID = "postgres"
+	rootCmd.AddCommand(roleCmd)
 
 	return rootCmd.ExecuteContext(ctx)
 }

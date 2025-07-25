@@ -16,6 +16,7 @@ func DeployRequestCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "deploy-request <command>",
 		Short:             "Create, review, diff, revert, and manage deploy requests",
+		Long:              "Create, review, diff, revert, and manage deploy requests.\n\nThis command is only supported for Vitess databases.",
 		Aliases:           []string{"dr"},
 		PersistentPreRunE: cmdutil.CheckAuthentication(ch.Config),
 	}
@@ -79,9 +80,9 @@ func formatTimestamp(t *time.Time) string {
 	if t == nil || t.IsZero() {
 		return ""
 	}
-	
+
 	duration := time.Since(*t)
-	
+
 	switch {
 	case duration < time.Minute:
 		return "less than a minute ago"

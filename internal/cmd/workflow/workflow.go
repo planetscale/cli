@@ -9,6 +9,7 @@ func WorkflowCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "workflow <command>",
 		Short:             "Manage the workflows for PlanetScale databases",
+		Long:              "Manage the workflows for PlanetScale databases.\n\nThis command is only supported for Vitess databases.",
 		PersistentPreRunE: cmdutil.CheckAuthentication(ch.Config),
 	}
 
