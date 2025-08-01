@@ -19,7 +19,7 @@ import (
 	"go.uber.org/zap"
 )
 
-const VITESS_GHOST_TABLE_REGEX = "_vt_EVAC_.*|_vt_DROP_.*|_vt_PURGE_.*|_vt_HOLD_.*|_[0-9a-zA-Z]{8}_[0-9a-zA-Z]{4}_[0-9a-zA-Z]{4}_.*"
+const VITESS_GHOST_TABLE_REGEX = "_vt_([a-zA-Z0-9]{3})_([0-f]{32})_([0-9]{14})_"
 
 // Config describes the settings to dump from a database.
 type Config struct {
@@ -414,9 +414,9 @@ func (d *Dumper) allTables(conn *Connection, database string) ([]string, error) 
 }
 
 func (d *Dumper) allViews(conn *Connection, database string) (map[string]bool, error) {
-	query := `SELECT TABLE_NAME 
-			 FROM information_schema.TABLES 
-			 WHERE TABLE_SCHEMA LIKE '%s' 
+	query := `SELECT TABLE_NAME
+			 FROM information_schema.TABLES
+			 WHERE TABLE_SCHEMA LIKE '%s'
 			 AND TABLE_TYPE = 'VIEW'
 			`
 	qr, err := conn.Fetch(fmt.Sprintf(query, database))
