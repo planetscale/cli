@@ -19,6 +19,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// https://github.com/vitessio/vitess/blob/7dd3c6b550eecc1b6a3beb685763f2cb7b6e2c17/go/vt/schema/name.go#L33
 const VITESS_GHOST_TABLE_REGEX = "_vt_([a-zA-Z0-9]{3})_([0-f]{32})_([0-9]{14})_"
 
 // Config describes the settings to dump from a database.
