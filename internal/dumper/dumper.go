@@ -415,9 +415,9 @@ func (d *Dumper) allTables(conn *Connection, database string) ([]string, error) 
 }
 
 func (d *Dumper) allViews(conn *Connection, database string) (map[string]bool, error) {
-	query := `SELECT TABLE_NAME
-			 FROM information_schema.TABLES
-			 WHERE TABLE_SCHEMA LIKE '%s'
+	query := `SELECT TABLE_NAME 
+			 FROM information_schema.TABLES 
+			 WHERE TABLE_SCHEMA LIKE '%s' 
 			 AND TABLE_TYPE = 'VIEW'
 			`
 	qr, err := conn.Fetch(fmt.Sprintf(query, database))
