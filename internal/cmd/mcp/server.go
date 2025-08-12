@@ -22,6 +22,7 @@ type ToolDef struct {
 
 // getToolDefinitions returns the list of all available MCP tools
 func getToolDefinitions() []ToolDef {
+	namingBlurb := ".  Two common naming conventions for PlanetScale databases are <org>/<database> and <org>/<database>/<branch>.  If the user provides a database identifier like this, use it to fill in the corresponding tool parameters.  If the user provides 'org/database' format, automatically parse org and database parameters."
 	return []ToolDef{
 		{
 			tool: mcp.NewTool("list_orgs",
@@ -40,7 +41,7 @@ func getToolDefinitions() []ToolDef {
 		},
 		{
 			tool: mcp.NewTool("list_branches",
-				mcp.WithDescription("List all branches for a database"),
+				mcp.WithDescription("List all branches for a database" + namingBlurb),
 				mcp.WithString("database",
 					mcp.Description("The database name"),
 					mcp.Required(),
@@ -53,7 +54,7 @@ func getToolDefinitions() []ToolDef {
 		},
 		{
 			tool: mcp.NewTool("list_keyspaces",
-				mcp.WithDescription("List all keyspaces within a branch"),
+				mcp.WithDescription("List all keyspaces within a branch" + namingBlurb),
 				mcp.WithString("database",
 					mcp.Description("The database name"),
 					mcp.Required(),
@@ -70,7 +71,7 @@ func getToolDefinitions() []ToolDef {
 		},
 		{
 			tool: mcp.NewTool("list_tables",
-				mcp.WithDescription("List all tables in a keyspace/database"),
+				mcp.WithDescription("List all tables in a keyspace/database" + namingBlurb),
 				mcp.WithString("database",
 					mcp.Description("The database name"),
 					mcp.Required(),
@@ -93,7 +94,7 @@ func getToolDefinitions() []ToolDef {
 		},
 		{
 			tool: mcp.NewTool("get_schema",
-				mcp.WithDescription("Get the SQL schema for tables in a keyspace/database"),
+				mcp.WithDescription("Get the SQL schema for tables in a keyspace/database" + namingBlurb),
 				mcp.WithString("database",
 					mcp.Description("The database name"),
 					mcp.Required(),
@@ -117,7 +118,7 @@ func getToolDefinitions() []ToolDef {
 		},
 		{
 			tool: mcp.NewTool("run_query",
-				mcp.WithDescription("Run a SQL query against a database branch keyspace/database"),
+				mcp.WithDescription("Run a SQL query against a database branch keyspace/database" + namingBlurb),
 				mcp.WithString("database",
 					mcp.Description("The database name"),
 					mcp.Required(),
@@ -141,7 +142,7 @@ func getToolDefinitions() []ToolDef {
 		},
 		{
 			tool: mcp.NewTool("get_insights",
-				mcp.WithDescription("Get recent performance data for a database branch"),
+				mcp.WithDescription("Get recent performance data for a database branch" + namingBlurb),
 				mcp.WithString("database",
 					mcp.Description("The database name"),
 					mcp.Required(),
