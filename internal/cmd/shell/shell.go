@@ -428,9 +428,6 @@ func startShellForMySQL(ctx context.Context, ch *cmdutil.Helper, client *ps.Clie
 		}
 	}()
 
-	username := pw.Password.Username
-	password := pw.Password.PlainText
-
 	localAddr := "127.0.0.1:0"
 	if flags.localAddr != "" {
 		localAddr = flags.localAddr
@@ -441,15 +438,12 @@ func startShellForMySQL(ctx context.Context, ch *cmdutil.Helper, client *ps.Clie
 		remoteAddr = pw.Password.Hostname
 	}
 
-	proxyConfig := proxyutil.Config{
+	proxy := proxyutil.New(proxyutil.Config{
 		Logger:       cmdutil.NewZapLogger(ch.Debug()),
 		UpstreamAddr: remoteAddr,
-		Username:     username,
-		Password:     password,
-	}
-
-	// MySQL mode - create proxy
-	proxy := proxyutil.New(proxyConfig)
+		Username:     pw.Password.Username,
+		Password:     pw.Password.PlainText,
+	})
 	defer proxy.Close()
 
 	l, err := net.Listen("tcp", localAddr)
@@ -491,7 +485,6 @@ func startShellForMySQL(ctx context.Context, ch *cmdutil.Helper, client *ps.Clie
 	}
 
 	errCh := make(chan error, 1)
-
 	go func() {
 		errCh <- proxy.Serve(l, authMethod)
 	}()
@@ -500,7 +493,6 @@ func startShellForMySQL(ctx context.Context, ch *cmdutil.Helper, client *ps.Clie
 		errCh <- m.Run(ctx, sigc, signals, runForeground, mysqlArgs...)
 	}()
 
-	// Renew passwords for MySQL databases (Postgres roles have fixed TTL)
 	go func() {
 		errCh <- pw.Renew(ctx)
 	}()
