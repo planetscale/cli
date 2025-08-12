@@ -22,7 +22,7 @@ type ToolDef struct {
 
 // getToolDefinitions returns the list of all available MCP tools
 func getToolDefinitions() []ToolDef {
-	namingBlurb := ".  Two common naming conventions for PlanetScale databases are <org>/<database> and <org>/<database>/<branch>.  If the user provides a database identifier like this, use it to fill in the corresponding tool parameters.  If the user provides 'org/database' format, automatically parse org and database parameters."
+	namingBlurb := ".  Two common naming conventions for PlanetScale databases are <org>/<database> and <org>/<database>/<branch>. When the user provides a database identifier in either of these formats, automatically parse and use the org, database, and branch parameters directly - do not perform discovery steps like list_orgs or list_databases.  Examples: `acme/widgets` -> org=acme, database=widgets.  `acme/widgets/main` -> org=acme, database=widgets, branch=main.  If the user provides an identifier like 'org/database' or 'org/database/branch', parse these components directly and skip organizational/database discovery steps."
 	return []ToolDef{
 		{
 			tool: mcp.NewTool("list_orgs",
@@ -34,7 +34,8 @@ func getToolDefinitions() []ToolDef {
 			tool: mcp.NewTool("list_databases",
 				mcp.WithDescription("List all databases in an organization"),
 				mcp.WithString("org",
-					mcp.Description("The organization name (uses default organization if not specified)"),
+					mcp.Description("The organization name"),
+					mcp.Required(),
 				),
 			),
 			handler: HandleListDatabases,
@@ -47,7 +48,8 @@ func getToolDefinitions() []ToolDef {
 					mcp.Required(),
 				),
 				mcp.WithString("org",
-					mcp.Description("The organization name (uses default organization if not specified)"),
+					mcp.Description("The organization name"),
+					mcp.Required(),
 				),
 			),
 			handler: HandleListBranches,
@@ -64,7 +66,8 @@ func getToolDefinitions() []ToolDef {
 					mcp.Required(),
 				),
 				mcp.WithString("org",
-					mcp.Description("The organization name (uses default organization if not specified)"),
+					mcp.Description("The organization name"),
+					mcp.Required(),
 				),
 			),
 			handler: HandleListKeyspaces,
@@ -87,7 +90,8 @@ func getToolDefinitions() []ToolDef {
 					mcp.Description("Filter tables by schema (PostgreSQL only)"),
 				),
 				mcp.WithString("org",
-					mcp.Description("The organization name (uses default organization if not specified)"),
+					mcp.Description("The organization name"),
+					mcp.Required(),
 				),
 			),
 			handler: HandleListTables,
@@ -111,7 +115,8 @@ func getToolDefinitions() []ToolDef {
 					mcp.Required(),
 				),
 				mcp.WithString("org",
-					mcp.Description("The organization name (uses default organization if not specified)"),
+					mcp.Description("The organization name"),
+					mcp.Required(),
 				),
 			),
 			handler: HandleGetSchema,
@@ -135,7 +140,8 @@ func getToolDefinitions() []ToolDef {
 					mcp.Required(),
 				),
 				mcp.WithString("org",
-					mcp.Description("The organization name (uses default organization if not specified)"),
+					mcp.Description("The organization name"),
+					mcp.Required(),
 				),
 			),
 			handler: HandleRunQuery,
@@ -152,7 +158,8 @@ func getToolDefinitions() []ToolDef {
 					mcp.Required(),
 				),
 				mcp.WithString("org",
-					mcp.Description("The organization name (uses default organization if not specified)"),
+					mcp.Description("The organization name"),
+					mcp.Required(),
 				),
 			),
 			handler: HandleGetInsights,
