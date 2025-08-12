@@ -342,7 +342,7 @@ func startShellForPostgres(ctx context.Context, ch *cmdutil.Helper, client *ps.C
 		Database:       database,
 		Branch:         branch,
 		Name:           roleutil.GenerateName("pscale-cli-shell"),
-		TTL:            300 * time.Second, // 300s = 5 minutes
+		TTL:            5 * time.Minute,
 		InheritedRoles: inheritedRoles,
 	})
 	if err != nil {
@@ -370,15 +370,17 @@ func startShellForPostgres(ctx context.Context, ch *cmdutil.Helper, client *ps.C
 	}
 
 	// For PostgreSQL, connect directly to the remote host without proxy
-	remoteHost, _, err := net.SplitHostPort(remoteAddr)
+	remoteHost, remotePort, err := net.SplitHostPort(remoteAddr)
 	if err != nil {
-		// If remoteAddr doesn't have port, use it as is
+		// If remoteAddr doesn't have port, treat it as just a hostname and
+		// default to port 5432
 		remoteHost = remoteAddr
+		remotePort = "5432"
 	}
 
 	psqlArgs := []string{
 		"-h", remoteHost,
-		"-p", "5432",
+		"-p", remotePort,
 		"-U", username,
 		"-d", "postgres",
 	}
