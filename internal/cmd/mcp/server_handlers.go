@@ -441,7 +441,7 @@ func HandleListTables(ctx context.Context, request mcp.CallToolRequest, ch *cmdu
 		tableObjects := make([]map[string]interface{}, 0, len(results))
 		for _, row := range results {
 			tableObj := make(map[string]interface{})
-			
+
 			if schema, ok := row["schemaname"]; ok {
 				tableObj["schema"] = schema
 			}
@@ -451,7 +451,7 @@ func HandleListTables(ctx context.Context, request mcp.CallToolRequest, ch *cmdu
 			if owner, ok := row["tableowner"]; ok {
 				tableObj["owner"] = owner
 			}
-			
+
 			tableObjects = append(tableObjects, tableObj)
 		}
 
@@ -600,7 +600,7 @@ func HandleGetSchema(ctx context.Context, request mcp.CallToolRequest, ch *cmdut
 // getPostgreSQLSchemas gets schema information for PostgreSQL tables
 func getPostgreSQLSchemas(ctx context.Context, request mcp.CallToolRequest, ch *cmdutil.Helper, tables string) (map[string][]map[string]interface{}, error) {
 	args := request.GetArguments()
-	
+
 	// Get keyspace parameter (database name) with default
 	keyspace := "postgres" // default database
 	if keyspaceArg, ok := args["keyspace"].(string); ok && keyspaceArg != "" {
@@ -609,7 +609,7 @@ func getPostgreSQLSchemas(ctx context.Context, request mcp.CallToolRequest, ch *
 
 	// Build WHERE clauses for each part of the UNION query
 	var columnsWhereClause, constraintsWhereClause, indexesWhereClause string
-	
+
 	if tables == "*" {
 		// All tables in all schemas (excluding system schemas)
 		columnsWhereClause = "table_schema NOT IN ('pg_catalog', 'information_schema')"
@@ -618,7 +618,7 @@ func getPostgreSQLSchemas(ctx context.Context, request mcp.CallToolRequest, ch *
 	} else {
 		// Parse comma-separated list and build conditions
 		var columnConditions, constraintConditions, indexConditions []string
-		
+
 		for _, table := range strings.Split(tables, ",") {
 			table = strings.TrimSpace(table)
 			if table == "" {

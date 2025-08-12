@@ -7,6 +7,7 @@ import (
 	"net"
 	"time"
 
+	_ "github.com/lib/pq" // PostgreSQL driver
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/passwordutil"
@@ -15,7 +16,6 @@ import (
 	"github.com/planetscale/planetscale-go/planetscale"
 	"github.com/planetscale/psdbproxy"
 	"vitess.io/vitess/go/mysql"
-	_ "github.com/lib/pq" // PostgreSQL driver
 )
 
 // DatabaseConnection represents a connection to a PlanetScale database
