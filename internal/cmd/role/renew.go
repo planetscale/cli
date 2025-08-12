@@ -26,7 +26,7 @@ func RenewCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
-			end := ch.Printer.PrintProgress(fmt.Sprintf("Renewing role %s in %s/%s...", 
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Renewing role %s in %s/%s...",
 				printer.BoldBlue(roleID), printer.BoldBlue(database), printer.BoldBlue(branch)))
 			defer end()
 
