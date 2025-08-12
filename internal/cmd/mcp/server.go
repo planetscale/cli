@@ -118,7 +118,7 @@ func getToolDefinitions() []ToolDef {
 		},
 		{
 			tool: mcp.NewTool("run_query",
-				mcp.WithDescription("Run a SQL query against a database branch keyspace"),
+				mcp.WithDescription("Run a SQL query against a database branch keyspace/database"),
 				mcp.WithString("database",
 					mcp.Description("The database name"),
 					mcp.Required(),
@@ -128,8 +128,7 @@ func getToolDefinitions() []ToolDef {
 					mcp.Required(),
 				),
 				mcp.WithString("keyspace",
-					mcp.Description("The keyspace name"),
-					mcp.Required(),
+					mcp.Description("The keyspace name (for MySQL) or inner database name (for PostgreSQL, defaults to 'postgres')"),
 				),
 				mcp.WithString("query",
 					mcp.Description("The SQL query to run (read-only queries only)"),

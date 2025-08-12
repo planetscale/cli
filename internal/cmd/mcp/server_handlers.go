@@ -265,7 +265,20 @@ func HandleListKeyspaces(ctx context.Context, request mcp.CallToolRequest, ch *c
 
 // HandleRunQuery implements the run_query tool
 func HandleRunQuery(ctx context.Context, request mcp.CallToolRequest, ch *cmdutil.Helper) (*mcp.CallToolResult, error) {
+	// Get the PlanetScale client
+	client, err := ch.Client()
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize PlanetScale client: %w", err)
+	}
+
 	args := request.GetArguments()
+
+	// Get the required database parameter
+	dbArg, ok := args["database"]
+	if !ok || dbArg == "" {
+		return nil, fmt.Errorf("database parameter is required")
+	}
+	database := dbArg.(string)
 
 	// Get the required query parameter
 	queryArg, ok := args["query"]
@@ -274,21 +287,73 @@ func HandleRunQuery(ctx context.Context, request mcp.CallToolRequest, ch *cmduti
 	}
 	query := queryArg.(string)
 
-	// Create a database connection
-	conn, err := createDatabaseConnection(ctx, request, ch)
+	// Get the organization
+	orgName, err := getOrganization(request, ch)
 	if err != nil {
-		handledErr := cmdutil.HandleError(err)
-		if handledErr != err {
-			return nil, handledErr
-		}
 		return nil, err
 	}
-	defer conn.close()
 
-	// Execute the query
-	results, err := executeQuery(ctx, conn, query)
+	// Get database info to determine the database kind
+	dbInfo, err := client.Databases.Get(ctx, &planetscale.GetDatabaseRequest{
+		Organization: orgName,
+		Database:     database,
+	})
 	if err != nil {
-		return nil, err
+		switch cmdutil.ErrCode(err) {
+		case planetscale.ErrNotFound:
+			return nil, fmt.Errorf("database %s does not exist in organization %s", database, orgName)
+		default:
+			handledErr := cmdutil.HandleError(err)
+			if handledErr != err {
+				return nil, handledErr
+			}
+			return nil, fmt.Errorf("failed to get database info: %w", err)
+		}
+	}
+
+	var results []map[string]interface{}
+
+	// Handle different database types
+	switch dbInfo.Kind {
+	case "postgresql", "horizon":
+		// For PostgreSQL, get keyspace parameter (database name) with default
+		keyspace := "postgres" // default database
+		if keyspaceArg, ok := args["keyspace"].(string); ok && keyspaceArg != "" {
+			keyspace = keyspaceArg
+		}
+
+		// Execute the query using PostgreSQL connection
+		results, err = executeQueryPostgres(ctx, request, ch, query, keyspace)
+		if err != nil {
+			return nil, fmt.Errorf("failed to execute PostgreSQL query: %w", err)
+		}
+
+	case "mysql":
+		// For MySQL, keyspace parameter is required
+		keyspaceArg, ok := args["keyspace"]
+		if !ok || keyspaceArg == "" {
+			return nil, fmt.Errorf("keyspace parameter is required for MySQL databases")
+		}
+
+		// For MySQL, use the existing approach with database connection
+		conn, err := createDatabaseConnection(ctx, request, ch)
+		if err != nil {
+			handledErr := cmdutil.HandleError(err)
+			if handledErr != err {
+				return nil, handledErr
+			}
+			return nil, err
+		}
+		defer conn.close()
+
+		// Execute the query
+		results, err = executeQuery(ctx, conn, query)
+		if err != nil {
+			return nil, err
+		}
+
+	default:
+		return nil, fmt.Errorf("unsupported database kind: %s. Only 'mysql' and 'postgresql' are supported", dbInfo.Kind)
 	}
 
 	// Convert to JSON
