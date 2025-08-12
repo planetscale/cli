@@ -310,3 +310,29 @@ func SnakeToSentenceCase(s string) string {
 
 	return strings.Join(words, " ")
 }
+
+// ParseDuration extends time.ParseDuration with a "d" unit that is not
+// permitted by the Go standard library. For more information, see:
+// https://github.com/golang/go/issues/11473.
+func ParseDuration(s string) (time.Duration, error) {
+	// This is a very rudimentary parser; just look for a single rune suffix and
+	// match on that using the generally accepted definitions of "day" with no
+	// accounting for leap seconds.
+	//
+	// If these edge cases matter, users can always perform the math and enter
+	// an absolute TTL in seconds.
+	var multiplier time.Duration
+	switch s[len(s)-1] {
+	case 'd':
+		multiplier = 24 * time.Hour
+	default:
+		return time.ParseDuration(s)
+	}
+
+	v, err := strconv.Atoi(s[:len(s)-1])
+	if err != nil {
+		return 0, err
+	}
+
+	return time.Duration(v) * multiplier, nil
+}
