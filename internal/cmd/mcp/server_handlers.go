@@ -79,20 +79,23 @@ func HandleListDatabases(ctx context.Context, request mcp.CallToolRequest, ch *c
 		}
 	}
 
-	// Extract only the database names
-	dbNames := make([]string, 0, len(databases))
+	// Extract database names and kinds as JSON objects
+	dbObjects := make([]map[string]string, 0, len(databases))
 	for _, db := range databases {
-		dbNames = append(dbNames, db.Name)
+		dbObjects = append(dbObjects, map[string]string{
+			"name": db.Name,
+			"kind": string(db.Kind),
+		})
 	}
 
 	// Convert to JSON
-	dbNamesJSON, err := json.Marshal(dbNames)
+	dbObjectsJSON, err := json.Marshal(dbObjects)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal database names: %w", err)
+		return nil, fmt.Errorf("failed to marshal database objects: %w", err)
 	}
 
 	// Return the JSON array as text
-	return mcp.NewToolResultText(string(dbNamesJSON)), nil
+	return mcp.NewToolResultText(string(dbObjectsJSON)), nil
 }
 
 // HandleListBranches implements the list_branches tool
