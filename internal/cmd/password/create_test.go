@@ -270,7 +270,7 @@ func Test_ttlFlag(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var ttl ttlFlag
+			var ttl cmdutil.TTLFlag
 			err := ttl.Set(tt.in)
 			if tt.err != "" {
 				require.EqualError(t, err, tt.err)

@@ -2,6 +2,7 @@ package cmdutil
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -17,6 +18,7 @@ import (
 	ps "github.com/planetscale/planetscale-go/planetscale"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	exec "golang.org/x/sys/execabs"
@@ -309,4 +311,72 @@ func SnakeToSentenceCase(s string) string {
 	}
 
 	return strings.Join(words, " ")
+}
+
+// ParseDuration extends time.ParseDuration with a "d" unit that is not
+// permitted by the Go standard library. For more information, see:
+// https://github.com/golang/go/issues/11473.
+func ParseDuration(s string) (time.Duration, error) {
+	// This is a very rudimentary parser; just look for a single rune suffix and
+	// match on that using the generally accepted definitions of "day" with no
+	// accounting for leap seconds.
+	//
+	// If these edge cases matter, users can always perform the math and enter
+	// an absolute TTL in seconds.
+	var multiplier time.Duration
+	switch s[len(s)-1] {
+	case 'd':
+		multiplier = 24 * time.Hour
+	default:
+		return time.ParseDuration(s)
+	}
+
+	v, err := strconv.Atoi(s[:len(s)-1])
+	if err != nil {
+		return 0, err
+	}
+
+	return time.Duration(v) * multiplier, nil
+}
+
+// TTLFlag is a pflag.Value specialized for parsing TTL durations which may or
+// may not have an accompanying time unit.
+type TTLFlag struct{ Value time.Duration }
+
+var _ pflag.Value = &TTLFlag{}
+
+func (f *TTLFlag) String() string { return f.Value.String() }
+func (f *TTLFlag) Type() string   { return "duration" }
+
+func (f *TTLFlag) Set(value string) error {
+	if value == "" {
+		// Empty string or undefined.
+		return f.set(0 * time.Second)
+	}
+
+	if d, err := ParseDuration(value); err == nil {
+		// Valid stdlib duration.
+		return f.set(d)
+	}
+
+	// Fall back to parsing a bare integer in seconds for CLI compatibility.
+	i, err := strconv.Atoi(value)
+	if err != nil {
+		return fmt.Errorf("cannot parse %q as TTL in seconds", value)
+	}
+
+	return f.set(time.Duration(i) * time.Second)
+}
+
+// set sets d into f after performing validation.
+func (f *TTLFlag) set(d time.Duration) error {
+	switch {
+	case d < 0:
+		return errors.New("TTL cannot be negative")
+	case d.Round(time.Second) != d:
+		return errors.New("TTL must be defined in increments of 1 second")
+	default:
+		f.Value = d
+		return nil
+	}
 }
