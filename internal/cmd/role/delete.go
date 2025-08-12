@@ -109,7 +109,7 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 
 	cmd.Flags().BoolVar(&flags.force, "force", false, "Delete a role without confirmation")
-	cmd.Flags().StringVar(&flags.successor, "successor", "", "Role to transfer ownership to before deletion")
+	cmd.Flags().StringVar(&flags.successor, "successor", "", "Role to transfer ownership to before deletion. Usually 'postgres'.")
 
 	return cmd
 }
