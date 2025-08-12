@@ -521,7 +521,20 @@ func HandleListTables(ctx context.Context, request mcp.CallToolRequest, ch *cmdu
 
 // HandleGetSchema implements the get_schema tool
 func HandleGetSchema(ctx context.Context, request mcp.CallToolRequest, ch *cmdutil.Helper) (*mcp.CallToolResult, error) {
+	// Get the PlanetScale client
+	client, err := ch.Client()
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize PlanetScale client: %w", err)
+	}
+
 	args := request.GetArguments()
+
+	// Get the required database parameter
+	dbArg, ok := args["database"]
+	if !ok || dbArg == "" {
+		return nil, fmt.Errorf("database parameter is required")
+	}
+	database := dbArg.(string)
 
 	// Get the required tables parameter
 	tablesArg, ok := args["tables"]
@@ -530,6 +543,191 @@ func HandleGetSchema(ctx context.Context, request mcp.CallToolRequest, ch *cmdut
 	}
 	tables := tablesArg.(string)
 
+	// Get the organization
+	orgName, err := getOrganization(request, ch)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get database info to determine the database kind
+	dbInfo, err := client.Databases.Get(ctx, &planetscale.GetDatabaseRequest{
+		Organization: orgName,
+		Database:     database,
+	})
+	if err != nil {
+		switch cmdutil.ErrCode(err) {
+		case planetscale.ErrNotFound:
+			return nil, fmt.Errorf("database %s does not exist in organization %s", database, orgName)
+		default:
+			handledErr := cmdutil.HandleError(err)
+			if handledErr != err {
+				return nil, handledErr
+			}
+			return nil, fmt.Errorf("failed to get database info: %w", err)
+		}
+	}
+
+	var schemas interface{}
+
+	// Handle different database types
+	switch dbInfo.Kind {
+	case "postgresql", "horizon":
+		schemas, err = getPostgreSQLSchemas(ctx, request, ch, tables)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get PostgreSQL schemas: %w", err)
+		}
+
+	case "mysql":
+		schemas, err = getMySQLSchemas(ctx, request, ch, tables)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get MySQL schemas: %w", err)
+		}
+
+	default:
+		return nil, fmt.Errorf("unsupported database kind: %s. Only 'mysql' and 'postgresql' are supported", dbInfo.Kind)
+	}
+
+	// Convert to JSON
+	schemasJSON, err := json.Marshal(schemas)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal schemas: %w", err)
+	}
+
+	// Return the JSON object as text
+	return mcp.NewToolResultText(string(schemasJSON)), nil
+}
+
+// getPostgreSQLSchemas gets schema information for PostgreSQL tables
+func getPostgreSQLSchemas(ctx context.Context, request mcp.CallToolRequest, ch *cmdutil.Helper, tables string) (map[string][]map[string]interface{}, error) {
+	args := request.GetArguments()
+	
+	// Get keyspace parameter (database name) with default
+	keyspace := "postgres" // default database
+	if keyspaceArg, ok := args["keyspace"].(string); ok && keyspaceArg != "" {
+		keyspace = keyspaceArg
+	}
+
+	// Build WHERE clauses for each part of the UNION query
+	var columnsWhereClause, constraintsWhereClause, indexesWhereClause string
+	
+	if tables == "*" {
+		// All tables in all schemas (excluding system schemas)
+		columnsWhereClause = "table_schema NOT IN ('pg_catalog', 'information_schema')"
+		constraintsWhereClause = "tc.table_schema NOT IN ('pg_catalog', 'information_schema')"
+		indexesWhereClause = "schemaname NOT IN ('pg_catalog', 'information_schema')"
+	} else {
+		// Parse comma-separated list and build conditions
+		var columnConditions, constraintConditions, indexConditions []string
+		
+		for _, table := range strings.Split(tables, ",") {
+			table = strings.TrimSpace(table)
+			if table == "" {
+				continue
+			}
+
+			if strings.HasSuffix(table, ".*") {
+				// Schema wildcard: "myschema.*"
+				schemaName := strings.TrimSuffix(table, ".*")
+				columnConditions = append(columnConditions, fmt.Sprintf("table_schema = '%s'", schemaName))
+				constraintConditions = append(constraintConditions, fmt.Sprintf("tc.table_schema = '%s'", schemaName))
+				indexConditions = append(indexConditions, fmt.Sprintf("schemaname = '%s'", schemaName))
+			} else if strings.Contains(table, ".") {
+				// Qualified table name: "myschema.mytable"
+				parts := strings.Split(table, ".")
+				if len(parts) == 2 {
+					columnConditions = append(columnConditions, fmt.Sprintf("(table_schema = '%s' AND table_name = '%s')", parts[0], parts[1]))
+					constraintConditions = append(constraintConditions, fmt.Sprintf("(tc.table_schema = '%s' AND tc.table_name = '%s')", parts[0], parts[1]))
+					indexConditions = append(indexConditions, fmt.Sprintf("(schemaname = '%s' AND tablename = '%s')", parts[0], parts[1]))
+				}
+			} else {
+				// Unqualified table name: "mytable" -> "public.mytable"
+				columnConditions = append(columnConditions, fmt.Sprintf("(table_schema = 'public' AND table_name = '%s')", table))
+				constraintConditions = append(constraintConditions, fmt.Sprintf("(tc.table_schema = 'public' AND tc.table_name = '%s')", table))
+				indexConditions = append(indexConditions, fmt.Sprintf("(schemaname = 'public' AND tablename = '%s')", table))
+			}
+		}
+
+		if len(columnConditions) == 0 {
+			return map[string][]map[string]interface{}{}, nil
+		}
+
+		columnsWhereClause = "(" + strings.Join(columnConditions, " OR ") + ")"
+		constraintsWhereClause = "(" + strings.Join(constraintConditions, " OR ") + ")"
+		indexesWhereClause = "(" + strings.Join(indexConditions, " OR ") + ")"
+	}
+
+	// Build the big query
+	query := fmt.Sprintf(`
+-- Column details
+SELECT 
+    table_schema || '.' || table_name as table_key,
+    'COLUMN' as type,
+    column_name as name,
+    data_type,
+    character_maximum_length,
+    is_nullable,
+    column_default as details
+FROM information_schema.columns 
+WHERE %s
+
+UNION ALL
+
+-- Constraints
+SELECT 
+    tc.table_schema || '.' || tc.table_name as table_key,
+    'CONSTRAINT' as type,
+    tc.constraint_name as name,
+    tc.constraint_type as data_type,
+    NULL::integer as character_maximum_length,
+    NULL as is_nullable,
+    string_agg(kcu.column_name, ', ') as details
+FROM information_schema.table_constraints tc
+LEFT JOIN information_schema.key_column_usage kcu 
+    ON tc.constraint_name = kcu.constraint_name
+WHERE %s
+GROUP BY tc.table_schema, tc.table_name, tc.constraint_name, tc.constraint_type
+
+UNION ALL
+
+-- Indexes
+SELECT 
+    schemaname || '.' || tablename as table_key,
+    'INDEX' as type,
+    indexname as name,
+    'btree' as data_type,
+    NULL::integer as character_maximum_length,
+    NULL as is_nullable,
+    indexdef as details
+FROM pg_indexes 
+WHERE %s
+
+ORDER BY table_key, type, name;`, columnsWhereClause, constraintsWhereClause, indexesWhereClause)
+
+	results, err := executeQueryPostgres(ctx, request, ch, query, keyspace)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute PostgreSQL schema query: %w", err)
+	}
+
+	// Group results by table
+	schemas := make(map[string][]map[string]interface{})
+	for _, row := range results {
+		if tableKey, ok := row["table_key"].(string); ok {
+			// Remove table_key from the row data
+			rowData := make(map[string]interface{})
+			for k, v := range row {
+				if k != "table_key" {
+					rowData[k] = v
+				}
+			}
+			schemas[tableKey] = append(schemas[tableKey], rowData)
+		}
+	}
+
+	return schemas, nil
+}
+
+// getMySQLSchemas gets schema information for MySQL tables (existing functionality)
+func getMySQLSchemas(ctx context.Context, request mcp.CallToolRequest, ch *cmdutil.Helper, tables string) (map[string]string, error) {
 	// Create a database connection
 	conn, err := createDatabaseConnection(ctx, request, ch)
 	if err != nil {
@@ -596,14 +794,7 @@ func HandleGetSchema(ctx context.Context, request mcp.CallToolRequest, ch *cmdut
 		}
 	}
 
-	// Convert to JSON
-	schemasJSON, err := json.Marshal(schemas)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal schemas: %w", err)
-	}
-
-	// Return the JSON object as text
-	return mcp.NewToolResultText(string(schemasJSON)), nil
+	return schemas, nil
 }
 
 // HandleGetInsights implements the get_insights tool
