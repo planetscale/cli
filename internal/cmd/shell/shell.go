@@ -248,8 +248,6 @@ func (p *postgresql) Run(ctx context.Context, sigc chan os.Signal, signals []os.
 		fmt.Sprintf("PGPASSWORD=%s", p.password),
 	)
 
-	c.Env = append(c.Env, fmt.Sprintf("PSQL_PROMPT1=%s", p.styledBranch))
-
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr
 	c.Stdin = os.Stdin
@@ -378,15 +376,16 @@ func startShellForPostgres(ctx context.Context, ch *cmdutil.Helper, client *ps.C
 		remotePort = "5432"
 	}
 
+	historyFile := historyFilePath(ch.Config.Organization, database, branch)
+	styledBranch := formatBranch(database, dbBranch)
+
 	psqlArgs := []string{
 		"-h", remoteHost,
 		"-p", remotePort,
 		"-U", username,
 		"-d", "postgres",
+		"-v", fmt.Sprintf("PROMPT1=%s", styledBranch),
 	}
-
-	historyFile := historyFilePath(ch.Config.Organization, database, branch)
-	styledBranch := formatBranch(database, dbBranch)
 
 	psql := &postgresql{
 		psqlPath:     clientPath,
