@@ -209,7 +209,8 @@ func HandleListKeyspaces(ctx context.Context, request mcp.CallToolRequest, ch *c
 	switch dbInfo.Kind {
 	case "postgresql", "horizon":
 		// For PostgreSQL, query pg_database to get database names (keyspaces)
-		results, err := executeQueryPostgres(ctx, request, ch, "SELECT datname FROM pg_database WHERE datistemplate = false AND datallowconn = true ORDER BY datname;")
+		query := "SELECT datname FROM pg_database WHERE datistemplate = false AND datallowconn = true ORDER BY datname;"
+		results, err := executeQueryPostgres(ctx, request, ch, query, "pscale_admin")
 		if err != nil {
 			return nil, fmt.Errorf("failed to query PostgreSQL databases: %w", err)
 		}
@@ -302,43 +303,155 @@ func HandleRunQuery(ctx context.Context, request mcp.CallToolRequest, ch *cmduti
 
 // HandleListTables implements the list_tables tool
 func HandleListTables(ctx context.Context, request mcp.CallToolRequest, ch *cmdutil.Helper) (*mcp.CallToolResult, error) {
-	// Create a database connection
-	conn, err := createDatabaseConnection(ctx, request, ch)
+	// Get the PlanetScale client
+	client, err := ch.Client()
 	if err != nil {
-		handledErr := cmdutil.HandleError(err)
-		if handledErr != err {
-			return nil, handledErr
+		return nil, fmt.Errorf("failed to initialize PlanetScale client: %w", err)
+	}
+
+	args := request.GetArguments()
+
+	// Get the required database parameter
+	dbArg, ok := args["database"]
+	if !ok || dbArg == "" {
+		return nil, fmt.Errorf("database parameter is required")
+	}
+	database := dbArg.(string)
+
+	// Get the optional schema parameter
+	var schemaFilter string
+	if schemaArg, ok := args["schema"].(string); ok && schemaArg != "" {
+		schemaFilter = schemaArg
+	}
+
+	// Get the organization
+	orgName, err := getOrganization(request, ch)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get database info to determine the database kind
+	dbInfo, err := client.Databases.Get(ctx, &planetscale.GetDatabaseRequest{
+		Organization: orgName,
+		Database:     database,
+	})
+	if err != nil {
+		switch cmdutil.ErrCode(err) {
+		case planetscale.ErrNotFound:
+			return nil, fmt.Errorf("database %s does not exist in organization %s", database, orgName)
+		default:
+			handledErr := cmdutil.HandleError(err)
+			if handledErr != err {
+				return nil, handledErr
+			}
+			return nil, fmt.Errorf("failed to get database info: %w", err)
 		}
-		return nil, err
-	}
-	defer conn.close()
-
-	// Execute the SHOW TABLES query
-	results, err := executeQuery(ctx, conn, "SHOW TABLES")
-	if err != nil {
-		return nil, err
 	}
 
-	// Extract just the table names from the results
-	tableNames := make([]string, 0, len(results))
-	for _, row := range results {
-		// Each row has only one value, so we can just take the first value we find
-		for _, value := range row {
-			if tableName, ok := value.(string); ok {
-				tableNames = append(tableNames, tableName)
-				break // Only need the first value
+	// Handle different database types
+	switch dbInfo.Kind {
+	case "postgresql", "horizon":
+		// For PostgreSQL, get keyspace parameter (database name) with default
+		keyspace := "postgres" // default database
+		if keyspaceArg, ok := args["keyspace"].(string); ok && keyspaceArg != "" {
+			keyspace = keyspaceArg
+		}
+
+		// Build PostgreSQL query with optional schema filter
+		var query string
+		if schemaFilter != "" {
+			// Filter by specific schema
+			query = fmt.Sprintf("SELECT schemaname, tablename, tableowner FROM pg_tables WHERE schemaname NOT IN ('pg_catalog', 'information_schema') AND schemaname = '%s' ORDER BY tablename;", schemaFilter)
+		} else {
+			// No schema filter, get all tables
+			query = "SELECT schemaname, tablename, tableowner FROM pg_tables WHERE schemaname NOT IN ('pg_catalog', 'information_schema') ORDER BY schemaname, tablename;"
+		}
+
+		results, err := executeQueryPostgres(ctx, request, ch, query, keyspace)
+		if err != nil {
+			return nil, fmt.Errorf("failed to query PostgreSQL tables: %w", err)
+		}
+
+		// Convert results to the expected format with schema, name, and owner fields
+		tableObjects := make([]map[string]interface{}, 0, len(results))
+		for _, row := range results {
+			tableObj := make(map[string]interface{})
+			
+			if schema, ok := row["schemaname"]; ok {
+				tableObj["schema"] = schema
+			}
+			if name, ok := row["tablename"]; ok {
+				tableObj["name"] = name
+			}
+			if owner, ok := row["tableowner"]; ok {
+				tableObj["owner"] = owner
+			}
+			
+			tableObjects = append(tableObjects, tableObj)
+		}
+
+		// Convert to JSON
+		tableObjectsJSON, err := json.Marshal(tableObjects)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal PostgreSQL table objects: %w", err)
+		}
+
+		// Return the JSON array as text
+		return mcp.NewToolResultText(string(tableObjectsJSON)), nil
+
+	case "mysql":
+		// Check if schema parameter is provided - not supported for MySQL
+		if schemaFilter != "" {
+			return nil, fmt.Errorf("schema parameter is not supported for MySQL databases")
+		}
+
+		// For MySQL, keyspace parameter is required
+		keyspaceArg, ok := args["keyspace"]
+		if !ok || keyspaceArg == "" {
+			return nil, fmt.Errorf("keyspace parameter is required for MySQL databases")
+		}
+
+		// For MySQL, use the existing approach with database connection
+		conn, err := createDatabaseConnection(ctx, request, ch)
+		if err != nil {
+			handledErr := cmdutil.HandleError(err)
+			if handledErr != err {
+				return nil, handledErr
+			}
+			return nil, err
+		}
+		defer conn.close()
+
+		// Execute the SHOW TABLES query
+		results, err := executeQuery(ctx, conn, "SHOW TABLES")
+		if err != nil {
+			return nil, err
+		}
+
+		// Extract just the table names from the results
+		tableNames := make([]string, 0, len(results))
+		for _, row := range results {
+			// Each row has only one value, so we can just take the first value we find
+			for _, value := range row {
+				if tableName, ok := value.(string); ok {
+					tableNames = append(tableNames, tableName)
+					break // Only need the first value
+				}
 			}
 		}
-	}
 
-	// Convert to JSON
-	tableNamesJSON, err := json.Marshal(tableNames)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal table names: %w", err)
-	}
+		// Convert to JSON
+		tableNamesJSON, err := json.Marshal(tableNames)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal table names: %w", err)
+		}
 
-	// Return the JSON array as text
-	return mcp.NewToolResultText(string(tableNamesJSON)), nil
+		// Return the JSON array as text
+		return mcp.NewToolResultText(string(tableNamesJSON)), nil
+
+	default:
+		return nil, fmt.Errorf("unsupported database kind: %s. Only 'mysql' and 'postgresql' are supported", dbInfo.Kind)
+	}
 }
 
 // HandleGetSchema implements the get_schema tool

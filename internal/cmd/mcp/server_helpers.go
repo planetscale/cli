@@ -279,8 +279,8 @@ func (c *PostgresConnection) close() {
 	}
 }
 
-// executeQueryPostgres executes a SQL query against a PostgreSQL database using an ephemeral read-only role
-func executeQueryPostgres(ctx context.Context, request mcp.CallToolRequest, ch *cmdutil.Helper, query string) ([]map[string]interface{}, error) {
+// executeQueryPostgres executes a SQL query against a PostgreSQL database using an ephemeral read-only role with a specific keyspace/database
+func executeQueryPostgres(ctx context.Context, request mcp.CallToolRequest, ch *cmdutil.Helper, query string, keyspace string) ([]map[string]interface{}, error) {
 	// Get the PlanetScale client
 	client, err := ch.Client()
 	if err != nil {
@@ -365,8 +365,8 @@ func executeQueryPostgres(ctx context.Context, request mcp.CallToolRequest, ch *
 	}
 
 	// Create PostgreSQL connection string
-	connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=postgres sslmode=require",
-		remoteHost, remotePort, pgRole.Role.Username, pgRole.Role.Password)
+	connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=require",
+		remoteHost, remotePort, pgRole.Role.Username, pgRole.Role.Password, keyspace)
 
 	// Open PostgreSQL connection
 	db, err := sql.Open("postgres", connStr)
