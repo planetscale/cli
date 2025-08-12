@@ -1,23 +1,19 @@
 package password
 
 import (
-	"errors"
 	"fmt"
-	"strconv"
-	"time"
 
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
 	ps "github.com/planetscale/planetscale-go/planetscale"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 )
 
 func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
 		role    string
-		ttl     ttlFlag
+		ttl     cmdutil.TTLFlag
 		replica bool
 	}
 
@@ -92,45 +88,4 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	return cmd
 }
 
-var _ pflag.Value = &ttlFlag{}
-
-// A ttlFlag is a pflag.Value specialized for parsing TTL durations which may or
-// may not have an accompanying time unit.
-type ttlFlag struct{ Value time.Duration }
-
-func (f *ttlFlag) String() string { return f.Value.String() }
-func (f *ttlFlag) Type() string   { return "duration" }
-
-func (f *ttlFlag) Set(value string) error {
-	if value == "" {
-		// Empty string or undefined.
-		return f.set(0 * time.Second)
-	}
-
-	if d, err := cmdutil.ParseDuration(value); err == nil {
-		// Valid stdlib duration.
-		return f.set(d)
-	}
-
-	// Fall back to parsing a bare integer in seconds for CLI compatibility.
-	i, err := strconv.Atoi(value)
-	if err != nil {
-		return fmt.Errorf("cannot parse %q as TTL in seconds", value)
-	}
-
-	return f.set(time.Duration(i) * time.Second)
-}
-
-// set sets d into f after performing validation.
-func (f *ttlFlag) set(d time.Duration) error {
-	switch {
-	case d < 0:
-		return errors.New("TTL cannot be negative")
-	case d.Round(time.Second) != d:
-		return errors.New("TTL must be defined in increments of 1 second")
-	default:
-		f.Value = d
-		return nil
-	}
-}
 
