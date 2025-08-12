@@ -18,6 +18,7 @@ func RoleCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	cmd.AddCommand(
 		CreateCmd(ch),
+		GetCmd(ch),
 		ListCmd(ch),
 		ResetDefaultCmd(ch),
 	)
