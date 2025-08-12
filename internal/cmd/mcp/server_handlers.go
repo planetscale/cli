@@ -832,6 +832,7 @@ func HandleGetInsights(ctx context.Context, request mcp.CallToolRequest, ch *cmd
 
 	// Fields to include in the result
 	resultFields := []string{
+		"query_count",
 		"sum_total_duration_millis",
 		"rows_read_per_returned",
 		"sum_rows_read",
