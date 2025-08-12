@@ -24,13 +24,15 @@ import (
 	"vitess.io/vitess/go/mysql"
 )
 
+type shellFlags struct {
+	localAddr  string
+	remoteAddr string
+	role       string
+	replica    bool
+}
+
 func ShellCmd(ch *cmdutil.Helper, sigc chan os.Signal, signals ...os.Signal) *cobra.Command {
-	var flags struct {
-		localAddr  string
-		remoteAddr string
-		role       string
-		replica    bool
-	}
+	var flags shellFlags
 
 	cmd := &cobra.Command{
 		Use: "shell [database] [branch]",
@@ -120,15 +122,13 @@ second argument:
 				}
 			}
 
-			replica := flags.replica
-
 			role := cmdutil.AdministratorRole
 			if flags.role != "" {
 				role, err = cmdutil.RoleFromString(flags.role)
 				if err != nil {
 					return err
 				}
-			} else if replica {
+			} else if flags.replica {
 				role = cmdutil.ReaderRole
 			}
 
@@ -167,15 +167,10 @@ second argument:
 				return errors.New("database branch is not ready yet")
 			}
 
-			shellFlags := shellFlags{
-				localAddr:  flags.localAddr,
-				remoteAddr: flags.remoteAddr,
-			}
-
 			if isPostgreSQL {
-				return startShellForPostgres(ctx, ch, client, database, branch, dbBranch, clientPath, role, replica, shellFlags, sigc, signals, runForeground)
+				return startShellForPostgres(ctx, ch, client, database, branch, dbBranch, clientPath, role, flags, sigc, signals, runForeground)
 			} else {
-				return startShellForMySQL(ctx, ch, client, database, branch, dbBranch, clientPath, authMethod, role, replica, shellFlags, sigc, signals, runForeground)
+				return startShellForMySQL(ctx, ch, client, database, branch, dbBranch, clientPath, authMethod, role, flags, sigc, signals, runForeground)
 			}
 		},
 	}
@@ -316,12 +311,7 @@ func historyFilePath(org, db, branch string) string {
 	return historyFile
 }
 
-type shellFlags struct {
-	localAddr  string
-	remoteAddr string
-}
-
-func startShellForPostgres(ctx context.Context, ch *cmdutil.Helper, client *ps.Client, database, branch string, dbBranch *ps.DatabaseBranch, clientPath string, role cmdutil.PasswordRole, replica bool, flags shellFlags, sigc chan os.Signal, signals []os.Signal, runForeground bool) error {
+func startShellForPostgres(ctx context.Context, ch *cmdutil.Helper, client *ps.Client, database, branch string, dbBranch *ps.DatabaseBranch, clientPath string, role cmdutil.PasswordRole, flags shellFlags, sigc chan os.Signal, signals []os.Signal, runForeground bool) error {
 	// Postgres connects directly, no local proxy needed
 	if flags.localAddr != "" {
 		return errors.New("--local-addr flag is not supported for Postgres databases")
@@ -360,7 +350,7 @@ func startShellForPostgres(ctx context.Context, ch *cmdutil.Helper, client *ps.C
 	}
 
 	username := pgRole.Role.Username
-	if replica {
+	if flags.replica {
 		username = username + "|replica"
 	}
 	password := pgRole.Role.Password
@@ -421,7 +411,7 @@ func startShellForPostgres(ctx context.Context, ch *cmdutil.Helper, client *ps.C
 	}
 }
 
-func startShellForMySQL(ctx context.Context, ch *cmdutil.Helper, client *ps.Client, database, branch string, dbBranch *ps.DatabaseBranch, clientPath string, authMethod mysql.AuthMethodDescription, role cmdutil.PasswordRole, replica bool, flags shellFlags, sigc chan os.Signal, signals []os.Signal, runForeground bool) error {
+func startShellForMySQL(ctx context.Context, ch *cmdutil.Helper, client *ps.Client, database, branch string, dbBranch *ps.DatabaseBranch, clientPath string, authMethod mysql.AuthMethodDescription, role cmdutil.PasswordRole, flags shellFlags, sigc chan os.Signal, signals []os.Signal, runForeground bool) error {
 	// Create a password for MySQL
 	pw, err := passwordutil.New(ctx, client, passwordutil.Options{
 		Organization: ch.Config.Organization,
@@ -430,7 +420,7 @@ func startShellForMySQL(ctx context.Context, ch *cmdutil.Helper, client *ps.Clie
 		Role:         role,
 		Name:         passwordutil.GenerateName("pscale-cli-shell"),
 		TTL:          5 * time.Minute,
-		Replica:      replica,
+		Replica:      flags.replica,
 	})
 	if err != nil {
 		return cmdutil.HandleError(err)
@@ -490,7 +480,7 @@ func startShellForMySQL(ctx context.Context, ch *cmdutil.Helper, client *ps.Clie
 		"-h", host,
 		"-P", port,
 	}
-	if replica {
+	if flags.replica {
 		mysqlArgs = append([]string{"--no-defaults"}, mysqlArgs...)
 	} else {
 		mysqlArgs = append(mysqlArgs, "-D", "@primary")
