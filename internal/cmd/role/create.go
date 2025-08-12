@@ -76,7 +76,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 		},
 	}
 	cmd.PersistentFlags().Var(&flags.ttl, "ttl", `TTL defines the time to live for the role. Durations such as "30m", "24h", or bare integers such as "3600" (seconds) are accepted. The default TTL is 0s, which means the role will never expire.`)
-	cmd.PersistentFlags().StringVar(&flags.inheritedRoles, "inherited-roles", "", "Comma-separated list of role names to inherit privileges from")
+	cmd.PersistentFlags().StringVar(&flags.inheritedRoles, "inherited-roles", "", "Comma-separated list of role names to inherit privileges from. Common values are 'pg_read_all_data' for read access, 'pg_write_all_data' for write access, and 'postgres' for admin access.")
 
 	return cmd
 }
