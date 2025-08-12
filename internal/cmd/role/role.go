@@ -17,6 +17,7 @@ func RoleCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
 
 	cmd.AddCommand(
+		CreateCmd(ch),
 		ResetDefaultCmd(ch),
 	)
 
