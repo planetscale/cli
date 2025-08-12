@@ -185,29 +185,71 @@ func HandleListKeyspaces(ctx context.Context, request mcp.CallToolRequest, ch *c
 		return nil, err
 	}
 
-	// Get the list of keyspaces
-	keyspaces, err := client.Keyspaces.List(ctx, &planetscale.ListKeyspacesRequest{
+	// Get database info to determine the database kind
+	dbInfo, err := client.Databases.Get(ctx, &planetscale.GetDatabaseRequest{
 		Organization: orgName,
 		Database:     database,
-		Branch:       branch,
 	})
 	if err != nil {
 		switch cmdutil.ErrCode(err) {
 		case planetscale.ErrNotFound:
-			return nil, fmt.Errorf("database %s or branch %s does not exist in organization %s", database, branch, orgName)
+			return nil, fmt.Errorf("database %s does not exist in organization %s", database, orgName)
 		default:
 			handledErr := cmdutil.HandleError(err)
 			if handledErr != err {
 				return nil, handledErr
 			}
-			return nil, fmt.Errorf("failed to list keyspaces: %w", err)
+			return nil, fmt.Errorf("failed to get database info: %w", err)
 		}
 	}
 
-	// Extract the keyspace names
-	keyspaceNames := make([]string, 0, len(keyspaces))
-	for _, keyspace := range keyspaces {
-		keyspaceNames = append(keyspaceNames, keyspace.Name)
+	var keyspaceNames []string
+
+	// Handle different database types
+	switch dbInfo.Kind {
+	case "postgresql", "horizon":
+		// For PostgreSQL, query pg_database to get database names (keyspaces)
+		results, err := executeQueryPostgres(ctx, request, ch, "SELECT datname FROM pg_database WHERE datistemplate = false AND datallowconn = true ORDER BY datname;")
+		if err != nil {
+			return nil, fmt.Errorf("failed to query PostgreSQL databases: %w", err)
+		}
+
+		// Extract database names from results
+		keyspaceNames = make([]string, 0, len(results))
+		for _, row := range results {
+			if datname, ok := row["datname"].(string); ok {
+				keyspaceNames = append(keyspaceNames, datname)
+			}
+		}
+
+	case "mysql":
+		// For MySQL, use the existing API to get keyspaces
+		keyspaces, err := client.Keyspaces.List(ctx, &planetscale.ListKeyspacesRequest{
+			Organization: orgName,
+			Database:     database,
+			Branch:       branch,
+		})
+		if err != nil {
+			switch cmdutil.ErrCode(err) {
+			case planetscale.ErrNotFound:
+				return nil, fmt.Errorf("database %s or branch %s does not exist in organization %s", database, branch, orgName)
+			default:
+				handledErr := cmdutil.HandleError(err)
+				if handledErr != err {
+					return nil, handledErr
+				}
+				return nil, fmt.Errorf("failed to list keyspaces: %w", err)
+			}
+		}
+
+		// Extract the keyspace names
+		keyspaceNames = make([]string, 0, len(keyspaces))
+		for _, keyspace := range keyspaces {
+			keyspaceNames = append(keyspaceNames, keyspace.Name)
+		}
+
+	default:
+		return nil, fmt.Errorf("unsupported database kind: %s. Only 'mysql' and 'postgresql' are supported", dbInfo.Kind)
 	}
 
 	// Convert to JSON
