@@ -397,20 +397,11 @@ func startShellForPostgres(ctx context.Context, ch *cmdutil.Helper, client *ps.C
 		password:     password,
 	}
 
-	errCh := make(chan error, 1)
-	go func() {
-		errCh <- psql.Run(ctx, sigc, signals, runForeground, psqlArgs...)
-	}()
-
-	select {
-	case <-ctx.Done():
-		return nil
-	case err := <-errCh:
-		if err == nil {
-			return nil
-		}
+	err = psql.Run(ctx, sigc, signals, runForeground, psqlArgs...)
+	if err != nil {
 		return cmdutil.HandleError(err)
 	}
+	return nil
 }
 
 func startShellForMySQL(ctx context.Context, ch *cmdutil.Helper, client *ps.Client, database, branch string, dbBranch *ps.DatabaseBranch, clientPath string, authMethod mysql.AuthMethodDescription, role cmdutil.PasswordRole, flags shellFlags, sigc chan os.Signal, signals []os.Signal, runForeground bool) error {
