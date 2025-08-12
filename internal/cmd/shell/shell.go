@@ -167,10 +167,15 @@ second argument:
 				return errors.New("database branch is not ready yet")
 			}
 
+			shellFlags := shellFlags{
+				localAddr:  flags.localAddr,
+				remoteAddr: flags.remoteAddr,
+			}
+
 			if isPostgreSQL {
-				return startShellForPostgres(ctx, ch, client, database, branch, dbBranch, clientPath, role, replica, flags, sigc, signals, runForeground)
+				return startShellForPostgres(ctx, ch, client, database, branch, dbBranch, clientPath, role, replica, shellFlags, sigc, signals, runForeground)
 			} else {
-				return startShellForMySQL(ctx, ch, client, database, branch, dbBranch, clientPath, authMethod, role, replica, flags, sigc, signals, runForeground)
+				return startShellForMySQL(ctx, ch, client, database, branch, dbBranch, clientPath, authMethod, role, replica, shellFlags, sigc, signals, runForeground)
 			}
 		},
 	}
@@ -314,8 +319,6 @@ func historyFilePath(org, db, branch string) string {
 type shellFlags struct {
 	localAddr  string
 	remoteAddr string
-	role       string
-	replica    bool
 }
 
 func startShellForPostgres(ctx context.Context, ch *cmdutil.Helper, client *ps.Client, database, branch string, dbBranch *ps.DatabaseBranch, clientPath string, role cmdutil.PasswordRole, replica bool, flags shellFlags, sigc chan os.Signal, signals []os.Signal, runForeground bool) error {
