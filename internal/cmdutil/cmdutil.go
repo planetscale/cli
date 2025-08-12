@@ -174,8 +174,10 @@ func HasHomebrew() bool {
 	return err == nil
 }
 
-var versionRegex = regexp.MustCompile(`Ver ([0-9]+)\.([0-9]+)\.([0-9]+)`)
-var psqlVersionRegex = regexp.MustCompile(`psql \(PostgreSQL\) ([0-9]+)\.([0-9]+)`)
+var (
+	versionRegex     = regexp.MustCompile(`Ver ([0-9]+)\.([0-9]+)\.([0-9]+)`)
+	psqlVersionRegex = regexp.MustCompile(`psql \(PostgreSQL\) ([0-9]+)\.([0-9]+)`)
+)
 
 // MySQLClientPath checks whether the 'mysql' client exists and returns the
 // path to the binary. The returned error contains instructions to install the
