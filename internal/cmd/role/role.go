@@ -21,6 +21,7 @@ func RoleCmd(ch *cmdutil.Helper) *cobra.Command {
 		GetCmd(ch),
 		ListCmd(ch),
 		ResetDefaultCmd(ch),
+		UpdateCmd(ch),
 	)
 
 	return cmd
