@@ -7,6 +7,7 @@ import (
 	"github.com/planetscale/cli/internal/printer"
 	ps "github.com/planetscale/planetscale-go/planetscale"
 
+	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
 )
 
@@ -21,6 +22,20 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 			ctx := cmd.Context()
 			database := args[0]
 			branch := args[1]
+
+			web, err := cmd.Flags().GetBool("web")
+			if err != nil {
+				return err
+			}
+
+			if web {
+				fmt.Println("🌐  Redirecting you to your roles in your web browser.")
+				err := browser.OpenURL(fmt.Sprintf("%s/%s/%s/settings/roles", cmdutil.ApplicationURL, ch.Config.Organization, database))
+				if err != nil {
+					return err
+				}
+				return nil
+			}
 
 			client, err := ch.Client()
 			if err != nil {
@@ -73,6 +88,7 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 		},
 	}
 
+	cmd.Flags().BoolP("web", "w", false, "List roles in your web browser.")
 	return cmd
 }
 
