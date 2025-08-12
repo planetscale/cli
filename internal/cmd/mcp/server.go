@@ -170,6 +170,20 @@ func ServerCmd(ch *cmdutil.Helper) *cobra.Command {
 			s := server.NewMCPServer(
 				"PlanetScale MCP Server",
 				"0.1.0",
+				server.WithInstructions(`PlanetScale Database Management tools
+
+These tools provide read-only access to MySQL (Vitess) and PostgreSQL
+databases hosted by PlanetScale.  The naming convention for PlanetScale
+databases is <org>/<database> or <org>/<database>/<branch>, so if the user
+refers to databases in this format, they are specifying the org, database,
+and possibly branch needed to invoke the tools in this MCP.  Usually if
+the branch is omitted, the default is "main".
+
+When PlanetScale uses the word "database", it refers to a collection of
+database branches (production, development, staging, etc.), each with one
+or more replicas.  This is distinct from PostgreSQL's notion of a database
+as a namespace on a single server, which PlanetScale calls a "keyspace"
+for both MySQL and PostgreSQL.`),
 			)
 
 			// Register all tools
