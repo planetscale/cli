@@ -341,7 +341,7 @@ func startShellForPostgres(ctx context.Context, ch *cmdutil.Helper, client *ps.C
 		Organization:   ch.Config.Organization,
 		Database:       database,
 		Branch:         branch,
-		Name:           roleutil.GenerateName("pscale-cli-shell"),
+		Name:           passwordutil.GenerateName("pscale-cli-shell"),
 		TTL:            5 * time.Minute,
 		InheritedRoles: inheritedRoles,
 	})

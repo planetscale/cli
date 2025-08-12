@@ -56,8 +56,3 @@ func (r *Role) Cleanup(ctx context.Context, successor string) error {
 		Successor:    successor, // Empty string for no successor
 	})
 }
-
-// GenerateName generates a name for a temporary role with the given prefix
-func GenerateName(prefix string) string {
-	return fmt.Sprintf("%s-%d", prefix, time.Now().Unix())
-}
