@@ -671,6 +671,11 @@ ORDER BY table_key, type, name;`, columnsWhereClause, constraintsWhereClause, in
 	return schemas, nil
 }
 
+// escapeMySQLIdentifier escapes a MySQL identifier by doubling backticks
+func escapeMySQLIdentifier(identifier string) string {
+	return strings.ReplaceAll(identifier, "`", "``")
+}
+
 // getMySQLSchemas gets schema information for MySQL tables (existing functionality)
 func getMySQLSchemas(ctx context.Context, request mcp.CallToolRequest, ch *cmdutil.Helper, tables string) (map[string]string, error) {
 	// Create a MySQL connection
@@ -719,7 +724,8 @@ func getMySQLSchemas(ctx context.Context, request mcp.CallToolRequest, ch *cmdut
 
 	// For each table, get the schema
 	for _, table := range tableList {
-		query := fmt.Sprintf("SHOW CREATE TABLE `%s`", table)
+		escapedTable := escapeMySQLIdentifier(table)
+		query := fmt.Sprintf("SHOW CREATE TABLE `%s`", escapedTable)
 		results, err := executeQueryMySQL(ctx, conn, query)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get schema for table %s: %w", table, err)
