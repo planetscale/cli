@@ -309,7 +309,7 @@ func (c *PostgresConnection) close() {
 }
 
 // executeQueryPostgres executes a SQL query against a PostgreSQL database using an ephemeral read-only role with a specific keyspace/database
-func executeQueryPostgres(ctx context.Context, request mcp.CallToolRequest, ch *cmdutil.Helper, query string, keyspace string) ([]map[string]interface{}, error) {
+func executeQueryPostgres(ctx context.Context, request mcp.CallToolRequest, ch *cmdutil.Helper, query string, keyspace string, params ...interface{}) ([]map[string]interface{}, error) {
 	// Get the PlanetScale client
 	client, err := ch.Client()
 	if err != nil {
@@ -412,8 +412,8 @@ func executeQueryPostgres(ctx context.Context, request mcp.CallToolRequest, ch *
 		return nil, fmt.Errorf("failed to ping PostgreSQL database: %w", err)
 	}
 
-	// Execute the query
-	rows, err := db.QueryContext(ctx, query)
+	// Execute the query with optional parameters
+	rows, err := db.QueryContext(ctx, query, params...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute PostgreSQL query: %w", err)
 	}

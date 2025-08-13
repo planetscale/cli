@@ -376,15 +376,16 @@ func HandleListTables(ctx context.Context, request mcp.CallToolRequest, ch *cmdu
 
 		// Build PostgreSQL query with optional schema filter
 		var query string
+		var results []map[string]interface{}
 		if schemaFilter != "" {
-			// Filter by specific schema
-			query = fmt.Sprintf("SELECT schemaname, tablename, tableowner FROM pg_tables WHERE schemaname NOT IN ('pg_catalog', 'information_schema') AND schemaname = '%s' ORDER BY tablename;", schemaFilter)
+			// Filter by specific schema using parameterized query
+			query = "SELECT schemaname, tablename, tableowner FROM pg_tables WHERE schemaname NOT IN ('pg_catalog', 'information_schema') AND schemaname = $1 ORDER BY tablename;"
+			results, err = executeQueryPostgres(ctx, request, ch, query, keyspace, schemaFilter)
 		} else {
 			// No schema filter, get all tables
 			query = "SELECT schemaname, tablename, tableowner FROM pg_tables WHERE schemaname NOT IN ('pg_catalog', 'information_schema') ORDER BY schemaname, tablename;"
+			results, err = executeQueryPostgres(ctx, request, ch, query, keyspace)
 		}
-
-		results, err := executeQueryPostgres(ctx, request, ch, query, keyspace)
 		if err != nil {
 			return nil, fmt.Errorf("failed to query PostgreSQL tables: %w", err)
 		}
@@ -541,8 +542,9 @@ func getPostgreSQLSchemas(ctx context.Context, request mcp.CallToolRequest, ch *
 		keyspace = keyspaceArg
 	}
 
-	// Build WHERE clauses for each part of the UNION query
+	// Build WHERE clauses for each part of the UNION query using parameterized queries
 	var columnsWhereClause, constraintsWhereClause, indexesWhereClause string
+	var params []interface{}
 
 	if tables == "*" {
 		// All tables in all schemas (excluding system schemas)
@@ -550,8 +552,9 @@ func getPostgreSQLSchemas(ctx context.Context, request mcp.CallToolRequest, ch *
 		constraintsWhereClause = "tc.table_schema NOT IN ('pg_catalog', 'information_schema')"
 		indexesWhereClause = "schemaname NOT IN ('pg_catalog', 'information_schema')"
 	} else {
-		// Parse comma-separated list and build conditions
+		// Parse comma-separated list and build conditions with parameterized queries
 		var columnConditions, constraintConditions, indexConditions []string
+		paramIndex := 1
 
 		for _, table := range strings.Split(tables, ",") {
 			table = strings.TrimSpace(table)
@@ -562,22 +565,30 @@ func getPostgreSQLSchemas(ctx context.Context, request mcp.CallToolRequest, ch *
 			if strings.HasSuffix(table, ".*") {
 				// Schema wildcard: "myschema.*"
 				schemaName := strings.TrimSuffix(table, ".*")
-				columnConditions = append(columnConditions, fmt.Sprintf("table_schema = '%s'", schemaName))
-				constraintConditions = append(constraintConditions, fmt.Sprintf("tc.table_schema = '%s'", schemaName))
-				indexConditions = append(indexConditions, fmt.Sprintf("schemaname = '%s'", schemaName))
+				columnConditions = append(columnConditions, fmt.Sprintf("table_schema = $%d", paramIndex))
+				constraintConditions = append(constraintConditions, fmt.Sprintf("tc.table_schema = $%d", paramIndex))
+				indexConditions = append(indexConditions, fmt.Sprintf("schemaname = $%d", paramIndex))
+				params = append(params, schemaName)
+				paramIndex++
 			} else if strings.Contains(table, ".") {
 				// Qualified table name: "myschema.mytable"
 				parts := strings.Split(table, ".")
 				if len(parts) == 2 {
-					columnConditions = append(columnConditions, fmt.Sprintf("(table_schema = '%s' AND table_name = '%s')", parts[0], parts[1]))
-					constraintConditions = append(constraintConditions, fmt.Sprintf("(tc.table_schema = '%s' AND tc.table_name = '%s')", parts[0], parts[1]))
-					indexConditions = append(indexConditions, fmt.Sprintf("(schemaname = '%s' AND tablename = '%s')", parts[0], parts[1]))
+					schemaName := parts[0]
+					tableName := parts[1]
+					columnConditions = append(columnConditions, fmt.Sprintf("(table_schema = $%d AND table_name = $%d)", paramIndex, paramIndex+1))
+					constraintConditions = append(constraintConditions, fmt.Sprintf("(tc.table_schema = $%d AND tc.table_name = $%d)", paramIndex, paramIndex+1))
+					indexConditions = append(indexConditions, fmt.Sprintf("(schemaname = $%d AND tablename = $%d)", paramIndex, paramIndex+1))
+					params = append(params, schemaName, tableName)
+					paramIndex += 2
 				}
 			} else {
 				// Unqualified table name: "mytable" -> "public.mytable"
-				columnConditions = append(columnConditions, fmt.Sprintf("(table_schema = 'public' AND table_name = '%s')", table))
-				constraintConditions = append(constraintConditions, fmt.Sprintf("(tc.table_schema = 'public' AND tc.table_name = '%s')", table))
-				indexConditions = append(indexConditions, fmt.Sprintf("(schemaname = 'public' AND tablename = '%s')", table))
+				columnConditions = append(columnConditions, fmt.Sprintf("(table_schema = 'public' AND table_name = $%d)", paramIndex))
+				constraintConditions = append(constraintConditions, fmt.Sprintf("(tc.table_schema = 'public' AND tc.table_name = $%d)", paramIndex))
+				indexConditions = append(indexConditions, fmt.Sprintf("(schemaname = 'public' AND tablename = $%d)", paramIndex))
+				params = append(params, table)
+				paramIndex++
 			}
 		}
 
@@ -637,7 +648,7 @@ WHERE %s
 
 ORDER BY table_key, type, name;`, columnsWhereClause, constraintsWhereClause, indexesWhereClause)
 
-	results, err := executeQueryPostgres(ctx, request, ch, query, keyspace)
+	results, err := executeQueryPostgres(ctx, request, ch, query, keyspace, params...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute PostgreSQL schema query: %w", err)
 	}
