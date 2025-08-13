@@ -89,9 +89,9 @@ func getDatabaseKind(ctx context.Context, ch *cmdutil.Helper, orgName, database 
 	return string(dbInfo.Kind), nil
 }
 
-// createDatabaseConnection establishes a connection to a PlanetScale database
+// createMySQLConnection establishes a connection to a PlanetScale MySQL database
 // It extracts all required parameters (org, database, branch, keyspace) from the request
-func createDatabaseConnection(ctx context.Context, request mcp.CallToolRequest, ch *cmdutil.Helper) (*DatabaseConnection, error) {
+func createMySQLConnection(ctx context.Context, request mcp.CallToolRequest, ch *cmdutil.Helper) (*DatabaseConnection, error) {
 	// Get the PlanetScale client
 	client, err := ch.Client()
 	if err != nil {
@@ -234,8 +234,8 @@ func (c *DatabaseConnection) close() {
 	}
 }
 
-// executeQuery executes a SQL query and returns the results as an array of maps
-func executeQuery(ctx context.Context, conn *DatabaseConnection, query string) ([]map[string]interface{}, error) {
+// executeQueryMySQL executes a SQL query against a MySQL database and returns the results as an array of maps
+func executeQueryMySQL(ctx context.Context, conn *DatabaseConnection, query string) ([]map[string]interface{}, error) {
 	// Execute the query
 	rows, err := conn.db.QueryContext(ctx, query)
 	if err != nil {

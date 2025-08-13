@@ -305,8 +305,8 @@ func HandleRunQuery(ctx context.Context, request mcp.CallToolRequest, ch *cmduti
 			return nil, fmt.Errorf("keyspace parameter is required for MySQL databases")
 		}
 
-		// For MySQL, use the existing approach with database connection
-		conn, err := createDatabaseConnection(ctx, request, ch)
+		// For MySQL, use the existing approach with MySQL connection
+		conn, err := createMySQLConnection(ctx, request, ch)
 		if err != nil {
 			handledErr := cmdutil.HandleError(err)
 			if handledErr != err {
@@ -317,7 +317,7 @@ func HandleRunQuery(ctx context.Context, request mcp.CallToolRequest, ch *cmduti
 		defer conn.close()
 
 		// Execute the query
-		results, err = executeQuery(ctx, conn, query)
+		results, err = executeQueryMySQL(ctx, conn, query)
 		if err != nil {
 			return nil, err
 		}
@@ -428,8 +428,8 @@ func HandleListTables(ctx context.Context, request mcp.CallToolRequest, ch *cmdu
 			return nil, fmt.Errorf("keyspace parameter is required for MySQL databases")
 		}
 
-		// For MySQL, use the existing approach with database connection
-		conn, err := createDatabaseConnection(ctx, request, ch)
+		// For MySQL, use the existing approach with MySQL connection
+		conn, err := createMySQLConnection(ctx, request, ch)
 		if err != nil {
 			handledErr := cmdutil.HandleError(err)
 			if handledErr != err {
@@ -440,7 +440,7 @@ func HandleListTables(ctx context.Context, request mcp.CallToolRequest, ch *cmdu
 		defer conn.close()
 
 		// Execute the SHOW TABLES query
-		results, err := executeQuery(ctx, conn, "SHOW TABLES")
+		results, err := executeQueryMySQL(ctx, conn, "SHOW TABLES")
 		if err != nil {
 			return nil, err
 		}
@@ -662,8 +662,8 @@ ORDER BY table_key, type, name;`, columnsWhereClause, constraintsWhereClause, in
 
 // getMySQLSchemas gets schema information for MySQL tables (existing functionality)
 func getMySQLSchemas(ctx context.Context, request mcp.CallToolRequest, ch *cmdutil.Helper, tables string) (map[string]string, error) {
-	// Create a database connection
-	conn, err := createDatabaseConnection(ctx, request, ch)
+	// Create a MySQL connection
+	conn, err := createMySQLConnection(ctx, request, ch)
 	if err != nil {
 		handledErr := cmdutil.HandleError(err)
 		if handledErr != err {
@@ -679,7 +679,7 @@ func getMySQLSchemas(ctx context.Context, request mcp.CallToolRequest, ch *cmdut
 	// If tables is "*", fetch all tables in the keyspace
 	if tables == "*" {
 		// Execute the SHOW TABLES query
-		results, err := executeQuery(ctx, conn, "SHOW TABLES")
+		results, err := executeQueryMySQL(ctx, conn, "SHOW TABLES")
 		if err != nil {
 			return nil, err
 		}
@@ -709,7 +709,7 @@ func getMySQLSchemas(ctx context.Context, request mcp.CallToolRequest, ch *cmdut
 	// For each table, get the schema
 	for _, table := range tableList {
 		query := fmt.Sprintf("SHOW CREATE TABLE `%s`", table)
-		results, err := executeQuery(ctx, conn, query)
+		results, err := executeQueryMySQL(ctx, conn, query)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get schema for table %s: %w", table, err)
 		}
