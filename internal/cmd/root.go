@@ -237,7 +237,7 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 	rootCmd.AddCommand(completionCmd)
 
 	mcpCmd := mcp.McpCmd(ch)
-	mcpCmd.GroupID = "platform"
+	mcpCmd.GroupID = "database"
 	rootCmd.AddCommand(mcpCmd)
 
 	orgCmd := org.OrgCmd(ch)
@@ -303,7 +303,7 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 	rootCmd.AddCommand(passwordCmd)
 
 	shellCmd := shell.ShellCmd(ch, sigc, signals...)
-	shellCmd.GroupID = "vitess"
+	shellCmd.GroupID = "database"
 	rootCmd.AddCommand(shellCmd)
 
 	workflowCmd := workflow.WorkflowCmd(ch)
