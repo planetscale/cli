@@ -42,7 +42,7 @@ func getToolDefinitions() []ToolDef {
 		},
 		{
 			tool: mcp.NewTool("list_branches",
-				mcp.WithDescription("List all branches for a database" + namingBlurb),
+				mcp.WithDescription("List all branches for a database"+namingBlurb),
 				mcp.WithString("database",
 					mcp.Description("The database name"),
 					mcp.Required(),
@@ -56,7 +56,7 @@ func getToolDefinitions() []ToolDef {
 		},
 		{
 			tool: mcp.NewTool("list_keyspaces",
-				mcp.WithDescription("List all keyspaces within a branch" + namingBlurb),
+				mcp.WithDescription("List all keyspaces within a branch"+namingBlurb),
 				mcp.WithString("database",
 					mcp.Description("The database name"),
 					mcp.Required(),
@@ -74,7 +74,7 @@ func getToolDefinitions() []ToolDef {
 		},
 		{
 			tool: mcp.NewTool("list_tables",
-				mcp.WithDescription("List all tables in a keyspace/database" + namingBlurb),
+				mcp.WithDescription("List all tables in a keyspace/database"+namingBlurb),
 				mcp.WithString("database",
 					mcp.Description("The database name"),
 					mcp.Required(),
@@ -98,7 +98,7 @@ func getToolDefinitions() []ToolDef {
 		},
 		{
 			tool: mcp.NewTool("get_schema",
-				mcp.WithDescription("Get the SQL schema for tables in a keyspace/database" + namingBlurb),
+				mcp.WithDescription("Get the SQL schema for tables in a keyspace/database"+namingBlurb),
 				mcp.WithString("database",
 					mcp.Description("The database name"),
 					mcp.Required(),
@@ -123,7 +123,7 @@ func getToolDefinitions() []ToolDef {
 		},
 		{
 			tool: mcp.NewTool("run_query",
-				mcp.WithDescription("Run a SQL query against a database branch keyspace/database" + namingBlurb),
+				mcp.WithDescription("Run a SQL query against a database branch keyspace/database"+namingBlurb),
 				mcp.WithString("database",
 					mcp.Description("The database name"),
 					mcp.Required(),
@@ -148,7 +148,7 @@ func getToolDefinitions() []ToolDef {
 		},
 		{
 			tool: mcp.NewTool("get_insights",
-				mcp.WithDescription("Get recent performance data for a database branch" + namingBlurb),
+				mcp.WithDescription("Get recent performance data for a database branch"+namingBlurb),
 				mcp.WithString("database",
 					mcp.Description("The database name"),
 					mcp.Required(),
