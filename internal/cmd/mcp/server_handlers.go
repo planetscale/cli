@@ -233,7 +233,7 @@ func HandleListKeyspaces(ctx context.Context, request mcp.CallToolRequest, ch *c
 		if err != nil {
 			switch cmdutil.ErrCode(err) {
 			case planetscale.ErrNotFound:
-				return nil, fmt.Errorf("database %s or branch %s does not exist in organization %s", database, branch, orgName)
+				return nil, fmt.Errorf("branch %s does not exist in database %s/%s", branch, database, orgName)
 			default:
 				handledErr := cmdutil.HandleError(err)
 				if handledErr != err {
