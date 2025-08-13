@@ -60,6 +60,35 @@ func getOrganization(request mcp.CallToolRequest, ch *cmdutil.Helper) (string, e
 	return orgName, nil
 }
 
+// getDatabaseKind returns the kind of a database (e.g. "mysql", "postgresql") for the given organization and database name
+func getDatabaseKind(ctx context.Context, ch *cmdutil.Helper, orgName, database string) (string, error) {
+	// Get the PlanetScale client
+	client, err := ch.Client()
+	if err != nil {
+		return "", fmt.Errorf("failed to initialize PlanetScale client: %w", err)
+	}
+
+	// Get database info to determine the database kind
+	dbInfo, err := client.Databases.Get(ctx, &planetscale.GetDatabaseRequest{
+		Organization: orgName,
+		Database:     database,
+	})
+	if err != nil {
+		switch cmdutil.ErrCode(err) {
+		case planetscale.ErrNotFound:
+			return "", fmt.Errorf("database %s does not exist in organization %s", database, orgName)
+		default:
+			handledErr := cmdutil.HandleError(err)
+			if handledErr != err {
+				return "", handledErr
+			}
+			return "", fmt.Errorf("failed to get database info: %w", err)
+		}
+	}
+
+	return string(dbInfo.Kind), nil
+}
+
 // createDatabaseConnection establishes a connection to a PlanetScale database
 // It extracts all required parameters (org, database, branch, keyspace) from the request
 func createDatabaseConnection(ctx context.Context, request mcp.CallToolRequest, ch *cmdutil.Helper) (*DatabaseConnection, error) {

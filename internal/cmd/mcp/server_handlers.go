@@ -157,12 +157,6 @@ func HandleListBranches(ctx context.Context, request mcp.CallToolRequest, ch *cm
 
 // HandleListKeyspaces implements the list_keyspaces tool
 func HandleListKeyspaces(ctx context.Context, request mcp.CallToolRequest, ch *cmdutil.Helper) (*mcp.CallToolResult, error) {
-	// Get the PlanetScale client
-	client, err := ch.Client()
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize PlanetScale client: %w", err)
-	}
-
 	args := request.GetArguments()
 
 	// Get the required database parameter
@@ -185,28 +179,16 @@ func HandleListKeyspaces(ctx context.Context, request mcp.CallToolRequest, ch *c
 		return nil, err
 	}
 
-	// Get database info to determine the database kind
-	dbInfo, err := client.Databases.Get(ctx, &planetscale.GetDatabaseRequest{
-		Organization: orgName,
-		Database:     database,
-	})
+	// Get database kind
+	dbKind, err := getDatabaseKind(ctx, ch, orgName, database)
 	if err != nil {
-		switch cmdutil.ErrCode(err) {
-		case planetscale.ErrNotFound:
-			return nil, fmt.Errorf("database %s does not exist in organization %s", database, orgName)
-		default:
-			handledErr := cmdutil.HandleError(err)
-			if handledErr != err {
-				return nil, handledErr
-			}
-			return nil, fmt.Errorf("failed to get database info: %w", err)
-		}
+		return nil, err
 	}
 
 	var keyspaceNames []string
 
 	// Handle different database types
-	switch dbInfo.Kind {
+	switch dbKind {
 	case "postgresql", "horizon":
 		// For PostgreSQL, query pg_database to get database names (keyspaces)
 		query := "SELECT datname FROM pg_database WHERE datistemplate = false AND datallowconn = true ORDER BY datname;"
@@ -224,6 +206,12 @@ func HandleListKeyspaces(ctx context.Context, request mcp.CallToolRequest, ch *c
 		}
 
 	case "mysql":
+		// Get the PlanetScale client for MySQL operations
+		client, err := ch.Client()
+		if err != nil {
+			return nil, fmt.Errorf("failed to initialize PlanetScale client: %w", err)
+		}
+
 		// For MySQL, use the existing API to get keyspaces
 		keyspaces, err := client.Keyspaces.List(ctx, &planetscale.ListKeyspacesRequest{
 			Organization: orgName,
@@ -250,7 +238,7 @@ func HandleListKeyspaces(ctx context.Context, request mcp.CallToolRequest, ch *c
 		}
 
 	default:
-		return nil, fmt.Errorf("unsupported database kind: %s. Only 'mysql' and 'postgresql' are supported", dbInfo.Kind)
+		return nil, fmt.Errorf("unsupported database kind: %s. Only 'mysql' and 'postgresql' are supported", dbKind)
 	}
 
 	// Convert to JSON
@@ -265,12 +253,6 @@ func HandleListKeyspaces(ctx context.Context, request mcp.CallToolRequest, ch *c
 
 // HandleRunQuery implements the run_query tool
 func HandleRunQuery(ctx context.Context, request mcp.CallToolRequest, ch *cmdutil.Helper) (*mcp.CallToolResult, error) {
-	// Get the PlanetScale client
-	client, err := ch.Client()
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize PlanetScale client: %w", err)
-	}
-
 	args := request.GetArguments()
 
 	// Get the required database parameter
@@ -293,28 +275,16 @@ func HandleRunQuery(ctx context.Context, request mcp.CallToolRequest, ch *cmduti
 		return nil, err
 	}
 
-	// Get database info to determine the database kind
-	dbInfo, err := client.Databases.Get(ctx, &planetscale.GetDatabaseRequest{
-		Organization: orgName,
-		Database:     database,
-	})
+	// Get database kind
+	dbKind, err := getDatabaseKind(ctx, ch, orgName, database)
 	if err != nil {
-		switch cmdutil.ErrCode(err) {
-		case planetscale.ErrNotFound:
-			return nil, fmt.Errorf("database %s does not exist in organization %s", database, orgName)
-		default:
-			handledErr := cmdutil.HandleError(err)
-			if handledErr != err {
-				return nil, handledErr
-			}
-			return nil, fmt.Errorf("failed to get database info: %w", err)
-		}
+		return nil, err
 	}
 
 	var results []map[string]interface{}
 
 	// Handle different database types
-	switch dbInfo.Kind {
+	switch dbKind {
 	case "postgresql", "horizon":
 		// For PostgreSQL, get keyspace parameter (database name) with default
 		keyspace := "postgres" // default database
@@ -353,7 +323,7 @@ func HandleRunQuery(ctx context.Context, request mcp.CallToolRequest, ch *cmduti
 		}
 
 	default:
-		return nil, fmt.Errorf("unsupported database kind: %s. Only 'mysql' and 'postgresql' are supported", dbInfo.Kind)
+		return nil, fmt.Errorf("unsupported database kind: %s. Only 'mysql' and 'postgresql' are supported", dbKind)
 	}
 
 	// Convert to JSON
@@ -368,12 +338,6 @@ func HandleRunQuery(ctx context.Context, request mcp.CallToolRequest, ch *cmduti
 
 // HandleListTables implements the list_tables tool
 func HandleListTables(ctx context.Context, request mcp.CallToolRequest, ch *cmdutil.Helper) (*mcp.CallToolResult, error) {
-	// Get the PlanetScale client
-	client, err := ch.Client()
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize PlanetScale client: %w", err)
-	}
-
 	args := request.GetArguments()
 
 	// Get the required database parameter
@@ -395,26 +359,14 @@ func HandleListTables(ctx context.Context, request mcp.CallToolRequest, ch *cmdu
 		return nil, err
 	}
 
-	// Get database info to determine the database kind
-	dbInfo, err := client.Databases.Get(ctx, &planetscale.GetDatabaseRequest{
-		Organization: orgName,
-		Database:     database,
-	})
+	// Get database kind
+	dbKind, err := getDatabaseKind(ctx, ch, orgName, database)
 	if err != nil {
-		switch cmdutil.ErrCode(err) {
-		case planetscale.ErrNotFound:
-			return nil, fmt.Errorf("database %s does not exist in organization %s", database, orgName)
-		default:
-			handledErr := cmdutil.HandleError(err)
-			if handledErr != err {
-				return nil, handledErr
-			}
-			return nil, fmt.Errorf("failed to get database info: %w", err)
-		}
+		return nil, err
 	}
 
 	// Handle different database types
-	switch dbInfo.Kind {
+	switch dbKind {
 	case "postgresql", "horizon":
 		// For PostgreSQL, get keyspace parameter (database name) with default
 		keyspace := "postgres" // default database
@@ -515,18 +467,12 @@ func HandleListTables(ctx context.Context, request mcp.CallToolRequest, ch *cmdu
 		return mcp.NewToolResultText(string(tableNamesJSON)), nil
 
 	default:
-		return nil, fmt.Errorf("unsupported database kind: %s. Only 'mysql' and 'postgresql' are supported", dbInfo.Kind)
+		return nil, fmt.Errorf("unsupported database kind: %s. Only 'mysql' and 'postgresql' are supported", dbKind)
 	}
 }
 
 // HandleGetSchema implements the get_schema tool
 func HandleGetSchema(ctx context.Context, request mcp.CallToolRequest, ch *cmdutil.Helper) (*mcp.CallToolResult, error) {
-	// Get the PlanetScale client
-	client, err := ch.Client()
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize PlanetScale client: %w", err)
-	}
-
 	args := request.GetArguments()
 
 	// Get the required database parameter
@@ -549,28 +495,16 @@ func HandleGetSchema(ctx context.Context, request mcp.CallToolRequest, ch *cmdut
 		return nil, err
 	}
 
-	// Get database info to determine the database kind
-	dbInfo, err := client.Databases.Get(ctx, &planetscale.GetDatabaseRequest{
-		Organization: orgName,
-		Database:     database,
-	})
+	// Get database kind
+	dbKind, err := getDatabaseKind(ctx, ch, orgName, database)
 	if err != nil {
-		switch cmdutil.ErrCode(err) {
-		case planetscale.ErrNotFound:
-			return nil, fmt.Errorf("database %s does not exist in organization %s", database, orgName)
-		default:
-			handledErr := cmdutil.HandleError(err)
-			if handledErr != err {
-				return nil, handledErr
-			}
-			return nil, fmt.Errorf("failed to get database info: %w", err)
-		}
+		return nil, err
 	}
 
 	var schemas interface{}
 
 	// Handle different database types
-	switch dbInfo.Kind {
+	switch dbKind {
 	case "postgresql", "horizon":
 		schemas, err = getPostgreSQLSchemas(ctx, request, ch, tables)
 		if err != nil {
@@ -584,7 +518,7 @@ func HandleGetSchema(ctx context.Context, request mcp.CallToolRequest, ch *cmdut
 		}
 
 	default:
-		return nil, fmt.Errorf("unsupported database kind: %s. Only 'mysql' and 'postgresql' are supported", dbInfo.Kind)
+		return nil, fmt.Errorf("unsupported database kind: %s. Only 'mysql' and 'postgresql' are supported", dbKind)
 	}
 
 	// Convert to JSON
