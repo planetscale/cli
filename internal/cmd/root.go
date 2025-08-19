@@ -206,7 +206,7 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 	rootCmd.PersistentFlags().Lookup("api-token").DefValue = ""
 
 	// Add command groups for better organization
-	rootCmd.AddGroup(&cobra.Group{ID: "database", Title: printer.Bold("Database management:")})
+	rootCmd.AddGroup(&cobra.Group{ID: "database", Title: printer.Bold("General database commands:")})
 	rootCmd.AddGroup(&cobra.Group{ID: "vitess", Title: printer.Bold("Vitess-specific commands:")})
 	rootCmd.AddGroup(&cobra.Group{ID: "postgres", Title: printer.Bold("Postgres-specific commands:")})
 	rootCmd.AddGroup(&cobra.Group{ID: "platform", Title: printer.Bold("Platform & account management:")})
