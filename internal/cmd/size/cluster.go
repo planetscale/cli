@@ -3,23 +3,11 @@ package size
 import (
 	"encoding/json"
 	"fmt"
-	"net/url"
 
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/planetscale-go/planetscale"
 	"github.com/spf13/cobra"
 )
-
-// WithPostgreSQL adds postgresql=true query parameter to the request
-func WithPostgreSQL() planetscale.ListOption {
-	return func(opts *planetscale.ListOptions) error {
-		if opts.URLValues == nil {
-			opts.URLValues = &url.Values{}
-		}
-		opts.URLValues.Set("postgresql", "true")
-		return nil
-	}
-}
 
 func ClusterCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
@@ -69,7 +57,7 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 			
 			// Add engine-specific parameter for PostgreSQL
 			if engine == planetscale.DatabaseEnginePostgres {
-				listOpts = append(listOpts, WithPostgreSQL())
+				listOpts = append(listOpts, planetscale.WithPostgreSQL())
 			}
 
 			clusterSKUs, err := client.Organizations.ListClusterSKUs(ctx, &planetscale.ListOrganizationClusterSKUsRequest{
