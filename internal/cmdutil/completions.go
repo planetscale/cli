@@ -28,9 +28,15 @@ func ClusterSizesCompletionFunc(ch *Helper, cmd *cobra.Command, args []string, t
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
 
+	// Build list options
+	listOpts := []ps.ListOption{ps.WithRates()}
+	if region != "" {
+		listOpts = append(listOpts, ps.WithRegion(region))
+	}
+	
 	clusterSKUs, err := client.Organizations.ListClusterSKUs(ctx, &ps.ListOrganizationClusterSKUsRequest{
 		Organization: org,
-	}, ps.WithRegion(region), ps.WithRates())
+	}, listOpts...)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
