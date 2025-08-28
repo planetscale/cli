@@ -1,7 +1,10 @@
 package keyspace
 
 import (
+	"context"
+	"errors"
 	"fmt"
+	"time"
 
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
@@ -17,6 +20,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 		shards             int
 		clusterSize        string
 		additionalReplicas int
+		wait               bool
 	}
 
 	cmd := &cobra.Command{
@@ -54,6 +58,22 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 			end()
 
+			if flags.wait {
+				end := ch.Printer.PrintProgress(fmt.Sprintf("Waiting until keyspace %s is ready...", printer.BoldBlue(keyspace)))
+				defer end()
+
+				getReq := &planetscale.GetKeyspaceRequest{
+					Organization: ch.Config.Organization,
+					Database:     database,
+					Branch:       branch,
+					Keyspace:     keyspace,
+				}
+				if err := waitUntilReady(ctx, client, ch.Printer, ch.Debug(), getReq); err != nil {
+					return err
+				}
+				end()
+			}
+
 			if ch.Printer.Format() == printer.Human {
 				ch.Printer.Printf("Keyspace %s was successfully created.\n", printer.BoldBlue(k.Name))
 				return nil
@@ -65,6 +85,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().IntVar(&flags.shards, "shards", 1, "Number of shards in the keyspace")
 	cmd.Flags().StringVar(&flags.clusterSize, "cluster-size", "PS-10", "cluster size for the keyspace. Use `pscale size cluster list` to get a list of valid sizes.")
 	cmd.Flags().IntVar(&flags.additionalReplicas, "additional-replicas", 0, "number of additional replicas per shard. By default, each production cluster includes 2 replicas.")
+	cmd.Flags().BoolVar(&flags.wait, "wait", false, "Wait until the keyspace is ready")
 
 	cmd.MarkFlagRequired("cluster-size")
 
@@ -73,4 +94,30 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	})
 
 	return cmd
+}
+
+func waitUntilReady(ctx context.Context, client *planetscale.Client, printer *printer.Printer, debug bool, getReq *planetscale.GetKeyspaceRequest) error {
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Minute)
+	defer cancel()
+
+	ticker := time.NewTicker(time.Second)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return errors.New("keyspace creation timed out")
+		case <-ticker.C:
+			resp, err := client.Keyspaces.Get(ctx, getReq)
+			if err != nil {
+				if debug {
+					printer.Printf("fetching keyspace %s/%s %s failed: %s", getReq.Database, getReq.Branch, getReq.Keyspace, err)
+				}
+				continue
+			}
+
+			if resp.Ready {
+				return nil
+			}
+		}
+	}
 }
