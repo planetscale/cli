@@ -1,7 +1,10 @@
 package database
 
 import (
+	"context"
+	"errors"
 	"fmt"
+	"time"
 
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
@@ -18,6 +21,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
 		clusterSize string
 		engine      string
+		wait        bool
 	}
 
 	cmd := &cobra.Command{
@@ -53,8 +57,21 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 					return cmdutil.HandleError(err)
 				}
 			}
-
 			end()
+
+			if flags.wait {
+				end := ch.Printer.PrintProgress(fmt.Sprintf("Waiting until database %s is ready...", printer.BoldBlue(database.Name)))
+				defer end()
+
+				getReq := &ps.GetDatabaseRequest{
+					Organization: ch.Config.Organization,
+					Database:     database.Name,
+				}
+				if err := waitUntilReady(ctx, client, ch.Printer, ch.Debug(), getReq); err != nil {
+					return err
+				}
+				end()
+			}
 
 			if ch.Printer.Format() == printer.Human {
 				ch.Printer.Printf("Database %s was successfully created.\n\nView this database in the browser: %s\n", printer.BoldBlue(database.Name), printer.BoldBlue(database.HtmlURL))
@@ -83,6 +100,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.RegisterFlagCompletionFunc("cluster-size", func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
 		return cmdutil.ClusterSizesCompletionFunc(ch, cmd, args, toComplete)
 	})
+	cmd.Flags().BoolVar(&flags.wait, "wait", false, "Wait until the database is ready")
 
 	return cmd
 }
@@ -95,5 +113,31 @@ func parseDatabaseEngine(engine string) (ps.DatabaseEngine, error) {
 		return ps.DatabaseEnginePostgres, nil
 	default:
 		return ps.DatabaseEngineMySQL, fmt.Errorf("invalid database engine %q, supported values: mysql, postgresql", engine)
+	}
+}
+
+func waitUntilReady(ctx context.Context, client *ps.Client, printer *printer.Printer, debug bool, getReq *ps.GetDatabaseRequest) error {
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Minute)
+	defer cancel()
+
+	ticker := time.NewTicker(time.Second)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return errors.New("database creation timed out")
+		case <-ticker.C:
+			resp, err := client.Databases.Get(ctx, getReq)
+			if err != nil {
+				if debug {
+					printer.Printf("fetching database %s failed: %s", getReq.Database, err)
+				}
+				continue
+			}
+
+			if resp.State == "ready" {
+				return nil
+			}
+		}
 	}
 }
