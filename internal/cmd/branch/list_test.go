@@ -32,7 +32,7 @@ func TestBranch_ListCmd(t *testing.T) {
 	}
 
 	svc := &mock.DatabaseBranchesService{
-		ListFn: func(ctx context.Context, req *ps.ListDatabaseBranchesRequest) ([]*ps.DatabaseBranch, error) {
+		ListFn: func(ctx context.Context, req *ps.ListDatabaseBranchesRequest, opts ...ps.ListOption) ([]*ps.DatabaseBranch, error) {
 			c.Assert(req.Database, qt.Equals, db)
 			c.Assert(req.Organization, qt.Equals, org)
 
@@ -83,7 +83,7 @@ func TestBranch_ListCmd_ServiceTokenPermissionError(t *testing.T) {
 
 	// Mock service that returns 404 for branch listing
 	branchSvc := &mock.DatabaseBranchesService{
-		ListFn: func(ctx context.Context, req *ps.ListDatabaseBranchesRequest) ([]*ps.DatabaseBranch, error) {
+		ListFn: func(ctx context.Context, req *ps.ListDatabaseBranchesRequest, opts ...ps.ListOption) ([]*ps.DatabaseBranch, error) {
 			return nil, &ps.Error{Code: ps.ErrNotFound}
 		},
 	}
@@ -148,7 +148,7 @@ func TestBranch_ListCmd_PostgreSQL(t *testing.T) {
 	}
 
 	svc := &mock.PostgresBranchesService{
-		ListFn: func(ctx context.Context, req *ps.ListPostgresBranchesRequest) ([]*ps.PostgresBranch, error) {
+		ListFn: func(ctx context.Context, req *ps.ListPostgresBranchesRequest, opts ...ps.ListOption) ([]*ps.PostgresBranch, error) {
 			c.Assert(req.Database, qt.Equals, db)
 			c.Assert(req.Organization, qt.Equals, org)
 
