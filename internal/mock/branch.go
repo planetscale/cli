@@ -10,7 +10,7 @@ type DatabaseBranchesService struct {
 	CreateFn        func(context.Context, *ps.CreateDatabaseBranchRequest) (*ps.DatabaseBranch, error)
 	CreateFnInvoked bool
 
-	ListFn        func(context.Context, *ps.ListDatabaseBranchesRequest) ([]*ps.DatabaseBranch, error)
+	ListFn        func(context.Context, *ps.ListDatabaseBranchesRequest, ...ps.ListOption) ([]*ps.DatabaseBranch, error)
 	ListFnInvoked bool
 
 	GetFn        func(context.Context, *ps.GetDatabaseBranchRequest) (*ps.DatabaseBranch, error)
@@ -58,9 +58,9 @@ func (d *DatabaseBranchesService) Create(ctx context.Context, req *ps.CreateData
 	return d.CreateFn(ctx, req)
 }
 
-func (d *DatabaseBranchesService) List(ctx context.Context, req *ps.ListDatabaseBranchesRequest) ([]*ps.DatabaseBranch, error) {
+func (d *DatabaseBranchesService) List(ctx context.Context, req *ps.ListDatabaseBranchesRequest, opts ...ps.ListOption) ([]*ps.DatabaseBranch, error) {
 	d.ListFnInvoked = true
-	return d.ListFn(ctx, req)
+	return d.ListFn(ctx, req, opts...)
 }
 
 func (d *DatabaseBranchesService) Get(ctx context.Context, req *ps.GetDatabaseBranchRequest) (*ps.DatabaseBranch, error) {
@@ -132,7 +132,7 @@ type PostgresBranchesService struct {
 	CreateFn        func(context.Context, *ps.CreatePostgresBranchRequest) (*ps.PostgresBranch, error)
 	CreateFnInvoked bool
 
-	ListFn        func(context.Context, *ps.ListPostgresBranchesRequest) ([]*ps.PostgresBranch, error)
+	ListFn        func(context.Context, *ps.ListPostgresBranchesRequest, ...ps.ListOption) ([]*ps.PostgresBranch, error)
 	ListFnInvoked bool
 
 	GetFn        func(context.Context, *ps.GetPostgresBranchRequest) (*ps.PostgresBranch, error)
@@ -153,9 +153,9 @@ func (p *PostgresBranchesService) Create(ctx context.Context, req *ps.CreatePost
 	return p.CreateFn(ctx, req)
 }
 
-func (p *PostgresBranchesService) List(ctx context.Context, req *ps.ListPostgresBranchesRequest) ([]*ps.PostgresBranch, error) {
+func (p *PostgresBranchesService) List(ctx context.Context, req *ps.ListPostgresBranchesRequest, opts ...ps.ListOption) ([]*ps.PostgresBranch, error) {
 	p.ListFnInvoked = true
-	return p.ListFn(ctx, req)
+	return p.ListFn(ctx, req, opts...)
 }
 
 func (p *PostgresBranchesService) Get(ctx context.Context, req *ps.GetPostgresBranchRequest) (*ps.PostgresBranch, error) {
