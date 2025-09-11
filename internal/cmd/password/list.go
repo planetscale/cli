@@ -55,7 +55,7 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 			var allPasswords []*planetscale.DatabaseBranchPassword
 			page := 1
 			perPage := 100
-			
+
 			for {
 				passwords, err := client.Passwords.List(ctx, &planetscale.ListDatabaseBranchPasswordRequest{
 					Organization: ch.Config.Organization,
@@ -71,16 +71,16 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 						return cmdutil.HandleError(err)
 					}
 				}
-				
+
 				allPasswords = append(allPasswords, passwords...)
-				
+
 				// Check if there are more pages - if we got fewer results than perPage, we're done
 				if len(passwords) < perPage {
 					break
 				}
 				page++
 			}
-			
+
 			passwords := allPasswords
 			end()
 

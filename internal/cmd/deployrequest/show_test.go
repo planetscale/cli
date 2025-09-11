@@ -185,10 +185,10 @@ func TestDeployRequest_ShowTimestampBug(t *testing.T) {
 	c.Assert(svc.GetFnInvoked, qt.IsTrue)
 
 	output := buf.String()
-	
+
 	// Debug: Print the actual output to see what we get
 	t.Logf("Table output:\n%s", output)
-	
+
 	// Debug: Print the actual struct values being passed to tableprinter
 	dr, _ := svc.GetFn(context.Background(), &ps.GetDeployRequestRequest{
 		Organization: org,
@@ -196,7 +196,7 @@ func TestDeployRequest_ShowTimestampBug(t *testing.T) {
 		Number:       number,
 	})
 	converted := toDeployRequest(dr)
-	t.Logf("Struct values - CreatedAt: %v, UpdatedAt: %v, FinishedAt: %v, StartedAt: %v, QueuedAt: %v", 
+	t.Logf("Struct values - CreatedAt: %v, UpdatedAt: %v, FinishedAt: %v, StartedAt: %v, QueuedAt: %v",
 		converted.CreatedAt, converted.UpdatedAt, converted.Deployment.FinishedAt, converted.Deployment.StartedAt, converted.Deployment.QueuedAt)
 
 	// Test the specific bug: FINISHED AT should be empty when deployment.finished_at is nil
@@ -204,7 +204,7 @@ func TestDeployRequest_ShowTimestampBug(t *testing.T) {
 	lines := strings.Split(output, "\n")
 	headerLine := ""
 	dataLine := ""
-	
+
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
 		if trimmed != "" && !strings.Contains(line, "---") {
@@ -216,14 +216,14 @@ func TestDeployRequest_ShowTimestampBug(t *testing.T) {
 			}
 		}
 	}
-	
+
 	c.Assert(headerLine, qt.Not(qt.Equals), "", qt.Commentf("Could not find header line"))
 	c.Assert(dataLine, qt.Not(qt.Equals), "", qt.Commentf("Could not find data line"))
-	
+
 	// Find the FINISHED AT column position
 	finishedAtPos := strings.Index(headerLine, "FINISHED AT")
 	c.Assert(finishedAtPos, qt.Not(qt.Equals), -1, qt.Commentf("Could not find FINISHED AT column in header"))
-	
+
 	// Find the next column after FINISHED AT to know where this column ends
 	remainingHeader := headerLine[finishedAtPos+len("FINISHED AT"):]
 	nextColumnMatch := strings.Fields(remainingHeader)
@@ -234,11 +234,11 @@ func TestDeployRequest_ShowTimestampBug(t *testing.T) {
 	} else {
 		finishedAtEndPos = len(headerLine)
 	}
-	
+
 	// Extract the FINISHED AT column value from the data line
 	if finishedAtEndPos <= len(dataLine) {
 		finishedAtValue := strings.TrimSpace(dataLine[finishedAtPos:finishedAtEndPos])
-		
+
 		// The bug: FINISHED AT should be empty since deployment.finished_at is nil
 		// If it contains "ago" or any timestamp value, that's the bug
 		if finishedAtValue != "" && strings.Contains(finishedAtValue, "ago") {

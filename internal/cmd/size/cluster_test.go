@@ -98,10 +98,10 @@ func TestSizeCluster_ListCmd_PostgreSQL(t *testing.T) {
 
 	c.Assert(err, qt.IsNil)
 	c.Assert(svc.ListClusterSKUsFnInvoked, qt.IsTrue)
-	
+
 	res := []*ClusterSKU{
 		{orig: orig[0]},
 	}
-	
+
 	c.Assert(buf.String(), qt.JSONEquals, res)
 }

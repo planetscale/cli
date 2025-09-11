@@ -28,7 +28,7 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 			ctx := cmd.Context()
 			database := args[0]
 			branch := args[1]
-			
+
 			// Validate that either password-id is provided as arg or --name flag is used
 			var passwordId string
 			if name != "" && len(args) == 3 {
@@ -37,22 +37,22 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 			if name == "" && len(args) != 3 {
 				return errors.New("must provide either password-id argument or --name flag")
 			}
-			
+
 			client, err := ch.Client()
 			if err != nil {
 				return err
 			}
-			
+
 			// If using --name flag, find the password by name
 			if name != "" {
 				end := ch.Printer.PrintProgress(fmt.Sprintf("Finding password %s in %s/%s",
 					printer.BoldBlue(name), printer.BoldBlue(database), printer.BoldBlue(branch)))
-				
+
 				// Fetch all passwords to find the one with matching name
 				var allPasswords []*ps.DatabaseBranchPassword
 				page := 1
 				perPage := 100
-				
+
 				for {
 					passwords, err := client.Passwords.List(ctx, &ps.ListDatabaseBranchPasswordRequest{
 						Organization: ch.Config.Organization,
@@ -69,18 +69,18 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 							return cmdutil.HandleError(err)
 						}
 					}
-					
+
 					allPasswords = append(allPasswords, passwords...)
-					
+
 					// Check if there are more pages
 					if len(passwords) < perPage {
 						break
 					}
 					page++
 				}
-				
+
 				end()
-				
+
 				// Find password with matching name
 				var foundPassword *ps.DatabaseBranchPassword
 				for _, password := range allPasswords {
@@ -89,12 +89,12 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 						break
 					}
 				}
-				
+
 				if foundPassword == nil {
 					return fmt.Errorf("password with name %s does not exist in branch %s of %s (organization: %s)",
 						printer.BoldBlue(name), printer.BoldBlue(branch), printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
 				}
-				
+
 				passwordId = foundPassword.PublicID
 			} else {
 				passwordId = args[2]
