@@ -29,7 +29,7 @@ require (
 	github.com/planetscale/psdb v0.0.0-20250717190954-65c6661ab6e4
 	github.com/planetscale/psdbproxy v0.0.0-20250728082226-3f4ea3a74ec7
 	github.com/spf13/cobra v1.10.1
-	github.com/spf13/pflag v1.0.9
+	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.20.1
 	github.com/stretchr/testify v1.11.1
 	github.com/xelabs/go-mysqlstack v1.0.0
