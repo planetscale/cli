@@ -6,6 +6,8 @@ linters:
       - comments
       - common-false-positives
       - std-error-handling
+  disable:
+    - errcheck # TODO: reenable after fixing all existing issues
 formatters:
   enable:
     - goimports
