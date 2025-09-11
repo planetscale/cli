@@ -68,7 +68,7 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 				var allBranches []*planetscale.DatabaseBranch
 				page := 1
 				perPage := 100
-				
+
 				for {
 					branches, err := client.DatabaseBranches.List(ctx, &planetscale.ListDatabaseBranchesRequest{
 						Organization: ch.Config.Organization,
@@ -85,16 +85,16 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 							return cmdutil.HandleError(err)
 						}
 					}
-					
+
 					allBranches = append(allBranches, branches...)
-					
+
 					// Check if there are more pages - if we got fewer results than perPage, we're done
 					if len(branches) < perPage {
 						break
 					}
 					page++
 				}
-				
+
 				branches := allBranches
 				end()
 
@@ -108,7 +108,7 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 				var allBranches []*planetscale.PostgresBranch
 				page := 1
 				perPage := 100
-				
+
 				for {
 					branches, err := client.PostgresBranches.List(ctx, &planetscale.ListPostgresBranchesRequest{
 						Organization: ch.Config.Organization,
@@ -125,16 +125,16 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 							return cmdutil.HandleError(err)
 						}
 					}
-					
+
 					allBranches = append(allBranches, branches...)
-					
+
 					// Check if there are more pages - if we got fewer results than perPage, we're done
 					if len(branches) < perPage {
 						break
 					}
 					page++
 				}
-				
+
 				branches := allBranches
 				end()
 

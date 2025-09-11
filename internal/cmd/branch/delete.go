@@ -119,7 +119,7 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Deleting branch %s from %s", printer.BoldBlue(branch), printer.BoldBlue(source)))
 			defer end()
-			
+
 			if db.Kind == "mysql" {
 				err = client.DatabaseBranches.Delete(ctx, &planetscale.DeleteDatabaseBranchRequest{
 					Organization: ch.Config.Organization,
@@ -133,7 +133,7 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 					Branch:       branch,
 				})
 			}
-			
+
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:

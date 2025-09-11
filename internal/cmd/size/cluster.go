@@ -54,7 +54,7 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 			if flags.region != "" {
 				listOpts = append(listOpts, planetscale.WithRegion(flags.region))
 			}
-			
+
 			// Add engine-specific parameter for PostgreSQL
 			if engine == planetscale.DatabaseEnginePostgres {
 				listOpts = append(listOpts, planetscale.WithPostgreSQL())

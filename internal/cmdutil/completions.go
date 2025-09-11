@@ -33,7 +33,7 @@ func ClusterSizesCompletionFunc(ch *Helper, cmd *cobra.Command, args []string, t
 	if region != "" {
 		listOpts = append(listOpts, ps.WithRegion(region))
 	}
-	
+
 	clusterSKUs, err := client.Organizations.ListClusterSKUs(ctx, &ps.ListOrganizationClusterSKUsRequest{
 		Organization: org,
 	}, listOpts...)
