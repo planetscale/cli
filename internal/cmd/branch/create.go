@@ -226,12 +226,17 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	return cmd
 }
 
-// waitUntilReady waits until the given database branch is ready. It times out after 3 minutes.
+// waitUntilReady waits until the given database branch is ready. It times out after 10 minutes.
 func waitUntilReady(ctx context.Context, client *ps.Client, printer *printer.Printer, debug bool, getReq *ps.GetDatabaseBranchRequest) error {
-	ctx, cancel := context.WithTimeout(ctx, 3*time.Minute)
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
 	defer cancel()
 
-	ticker := time.NewTicker(time.Second)
+	startTime := time.Now()
+	var ticker *time.Ticker
+
+	// Start with 5-second interval for the first minute
+	ticker = time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
 
 	for {
 		select {
@@ -249,15 +254,27 @@ func waitUntilReady(ctx context.Context, client *ps.Client, printer *printer.Pri
 			if resp.Ready {
 				return nil
 			}
+
+			elapsed := time.Since(startTime)
+			if elapsed > time.Minute {
+				// Switch to 10-second interval after 1 minute
+				ticker.Stop()
+				ticker = time.NewTicker(10 * time.Second)
+			}
 		}
 	}
 }
 
 func waitUntilPostgresReady(ctx context.Context, client *ps.Client, printer *printer.Printer, debug bool, getReq *ps.GetPostgresBranchRequest) error {
-	ctx, cancel := context.WithTimeout(ctx, 3*time.Minute)
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
 	defer cancel()
 
-	ticker := time.NewTicker(time.Second)
+	startTime := time.Now()
+	var ticker *time.Ticker
+
+	// Start with 5-second interval for the first minute
+	ticker = time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
 
 	for {
 		select {
@@ -274,6 +291,13 @@ func waitUntilPostgresReady(ctx context.Context, client *ps.Client, printer *pri
 
 			if resp.Ready {
 				return nil
+			}
+
+			elapsed := time.Since(startTime)
+			if elapsed > time.Minute {
+				// Switch to 10-second interval after 1 minute
+				ticker.Stop()
+				ticker = time.NewTicker(10 * time.Second)
 			}
 		}
 	}
