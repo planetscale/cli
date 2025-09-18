@@ -226,9 +226,9 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	return cmd
 }
 
-// waitUntilReady waits until the given database branch is ready. It times out after 3 minutes.
+// waitUntilReady waits until the given database branch is ready. It times out after 10 minutes.
 func waitUntilReady(ctx context.Context, client *ps.Client, printer *printer.Printer, debug bool, getReq *ps.GetDatabaseBranchRequest) error {
-	ctx, cancel := context.WithTimeout(ctx, 3*time.Minute)
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
 	defer cancel()
 
 	ticker := time.NewTicker(time.Second)
@@ -254,7 +254,7 @@ func waitUntilReady(ctx context.Context, client *ps.Client, printer *printer.Pri
 }
 
 func waitUntilPostgresReady(ctx context.Context, client *ps.Client, printer *printer.Printer, debug bool, getReq *ps.GetPostgresBranchRequest) error {
-	ctx, cancel := context.WithTimeout(ctx, 3*time.Minute)
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
 	defer cancel()
 
 	ticker := time.NewTicker(time.Second)
