@@ -117,10 +117,15 @@ func parseDatabaseEngine(engine string) (ps.DatabaseEngine, error) {
 }
 
 func waitUntilReady(ctx context.Context, client *ps.Client, printer *printer.Printer, debug bool, getReq *ps.GetDatabaseRequest) error {
-	ctx, cancel := context.WithTimeout(ctx, 3*time.Minute)
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
 	defer cancel()
 
-	ticker := time.NewTicker(time.Second)
+	startTime := time.Now()
+	var ticker *time.Ticker
+
+	// Start with 5-second interval for the first minute
+	ticker = time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
 
 	for {
 		select {
@@ -137,6 +142,13 @@ func waitUntilReady(ctx context.Context, client *ps.Client, printer *printer.Pri
 
 			if resp.State == "ready" {
 				return nil
+			}
+
+			elapsed := time.Since(startTime)
+			if elapsed > time.Minute {
+				// Switch to 10-second interval after 1 minute
+				ticker.Stop()
+				ticker = time.NewTicker(10 * time.Second)
 			}
 		}
 	}
