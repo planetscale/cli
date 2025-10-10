@@ -2,6 +2,8 @@ package dumper
 
 import (
 	"context"
+	"encoding/csv"
+	"encoding/json"
 	"os"
 	"strings"
 	"testing"
@@ -1569,5 +1571,159 @@ func TestEscapeBytes(t *testing.T) {
 		want := tt.exp
 
 		c.Assert(want, qt.DeepEquals, got)
+	}
+}
+
+func TestDumper_OutputFormats(t *testing.T) {
+	const numTestRows = 100
+
+	type dumpRow struct {
+		ID    string `json:"id"`
+		Name  string `json:"name"`
+		Value string `json:"value"`
+	}
+
+	tests := []struct {
+		format string
+		verify func(c *qt.C, data string)
+	}{
+		{
+			format: "json",
+			verify: func(c *qt.C, data string) {
+				lines := strings.Split(strings.TrimSpace(data), "\n")
+				c.Assert(len(lines), qt.Equals, numTestRows)
+
+				for _, line := range lines {
+					var row dumpRow
+					err := json.Unmarshal([]byte(line), &row)
+					c.Assert(err, qt.IsNil)
+					c.Assert(row.ID, qt.Equals, "42")
+					c.Assert(row.Name, qt.Equals, "test")
+					c.Assert(row.Value, qt.Equals, "123.45")
+				}
+			},
+		},
+		{
+			format: "csv",
+			verify: func(c *qt.C, data string) {
+				reader := csv.NewReader(strings.NewReader(data))
+				records, err := reader.ReadAll()
+				c.Assert(err, qt.IsNil)
+				c.Assert(len(records), qt.Equals, numTestRows+1) // header + data rows
+
+				c.Assert(records[0], qt.DeepEquals, []string{"id", "name", "value"})
+
+				for i := 1; i < len(records); i++ {
+					c.Assert(records[i], qt.DeepEquals, []string{"42", "test", "123.45"})
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(strings.ToUpper(tt.format), func(t *testing.T) {
+			c := qt.New(t)
+
+			log := xlog.NewStdLog(xlog.Level(xlog.INFO))
+			fakedbs := driver.NewTestHandler(log)
+			server, err := driver.MockMysqlServer(log, fakedbs)
+			c.Assert(err, qt.IsNil)
+			defer server.Close()
+
+			address := server.Addr()
+
+			selectResult := &sqltypes.Result{
+				Fields: []*querypb.Field{
+					{Name: "id", Type: querypb.Type_INT32},
+					{Name: "name", Type: querypb.Type_VARCHAR},
+					{Name: "value", Type: querypb.Type_DECIMAL},
+				},
+				Rows: make([][]sqltypes.Value, 0, 256),
+			}
+
+			for range numTestRows {
+				row := []sqltypes.Value{
+					sqltypes.MakeTrusted(querypb.Type_INT32, []byte("42")),
+					sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("test")),
+					sqltypes.MakeTrusted(querypb.Type_DECIMAL, []byte("123.45")),
+				}
+				selectResult.Rows = append(selectResult.Rows, row)
+			}
+
+			schemaResult := &sqltypes.Result{
+				Fields: []*querypb.Field{
+					{Name: "Table", Type: querypb.Type_VARCHAR},
+					{Name: "Create Table", Type: querypb.Type_VARCHAR},
+				},
+				Rows: [][]sqltypes.Value{
+					{
+						sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("t1")),
+						sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("CREATE TABLE `t1` (`id` int)")),
+					},
+				},
+			}
+
+			tablesResult := &sqltypes.Result{
+				Fields: []*querypb.Field{
+					{Name: "Tables_in_test", Type: querypb.Type_VARCHAR},
+				},
+				Rows: [][]sqltypes.Value{
+					{sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("t1"))},
+				},
+			}
+
+			viewsResult := &sqltypes.Result{
+				Fields: []*querypb.Field{
+					{Name: "TABLE_NAME", Type: querypb.Type_VARCHAR},
+				},
+				Rows: [][]sqltypes.Value{},
+			}
+
+			fieldsResult := &sqltypes.Result{
+				Fields: []*querypb.Field{
+					{Name: "Field", Type: querypb.Type_VARCHAR},
+					{Name: "Type", Type: querypb.Type_VARCHAR},
+					{Name: "Null", Type: querypb.Type_VARCHAR},
+					{Name: "Key", Type: querypb.Type_VARCHAR},
+					{Name: "Default", Type: querypb.Type_VARCHAR},
+					{Name: "Extra", Type: querypb.Type_VARCHAR},
+				},
+				Rows: [][]sqltypes.Value{
+					testRow("id", ""),
+					testRow("name", ""),
+					testRow("value", ""),
+				},
+			}
+
+			fakedbs.AddQueryPattern("show create table .*", schemaResult)
+			fakedbs.AddQueryPattern("show tables from .*", tablesResult)
+			fakedbs.AddQueryPattern("select table_name \n\t\t\t from information_schema.tables \n\t\t\t where table_schema like 'test' \n\t\t\t and table_type = 'view'\n\t\t\t", viewsResult)
+			fakedbs.AddQueryPattern("show fields from .*", fieldsResult)
+			fakedbs.AddQueryPattern("select .* from `test`\\..* .*", selectResult)
+
+			cfg := &Config{
+				Database:      "test",
+				Outdir:        c.TempDir(),
+				User:          "mock",
+				Password:      "mock",
+				Address:       address,
+				ChunksizeInMB: 1,
+				Threads:       16,
+				StmtSize:      10000,
+				IntervalMs:    500,
+				OutputFormat:  tt.format,
+			}
+
+			d, err := NewDumper(cfg)
+			c.Assert(err, qt.IsNil)
+
+			err = d.Run(context.Background())
+			c.Assert(err, qt.IsNil)
+
+			dat, err := os.ReadFile(cfg.Outdir + "/test.t1.00001." + tt.format)
+			c.Assert(err, qt.IsNil)
+
+			tt.verify(c, string(dat))
+		})
 	}
 }

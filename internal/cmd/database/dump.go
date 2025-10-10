@@ -26,17 +26,18 @@ import (
 )
 
 type dumpFlags struct {
-	localAddr  string
-	remoteAddr string
-	keyspace   string
-	shard      string
-	replica    bool
-	rdonly     bool
-	tables     string
-	wheres     string
-	output     string
-	threads    int
-	schemaOnly bool
+	localAddr    string
+	remoteAddr   string
+	keyspace     string
+	shard        string
+	replica      bool
+	rdonly       bool
+	tables       string
+	wheres       string
+	output       string
+	threads      int
+	schemaOnly   bool
+	outputFormat string
 }
 
 // DumpCmd encapsulates the commands for dumping a database
@@ -67,6 +68,8 @@ func DumpCmd(ch *cmdutil.Helper) *cobra.Command {
 		"Output directory of the dump. By default the dump is saved to a folder in the current directory.")
 	cmd.PersistentFlags().IntVar(&f.threads, "threads", 16, "Number of concurrent threads to use to dump the database.")
 	cmd.PersistentFlags().BoolVar(&f.schemaOnly, "schema-only", false, "Only dump schema, skip table data.")
+	cmd.PersistentFlags().StringVar(&f.outputFormat, "output-format", "sql",
+		"Output format for data: sql (for MySQL, default), json, or csv.")
 
 	return cmd
 }
@@ -85,6 +88,11 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 
 	if flags.shard != "" && flags.keyspace == "" {
 		return fmt.Errorf("to target a single shard, please pass the --keyspace flag")
+	}
+
+	validFormats := map[string]bool{"sql": true, "json": true, "csv": true}
+	if !validFormats[flags.outputFormat] {
+		return fmt.Errorf("invalid output format: %s. Valid options are: sql, json, csv", flags.outputFormat)
 	}
 
 	client, err := ch.Client()
@@ -239,6 +247,7 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 	cfg.SessionVars = []string{"set workload=olap;"}
 	cfg.Outdir = dir
 	cfg.SchemaOnly = flags.schemaOnly
+	cfg.OutputFormat = flags.outputFormat
 
 	if flags.shard != "" {
 		if flags.replica {
