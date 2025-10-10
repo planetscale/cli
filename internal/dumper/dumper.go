@@ -13,7 +13,6 @@ import (
 
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
-	querypb "github.com/xelabs/go-mysqlstack/sqlparser/depends/query"
 	"golang.org/x/sync/errgroup"
 
 	"go.uber.org/zap"
@@ -38,6 +37,7 @@ type Config struct {
 	Shard                     string
 	Table                     string
 	Outdir                    string
+	OutputFormat              string
 	SessionVars               []string
 	Threads                   int
 	ChunksizeInMB             int
@@ -64,7 +64,8 @@ type Config struct {
 
 func NewDefaultConfig() *Config {
 	return &Config{
-		Threads: 1,
+		Threads:      1,
+		OutputFormat: "sql",
 	}
 }
 
@@ -78,6 +79,12 @@ func NewDumper(cfg *Config) (*Dumper, error) {
 		cfg: cfg,
 		log: cmdutil.NewZapLogger(cfg.Debug),
 	}, nil
+}
+
+type dumpContext struct {
+	fieldNames []string
+	selfields  []string
+	where      string
 }
 
 func (d *Dumper) Run(ctx context.Context) error {
@@ -262,51 +269,37 @@ func (d *Dumper) dumpTableSchema(conn *Connection, database string, table string
 	return nil
 }
 
-// Dump a table in "MySQL" (multi-inserts) format
+// Dump a table in the configured output format
 func (d *Dumper) dumpTable(ctx context.Context, conn *Connection, database string, table string) error {
-	var allBytes uint64
-	var allRows uint64
-	var where string
-	var selfields []string
+	var writer TableWriter
 
-	fields := make([]string, 0)
-	{
-		flds, err := d.dumpableFieldNames(conn, table)
-		if err != nil {
-			return err
-		}
-
-		for _, name := range flds {
-			d.log.Debug("dump", zap.Any("filters", d.cfg.Filters), zap.String("table", table), zap.String("field_name", name))
-
-			if _, ok := d.cfg.Filters[table][name]; ok {
-				continue
-			}
-
-			fields = append(fields, fmt.Sprintf("`%s`", name))
-			replacement, ok := d.cfg.Selects[table][name]
-			if ok {
-				selfields = append(selfields, fmt.Sprintf("%s AS `%s`", replacement, name))
-			} else {
-				selfields = append(selfields, fmt.Sprintf("`%s`", name))
-			}
-		}
+	switch d.cfg.OutputFormat {
+	case "json":
+		writer = newJSONWriter(d.cfg)
+	case "csv":
+		writer = newCSVWriter(d.cfg)
+	default:
+		writer = newSQLWriter(d.cfg, table)
 	}
 
-	if v, ok := d.cfg.Wheres[table]; ok {
-		where = fmt.Sprintf(" WHERE %v", v)
-	}
-
-	cursor, err := conn.StreamFetch(fmt.Sprintf("SELECT %s FROM `%s`.`%s` %s", strings.Join(selfields, ", "), database, table, where))
+	dumpCtx, err := d.tableDumpContext(conn, table)
 	if err != nil {
 		return err
 	}
 
+	if err := writer.Initialize(dumpCtx.fieldNames); err != nil {
+		return err
+	}
+
+	cursor, err := conn.StreamFetch(fmt.Sprintf("SELECT %s FROM `%s`.`%s` %s", strings.Join(dumpCtx.selfields, ", "), database, table, dumpCtx.where))
+	if err != nil {
+		return err
+	}
+	defer cursor.Close()
+
+	var allBytes uint64
+	var allRows uint64
 	fileNo := 1
-	stmtsize := 0
-	chunkbytes := 0
-	rows := make([]string, 0, 256)
-	inserts := make([]string, 0, 256)
 	for cursor.Next() {
 		row, err := cursor.RowValues()
 		if err != nil {
@@ -318,42 +311,18 @@ func (d *Dumper) dumpTable(ctx context.Context, conn *Connection, database strin
 			return ctx.Err()
 		}
 
-		values := make([]string, 0, 16)
-		for _, v := range row {
-			if v.Raw() == nil {
-				values = append(values, "NULL")
-			} else {
-				str := v.String()
-				switch {
-				case v.IsSigned(), v.IsUnsigned(), v.IsFloat(), v.IsIntegral(), v.Type() == querypb.Type_DECIMAL:
-					values = append(values, str)
-				default:
-					values = append(values, fmt.Sprintf("\"%s\"", escapeBytes(v.Raw())))
-				}
-			}
+		bytesAdded, err := writer.WriteRow(row)
+		if err != nil {
+			return err
 		}
-		r := "(" + strings.Join(values, ",") + ")"
-		rows = append(rows, r)
 
 		allRows++
-		stmtsize += len(r)
-		chunkbytes += len(r)
-		allBytes += uint64(len(r))
-		atomic.AddUint64(&d.cfg.Allbytes, uint64(len(r)))
+		allBytes += uint64(bytesAdded)
+		atomic.AddUint64(&d.cfg.Allbytes, uint64(bytesAdded))
 		atomic.AddUint64(&d.cfg.Allrows, 1)
 
-		if stmtsize >= d.cfg.StmtSize {
-			insertone := fmt.Sprintf("INSERT INTO `%s`(%s) VALUES\n%s", table, strings.Join(fields, ","), strings.Join(rows, ",\n"))
-			inserts = append(inserts, insertone)
-			rows = rows[:0]
-			stmtsize = 0
-		}
-
-		if (chunkbytes / 1024 / 1024) >= d.cfg.ChunksizeInMB {
-			query := strings.Join(inserts, ";\n") + ";\n"
-			file := fmt.Sprintf("%s/%s.%s.%05d.sql", d.cfg.Outdir, database, table, fileNo)
-			err = writeFile(file, query)
-			if err != nil {
+		if writer.ShouldFlush() {
+			if err := writer.Flush(d.cfg.Outdir, database, table, fileNo); err != nil {
 				return err
 			}
 
@@ -367,26 +336,11 @@ func (d *Dumper) dumpTable(ctx context.Context, conn *Connection, database strin
 				zap.Int("thread_conn_id", conn.ID),
 			)
 
-			inserts = inserts[:0]
-			chunkbytes = 0
 			fileNo++
 		}
 	}
-	if chunkbytes > 0 {
-		if len(rows) > 0 {
-			insertone := fmt.Sprintf("INSERT INTO `%s`(%s) VALUES\n%s", table, strings.Join(fields, ","), strings.Join(rows, ",\n"))
-			inserts = append(inserts, insertone)
-		}
 
-		query := strings.Join(inserts, ";\n") + ";\n"
-		file := fmt.Sprintf("%s/%s.%s.%05d.sql", d.cfg.Outdir, database, table, fileNo)
-		err = writeFile(file, query)
-		if err != nil {
-			return err
-		}
-	}
-	err = cursor.Close()
-	if err != nil {
+	if err := writer.Close(d.cfg.Outdir, database, table, fileNo); err != nil {
 		return err
 	}
 
@@ -399,6 +353,40 @@ func (d *Dumper) dumpTable(ctx context.Context, conn *Connection, database strin
 		zap.Int("thread_conn_id", conn.ID),
 	)
 	return nil
+}
+
+func (d *Dumper) tableDumpContext(conn *Connection, table string) (*dumpContext, error) {
+	ctx := &dumpContext{}
+
+	flds, err := d.dumpableFieldNames(conn, table)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx.fieldNames = make([]string, 0)
+	ctx.selfields = make([]string, 0)
+
+	for _, name := range flds {
+		d.log.Debug("dump", zap.Any("filters", d.cfg.Filters), zap.String("table", table), zap.String("field_name", name))
+
+		if _, ok := d.cfg.Filters[table][name]; ok {
+			continue
+		}
+
+		ctx.fieldNames = append(ctx.fieldNames, name)
+		replacement, ok := d.cfg.Selects[table][name]
+		if ok {
+			ctx.selfields = append(ctx.selfields, fmt.Sprintf("%s AS `%s`", replacement, name))
+		} else {
+			ctx.selfields = append(ctx.selfields, fmt.Sprintf("`%s`", name))
+		}
+	}
+
+	if v, ok := d.cfg.Wheres[table]; ok {
+		ctx.where = fmt.Sprintf(" WHERE %v", v)
+	}
+
+	return ctx, nil
 }
 
 func (d *Dumper) allTables(conn *Connection, database string) ([]string, error) {
