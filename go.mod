@@ -25,7 +25,7 @@ require (
 	github.com/mattn/go-shellwords v1.0.12
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
-	github.com/planetscale/planetscale-go v0.141.0
+	github.com/planetscale/planetscale-go v0.142.0
 	github.com/planetscale/psdb v0.0.0-20250717190954-65c6661ab6e4
 	github.com/planetscale/psdbproxy v0.0.0-20250728082226-3f4ea3a74ec7
 	github.com/spf13/cobra v1.10.1
