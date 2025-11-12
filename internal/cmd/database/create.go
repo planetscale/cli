@@ -91,7 +91,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	cmd.Flags().StringVar(&createReq.ClusterSize, "cluster-size", "", "cluster size for Scaler Pro databases. Use `pscale size cluster list` to see the valid sizes.")
 
-	flags.replicas = cmd.Flags().Int("replicas", 0, "The number of replicas for the database. 0 for single non-HA node, 2+ for HA.")
+	flags.replicas = cmd.Flags().Int("replicas", 0, "number of replicas for postgresql database. 0 for single node, 2+ for HA.")
 
 	cmd.Flags().StringVar(&flags.engine, "engine", string(ps.DatabaseEngineMySQL), "The database engine for the database. Supported values: mysql, postgresql. Defaults to mysql.")
 	cmd.RegisterFlagCompletionFunc("engine", func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
