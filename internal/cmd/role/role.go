@@ -21,7 +21,9 @@ func RoleCmd(ch *cmdutil.Helper) *cobra.Command {
 		DeleteCmd(ch),
 		GetCmd(ch),
 		ListCmd(ch),
+		ReassignCmd(ch),
 		RenewCmd(ch),
+		ResetCmd(ch),
 		ResetDefaultCmd(ch),
 		UpdateCmd(ch),
 	)

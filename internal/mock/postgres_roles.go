@@ -21,6 +21,10 @@ type PostgresRolesService struct {
 	DeleteFnInvoked           bool
 	ResetDefaultRoleFn        func(context.Context, *ps.ResetDefaultRoleRequest) (*ps.PostgresRole, error)
 	ResetDefaultRoleFnInvoked bool
+	ResetPasswordFn           func(context.Context, *ps.ResetPostgresRolePasswordRequest) (*ps.PostgresRole, error)
+	ResetPasswordFnInvoked    bool
+	ReassignObjectsFn         func(context.Context, *ps.ReassignPostgresRoleObjectsRequest) error
+	ReassignObjectsFnInvoked  bool
 }
 
 func (s *PostgresRolesService) List(ctx context.Context, req *ps.ListPostgresRolesRequest, opts ...ps.ListOption) ([]*ps.PostgresRole, error) {
@@ -56,4 +60,14 @@ func (s *PostgresRolesService) Delete(ctx context.Context, req *ps.DeletePostgre
 func (s *PostgresRolesService) ResetDefaultRole(ctx context.Context, req *ps.ResetDefaultRoleRequest) (*ps.PostgresRole, error) {
 	s.ResetDefaultRoleFnInvoked = true
 	return s.ResetDefaultRoleFn(ctx, req)
+}
+
+func (s *PostgresRolesService) ResetPassword(ctx context.Context, req *ps.ResetPostgresRolePasswordRequest) (*ps.PostgresRole, error) {
+	s.ResetPasswordFnInvoked = true
+	return s.ResetPasswordFn(ctx, req)
+}
+
+func (s *PostgresRolesService) ReassignObjects(ctx context.Context, req *ps.ReassignPostgresRoleObjectsRequest) error {
+	s.ReassignObjectsFnInvoked = true
+	return s.ReassignObjectsFn(ctx, req)
 }
