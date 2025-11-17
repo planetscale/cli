@@ -175,8 +175,8 @@ github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c/go.mod h1:7rwL4CYBLnjL
 github.com/pkg/diff v0.0.0-20210226163009-20ebb0f2a09e/go.mod h1:pJLUxLENpZxwdsKMEsNbx1VGcRFpLqf3715MtcvvzbA=
 github.com/planetscale/noglog v0.2.1-0.20210421230640-bea75fcd2e8e h1:MZ8D+Z3m2vvqGZLvoQfpaGg/j1fNDr4j03s3PRz4rVY=
 github.com/planetscale/noglog v0.2.1-0.20210421230640-bea75fcd2e8e/go.mod h1:hwAsSPQdvPa3WcfKfzTXxtEq/HlqwLjQasfO6QbGo4Q=
-github.com/planetscale/planetscale-go v0.0.0-20251113202051-950a3bfe9a14 h1:ZD0ZFAtgf2y3L+XQUOj+f+okSdU4SYw6gsC1rIpbHlA=
-github.com/planetscale/planetscale-go v0.0.0-20251113202051-950a3bfe9a14/go.mod h1:PheYDHAwF14wfCBak1M0J64AdPW8NUeyvgPgWqe7zpI=
+github.com/planetscale/planetscale-go v0.143.0 h1:3LeJXrPYIkXdxUcGIK5rhitA44D6HMp9ZxmVTy7ozO0=
+github.com/planetscale/planetscale-go v0.143.0/go.mod h1:PheYDHAwF14wfCBak1M0J64AdPW8NUeyvgPgWqe7zpI=
 github.com/planetscale/psdb v0.0.0-20250717190954-65c6661ab6e4 h1:Xv5pj20Rhfty1Tv0OVcidg4ez4PvGrpKvb6rvUwQgDs=
 github.com/planetscale/psdb v0.0.0-20250717190954-65c6661ab6e4/go.mod h1:M52h5IWxAcbdQ1hSZrLAGQC4ZXslxEsK/Wh9nu3wdWs=
 github.com/planetscale/psdbproxy v0.0.0-20250728082226-3f4ea3a74ec7 h1:aRd6vdE1fyuSI4RVj7oCr8lFmgqXvpnPUmN85VbZCp8=
