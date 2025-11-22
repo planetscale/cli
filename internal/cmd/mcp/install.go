@@ -11,8 +11,47 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// ClaudeConfig represents the structure of the Claude Desktop config file
-type ClaudeConfig map[string]interface{}
+type ClaudeConfig map[string]any
+
+func installMCPServer(configPath string) error {
+	config := make(ClaudeConfig)
+
+	if _, err := os.Stat(configPath); err == nil {
+		configData, err := os.ReadFile(configPath)
+		if err != nil {
+			return fmt.Errorf("failed to read config file: %w", err)
+		}
+
+		if err := json.Unmarshal(configData, &config); err != nil {
+			return fmt.Errorf("failed to parse config file: %w", err)
+		}
+	}
+
+	var mcpServers map[string]any
+	if existingServers, ok := config["mcpServers"].(map[string]any); ok {
+		mcpServers = existingServers
+	} else {
+		mcpServers = make(map[string]any)
+	}
+
+	mcpServers["planetscale"] = map[string]any{
+		"command": "pscale",
+		"args":    []string{"mcp", "server"},
+	}
+
+	config["mcpServers"] = mcpServers
+
+	configJSON, err := json.MarshalIndent(config, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal config: %w", err)
+	}
+
+	if err := os.WriteFile(configPath, configJSON, 0644); err != nil {
+		return fmt.Errorf("failed to write config file: %w", err)
+	}
+
+	return nil
+}
 
 // getClaudeConfigDir returns the path to the Claude Desktop config directory based on the OS
 func getClaudeConfigDir() (string, error) {
@@ -68,6 +107,9 @@ func InstallCmd(ch *cmdutil.Helper) *cobra.Command {
 				}
 
 				configPath = filepath.Join(configDir, "claude_desktop_config.json")
+				if err := installMCPServer(configPath); err != nil {
+					return err
+				}
 			case "cursor":
 				configPath, err = getCursorConfigPath()
 				if err != nil {
@@ -81,50 +123,28 @@ func InstallCmd(ch *cmdutil.Helper) *cobra.Command {
 						return fmt.Errorf("failed to create Cursor config directory: %w", err)
 					}
 				}
-			default:
-				return fmt.Errorf("invalid target vendor: %s (supported values: claude, cursor)", target)
-			}
 
-			config := make(ClaudeConfig) // Same config structure for both tools
-
-			// Check if the file exists
-			if _, err := os.Stat(configPath); err == nil {
-				// File exists, read it
-				configData, err := os.ReadFile(configPath)
+				if err := installMCPServer(configPath); err != nil {
+					return err
+				}
+			case "zed":
+				configPath, err = getZedConfigPath()
 				if err != nil {
-					return fmt.Errorf("failed to read %s config file: %w", target, err)
+					return fmt.Errorf("failed to determine Zed config path: %w", err)
 				}
 
-				if err := json.Unmarshal(configData, &config); err != nil {
-					return fmt.Errorf("failed to parse %s config file: %w", target, err)
+				configDir := filepath.Dir(configPath)
+				if _, err := os.Stat(configDir); os.IsNotExist(err) {
+					if err := os.MkdirAll(configDir, 0755); err != nil {
+						return fmt.Errorf("failed to create Zed config directory: %w", err)
+					}
 				}
-			}
 
-			// Get or initialize the mcpServers map
-			var mcpServers map[string]interface{}
-			if existingServers, ok := config["mcpServers"].(map[string]interface{}); ok {
-				mcpServers = existingServers
-			} else {
-				mcpServers = make(map[string]interface{})
-			}
-
-			// Add or update the planetscale server configuration
-			mcpServers["planetscale"] = map[string]interface{}{
-				"command": "pscale",
-				"args":    []string{"mcp", "server"},
-			}
-
-			// Update the config with the new mcpServers
-			config["mcpServers"] = mcpServers
-
-			// Write the updated config back to file
-			configJSON, err := json.MarshalIndent(config, "", "  ")
-			if err != nil {
-				return fmt.Errorf("failed to marshal %s config: %w", target, err)
-			}
-
-			if err := os.WriteFile(configPath, configJSON, 0644); err != nil {
-				return fmt.Errorf("failed to write %s config file: %w", target, err)
+				if err := installZedMCPServer(configPath); err != nil {
+					return err
+				}
+			default:
+				return fmt.Errorf("invalid target vendor: %s (supported values: claude, cursor, zed)", target)
 			}
 
 			fmt.Printf("MCP server successfully configured for %s at %s\n", target, configPath)
@@ -132,10 +152,10 @@ func InstallCmd(ch *cmdutil.Helper) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&target, "target", "", "Target vendor for MCP installation (required). Possible values: [claude, cursor]")
+	cmd.Flags().StringVar(&target, "target", "", "Target vendor for MCP installation (required). Possible values: [claude, cursor, zed]")
 	cmd.MarkFlagRequired("target")
 	cmd.RegisterFlagCompletionFunc("target", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		return []string{"claude", "cursor"}, cobra.ShellCompDirectiveDefault
+		return []string{"claude", "cursor", "zed"}, cobra.ShellCompDirectiveDefault
 	})
 
 	return cmd
