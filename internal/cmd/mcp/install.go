@@ -12,45 +12,49 @@ import (
 )
 
 // ClaudeConfig represents the structure of the Claude Desktop config file
-type ClaudeConfig map[string]any
+type ClaudeConfig map[string]interface{}
 
-// installMCPServer installs the MCP server for the given config path
-// this function assumes that the config file follows the Claude MCP configuration format
-func installMCPServer(configPath string) error {
-	config := make(ClaudeConfig)
+func installMCPServer(configPath string, target string) error {
+	config := make(ClaudeConfig) // Same config structure for both tools
 
+	// Check if the file exists
 	if _, err := os.Stat(configPath); err == nil {
+		// File exists, read it
 		configData, err := os.ReadFile(configPath)
 		if err != nil {
-			return fmt.Errorf("failed to read config file: %w", err)
+			return fmt.Errorf("failed to read %s config file: %w", target, err)
 		}
 
 		if err := json.Unmarshal(configData, &config); err != nil {
-			return fmt.Errorf("failed to parse config file: %w", err)
+			return fmt.Errorf("failed to parse %s config file: %w", target, err)
 		}
 	}
 
-	var mcpServers map[string]any
-	if existingServers, ok := config["mcpServers"].(map[string]any); ok {
+	// Get or initialize the mcpServers map
+	var mcpServers map[string]interface{}
+	if existingServers, ok := config["mcpServers"].(map[string]interface{}); ok {
 		mcpServers = existingServers
 	} else {
-		mcpServers = make(map[string]any)
+		mcpServers = make(map[string]interface{})
 	}
 
-	mcpServers["planetscale"] = map[string]any{
+	// Add or update the planetscale server configuration
+	mcpServers["planetscale"] = map[string]interface{}{
 		"command": "pscale",
 		"args":    []string{"mcp", "server"},
 	}
 
+	// Update the config with the new mcpServers
 	config["mcpServers"] = mcpServers
 
+	// Write the updated config back to file
 	configJSON, err := json.MarshalIndent(config, "", "  ")
 	if err != nil {
-		return fmt.Errorf("failed to marshal config: %w", err)
+		return fmt.Errorf("failed to marshal %s config: %w", target, err)
 	}
 
 	if err := os.WriteFile(configPath, configJSON, 0644); err != nil {
-		return fmt.Errorf("failed to write config file: %w", err)
+		return fmt.Errorf("failed to write %s config file: %w", target, err)
 	}
 
 	return nil
@@ -110,7 +114,7 @@ func InstallCmd(ch *cmdutil.Helper) *cobra.Command {
 				}
 
 				configPath = filepath.Join(configDir, "claude_desktop_config.json")
-				if err := installMCPServer(configPath); err != nil {
+				if err := installMCPServer(configPath, target); err != nil {
 					return err
 				}
 			case "cursor":
@@ -127,7 +131,7 @@ func InstallCmd(ch *cmdutil.Helper) *cobra.Command {
 					}
 				}
 
-				if err := installMCPServer(configPath); err != nil {
+				if err := installMCPServer(configPath, target); err != nil {
 					return err
 				}
 			case "zed":
