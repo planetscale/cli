@@ -11,8 +11,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// ClaudeConfig represents the structure of the Claude Desktop config file
 type ClaudeConfig map[string]any
 
+// installMCPServer installs the MCP server for the given config path
+// this function assumes that the config file follows the Claude MCP configuration format
 func installMCPServer(configPath string) error {
 	config := make(ClaudeConfig)
 
