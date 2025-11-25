@@ -49,7 +49,7 @@ func TokenCmd(ch *cmdutil.Helper) *cobra.Command {
 type ServiceToken struct {
 	ID         string `header:"id" json:"id"`
 	Name       string `header:"name" json:"name"`
-	LastUsedAt *int64 `header:"last_used_at,timestamp(ms|utc|human)" json:"last_used_at"`
+	LastUsedAt int64  `header:"last_used_at,timestamp(ms|utc|human)" json:"last_used_at"`
 	CreatedAt  int64  `header:"created_at,timestamp(ms|utc|human)" json:"created_at"`
 
 	orig *ps.ServiceToken
@@ -67,11 +67,18 @@ func toServiceToken(st *ps.ServiceToken) *ServiceToken {
 		name = *st.Name
 	}
 
+	// Avoid using GetMillisecondsIfExists as the table printer
+	// will not order the columns correctly if lastUsedAt is *int64
+	var lastUsedAt int64
+	if st.LastUsedAt != nil {
+		lastUsedAt = printer.GetMilliseconds(*st.LastUsedAt)
+	}
+
 	return &ServiceToken{
 		ID:         st.ID,
 		Name:       name,
+		LastUsedAt: lastUsedAt,
 		CreatedAt:  printer.GetMilliseconds(st.CreatedAt),
-		LastUsedAt: printer.GetMillisecondsIfExists(st.LastUsedAt),
 		orig:       st,
 	}
 }
