@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"testing"
+	"time"
 
 	qt "github.com/frankban/quicktest"
 	"github.com/planetscale/cli/internal/cmdutil"
@@ -22,10 +23,14 @@ func TestServiceToken_ListCmd(t *testing.T) {
 	p.SetResourceOutput(&buf)
 
 	org := "planetscale"
+	name1 := "token-one"
+	createdAt1 := time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC)
+	lastUsedAt1 := time.Date(2025, 1, 20, 14, 45, 0, 0, time.UTC)
+	createdAt2 := time.Date(2025, 1, 16, 11, 0, 0, 0, time.UTC)
 
 	orig := []*ps.ServiceToken{
-		{ID: "1"},
-		{ID: "2"},
+		{ID: "1", Name: &name1, CreatedAt: createdAt1, LastUsedAt: &lastUsedAt1},
+		{ID: "2", CreatedAt: createdAt2},
 	}
 
 	svc := &mock.ServiceTokenService{
