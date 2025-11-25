@@ -45,10 +45,12 @@ func TokenCmd(ch *cmdutil.Helper) *cobra.Command {
 	return cmd
 }
 
-// ServiceToken returns a table and json serializable schema snapshot.
+// ServiceToken returns a table and json serializable service token for listing.
 type ServiceToken struct {
-	ID    string `header:"id" json:"id"`
-	Token string `header:"token" json:"token"`
+	ID         string `header:"id" json:"id"`
+	Name       string `header:"name" json:"name"`
+	LastUsedAt *int64 `header:"last_used_at,timestamp(ms|utc|human)" json:"last_used_at"`
+	CreatedAt  int64  `header:"created_at,timestamp(ms|utc|human)" json:"created_at"`
 
 	orig *ps.ServiceToken
 }
@@ -58,12 +60,49 @@ func (s *ServiceToken) MarshalJSON() ([]byte, error) {
 }
 
 // toServiceToken returns a struct that prints out the various fields
-// of a schema snapshot model.
+// of a service token model.
 func toServiceToken(st *ps.ServiceToken) *ServiceToken {
+	var name string
+	if st.Name != nil {
+		name = *st.Name
+	}
+
 	return &ServiceToken{
-		ID:    st.ID,
-		Token: st.Token,
-		orig:  st,
+		ID:         st.ID,
+		Name:       name,
+		CreatedAt:  printer.GetMilliseconds(st.CreatedAt),
+		LastUsedAt: printer.GetMillisecondsIfExists(st.LastUsedAt),
+		orig:       st,
+	}
+}
+
+// ServiceTokenWithSecret is used for the create response where the token is returned.
+type ServiceTokenWithSecret struct {
+	ID        string `header:"id" json:"id"`
+	Name      string `header:"name" json:"name"`
+	Token     string `header:"token" json:"token"`
+	CreatedAt int64  `header:"created_at,timestamp(ms|utc|human)" json:"created_at"`
+
+	orig *ps.ServiceToken
+}
+
+func (s *ServiceTokenWithSecret) MarshalJSON() ([]byte, error) {
+	return json.MarshalIndent(s.orig, "", "  ")
+}
+
+// toServiceTokenWithSecret returns a struct that includes the token secret
+func toServiceTokenWithSecret(st *ps.ServiceToken) *ServiceTokenWithSecret {
+	var name string
+	if st.Name != nil {
+		name = *st.Name
+	}
+
+	return &ServiceTokenWithSecret{
+		ID:        st.ID,
+		Name:      name,
+		Token:     st.Token,
+		CreatedAt: printer.GetMilliseconds(st.CreatedAt),
+		orig:      st,
 	}
 }
 

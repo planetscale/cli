@@ -10,6 +10,8 @@ import (
 )
 
 func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
+	var name string
+
 	cmd := &cobra.Command{
 		Use:   "create",
 		Short: "create a service token for the organization",
@@ -22,6 +24,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			req := &planetscale.CreateServiceTokenRequest{
 				Organization: ch.Config.Organization,
+				Name:         stringPtrOrNil(name),
 			}
 
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Creating service token in org %s", printer.BoldBlue(ch.Config.Organization)))
@@ -39,9 +42,18 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			end()
 
-			return ch.Printer.PrintResource(toServiceToken(token))
+			return ch.Printer.PrintResource(toServiceTokenWithSecret(token))
 		},
 	}
 
+	cmd.Flags().StringVar(&name, "name", "", "optional name for the service token")
+
 	return cmd
+}
+
+func stringPtrOrNil(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
 }
