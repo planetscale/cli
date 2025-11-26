@@ -14,14 +14,16 @@ import (
 func WebhookCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "webhook <command>",
-		Short:             "List webhooks",
+		Short:             "Create, list, and manage webhooks",
 		PersistentPreRunE: cmdutil.CheckAuthentication(ch.Config),
 	}
 
 	cmd.PersistentFlags().StringVar(&ch.Config.Organization, "org", ch.Config.Organization, "The organization for the current user")
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
 
+	cmd.AddCommand(CreateCmd(ch))
 	cmd.AddCommand(ListCmd(ch))
+	cmd.AddCommand(UpdateCmd(ch))
 
 	return cmd
 }
@@ -33,6 +35,7 @@ type Webhook struct {
 	Events    string `header:"events" json:"events"`
 	Enabled   bool   `header:"enabled" json:"enabled"`
 	CreatedAt int64  `header:"created_at,timestamp(ms|utc|human)" json:"created_at"`
+	UpdatedAt int64  `header:"updated_at,timestamp(ms|utc|human)" json:"updated_at"`
 
 	orig *ps.Webhook
 }
@@ -49,6 +52,7 @@ func toWebhook(webhook *ps.Webhook) *Webhook {
 		Events:    strings.Join(webhook.Events, ", "),
 		Enabled:   webhook.Enabled,
 		CreatedAt: printer.GetMilliseconds(webhook.CreatedAt),
+		UpdatedAt: printer.GetMilliseconds(webhook.UpdatedAt),
 		orig:      webhook,
 	}
 }
