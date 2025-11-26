@@ -108,4 +108,3 @@ func TestWebhook_ListCmd_Empty(t *testing.T) {
 	c.Assert(svc.ListFnInvoked, qt.IsTrue)
 	c.Assert(buf.String(), qt.Contains, "No webhooks exist")
 }
-

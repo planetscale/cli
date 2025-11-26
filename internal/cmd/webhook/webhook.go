@@ -60,4 +60,3 @@ func toWebhooks(webhooks []*ps.Webhook) []*Webhook {
 	}
 	return results
 }
-

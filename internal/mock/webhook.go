@@ -55,4 +55,3 @@ func (w *WebhooksService) Test(ctx context.Context, req *ps.TestWebhookRequest) 
 	w.TestFnInvoked = true
 	return w.TestFn(ctx, req)
 }
-
