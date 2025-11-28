@@ -304,32 +304,68 @@ func (l *Loader) restoreTableSchema(overwrite bool, tables []string, conn *Conne
 			return err
 		}
 
+		// Drop table once before processing queries (if overwrite is enabled)
+		if overwrite {
+			l.log.Info(
+				"drop(overwrite.is.true)",
+				zap.String("database", db),
+				zap.String("table ", tbl),
+			)
+
+			if l.cfg.ShowDetails {
+				l.cfg.Printer.Println("Dropping Existing Table (if it exists): " + printer.BoldBlue(name))
+			}
+			dropQuery := fmt.Sprintf("DROP TABLE IF EXISTS %s", name)
+			err = conn.Execute(dropQuery)
+			if err != nil {
+				return err
+			}
+		}
+
+		// Execute each valid SQL statement (skip comments)
 		for _, query := range queries {
-			if !strings.HasPrefix(query, "/*") && query != "" {
-				if overwrite {
-					l.log.Info(
-						"drop(overwrite.is.true)",
-						zap.String("database", db),
-						zap.String("table ", tbl),
-					)
+			// Skip empty queries and block comments
+			trimmedQuery := strings.TrimSpace(query)
+			if trimmedQuery == "" || strings.HasPrefix(trimmedQuery, "/*") {
+				continue
+			}
 
-					if l.cfg.ShowDetails {
-						l.cfg.Printer.Println("Dropping Existing Table (if it exists): " + printer.BoldBlue(name))
-					}
-					dropQuery := fmt.Sprintf("DROP TABLE IF EXISTS %s", name)
-					err = conn.Execute(dropQuery)
-					if err != nil {
-						return err
-					}
+			// Filter out line comments (--) but keep the rest of the query
+			var cleanedLines []string
+			for _, line := range strings.Split(query, "\n") {
+				trimmedLine := strings.TrimSpace(line)
+				// Skip empty lines and comment-only lines
+				if trimmedLine != "" && !strings.HasPrefix(trimmedLine, "--") {
+					cleanedLines = append(cleanedLines, line)
 				}
+			}
 
-				if l.cfg.ShowDetails {
+			// Skip if no non-comment content remains
+			if len(cleanedLines) == 0 {
+				continue
+			}
+
+			// Reconstruct the query without comment lines
+			cleanedQuery := strings.Join(cleanedLines, "\n")
+			trimmedCleanedQuery := strings.TrimSpace(cleanedQuery)
+
+			if l.cfg.ShowDetails {
+				// Detect query type and provide appropriate output
+				upperQuery := strings.ToUpper(trimmedCleanedQuery)
+				if strings.HasPrefix(upperQuery, "CREATE TABLE") {
 					l.cfg.Printer.Printf("Creating Table: %s (Table %d of %d)\n", printer.BoldBlue(name), (idx + 1), numberOfTables)
+				} else if strings.HasPrefix(upperQuery, "ALTER TABLE") {
+					l.cfg.Printer.Printf("Altering Table: %s (Table %d of %d)\n", printer.BoldBlue(name), (idx + 1), numberOfTables)
+					l.cfg.Printer.Printf("Query: %s\n", cleanedQuery)
+				} else {
+					// For any other query type, show what's being executed
+					l.cfg.Printer.Printf("Executing Query for Table: %s (Table %d of %d)\n", printer.BoldBlue(name), (idx + 1), numberOfTables)
+					l.cfg.Printer.Printf("Query: %s\n", cleanedQuery)
 				}
-				err = conn.Execute(query)
-				if err != nil {
-					return err
-				}
+			}
+			err = conn.Execute(cleanedQuery)
+			if err != nil {
+				return err
 			}
 		}
 		l.log.Info("restoring schema",
