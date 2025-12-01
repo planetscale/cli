@@ -49,6 +49,7 @@ import (
 	"github.com/planetscale/cli/internal/cmd/signup"
 	"github.com/planetscale/cli/internal/cmd/token"
 	"github.com/planetscale/cli/internal/cmd/version"
+	"github.com/planetscale/cli/internal/cmd/webhook"
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/config"
 	"github.com/planetscale/cli/internal/printer"
@@ -280,6 +281,10 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 	databaseCmd := database.DatabaseCmd(ch)
 	databaseCmd.GroupID = "database"
 	rootCmd.AddCommand(databaseCmd)
+
+	webhookCmd := webhook.WebhookCmd(ch)
+	webhookCmd.GroupID = "database"
+	rootCmd.AddCommand(webhookCmd)
 
 	// Vitess-specific commands
 	connectCmd := connect.ConnectCmd(ch)
