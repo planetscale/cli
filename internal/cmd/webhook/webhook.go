@@ -22,6 +22,7 @@ func WebhookCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
 
 	cmd.AddCommand(CreateCmd(ch))
+	cmd.AddCommand(DeleteCmd(ch))
 	cmd.AddCommand(ListCmd(ch))
 	cmd.AddCommand(UpdateCmd(ch))
 
