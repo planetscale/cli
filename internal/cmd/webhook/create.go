@@ -56,7 +56,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			end()
 
-			return ch.Printer.PrintResource(toWebhook(webhook))
+			return ch.Printer.PrintResource(toWebhookWithSecret(webhook))
 		},
 	}
 

@@ -14,7 +14,7 @@ import (
 	ps "github.com/planetscale/planetscale-go/planetscale"
 )
 
-func TestWebhook_CreateCmd(t *testing.T) {
+func TestWebhook_ShowCmd(t *testing.T) {
 	c := qt.New(t)
 
 	var buf bytes.Buffer
@@ -24,25 +24,23 @@ func TestWebhook_CreateCmd(t *testing.T) {
 
 	org := "planetscale"
 	db := "mydb"
-	url := "https://example.com/webhook"
-	events := []string{"branch.created", "branch.deleted"}
+	webhookID := "webhook-123"
 	createdAt := time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC)
 
 	webhook := &ps.Webhook{
-		ID:        "webhook-123",
-		URL:       url,
+		ID:        webhookID,
+		URL:       "https://example.com/webhook",
 		Secret:    "abcdefgh",
 		Enabled:   true,
-		Events:    events,
+		Events:    []string{"branch.created", "branch.deleted"},
 		CreatedAt: createdAt,
 	}
 
 	svc := &mock.WebhooksService{
-		CreateFn: func(ctx context.Context, req *ps.CreateWebhookRequest) (*ps.Webhook, error) {
+		GetFn: func(ctx context.Context, req *ps.GetWebhookRequest) (*ps.Webhook, error) {
 			c.Assert(req.Organization, qt.Equals, org)
 			c.Assert(req.Database, qt.Equals, db)
-			c.Assert(req.URL, qt.Equals, url)
-			c.Assert(req.Events, qt.DeepEquals, events)
+			c.Assert(req.ID, qt.Equals, webhookID)
 			return webhook, nil
 		},
 	}
@@ -59,18 +57,18 @@ func TestWebhook_CreateCmd(t *testing.T) {
 		},
 	}
 
-	cmd := CreateCmd(ch)
-	cmd.SetArgs([]string{db, "--url", url, "--events", "branch.created,branch.deleted"})
+	cmd := ShowCmd(ch)
+	cmd.SetArgs([]string{db, webhookID})
 	err := cmd.Execute()
 
 	c.Assert(err, qt.IsNil)
-	c.Assert(svc.CreateFnInvoked, qt.IsTrue)
+	c.Assert(svc.GetFnInvoked, qt.IsTrue)
 
 	res := &WebhookWithSecret{orig: webhook}
 	c.Assert(buf.String(), qt.JSONEquals, res)
 }
 
-func TestWebhook_CreateCmd_RequiresURL(t *testing.T) {
+func TestWebhook_ShowCmd_NotFound(t *testing.T) {
 	c := qt.New(t)
 
 	var buf bytes.Buffer
@@ -80,6 +78,13 @@ func TestWebhook_CreateCmd_RequiresURL(t *testing.T) {
 
 	org := "planetscale"
 	db := "mydb"
+	webhookID := "webhook-123"
+
+	svc := &mock.WebhooksService{
+		GetFn: func(ctx context.Context, req *ps.GetWebhookRequest) (*ps.Webhook, error) {
+			return nil, &ps.Error{Code: ps.ErrNotFound}
+		},
+	}
 
 	ch := &cmdutil.Helper{
 		Printer: p,
@@ -87,14 +92,16 @@ func TestWebhook_CreateCmd_RequiresURL(t *testing.T) {
 			Organization: org,
 		},
 		Client: func() (*ps.Client, error) {
-			return &ps.Client{}, nil
+			return &ps.Client{
+				Webhooks: svc,
+			}, nil
 		},
 	}
 
-	cmd := CreateCmd(ch)
-	cmd.SetArgs([]string{db})
+	cmd := ShowCmd(ch)
+	cmd.SetArgs([]string{db, webhookID})
 	err := cmd.Execute()
 
 	c.Assert(err, qt.IsNotNil)
-	c.Assert(err.Error(), qt.Contains, "required flag")
+	c.Assert(err.Error(), qt.Contains, "does not exist")
 }
