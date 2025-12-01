@@ -57,5 +57,3 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	return cmd
 }
-
-

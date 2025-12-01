@@ -131,5 +131,3 @@ func TestWebhook_DeleteCmd_NotFound(t *testing.T) {
 	c.Assert(err, qt.IsNotNil)
 	c.Assert(err.Error(), qt.Contains, "does not exist")
 }
-
-
