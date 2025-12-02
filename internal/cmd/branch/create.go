@@ -20,6 +20,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 		parentBranch  string
 		clusterSize   string
 		backupID      string
+		majorVersion  string
 	}
 
 	cmd := &cobra.Command{
@@ -158,6 +159,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 					ClusterName:  flags.clusterSize,
 					ParentBranch: flags.parentBranch,
 					BackupID:     flags.backupID,
+					MajorVersion: flags.majorVersion,
 				}
 
 				dbBranch, err := client.PostgresBranches.Create(cmd.Context(), createReq)
@@ -212,6 +214,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().StringVar(&flags.clusterSize, "cluster-size", "PS-10", "Cluster size for branches being created from a backup or seeded with data. Use 'pscale size cluster list' to see the valid sizes.")
 	cmd.Flags().BoolVar(&flags.dataBranching, "seed-data", false, "Add seed data using the Data Branching™ feature. This branch will be created with the same resources as the base branch.")
 	cmd.Flags().BoolVar(&flags.wait, "wait", false, "Wait until the branch is ready")
+	cmd.Flags().StringVar(&flags.majorVersion, "major-version", "", "For PostgreSQL databases, the PostgreSQL major version to use for the branch. Defaults to the major version of the parent branch if it exists or the database's default branch major version. Ignored for branches restored from backups.")
 	cmd.MarkFlagsMutuallyExclusive("from", "restore")
 	cmd.MarkFlagsMutuallyExclusive("restore", "seed-data")
 
@@ -221,6 +224,12 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	cmd.RegisterFlagCompletionFunc("cluster-size", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return cmdutil.ClusterSizesCompletionFunc(ch, cmd, args, toComplete)
+	})
+
+	cmd.RegisterFlagCompletionFunc("major-version", func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
+		return []cobra.Completion{
+			cobra.CompletionWithDesc("17", "PostgreSQL 17"),
+		}, cobra.ShellCompDirectiveNoFileComp
 	})
 
 	return cmd

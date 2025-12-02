@@ -19,10 +19,11 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	createReq := &ps.CreateDatabaseRequest{}
 
 	var flags struct {
-		clusterSize string
-		engine      string
-		wait        bool
-		replicas    *int
+		clusterSize  string
+		engine       string
+		wait         bool
+		replicas     *int
+		majorVersion string
 	}
 
 	cmd := &cobra.Command{
@@ -44,6 +45,10 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			if cmd.Flags().Changed("replicas") {
 				createReq.Replicas = flags.replicas
+			}
+
+			if flags.majorVersion != "" {
+				createReq.MajorVersion = flags.majorVersion
 			}
 
 			client, err := ch.Client()
@@ -98,6 +103,13 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 		return []cobra.Completion{
 			cobra.CompletionWithDesc("mysql", "A Vitess database"),
 			cobra.CompletionWithDesc("postgresql", "The fastest cloud Postgres"),
+		}, cobra.ShellCompDirectiveNoFileComp
+	})
+
+	cmd.Flags().StringVar(&flags.majorVersion, "major-version", "", "For PostgreSQL databases, the PostgreSQL major version to use for the database. Defaults to the latest available major version.")
+	cmd.RegisterFlagCompletionFunc("major-version", func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
+		return []cobra.Completion{
+			cobra.CompletionWithDesc("17", "PostgreSQL 17"),
 		}, cobra.ShellCompDirectiveNoFileComp
 	})
 
