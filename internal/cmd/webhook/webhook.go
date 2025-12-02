@@ -24,6 +24,7 @@ func WebhookCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.AddCommand(CreateCmd(ch))
 	cmd.AddCommand(DeleteCmd(ch))
 	cmd.AddCommand(ListCmd(ch))
+	cmd.AddCommand(ShowCmd(ch))
 	cmd.AddCommand(UpdateCmd(ch))
 
 	return cmd
@@ -64,4 +65,35 @@ func toWebhooks(webhooks []*ps.Webhook) []*Webhook {
 		results = append(results, toWebhook(webhook))
 	}
 	return results
+}
+
+// WebhookWithSecret includes the webhook secret for display.
+type WebhookWithSecret struct {
+	ID        string `header:"id" json:"id"`
+	URL       string `header:"url" json:"url"`
+	Secret    string `header:"secret" json:"secret"`
+	Events    string `header:"events" json:"events"`
+	Enabled   bool   `header:"enabled" json:"enabled"`
+	CreatedAt int64  `header:"created_at,timestamp(ms|utc|human)" json:"created_at"`
+	UpdatedAt int64  `header:"updated_at,timestamp(ms|utc|human)" json:"updated_at"`
+
+	orig *ps.Webhook
+}
+
+func (w *WebhookWithSecret) MarshalJSON() ([]byte, error) {
+	return json.MarshalIndent(w.orig, "", "  ")
+}
+
+// toWebhookWithSecret returns a struct that includes the webhook secret.
+func toWebhookWithSecret(webhook *ps.Webhook) *WebhookWithSecret {
+	return &WebhookWithSecret{
+		ID:        webhook.ID,
+		URL:       webhook.URL,
+		Secret:    webhook.Secret,
+		Events:    strings.Join(webhook.Events, ", "),
+		Enabled:   webhook.Enabled,
+		CreatedAt: printer.GetMilliseconds(webhook.CreatedAt),
+		UpdatedAt: printer.GetMilliseconds(webhook.UpdatedAt),
+		orig:      webhook,
+	}
 }
