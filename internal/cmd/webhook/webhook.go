@@ -25,6 +25,7 @@ func WebhookCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.AddCommand(DeleteCmd(ch))
 	cmd.AddCommand(ListCmd(ch))
 	cmd.AddCommand(ShowCmd(ch))
+	cmd.AddCommand(TestCmd(ch))
 	cmd.AddCommand(UpdateCmd(ch))
 
 	return cmd
