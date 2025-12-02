@@ -239,6 +239,62 @@ func TestBranch_CreateCmdWithSeedData(t *testing.T) {
 	c.Assert(buf.String(), qt.JSONEquals, res)
 }
 
+func TestBranch_CreateCmdWithMajorVersion(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	db := "planetscale"
+	branch := "development"
+
+	res := &ps.PostgresBranch{Name: branch}
+
+	svc := &mock.PostgresBranchesService{
+		CreateFn: func(ctx context.Context, req *ps.CreatePostgresBranchRequest) (*ps.PostgresBranch, error) {
+			c.Assert(req.Name, qt.Equals, branch)
+			c.Assert(req.Database, qt.Equals, db)
+			c.Assert(req.Region, qt.Equals, "us-east")
+			c.Assert(req.Organization, qt.Equals, org)
+			c.Assert(req.MajorVersion, qt.Equals, "17")
+
+			return res, nil
+		},
+	}
+
+	dbSvc := &mock.DatabaseService{
+		GetFn: func(ctx context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
+			c.Assert(req.Database, qt.Equals, db)
+			c.Assert(req.Organization, qt.Equals, org)
+			return &ps.Database{Kind: "postgresql"}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: org,
+		},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{
+				PostgresBranches: svc,
+				Databases:        dbSvc,
+			}, nil
+		},
+	}
+
+	cmd := CreateCmd(ch)
+	cmd.SetArgs([]string{db, branch, "--region", "us-east", "--major-version", "17"})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.CreateFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.JSONEquals, res)
+}
+
 func TestBranch_CreateCmd_ServiceTokenAuthError(t *testing.T) {
 	c := qt.New(t)
 
