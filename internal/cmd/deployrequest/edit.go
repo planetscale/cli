@@ -14,7 +14,8 @@ import (
 // EditCmd is the command for editing preferences on deploy requests.
 func EditCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
-		autoApply string
+		enable_auto_apply  bool
+		disable_auto_apply bool
 	}
 
 	cmd := &cobra.Command{
@@ -36,17 +37,19 @@ func EditCmd(ch *cmdutil.Helper) *cobra.Command {
 				return fmt.Errorf("the argument <number> is invalid: %s", err)
 			}
 
-			switch flags.autoApply {
-			case "enable", "disable":
-			default:
-				return fmt.Errorf("--auto-apply accepts only \"enable\" or \"disable\" but got %q", flags.autoApply)
+			if flags.enable_auto_apply && flags.disable_auto_apply {
+				return fmt.Errorf("cannot use both --enable-auto-apply and --disable-auto-apply flags together")
+			}
+
+			if !flags.enable_auto_apply && !flags.disable_auto_apply {
+				return fmt.Errorf("must specify either --enable-auto-apply or --disable-auto-apply")
 			}
 
 			dr, err := client.DeployRequests.AutoApplyDeploy(ctx, &planetscale.AutoApplyDeployRequestRequest{
 				Organization: ch.Config.Organization,
 				Database:     database,
 				Number:       n,
-				Enable:       flags.autoApply == "enable",
+				Enable:       flags.enable_auto_apply,
 			})
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
@@ -69,6 +72,7 @@ func EditCmd(ch *cmdutil.Helper) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&flags.autoApply, "auto-apply", "enable", "Update the auto apply setting for a deploy request. Possible values: [enable,disable]")
+	cmd.Flags().BoolVar(&flags.enable_auto_apply, "enable-auto-apply", false, "Enable auto-apply. The deploy request will automatically swap over to the new schema once ready.")
+	cmd.Flags().BoolVar(&flags.disable_auto_apply, "disable-auto-apply", false, "Disable auto-apply. The deploy request will wait for your confirmation before swapping to the new schema. Use 'deploy-request apply' to apply the changes manually.")
 	return cmd
 }

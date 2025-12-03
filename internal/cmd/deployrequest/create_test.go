@@ -33,6 +33,7 @@ func TestDeployRequest_CreateCmd(t *testing.T) {
 			c.Assert(req.Organization, qt.Equals, org)
 			c.Assert(req.Database, qt.Equals, db)
 			c.Assert(req.Branch, qt.Equals, branch)
+			c.Assert(req.AutoCutover, qt.Equals, false)
 			c.Assert(req.Notes, qt.Equals, notes)
 			c.Assert(req.AutoDeleteBranch, qt.Equals, true)
 			c.Assert(req.IntoBranch, qt.Equals, "", qt.Commentf("default value of the '--into' flag has changed"))
@@ -62,6 +63,129 @@ func TestDeployRequest_CreateCmd(t *testing.T) {
 
 	res := &ps.DeployRequest{Number: number}
 	c.Assert(buf.String(), qt.JSONEquals, res)
+}
+
+func TestDeployRequest_CreateCmdEnableAutoApplyFlag(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	db := "planetscale"
+	branch := "development"
+	var number uint64 = 10
+
+	svc := &mock.DeployRequestsService{
+		CreateFn: func(ctx context.Context, req *ps.CreateDeployRequestRequest) (*ps.DeployRequest, error) {
+			c.Assert(req.Organization, qt.Equals, org)
+			c.Assert(req.Database, qt.Equals, db)
+			c.Assert(req.Branch, qt.Equals, branch)
+			c.Assert(req.AutoCutover, qt.Equals, true)
+
+			return &ps.DeployRequest{Number: number}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: org,
+		},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{
+				DeployRequests: svc,
+			}, nil
+		},
+	}
+
+	cmd := CreateCmd(ch)
+	cmd.SetArgs([]string{db, branch, "--enable-auto-apply"})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.CreateFnInvoked, qt.IsTrue)
+
+	res := &ps.DeployRequest{Number: number}
+	c.Assert(buf.String(), qt.JSONEquals, res)
+}
+
+func TestDeployRequest_CreateCmdDisableAutoApplyFlag(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	db := "planetscale"
+	branch := "development"
+	var number uint64 = 10
+
+	svc := &mock.DeployRequestsService{
+		CreateFn: func(ctx context.Context, req *ps.CreateDeployRequestRequest) (*ps.DeployRequest, error) {
+			c.Assert(req.Organization, qt.Equals, org)
+			c.Assert(req.Database, qt.Equals, db)
+			c.Assert(req.Branch, qt.Equals, branch)
+			c.Assert(req.AutoCutover, qt.Equals, false)
+
+			return &ps.DeployRequest{Number: number}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: org,
+		},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{
+				DeployRequests: svc,
+			}, nil
+		},
+	}
+
+	cmd := CreateCmd(ch)
+	cmd.SetArgs([]string{db, branch, "--disable-auto-apply"})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.CreateFnInvoked, qt.IsTrue)
+
+	res := &ps.DeployRequest{Number: number}
+	c.Assert(buf.String(), qt.JSONEquals, res)
+}
+
+func TestDeployRequest_CreateCmdBothAutoApplyFlags(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	db := "planetscale"
+	branch := "development"
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: org,
+		},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{}, nil
+		},
+	}
+
+	cmd := CreateCmd(ch)
+	cmd.SetArgs([]string{db, branch, "--enable-auto-apply", "--disable-auto-apply"})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.ErrorMatches, "cannot use both --enable-auto-apply and --disable-auto-apply flags together")
 }
 
 func TestDeployRequest_CreateCmdIntoFlag(t *testing.T) {

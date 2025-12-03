@@ -16,6 +16,8 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 		into               string
 		notes              string
 		auto_delete_branch bool
+		enable_auto_apply  bool
+		disable_auto_apply bool
 	}
 
 	cmd := &cobra.Command{
@@ -32,6 +34,10 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
+			if flags.enable_auto_apply && flags.disable_auto_apply {
+				return fmt.Errorf("cannot use both --enable-auto-apply and --disable-auto-apply flags together")
+			}
+
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Request deploying of %s branch in %s...", printer.BoldBlue(branch), printer.BoldBlue(database)))
 			defer end()
 
@@ -41,6 +47,12 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 				Branch:       branch,
 				IntoBranch:   flags.into,
 				Notes:        flags.notes,
+			}
+
+			if flags.enable_auto_apply {
+				request.AutoCutover = true
+			} else if flags.disable_auto_apply {
+				request.AutoCutover = false
 			}
 
 			if flags.auto_delete_branch {
@@ -73,6 +85,8 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.PersistentFlags().StringVar(&flags.into, "into", "", "Branch to deploy into. By default, it's the parent branch (if present) or the database's default branch.")
 	cmd.PersistentFlags().StringVar(&flags.notes, "notes", "", "Notes to include with the deploy request.")
 	cmd.Flags().BoolVar(&flags.auto_delete_branch, "auto-delete-branch", false, "Delete the branch after the deploy request completes.")
+	cmd.Flags().BoolVar(&flags.enable_auto_apply, "enable-auto-apply", false, "Enable auto-apply. The deploy request will automatically swap over to the new schema once ready.")
+	cmd.Flags().BoolVar(&flags.disable_auto_apply, "disable-auto-apply", false, "Disable auto-apply. The deploy request will wait for your confirmation before swapping to the new schema. Use 'deploy-request apply' to apply the changes manually.")
 
 	return cmd
 }
