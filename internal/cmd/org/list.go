@@ -30,7 +30,9 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 				return nil
 			}
 
-			return ch.Printer.PrintResource(toOrgs(orgs))
+			currentOrgName := getCurrentOrganization(ch)
+
+			return ch.Printer.PrintResource(toOrgs(orgs, currentOrgName, ch.Printer.Format()))
 		},
 	}
 
