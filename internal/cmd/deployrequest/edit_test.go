@@ -15,7 +15,7 @@ import (
 	ps "github.com/planetscale/planetscale-go/planetscale"
 )
 
-func TestDeployRequest_EditCmd(t *testing.T) {
+func TestDeployRequest_EditCmdEnableAutoApply(t *testing.T) {
 	c := qt.New(t)
 
 	var buf bytes.Buffer
@@ -52,7 +52,7 @@ func TestDeployRequest_EditCmd(t *testing.T) {
 	}
 
 	cmd := EditCmd(ch)
-	cmd.SetArgs([]string{db, strconv.FormatUint(number, 10)})
+	cmd.SetArgs([]string{db, strconv.FormatUint(number, 10), "--enable-auto-apply"})
 	err := cmd.Execute()
 
 	c.Assert(err, qt.IsNil)
@@ -60,4 +60,109 @@ func TestDeployRequest_EditCmd(t *testing.T) {
 
 	res := &ps.DeployRequest{Number: number}
 	c.Assert(buf.String(), qt.JSONEquals, res)
+}
+
+func TestDeployRequest_EditCmdDisableAutoApply(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	db := "planetscale"
+	number := uint64(10)
+	enable := false
+
+	svc := &mock.DeployRequestsService{
+		AutoApplyFn: func(ctx context.Context, req *ps.AutoApplyDeployRequestRequest) (*ps.DeployRequest, error) {
+			c.Assert(req.Number, qt.Equals, number)
+			c.Assert(req.Database, qt.Equals, db)
+			c.Assert(req.Organization, qt.Equals, org)
+			c.Assert(req.Enable, qt.Equals, enable)
+
+			return &ps.DeployRequest{Number: number}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: org,
+		},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{
+				DeployRequests: svc,
+			}, nil
+		},
+	}
+
+	cmd := EditCmd(ch)
+	cmd.SetArgs([]string{db, strconv.FormatUint(number, 10), "--disable-auto-apply"})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.AutoApplyFnInvoked, qt.IsTrue)
+
+	res := &ps.DeployRequest{Number: number}
+	c.Assert(buf.String(), qt.JSONEquals, res)
+}
+
+func TestDeployRequest_EditCmdNoFlags(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	db := "planetscale"
+	number := uint64(10)
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: org,
+		},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{}, nil
+		},
+	}
+
+	cmd := EditCmd(ch)
+	cmd.SetArgs([]string{db, strconv.FormatUint(number, 10)})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.ErrorMatches, "must specify either --enable-auto-apply or --disable-auto-apply")
+}
+
+func TestDeployRequest_EditCmdBothFlags(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	db := "planetscale"
+	number := uint64(10)
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: org,
+		},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{}, nil
+		},
+	}
+
+	cmd := EditCmd(ch)
+	cmd.SetArgs([]string{db, strconv.FormatUint(number, 10), "--enable-auto-apply", "--disable-auto-apply"})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.ErrorMatches, "cannot use both --enable-auto-apply and --disable-auto-apply flags together")
 }
