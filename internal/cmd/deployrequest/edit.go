@@ -16,6 +16,7 @@ func EditCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
 		enable_auto_apply  bool
 		disable_auto_apply bool
+		autoApply          string // deprecated
 	}
 
 	cmd := &cobra.Command{
@@ -41,15 +42,33 @@ func EditCmd(ch *cmdutil.Helper) *cobra.Command {
 				return fmt.Errorf("cannot use both --enable-auto-apply and --disable-auto-apply flags together")
 			}
 
-			if !flags.enable_auto_apply && !flags.disable_auto_apply {
-				return fmt.Errorf("must specify either --enable-auto-apply or --disable-auto-apply")
+			hasNewFlags := flags.enable_auto_apply || flags.disable_auto_apply
+			hasDeprecatedFlag := flags.autoApply != ""
+
+			if !hasNewFlags && !hasDeprecatedFlag {
+				return fmt.Errorf("must specify either --enable-auto-apply, --disable-auto-apply, or --auto-apply")
+			}
+
+			if hasDeprecatedFlag {
+				switch flags.autoApply {
+				case "enable", "disable":
+				default:
+					return fmt.Errorf("--auto-apply accepts only \"enable\" or \"disable\" but got %q", flags.autoApply)
+				}
+			}
+
+			var enable bool
+			if hasNewFlags {
+				enable = flags.enable_auto_apply
+			} else {
+				enable = flags.autoApply == "enable"
 			}
 
 			dr, err := client.DeployRequests.AutoApplyDeploy(ctx, &planetscale.AutoApplyDeployRequestRequest{
 				Organization: ch.Config.Organization,
 				Database:     database,
 				Number:       n,
-				Enable:       flags.enable_auto_apply,
+				Enable:       enable,
 			})
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
@@ -74,5 +93,9 @@ func EditCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	cmd.Flags().BoolVar(&flags.enable_auto_apply, "enable-auto-apply", false, "Enable auto-apply. The deploy request will automatically swap over to the new schema once ready.")
 	cmd.Flags().BoolVar(&flags.disable_auto_apply, "disable-auto-apply", false, "Disable auto-apply. The deploy request will wait for your confirmation before swapping to the new schema. Use 'deploy-request apply' to apply the changes manually.")
+
+	cmd.Flags().StringVar(&flags.autoApply, "auto-apply", "", "Update the auto apply setting for a deploy request. Possible values: [enable,disable]")
+	cmd.Flags().MarkDeprecated("auto-apply", "use --enable-auto-apply or --disable-auto-apply instead")
+
 	return cmd
 }
