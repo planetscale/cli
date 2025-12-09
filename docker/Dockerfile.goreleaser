@@ -1,7 +1,7 @@
-ARG GORELEASE_CROSS_VERSION=v1.24.6
+ARG GORELEASE_CROSS_VERSION=v1.26.0
 FROM ghcr.io/goreleaser/goreleaser-cross:${GORELEASE_CROSS_VERSION}
 
 RUN apt-get update --allow-releaseinfo-change || apt-get update; apt-get install -y openssh-client
 
-ARG SYFT_VERSION=1.19.0
+ARG SYFT_VERSION=1.38.0
 RUN wget -O syft.deb https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/syft_${SYFT_VERSION}_linux_amd64.deb && dpkg -i syft.deb
