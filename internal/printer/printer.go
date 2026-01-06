@@ -199,11 +199,11 @@ func (p *Printer) PrintResource(v interface{}) error {
 
 func (p *Printer) ConfirmCommand(confirmationName, commandShortName, confirmFailedName string) error {
 	if p.Format() != Human {
-		return fmt.Errorf("cannot %s with the output format %q (run with -force to override)", commandShortName, p.Format())
+		return fmt.Errorf("cannot %s with the output format %q (run with --force to override)", commandShortName, p.Format())
 	}
 
 	if !IsTTY {
-		return fmt.Errorf("cannot confirm %s %q (run with -force to override)", confirmFailedName, confirmationName)
+		return fmt.Errorf("cannot confirm %s %q (run with --force to override)", confirmFailedName, confirmationName)
 	}
 
 	confirmationMessage := fmt.Sprintf("%s %s %s", Bold("Please type"), BoldBlue(confirmationName), Bold("to confirm:"))

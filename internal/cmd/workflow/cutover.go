@@ -39,11 +39,11 @@ func CutoverCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			if !force {
 				if ch.Printer.Format() != printer.Human {
-					return fmt.Errorf("cannot cutover with the output format %q (run with -force to override)", ch.Printer.Format())
+					return fmt.Errorf("cannot cutover with the output format %q (run with --force to override)", ch.Printer.Format())
 				}
 
 				if !printer.IsTTY {
-					return fmt.Errorf("cannot confirm cutover (run with -force to override)")
+					return fmt.Errorf("cannot confirm cutover (run with --force to override)")
 				}
 
 				workflow, err := client.Workflows.Get(ctx, &ps.GetWorkflowRequest{
