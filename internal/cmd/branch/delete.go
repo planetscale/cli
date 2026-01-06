@@ -50,7 +50,7 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			if !force {
 				if ch.Printer.Format() != printer.Human {
-					return fmt.Errorf("cannot delete branch with the output format %q (run with -force to override)", ch.Printer.Format())
+					return fmt.Errorf("cannot delete branch with the output format %q (run with --force to override)", ch.Printer.Format())
 				}
 
 				if db.Kind == "mysql" {
@@ -91,7 +91,7 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 
 				confirmationName := fmt.Sprintf("%s/%s", source, branch)
 				if !printer.IsTTY {
-					return fmt.Errorf("cannot confirm deletion of branch %q (run with -force to override)", confirmationName)
+					return fmt.Errorf("cannot confirm deletion of branch %q (run with --force to override)", confirmationName)
 				}
 
 				confirmationMessage := fmt.Sprintf("%s %s %s", printer.Bold("Please type"),

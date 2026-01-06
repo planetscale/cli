@@ -44,11 +44,11 @@ By default, this command will route all queries for primary, replica, and read-o
 
 			if !force {
 				if ch.Printer.Format() != printer.Human {
-					return fmt.Errorf("cannot switch query traffic with the output format %q (run with -force to override)", ch.Printer.Format())
+					return fmt.Errorf("cannot switch query traffic with the output format %q (run with --force to override)", ch.Printer.Format())
 				}
 
 				if !printer.IsTTY {
-					return fmt.Errorf("cannot confirm switching query traffic (run with -force to override)")
+					return fmt.Errorf("cannot confirm switching query traffic (run with --force to override)")
 				}
 
 				confirmationMessage := "Are you sure you want to enable primary mode for this database?"
