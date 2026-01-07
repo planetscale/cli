@@ -260,7 +260,7 @@ func TestPostgresSingleNodeRateCalculation(t *testing.T) {
 	}{
 		{name: "rate divisible by 3", rate: 300, expectedRate: "$100"},
 		{name: "rate not divisible by 3 rounds up", rate: 100, expectedRate: "$34"}, // 100/3 = 33.33, rounds to 34
-		{name: "rate of 39", rate: 39, expectedRate: "$13"},                          // 39/3 = 13 exactly
+		{name: "rate of 39", rate: 39, expectedRate: "$13"},                         // 39/3 = 13 exactly
 	}
 
 	for _, tt := range tests {
