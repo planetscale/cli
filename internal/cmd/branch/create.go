@@ -93,13 +93,22 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 				}
 			}
 
+			clusterSize := flags.clusterSize
+			if clusterSize == "" {
+				if flags.backupID != "" || flags.dataBranching {
+					clusterSize = "PS-10"
+				} else {
+					clusterSize = "PS_DEV"
+				}
+			}
+
 			if db.Kind == "mysql" {
 				createReq := &ps.CreateDatabaseBranchRequest{
 					Organization: ch.Config.Organization,
 					Database:     source,
 					Name:         branch,
 					Region:       flags.region,
-					ClusterSize:  flags.clusterSize,
+					ClusterSize:  clusterSize,
 					ParentBranch: flags.parentBranch,
 					BackupID:     flags.backupID,
 				}
@@ -156,7 +165,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 					Database:     source,
 					Name:         branch,
 					Region:       flags.region,
-					ClusterName:  flags.clusterSize,
+					ClusterName:  clusterSize,
 					ParentBranch: flags.parentBranch,
 					BackupID:     flags.backupID,
 					MajorVersion: flags.majorVersion,
@@ -211,7 +220,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().StringVar(&flags.parentBranch, "from", "", "Parent branch to create the new branch from. Cannot be used with --restore")
 	cmd.Flags().StringVar(&flags.region, "region", "", "Region for the branch to be created in.")
 	cmd.Flags().StringVar(&flags.backupID, "restore", "", "ID of Backup to restore into branch.")
-	cmd.Flags().StringVar(&flags.clusterSize, "cluster-size", "PS-10", "Cluster size for branches being created from a backup or seeded with data. Use 'pscale size cluster list' to see the valid sizes.")
+	cmd.Flags().StringVar(&flags.clusterSize, "cluster-size", "", "Cluster size for the branch. Defaults to PS_DEV for regular branches, or PS-10 for branches created from a backup or with seed-data. Use 'pscale size cluster list' to see the valid sizes.")
 	cmd.Flags().BoolVar(&flags.dataBranching, "seed-data", false, "Add seed data using the Data Branching™ feature. This branch will be created with the same resources as the base branch.")
 	cmd.Flags().BoolVar(&flags.wait, "wait", false, "Wait until the branch is ready")
 	cmd.Flags().StringVar(&flags.majorVersion, "major-version", "", "For PostgreSQL databases, the PostgreSQL major version to use for the branch. Defaults to the major version of the parent branch if it exists or the database's default branch major version. Ignored for branches restored from backups.")
