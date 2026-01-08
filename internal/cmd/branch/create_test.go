@@ -34,6 +34,7 @@ func TestBranch_CreateCmd(t *testing.T) {
 			c.Assert(req.Database, qt.Equals, db)
 			c.Assert(req.Region, qt.Equals, "us-east")
 			c.Assert(req.Organization, qt.Equals, org)
+			c.Assert(req.ClusterSize, qt.Equals, "PS_DEV")
 
 			return res, nil
 		},
@@ -204,6 +205,7 @@ func TestBranch_CreateCmdWithSeedData(t *testing.T) {
 			c.Assert(req.Region, qt.Equals, "us-east")
 			c.Assert(req.Organization, qt.Equals, org)
 			c.Assert(req.SeedData, qt.Equals, "last_successful_backup")
+			c.Assert(req.ClusterSize, qt.Equals, "PS-10")
 
 			return res, nil
 		},
@@ -260,6 +262,7 @@ func TestBranch_CreateCmdWithMajorVersion(t *testing.T) {
 			c.Assert(req.Region, qt.Equals, "us-east")
 			c.Assert(req.Organization, qt.Equals, org)
 			c.Assert(req.MajorVersion, qt.Equals, "17")
+			c.Assert(req.ClusterName, qt.Equals, "PS_DEV")
 
 			return res, nil
 		},
