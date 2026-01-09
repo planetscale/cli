@@ -367,10 +367,10 @@ func TestToClusterSKUsSingleEngine_MySQL(t *testing.T) {
 
 	clusters := toClusterSKUsSingleEngine(items, false)
 
-	// MySQL should have 1 entry: always highly available with 3 replicas
+	// MySQL should have 1 entry: always highly available with 2 replicas
 	c.Assert(len(clusters), qt.Equals, 1)
 	c.Assert(clusters[0].Configuration, qt.Equals, "highly available")
-	c.Assert(clusters[0].Replicas, qt.Equals, "3")
+	c.Assert(clusters[0].Replicas, qt.Equals, "2")
 	c.Assert(clusters[0].Price, qt.Equals, "$39")
 }
 
@@ -443,12 +443,12 @@ func TestMySQLClustersHaveCorrectReplicas(t *testing.T) {
 	clusters := toClusterSKUs(items, false)
 	c.Assert(len(clusters), qt.Equals, 1)
 	c.Assert(clusters[0].Configuration, qt.Equals, "highly available")
-	c.Assert(clusters[0].Replicas, qt.Equals, "3")
+	c.Assert(clusters[0].Replicas, qt.Equals, "2")
 	c.Assert(clusters[0].Engine, qt.Equals, "mysql")
 
 	// Test with single engine format
 	clustersSingle := toClusterSKUsSingleEngine(items, false)
 	c.Assert(len(clustersSingle), qt.Equals, 1)
 	c.Assert(clustersSingle[0].Configuration, qt.Equals, "highly available")
-	c.Assert(clustersSingle[0].Replicas, qt.Equals, "3")
+	c.Assert(clustersSingle[0].Replicas, qt.Equals, "2")
 }

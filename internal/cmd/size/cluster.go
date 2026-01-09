@@ -234,7 +234,7 @@ func formatClusterFields(sku *planetscale.ClusterSKU, rateOverride *int64) (name
 
 // toClusterSKUs converts cluster SKUs to the full format with all columns including engine.
 // PostgreSQL clusters appear twice (highly available and single node).
-// MySQL clusters are always highly available with 3 replicas.
+// MySQL clusters are always highly available with 2 replicas.
 func toClusterSKUs(items []clusterSKUWithEngine, onlyMetal bool) []*ClusterSKU {
 	clusters := make([]*ClusterSKU, 0, len(items)*2)
 
@@ -280,7 +280,7 @@ func toClusterSKUs(items []clusterSKUWithEngine, onlyMetal bool) []*ClusterSKU {
 				})
 			}
 		} else {
-			// MySQL clusters: always highly available with 3 replicas
+			// MySQL clusters: always highly available with 2 replicas
 			name, cpu, memory, storage, price := formatClusterFields(item.sku, nil)
 			clusters = append(clusters, &ClusterSKU{
 				Name:          name,
@@ -290,7 +290,7 @@ func toClusterSKUs(items []clusterSKUWithEngine, onlyMetal bool) []*ClusterSKU {
 				Price:         price,
 				Engine:        engineStr,
 				Configuration: "highly available",
-				Replicas:      "3",
+				Replicas:      "2",
 				orig:          item.sku,
 			})
 		}
@@ -301,7 +301,7 @@ func toClusterSKUs(items []clusterSKUWithEngine, onlyMetal bool) []*ClusterSKU {
 
 // toClusterSKUsSingleEngine converts cluster SKUs to the single-engine format (no engine column).
 // PostgreSQL clusters appear twice (highly available and single node).
-// MySQL clusters are always highly available with 3 replicas.
+// MySQL clusters are always highly available with 2 replicas.
 func toClusterSKUsSingleEngine(items []clusterSKUWithEngine, onlyMetal bool) []*ClusterSKUSingleEngine {
 	clusters := make([]*ClusterSKUSingleEngine, 0, len(items)*2)
 
@@ -340,7 +340,7 @@ func toClusterSKUsSingleEngine(items []clusterSKUWithEngine, onlyMetal bool) []*
 				})
 			}
 		} else {
-			// MySQL clusters: always highly available with 3 replicas
+			// MySQL clusters: always highly available with 2 replicas
 			name, cpu, memory, storage, price := formatClusterFields(item.sku, nil)
 			clusters = append(clusters, &ClusterSKUSingleEngine{
 				Name:          name,
@@ -349,7 +349,7 @@ func toClusterSKUsSingleEngine(items []clusterSKUWithEngine, onlyMetal bool) []*
 				Storage:       storage,
 				Price:         price,
 				Configuration: "highly available",
-				Replicas:      "3",
+				Replicas:      "2",
 				orig:          item.sku,
 			})
 		}
