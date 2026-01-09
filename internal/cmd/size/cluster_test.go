@@ -107,9 +107,9 @@ func TestSizeCluster_ListCmd_PostgreSQL(t *testing.T) {
 	c.Assert(err, qt.IsNil)
 	c.Assert(svc.ListClusterSKUsFnInvoked, qt.IsTrue)
 
-	// PostgreSQL clusters use ClusterSKUPostgres type (no engine column, has configuration and replicas)
+	// PostgreSQL clusters use ClusterSKUSingleEngine type (no engine column, has configuration and replicas)
 	// Each cluster shows twice: once as HA and once as single node
-	res := []*ClusterSKUPostgres{
+	res := []*ClusterSKUSingleEngine{
 		{orig: orig[0]},
 		{orig: orig[0]},
 	}
@@ -156,8 +156,8 @@ func TestSizeCluster_ListCmd_MySQL(t *testing.T) {
 	c.Assert(err, qt.IsNil)
 	c.Assert(svc.ListClusterSKUsFnInvoked, qt.IsTrue)
 
-	// MySQL uses ClusterSKUMySQL type (no Configuration column)
-	res := []*ClusterSKUMySQL{
+	// MySQL uses ClusterSKUSingleEngine type (no engine column, but has configuration and replicas)
+	res := []*ClusterSKUSingleEngine{
 		{orig: orig[0]},
 	}
 
@@ -278,7 +278,7 @@ func TestPostgresSingleNodeRateCalculation(t *testing.T) {
 				{sku: sku, engine: ps.DatabaseEnginePostgres},
 			}
 
-			clusters := toGenericClusterSKUs(items, false)
+			clusters := toClusterSKUs(items, false)
 
 			// Should have 2 entries: HA and single node
 			c.Assert(len(clusters), qt.Equals, 2)
@@ -310,7 +310,7 @@ func TestPostgresMetalOnlyShowsHA(t *testing.T) {
 		{sku: sku, engine: ps.DatabaseEnginePostgres},
 	}
 
-	clusters := toGenericClusterSKUs(items, false)
+	clusters := toClusterSKUs(items, false)
 
 	// Metal clusters only show as HA, no single node option
 	c.Assert(len(clusters), qt.Equals, 1)
@@ -318,7 +318,7 @@ func TestPostgresMetalOnlyShowsHA(t *testing.T) {
 	c.Assert(clusters[0].Replicas, qt.Equals, "2")
 }
 
-func TestToPostgresClusterSKUs(t *testing.T) {
+func TestToClusterSKUsSingleEngine_Postgres(t *testing.T) {
 	c := qt.New(t)
 
 	rate := int64(39)
@@ -335,7 +335,7 @@ func TestToPostgresClusterSKUs(t *testing.T) {
 		{sku: sku, engine: ps.DatabaseEnginePostgres},
 	}
 
-	clusters := toPostgresClusterSKUs(items, false)
+	clusters := toClusterSKUsSingleEngine(items, false)
 
 	// Should have 2 entries: HA and single node
 	c.Assert(len(clusters), qt.Equals, 2)
@@ -351,7 +351,30 @@ func TestToPostgresClusterSKUs(t *testing.T) {
 	c.Assert(clusters[1].Price, qt.Equals, "$13")
 }
 
-func TestToPostgresClusterSKUs_MetalOnlyShowsHA(t *testing.T) {
+func TestToClusterSKUsSingleEngine_MySQL(t *testing.T) {
+	c := qt.New(t)
+
+	rate := int64(39)
+	sku := &ps.ClusterSKU{
+		Name:    "PS-10",
+		Enabled: true,
+		Rate:    &rate,
+	}
+
+	items := []clusterSKUWithEngine{
+		{sku: sku, engine: ps.DatabaseEngineMySQL},
+	}
+
+	clusters := toClusterSKUsSingleEngine(items, false)
+
+	// MySQL should have 1 entry: always highly available with 3 replicas
+	c.Assert(len(clusters), qt.Equals, 1)
+	c.Assert(clusters[0].Configuration, qt.Equals, "highly available")
+	c.Assert(clusters[0].Replicas, qt.Equals, "3")
+	c.Assert(clusters[0].Price, qt.Equals, "$39")
+}
+
+func TestToClusterSKUsSingleEngine_PostgresMetalOnlyShowsHA(t *testing.T) {
 	c := qt.New(t)
 
 	rate := int64(1000)
@@ -366,7 +389,7 @@ func TestToPostgresClusterSKUs_MetalOnlyShowsHA(t *testing.T) {
 		{sku: sku, engine: ps.DatabaseEnginePostgres},
 	}
 
-	clusters := toPostgresClusterSKUs(items, false)
+	clusters := toClusterSKUsSingleEngine(items, false)
 
 	// Metal clusters only show as HA, no single node option
 	c.Assert(len(clusters), qt.Equals, 1)
@@ -374,7 +397,7 @@ func TestToPostgresClusterSKUs_MetalOnlyShowsHA(t *testing.T) {
 	c.Assert(clusters[0].Replicas, qt.Equals, "2")
 }
 
-func TestFormatClusterBase(t *testing.T) {
+func TestFormatClusterFields(t *testing.T) {
 	c := qt.New(t)
 
 	storage := int64(100 * 1024 * 1024 * 1024) // 100 GB in bytes
@@ -387,19 +410,45 @@ func TestFormatClusterBase(t *testing.T) {
 		Rate:    &rate,
 	}
 
-	base := formatClusterBase(sku, ps.DatabaseEngineMySQL, nil)
+	name, cpu, memory, storageStr, price := formatClusterFields(sku, nil)
 
-	c.Assert(base.name, qt.Equals, "PS-10")
-	c.Assert(base.cpu, qt.Equals, "2 vCPUs")
-	c.Assert(base.memory, qt.Equals, "8 GB")
-	c.Assert(base.storage, qt.Equals, "100 GB")
-	c.Assert(base.price, qt.Equals, "$50")
-	c.Assert(base.engine, qt.Equals, "mysql")
+	c.Assert(name, qt.Equals, "PS-10")
+	c.Assert(cpu, qt.Equals, "2 vCPUs")
+	c.Assert(memory, qt.Equals, "8 GB")
+	c.Assert(storageStr, qt.Equals, "100 GB")
+	c.Assert(price, qt.Equals, "$50")
 
 	// Test with rate override
 	overrideRate := int64(25)
-	baseOverride := formatClusterBase(sku, ps.DatabaseEnginePostgres, &overrideRate)
+	_, _, _, _, priceOverride := formatClusterFields(sku, &overrideRate)
 
-	c.Assert(baseOverride.price, qt.Equals, "$25")
-	c.Assert(baseOverride.engine, qt.Equals, "postgresql")
+	c.Assert(priceOverride, qt.Equals, "$25")
+}
+
+func TestMySQLClustersHaveCorrectReplicas(t *testing.T) {
+	c := qt.New(t)
+
+	rate := int64(100)
+	sku := &ps.ClusterSKU{
+		Name:    "PS-10",
+		Enabled: true,
+		Rate:    &rate,
+	}
+
+	items := []clusterSKUWithEngine{
+		{sku: sku, engine: ps.DatabaseEngineMySQL},
+	}
+
+	// Test with full format (all engines view)
+	clusters := toClusterSKUs(items, false)
+	c.Assert(len(clusters), qt.Equals, 1)
+	c.Assert(clusters[0].Configuration, qt.Equals, "highly available")
+	c.Assert(clusters[0].Replicas, qt.Equals, "3")
+	c.Assert(clusters[0].Engine, qt.Equals, "mysql")
+
+	// Test with single engine format
+	clustersSingle := toClusterSKUsSingleEngine(items, false)
+	c.Assert(len(clustersSingle), qt.Equals, 1)
+	c.Assert(clustersSingle[0].Configuration, qt.Equals, "highly available")
+	c.Assert(clustersSingle[0].Replicas, qt.Equals, "3")
 }
