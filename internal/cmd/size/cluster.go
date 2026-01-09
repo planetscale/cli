@@ -58,14 +58,14 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 			var allClusterSKUsWithEngine []clusterSKUWithEngine
 
 			if showAll {
-				// Make two API calls: one for MySQL, one for PostgreSQL
-				// MySQL clusters (without WithPostgreSQL)
-				mysqlSKUs, err := client.Organizations.ListClusterSKUs(ctx, &planetscale.ListOrganizationClusterSKUsRequest{
-					Organization: ch.Config.Organization,
-				}, baseOpts...)
-				if err != nil {
-					return err
-				}
+			// Make two API calls: one for MySQL, one for PostgreSQL
+			// MySQL clusters (without WithPostgreSQL)
+			mysqlSKUs, err := client.Organizations.ListClusterSKUs(ctx, &planetscale.ListOrganizationClusterSKUsRequest{
+				Organization: ch.Config.Organization,
+			}, baseOpts...)
+			if err != nil {
+				return cmdutil.HandleError(err)
+			}
 				for _, sku := range mysqlSKUs {
 					allClusterSKUsWithEngine = append(allClusterSKUsWithEngine, clusterSKUWithEngine{
 						sku:    sku,
@@ -73,14 +73,14 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 					})
 				}
 
-				// PostgreSQL clusters (with WithPostgreSQL)
-				postgresOpts := append(baseOpts, planetscale.WithPostgreSQL())
-				postgresSKUs, err := client.Organizations.ListClusterSKUs(ctx, &planetscale.ListOrganizationClusterSKUsRequest{
-					Organization: ch.Config.Organization,
-				}, postgresOpts...)
-				if err != nil {
-					return err
-				}
+			// PostgreSQL clusters (with WithPostgreSQL)
+			postgresOpts := append(baseOpts, planetscale.WithPostgreSQL())
+			postgresSKUs, err := client.Organizations.ListClusterSKUs(ctx, &planetscale.ListOrganizationClusterSKUsRequest{
+				Organization: ch.Config.Organization,
+			}, postgresOpts...)
+			if err != nil {
+				return cmdutil.HandleError(err)
+			}
 				for _, sku := range postgresSKUs {
 					allClusterSKUsWithEngine = append(allClusterSKUsWithEngine, clusterSKUWithEngine{
 						sku:    sku,
@@ -88,18 +88,18 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 					})
 				}
 			} else {
-				// Single engine filter
-				listOpts := baseOpts
-				if engine == planetscale.DatabaseEnginePostgres {
-					listOpts = append(listOpts, planetscale.WithPostgreSQL())
-				}
+			// Single engine filter
+			listOpts := baseOpts
+			if engine == planetscale.DatabaseEnginePostgres {
+				listOpts = append(listOpts, planetscale.WithPostgreSQL())
+			}
 
-				clusterSKUs, err := client.Organizations.ListClusterSKUs(ctx, &planetscale.ListOrganizationClusterSKUsRequest{
-					Organization: ch.Config.Organization,
-				}, listOpts...)
-				if err != nil {
-					return err
-				}
+			clusterSKUs, err := client.Organizations.ListClusterSKUs(ctx, &planetscale.ListOrganizationClusterSKUsRequest{
+				Organization: ch.Config.Organization,
+			}, listOpts...)
+			if err != nil {
+				return cmdutil.HandleError(err)
+			}
 				for _, sku := range clusterSKUs {
 					allClusterSKUsWithEngine = append(allClusterSKUsWithEngine, clusterSKUWithEngine{
 						sku:    sku,
