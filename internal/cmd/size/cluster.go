@@ -350,14 +350,10 @@ func toPostgresClusterSKUs(items []clusterSKUWithEngine, onlyMetal bool) []*Clus
 		// Highly available version with regular rate
 		clusters = append(clusters, toClusterSKUPostgres(item.sku, "highly available", "2", nil))
 
-		// Single node version at 1/3 the rate (only for non-metal clusters)
+		// Single node version using replica_rate (only for non-metal clusters)
 		// Metal clusters can only be purchased as "highly available"
-		if !item.sku.Metal && item.sku.Rate != nil {
-			singleNodeRate := *item.sku.Rate / 3
-			if *item.sku.Rate%3 != 0 {
-				singleNodeRate++ // Round up to avoid $0
-			}
-			clusters = append(clusters, toClusterSKUPostgres(item.sku, "single node", "0", &singleNodeRate))
+		if !item.sku.Metal && item.sku.ReplicaRate != nil {
+			clusters = append(clusters, toClusterSKUPostgres(item.sku, "single node", "0", item.sku.ReplicaRate))
 		}
 	}
 
@@ -379,14 +375,10 @@ func toGenericClusterSKUs(items []clusterSKUWithEngine, onlyMetal bool) []*Clust
 			// Highly available version with regular rate
 			clusters = append(clusters, toClusterSKU(item.sku, item.engine, "highly available", "2", nil))
 
-			// Single node version at 1/3 the rate (only for non-metal clusters)
+			// Single node version using replica_rate (only for non-metal clusters)
 			// Metal clusters can only be purchased as "highly available"
-			if !item.sku.Metal && item.sku.Rate != nil {
-				singleNodeRate := *item.sku.Rate / 3
-				if *item.sku.Rate%3 != 0 {
-					singleNodeRate++ // Round up to avoid $0
-				}
-				clusters = append(clusters, toClusterSKU(item.sku, item.engine, "single node", "0", &singleNodeRate))
+			if !item.sku.Metal && item.sku.ReplicaRate != nil {
+				clusters = append(clusters, toClusterSKU(item.sku, item.engine, "single node", "0", item.sku.ReplicaRate))
 			}
 		} else {
 			// MySQL clusters: configuration and replicas are blank

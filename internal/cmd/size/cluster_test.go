@@ -79,7 +79,7 @@ func TestSizeCluster_ListCmd_PostgreSQL(t *testing.T) {
 	org := "planetscale"
 
 	orig := []*ps.ClusterSKU{
-		{Name: "PS-10", Enabled: true, Rate: testutil.Pointer[int64](39)},
+		{Name: "PS-10", Enabled: true, Rate: testutil.Pointer[int64](39), ReplicaRate: testutil.Pointer[int64](13)},
 	}
 	svc := &mock.OrganizationsService{
 		ListClusterSKUsFn: func(ctx context.Context, req *ps.ListOrganizationClusterSKUsRequest, opts ...ps.ListOption) ([]*ps.ClusterSKU, error) {
@@ -252,24 +252,26 @@ func TestParseDatabaseEngine(t *testing.T) {
 func TestPostgresSingleNodeRateCalculation(t *testing.T) {
 	c := qt.New(t)
 
-	// Test that PostgreSQL single node rate is calculated as rate/3 (rounded up)
+	// Test that PostgreSQL single node rate uses replica_rate from the API
 	tests := []struct {
 		name         string
 		rate         int64
+		replicaRate  int64
 		expectedRate string // Expected formatted rate string
 	}{
-		{name: "rate divisible by 3", rate: 300, expectedRate: "$100"},
-		{name: "rate not divisible by 3 rounds up", rate: 100, expectedRate: "$34"}, // 100/3 = 33.33, rounds to 34
-		{name: "rate of 39", rate: 39, expectedRate: "$13"},                         // 39/3 = 13 exactly
+		{name: "standard replica rate", rate: 300, replicaRate: 100, expectedRate: "$100"},
+		{name: "different replica rate", rate: 100, replicaRate: 34, expectedRate: "$34"},
+		{name: "rate of 39 with replica_rate of 13", rate: 39, replicaRate: 13, expectedRate: "$13"},
 	}
 
 	for _, tt := range tests {
 		c.Run(tt.name, func(c *qt.C) {
 			sku := &ps.ClusterSKU{
-				Name:    "PS-10",
-				Enabled: true,
-				Rate:    &tt.rate,
-				Metal:   false, // Non-metal so single node is created
+				Name:        "PS-10",
+				Enabled:     true,
+				Rate:        &tt.rate,
+				ReplicaRate: &tt.replicaRate,
+				Metal:       false, // Non-metal so single node is created
 			}
 
 			items := []clusterSKUWithEngine{
@@ -285,7 +287,7 @@ func TestPostgresSingleNodeRateCalculation(t *testing.T) {
 			c.Assert(clusters[0].Configuration, qt.Equals, "highly available")
 			c.Assert(clusters[0].Replicas, qt.Equals, "2")
 
-			// Second is single node with rate/3 and replicas=0
+			// Second is single node with replica_rate and replicas=0
 			c.Assert(clusters[1].Configuration, qt.Equals, "single node")
 			c.Assert(clusters[1].Replicas, qt.Equals, "0")
 			c.Assert(clusters[1].Price, qt.Equals, tt.expectedRate)
@@ -320,11 +322,13 @@ func TestToPostgresClusterSKUs(t *testing.T) {
 	c := qt.New(t)
 
 	rate := int64(39)
+	replicaRate := int64(13)
 	sku := &ps.ClusterSKU{
-		Name:    "PS-10",
-		Enabled: true,
-		Rate:    &rate,
-		Metal:   false,
+		Name:        "PS-10",
+		Enabled:     true,
+		Rate:        &rate,
+		ReplicaRate: &replicaRate,
+		Metal:       false,
 	}
 
 	items := []clusterSKUWithEngine{
@@ -341,10 +345,10 @@ func TestToPostgresClusterSKUs(t *testing.T) {
 	c.Assert(clusters[0].Replicas, qt.Equals, "2")
 	c.Assert(clusters[0].Price, qt.Equals, "$39")
 
-	// Second is single node with replicas=0
+	// Second is single node with replicas=0, using replica_rate
 	c.Assert(clusters[1].Configuration, qt.Equals, "single node")
 	c.Assert(clusters[1].Replicas, qt.Equals, "0")
-	c.Assert(clusters[1].Price, qt.Equals, "$13") // 39/3 = 13
+	c.Assert(clusters[1].Price, qt.Equals, "$13")
 }
 
 func TestToPostgresClusterSKUs_MetalOnlyShowsHA(t *testing.T) {
