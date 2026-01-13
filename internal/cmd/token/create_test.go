@@ -105,3 +105,54 @@ func TestServiceToken_CreateCmdWithName(t *testing.T) {
 	res := &ServiceTokenWithSecret{orig: orig}
 	c.Assert(buf.String(), qt.JSONEquals, res)
 }
+
+func TestServiceToken_CreateCmdWithTTL(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	id := "123456"
+	name := "my-token"
+	ttl := 3600
+	createdAt := time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC)
+	expiresAt := time.Date(2025, 1, 15, 11, 30, 0, 0, time.UTC)
+
+	orig := &ps.ServiceToken{ID: id, Name: &name, CreatedAt: createdAt, ExpiresAt: &expiresAt}
+
+	svc := &mock.ServiceTokenService{
+		CreateFn: func(ctx context.Context, req *ps.CreateServiceTokenRequest) (*ps.ServiceToken, error) {
+			c.Assert(req.Organization, qt.Equals, org)
+			c.Assert(req.Name, qt.IsNotNil)
+			c.Assert(*req.Name, qt.Equals, name)
+			c.Assert(req.TTL, qt.IsNotNil)
+			c.Assert(*req.TTL, qt.Equals, ttl)
+			return orig, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: org,
+		},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{
+				ServiceTokens: svc,
+			}, nil
+		},
+	}
+
+	cmd := CreateCmd(ch)
+	cmd.SetArgs([]string{"--name", name, "--ttl", "3600"})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.CreateFnInvoked, qt.IsTrue)
+
+	res := &ServiceTokenWithSecret{orig: orig}
+	c.Assert(buf.String(), qt.JSONEquals, res)
+}

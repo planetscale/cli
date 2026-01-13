@@ -11,6 +11,7 @@ import (
 
 func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	var name string
+	var ttl int
 
 	cmd := &cobra.Command{
 		Use:   "create",
@@ -25,6 +26,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			req := &planetscale.CreateServiceTokenRequest{
 				Organization: ch.Config.Organization,
 				Name:         stringPtrOrNil(name),
+				TTL:          intPtrOrNil(ttl),
 			}
 
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Creating service token in org %s", printer.BoldBlue(ch.Config.Organization)))
@@ -47,6 +49,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&name, "name", "", "optional name for the service token")
+	cmd.Flags().IntVar(&ttl, "ttl", 0, "Time to live (in seconds) for the service token. The token will be invalid when TTL has passed")
 
 	return cmd
 }
@@ -56,4 +59,11 @@ func stringPtrOrNil(s string) *string {
 		return nil
 	}
 	return &s
+}
+
+func intPtrOrNil(i int) *int {
+	if i == 0 {
+		return nil
+	}
+	return &i
 }

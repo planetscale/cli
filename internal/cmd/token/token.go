@@ -50,6 +50,7 @@ type ServiceToken struct {
 	ID         string `header:"id" json:"id"`
 	Name       string `header:"name" json:"name"`
 	LastUsedAt int64  `header:"last_used_at,timestamp(ms|utc|human)" json:"last_used_at"`
+	ExpiresAt  int64  `header:"expires_at,timestamp(ms|utc|human)" json:"expires_at"`
 	CreatedAt  int64  `header:"created_at,timestamp(ms|utc|human)" json:"created_at"`
 
 	orig *ps.ServiceToken
@@ -74,10 +75,16 @@ func toServiceToken(st *ps.ServiceToken) *ServiceToken {
 		lastUsedAt = printer.GetMilliseconds(*st.LastUsedAt)
 	}
 
+	var expiresAt int64
+	if st.ExpiresAt != nil {
+		expiresAt = printer.GetMilliseconds(*st.ExpiresAt)
+	}
+
 	return &ServiceToken{
 		ID:         st.ID,
 		Name:       name,
 		LastUsedAt: lastUsedAt,
+		ExpiresAt:  expiresAt,
 		CreatedAt:  printer.GetMilliseconds(st.CreatedAt),
 		orig:       st,
 	}
@@ -88,6 +95,7 @@ type ServiceTokenWithSecret struct {
 	ID        string `header:"id" json:"id"`
 	Name      string `header:"name" json:"name"`
 	Token     string `header:"token" json:"token"`
+	ExpiresAt int64  `header:"expires_at,timestamp(ms|utc|human)" json:"expires_at"`
 	CreatedAt int64  `header:"created_at,timestamp(ms|utc|human)" json:"created_at"`
 
 	orig *ps.ServiceToken
@@ -104,10 +112,16 @@ func toServiceTokenWithSecret(st *ps.ServiceToken) *ServiceTokenWithSecret {
 		name = *st.Name
 	}
 
+	var expiresAt int64
+	if st.ExpiresAt != nil {
+		expiresAt = printer.GetMilliseconds(*st.ExpiresAt)
+	}
+
 	return &ServiceTokenWithSecret{
 		ID:        st.ID,
 		Name:      name,
 		Token:     st.Token,
+		ExpiresAt: expiresAt,
 		CreatedAt: printer.GetMilliseconds(st.CreatedAt),
 		orig:      st,
 	}
