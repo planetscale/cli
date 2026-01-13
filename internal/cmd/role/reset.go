@@ -90,8 +90,10 @@ func ResetCmd(ch *cmdutil.Helper) *cobra.Command {
 			end()
 
 			if ch.Printer.Format() == printer.Human {
-				ch.Printer.Printf("Password for role %s was successfully reset in %s/%s.\n",
+				ch.Printer.Printf("Password for role %s was successfully reset in %s/%s.\n\n",
 					printer.BoldBlue(roleID), printer.BoldBlue(database), printer.BoldBlue(branch))
+				printPostgresRoleCredentials(ch.Printer, toPostgresRole(role))
+				return nil
 			}
 
 			return ch.Printer.PrintResource(toPostgresRole(role))
