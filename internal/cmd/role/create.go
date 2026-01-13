@@ -54,8 +54,11 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case ps.ErrNotFound:
-					return fmt.Errorf("branch %s does not exist in database %s (organization: %s)",
-						printer.BoldBlue(branch), printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
+					return cmdutil.HandleNotFoundWithServiceTokenCheck(
+						cmd.Context(), cmd, ch.Config, ch.Client, err,
+						"create_branch_password or create_production_branch_password",
+						"database %s or branch %s does not exist in organization %s",
+						printer.BoldBlue(database), printer.BoldBlue(branch), printer.BoldBlue(ch.Config.Organization))
 				default:
 					return cmdutil.HandleError(err)
 				}
