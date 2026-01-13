@@ -35,15 +35,17 @@ func GetCmd(ch *cmdutil.Helper) *cobra.Command {
 				Branch:       branch,
 				RoleId:       roleID,
 			})
-			if err != nil {
-				switch cmdutil.ErrCode(err) {
-				case ps.ErrNotFound:
-					return fmt.Errorf("role %s does not exist in branch %s of database %s (organization: %s)",
-						printer.BoldBlue(roleID), printer.BoldBlue(branch), printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
-				default:
-					return cmdutil.HandleError(err)
-				}
+		if err != nil {
+			switch cmdutil.ErrCode(err) {
+			case ps.ErrNotFound:
+				return cmdutil.HandleNotFoundWithServiceTokenCheck(
+					ctx, cmd, ch.Config, ch.Client, err, "read_branch",
+					"role %s does not exist in database %s, branch %s (organization: %s)",
+					printer.BoldBlue(roleID), printer.BoldBlue(database), printer.BoldBlue(branch), printer.BoldBlue(ch.Config.Organization))
+			default:
+				return cmdutil.HandleError(err)
 			}
+		}
 			end()
 
 			return ch.Printer.PrintResource(toPostgresRole(role))

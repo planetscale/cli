@@ -57,15 +57,17 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 					Database:     database,
 					Branch:       branch,
 				}, ps.WithPage(page), ps.WithPerPage(perPage))
-				if err != nil {
-					switch cmdutil.ErrCode(err) {
-					case ps.ErrNotFound:
-						return fmt.Errorf("branch %s does not exist in database %s (organization: %s)",
-							printer.BoldBlue(branch), printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
-					default:
-						return cmdutil.HandleError(err)
-					}
+			if err != nil {
+				switch cmdutil.ErrCode(err) {
+				case ps.ErrNotFound:
+					return cmdutil.HandleNotFoundWithServiceTokenCheck(
+						ctx, cmd, ch.Config, ch.Client, err, "read_branch",
+						"database %s or branch %s does not exist in organization %s",
+						printer.BoldBlue(database), printer.BoldBlue(branch), printer.BoldBlue(ch.Config.Organization))
+				default:
+					return cmdutil.HandleError(err)
 				}
+			}
 
 				allRoles = append(allRoles, roles...)
 
