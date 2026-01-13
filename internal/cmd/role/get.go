@@ -38,7 +38,10 @@ func GetCmd(ch *cmdutil.Helper) *cobra.Command {
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case ps.ErrNotFound:
-					return fmt.Errorf("role %s does not exist in branch %s of database %s (organization: %s)",
+					return cmdutil.HandleNotFoundWithServiceTokenCheck(
+						ctx, cmd, ch.Config, ch.Client, err,
+						"read_branch",
+						"role %s does not exist in branch %s of database %s (organization: %s)",
 						printer.BoldBlue(roleID), printer.BoldBlue(branch), printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
 				default:
 					return cmdutil.HandleError(err)
