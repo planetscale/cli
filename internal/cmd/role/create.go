@@ -69,6 +69,8 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 				saveWarning := printer.BoldRed("Please save the values below as they will not be shown again")
 				ch.Printer.Printf("Role %s was successfully created in %s/%s.\n%s\n\n",
 					printer.BoldBlue(role.Name), printer.BoldBlue(database), printer.BoldBlue(branch), saveWarning)
+				printPostgresRoleCredentials(ch.Printer, toPostgresRole(role))
+				return nil
 			}
 
 			return ch.Printer.PrintResource(toPostgresRole(role))

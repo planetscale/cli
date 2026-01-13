@@ -3,6 +3,8 @@ package role
 import (
 	"errors"
 	"fmt"
+	"net"
+	"net/url"
 	"os"
 
 	"github.com/AlecAivazis/survey/v2"
@@ -93,7 +95,9 @@ func ResetDefaultCmd(ch *cmdutil.Helper) *cobra.Command {
 			if ch.Printer.Format() == printer.Human {
 				saveWarning := printer.BoldRed("Please save the values below as they will not be shown again. We recommend using these credentials only for creating usernames and passwords for accessing your database.")
 
-				ch.Printer.Printf("Role was successfully reset for %s in %s.\n%s\n\n", printer.BoldBlue(branch), printer.BoldBlue(database), saveWarning)
+				ch.Printer.Printf("Role was successfully reset in %s/%s.\n%s\n\n", printer.BoldBlue(database), printer.BoldBlue(branch), saveWarning)
+				printPostgresRoleCredentials(ch.Printer, toPostgresRole(role))
+				return nil
 			}
 
 			return ch.Printer.PrintResource(toPostgresRole(role))
@@ -111,6 +115,7 @@ type PostgresRole struct {
 	Username      string `header:"username" json:"username"`
 	Password      string `header:"password" json:"password"`
 	AccessHostURL string `header:"access_host_url" json:"access_host_url"`
+	DatabaseURL   string `header:"database_url" json:"database_url"`
 
 	orig *ps.PostgresRole
 }
@@ -122,6 +127,34 @@ func toPostgresRole(role *ps.PostgresRole) *PostgresRole {
 		Username:      role.Username,
 		Password:      role.Password,
 		AccessHostURL: role.AccessHostURL,
+		DatabaseURL:   buildPostgresConnectionURL(role.Username, role.Password, role.AccessHostURL),
 		orig:          role,
 	}
+}
+
+// printPostgresRoleCredentials prints role credentials in a vertical layout.
+func printPostgresRoleCredentials(p *printer.Printer, role *PostgresRole) {
+	p.Printf("%-17s  %s\n", "ID", role.PublicID)
+	p.Printf("%-17s  %s\n", "NAME", role.Name)
+	p.Printf("%-17s  %s\n", "USERNAME", role.Username)
+	p.Printf("%-17s  %s\n", "PASSWORD", role.Password)
+	p.Printf("%-17s  %s\n", "ACCESS HOST URL", role.AccessHostURL)
+	p.Printf("%-17s  %s\n", "DATABASE URL", role.DatabaseURL)
+}
+
+// buildPostgresConnectionURL constructs a PostgreSQL connection URL from role credentials.
+func buildPostgresConnectionURL(username, password, accessHostURL string) string {
+	host, port, err := net.SplitHostPort(accessHostURL)
+	if err != nil {
+		// If no port specified, use the host as-is and default to 5432
+		host = accessHostURL
+		port = "5432"
+	}
+
+	return fmt.Sprintf("postgresql://%s:%s@%s:%s/postgres?sslmode=verify-full",
+		url.PathEscape(username),
+		url.PathEscape(password),
+		host,
+		port,
+	)
 }

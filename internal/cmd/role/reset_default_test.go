@@ -68,6 +68,7 @@ func TestResetDefaultCmd(t *testing.T) {
 		"username":        "postgres",
 		"password":        "new-password-123",
 		"access_host_url": "pg.psdb.cloud",
+		"database_url":    "postgresql://postgres:new-password-123@pg.psdb.cloud:5432/postgres?sslmode=verify-full",
 	}
 	c.Assert(buf.String(), qt.JSONEquals, expectedOutput)
 }
