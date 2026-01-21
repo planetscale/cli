@@ -34,6 +34,7 @@ type dumpFlags struct {
 	rdonly       bool
 	tables       string
 	wheres       string
+	columns      []string
 	output       string
 	threads      int
 	schemaOnly   bool
@@ -70,6 +71,8 @@ func DumpCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.PersistentFlags().BoolVar(&f.schemaOnly, "schema-only", false, "Only dump schema, skip table data.")
 	cmd.PersistentFlags().StringVar(&f.outputFormat, "output-format", "sql",
 		"Output format for data: sql (for MySQL, default), json, or csv.")
+	cmd.PersistentFlags().StringArrayVar(&f.columns, "columns", nil,
+		"Columns to include for specific tables (format: 'table:col1,col2'). Can be specified multiple times for different tables.")
 
 	return cmd
 }
@@ -285,6 +288,14 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 		}
 	}
 
+	if len(flags.columns) > 0 {
+		includes, err := parseColumnIncludes(flags.columns)
+		if err != nil {
+			return fmt.Errorf("invalid --columns: %w", err)
+		}
+		cfg.ColumnIncludes = includes
+	}
+
 	d, err := dumper.NewDumper(cfg)
 	if err != nil {
 		return err
@@ -345,4 +356,39 @@ func getDatabaseName(name, addr string) (string, error) {
 	}
 
 	return "", fmt.Errorf("could not find a valid database name for this database: %v", dbs)
+}
+
+// parseColumnIncludes parses --columns flags into a map of table name -> column names to include.
+func parseColumnIncludes(columns []string) (map[string]map[string]bool, error) {
+	result := make(map[string]map[string]bool)
+
+	for _, colSpec := range columns {
+		table, colList, found := strings.Cut(colSpec, ":")
+		if !found {
+			return nil, fmt.Errorf("invalid column spec %q: expected 'table:col1,col2' format", colSpec)
+		}
+		table = strings.TrimSpace(table)
+		if table == "" {
+			return nil, fmt.Errorf("invalid column spec %q: table name cannot be empty", colSpec)
+		}
+
+		if result[table] == nil {
+			result[table] = make(map[string]bool)
+		}
+
+		cols := strings.Split(colList, ",")
+		for _, col := range cols {
+			col = strings.TrimSpace(col)
+			if col == "" {
+				continue
+			}
+			result[table][col] = true
+		}
+
+		if len(result[table]) == 0 {
+			return nil, fmt.Errorf("invalid column spec %q: at least one column must be specified", colSpec)
+		}
+	}
+
+	return result, nil
 }

@@ -1574,6 +1574,131 @@ func TestEscapeBytes(t *testing.T) {
 	}
 }
 
+func TestDumperColumnIncludes(t *testing.T) {
+	c := qt.New(t)
+
+	log := xlog.NewStdLog(xlog.Level(xlog.INFO))
+	fakedbs := driver.NewTestHandler(log)
+	server, err := driver.MockMysqlServer(log, fakedbs)
+	c.Assert(err, qt.IsNil)
+	c.Cleanup(func() { server.Close() })
+
+	address := server.Addr()
+
+	// Result with only id and name columns (filtered from full set)
+	selectResult := &sqltypes.Result{
+		Fields: []*querypb.Field{
+			{Name: "id", Type: querypb.Type_INT32},
+			{Name: "name", Type: querypb.Type_VARCHAR},
+		},
+		Rows: make([][]sqltypes.Value, 0, 256),
+	}
+
+	for i := 0; i < 100; i++ {
+		row := []sqltypes.Value{
+			sqltypes.MakeTrusted(querypb.Type_INT32, []byte("42")),
+			sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("testuser")),
+		}
+		selectResult.Rows = append(selectResult.Rows, row)
+	}
+
+	schemaResult := &sqltypes.Result{
+		Fields: []*querypb.Field{
+			{Name: "Table", Type: querypb.Type_VARCHAR},
+			{Name: "Create Table", Type: querypb.Type_VARCHAR},
+		},
+		Rows: [][]sqltypes.Value{
+			{
+				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("users")),
+				sqltypes.MakeTrusted(querypb.Type_VARCHAR,
+					[]byte("CREATE TABLE `users` (`id` int, `name` varchar(255), `email` varchar(255), `password` varchar(255)) ENGINE=InnoDB")),
+			},
+		},
+	}
+
+	tablesResult := &sqltypes.Result{
+		Fields: []*querypb.Field{
+			{Name: "Tables_in_test", Type: querypb.Type_VARCHAR},
+		},
+		Rows: [][]sqltypes.Value{
+			{sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("users"))},
+		},
+	}
+
+	viewsResult := &sqltypes.Result{
+		Fields: []*querypb.Field{
+			{Name: "TABLE_NAME", Type: querypb.Type_VARCHAR},
+		},
+		Rows: [][]sqltypes.Value{},
+	}
+
+	// Fields result includes all columns, but only id and name should be dumped
+	fieldsResult := &sqltypes.Result{
+		Fields: []*querypb.Field{
+			{Name: "Field", Type: querypb.Type_VARCHAR},
+			{Name: "Type", Type: querypb.Type_VARCHAR},
+			{Name: "Null", Type: querypb.Type_VARCHAR},
+			{Name: "Key", Type: querypb.Type_VARCHAR},
+			{Name: "Default", Type: querypb.Type_VARCHAR},
+			{Name: "Extra", Type: querypb.Type_VARCHAR},
+		},
+		Rows: [][]sqltypes.Value{
+			testRow("id", ""),
+			testRow("name", ""),
+			testRow("email", ""),
+			testRow("password", ""),
+		},
+	}
+
+	// fakedbs setup
+	{
+		fakedbs.AddQueryPattern("use .*", &sqltypes.Result{})
+		fakedbs.AddQueryPattern("show create table .*", schemaResult)
+		fakedbs.AddQueryPattern("show tables from .*", tablesResult)
+		fakedbs.AddQueryPattern("select table_name \n\t\t\t from information_schema.tables \n\t\t\t where table_schema like 'test' \n\t\t\t and table_type = 'view'\n\t\t\t", viewsResult)
+		fakedbs.AddQueryPattern("show fields from .*", fieldsResult)
+		// The SELECT should only include id and name columns
+		fakedbs.AddQueryPattern("select `id`, `name` from `test`\\.`users` .*", selectResult)
+		fakedbs.AddQueryPattern("set .*", &sqltypes.Result{})
+	}
+
+	cfg := &Config{
+		Database:      "test",
+		Table:         "users",
+		Outdir:        c.TempDir(),
+		User:          "mock",
+		Password:      "mock",
+		Address:       address,
+		ChunksizeInMB: 1,
+		Threads:       16,
+		StmtSize:      10000,
+		IntervalMs:    500,
+		// Only include id and name columns for the users table
+		ColumnIncludes: map[string]map[string]bool{
+			"users": {
+				"id":   true,
+				"name": true,
+			},
+		},
+	}
+
+	d, err := NewDumper(cfg)
+	c.Assert(err, qt.IsNil)
+
+	err = d.Run(context.Background())
+	c.Assert(err, qt.IsNil)
+
+	// Verify the output contains only the specified columns
+	dat, err := os.ReadFile(cfg.Outdir + "/test.users.00001.sql")
+	c.Assert(err, qt.IsNil)
+
+	// Should have INSERT with only id and name
+	c.Assert(string(dat), qt.Contains, "INSERT INTO `users`(`id`,`name`)")
+	// Should NOT have email or password columns
+	c.Assert(strings.Contains(string(dat), "email"), qt.IsFalse)
+	c.Assert(strings.Contains(string(dat), "password"), qt.IsFalse)
+}
+
 func TestDumper_OutputFormats(t *testing.T) {
 	const numTestRows = 100
 

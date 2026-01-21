@@ -55,6 +55,7 @@ type Config struct {
 	Wheres                    map[string]string
 	Selects                   map[string]map[string]string
 	Filters                   map[string]map[string]string
+	ColumnIncludes            map[string]map[string]bool
 
 	// Interval in millisecond.
 	IntervalMs int
@@ -366,8 +367,17 @@ func (d *Dumper) tableDumpContext(conn *Connection, table string) (*dumpContext,
 	ctx.fieldNames = make([]string, 0)
 	ctx.selfields = make([]string, 0)
 
+	// Check if we have column inclusion filters for this table
+	includeFilter := d.cfg.ColumnIncludes[table]
+	hasIncludeFilter := len(includeFilter) > 0
+
 	for _, name := range flds {
 		d.log.Debug("dump", zap.Any("filters", d.cfg.Filters), zap.String("table", table), zap.String("field_name", name))
+
+		// If include filter is specified, only include listed columns
+		if hasIncludeFilter && !includeFilter[name] {
+			continue
+		}
 
 		if _, ok := d.cfg.Filters[table][name]; ok {
 			continue
@@ -380,6 +390,11 @@ func (d *Dumper) tableDumpContext(conn *Connection, table string) (*dumpContext,
 		} else {
 			ctx.selfields = append(ctx.selfields, fmt.Sprintf("`%s`", name))
 		}
+	}
+
+	// Validate that at least one column was included when using include filter
+	if hasIncludeFilter && len(ctx.fieldNames) == 0 {
+		return nil, fmt.Errorf("no valid columns found for table %q with column filter (available columns: %v)", table, flds)
 	}
 
 	if v, ok := d.cfg.Wheres[table]; ok {
