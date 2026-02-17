@@ -51,26 +51,26 @@ func ClusterSizesCompletionFunc(ch *Helper, cmd *cobra.Command, args []string, t
 
 			if *c.Rate > 0 {
 				if description.Len() > 0 {
-					description.WriteString(fmt.Sprintf(" · $%d/month", *c.Rate))
+					fmt.Fprintf(&description, " · $%d/month", *c.Rate)
 				} else {
-					description.WriteString(fmt.Sprintf("$%d/month", *c.Rate))
+					fmt.Fprintf(&description, "$%d/month", *c.Rate)
 				}
 			}
 
 			if c.CPU != "" {
 				if description.Len() > 0 {
-					description.WriteString(fmt.Sprintf(" · %s vCPUs", c.CPU))
+					fmt.Fprintf(&description, " · %s vCPUs", c.CPU)
 				} else {
-					description.WriteString(fmt.Sprintf("%s vCPUs", c.CPU))
+					fmt.Fprintf(&description, "%s vCPUs", c.CPU)
 				}
 			}
 
 			if c.Memory > 0 {
-				description.WriteString(fmt.Sprintf(" · %s memory", FormatParts(c.Memory).IntString()))
+				fmt.Fprintf(&description, " · %s memory", FormatParts(c.Memory).IntString())
 			}
 
 			if c.Storage != nil && *c.Storage > 0 {
-				description.WriteString(fmt.Sprintf(" · %s storage", FormatPartsGB(*c.Storage).IntString()))
+				fmt.Fprintf(&description, " · %s storage", FormatPartsGB(*c.Storage).IntString())
 			}
 
 			clusterSizes = append(clusterSizes, cobra.CompletionWithDesc(ToClusterSizeSlug(c.Name), description.String()))
@@ -114,19 +114,19 @@ func BranchClusterSizesCompletionFunc(ch *Helper, cmd *cobra.Command, args []str
 			var description strings.Builder
 			description.WriteString(c.DisplayName)
 			if *c.Rate > 0 {
-				description.WriteString(fmt.Sprintf(" · $%d/month", *c.Rate))
+				fmt.Fprintf(&description, " · $%d/month", *c.Rate)
 			}
 
 			if c.CPU != "" {
-				description.WriteString(fmt.Sprintf(" · %s vCPUs", c.CPU))
+				fmt.Fprintf(&description, " · %s vCPUs", c.CPU)
 			}
 
 			if c.Memory > 0 {
-				description.WriteString(fmt.Sprintf(" · %s memory", FormatParts(c.Memory).IntString()))
+				fmt.Fprintf(&description, " · %s memory", FormatParts(c.Memory).IntString())
 			}
 
 			if c.Storage != nil && *c.Storage > 0 {
-				description.WriteString(fmt.Sprintf(" · %s storage", FormatPartsGB(*c.Storage).IntString()))
+				fmt.Fprintf(&description, " · %s storage", FormatPartsGB(*c.Storage).IntString())
 			}
 
 			clusterSizes = append(clusterSizes, cobra.CompletionWithDesc(c.Name, description.String()))
