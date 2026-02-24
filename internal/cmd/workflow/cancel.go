@@ -40,7 +40,7 @@ marks it as cancelled, allowing you to start a new workflow if needed.`,
 
 			if !force {
 				if ch.Printer.Format() != printer.Human {
-					return fmt.Errorf("cannot cancel workflow with the output format \"%s\" (run with --force to override)", ch.Printer.Format())
+					return fmt.Errorf(`cannot cancel workflow with the output format "%s" (run with --force to override)`, ch.Printer.Format())
 				}
 
 				if !printer.IsTTY {

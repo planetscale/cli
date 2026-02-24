@@ -102,7 +102,7 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			if !force {
 				if ch.Printer.Format() != printer.Human {
-					return fmt.Errorf("cannot delete password with the output format \"%s\" (run with --force to override)", ch.Printer.Format())
+					return fmt.Errorf(`cannot delete password with the output format "%s" (run with --force to override)`, ch.Printer.Format())
 				}
 
 				var confirmationName string

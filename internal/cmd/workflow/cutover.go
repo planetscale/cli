@@ -39,7 +39,7 @@ func CutoverCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			if !force {
 				if ch.Printer.Format() != printer.Human {
-					return fmt.Errorf("cannot cutover with the output format \"%s\" (run with --force to override)", ch.Printer.Format())
+					return fmt.Errorf(`cannot cutover with the output format "%s" (run with --force to override)`, ch.Printer.Format())
 				}
 
 				if !printer.IsTTY {

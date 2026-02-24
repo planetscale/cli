@@ -199,7 +199,7 @@ func (p *Printer) PrintResource(v interface{}) error {
 
 func (p *Printer) ConfirmCommand(confirmationName, commandShortName, confirmFailedName string) error {
 	if p.Format() != Human {
-		return fmt.Errorf("cannot %s with the output format \"%s\" (run with --force to override)", commandShortName, p.Format())
+		return fmt.Errorf(`cannot %s with the output format "%s" (run with --force to override)`, commandShortName, p.Format())
 	}
 
 	if !IsTTY {
