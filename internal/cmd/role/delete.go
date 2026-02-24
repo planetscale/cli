@@ -38,7 +38,7 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			if !flags.force {
 				if ch.Printer.Format() != printer.Human {
-					return fmt.Errorf("cannot delete role with the output format %q (run with --force to override)", ch.Printer.Format())
+					return fmt.Errorf(`cannot delete role with the output format "%s" (run with --force to override)`, ch.Printer.Format())
 				}
 
 				confirmationName := fmt.Sprintf("%s/%s/%s", database, branch, roleID)
