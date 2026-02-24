@@ -88,56 +88,7 @@ If you need a more advanced example that works with service tokens and different
 
 ## MCP Server Integration
 
-The PlanetScale CLI includes a Model Context Protocol (MCP) server that provides AI tools direct access to your PlanetScale databases. This allows AI assistants to list organizations, databases, branches, and run SQL queries with proper authentication.
-
-### Setting up MCP in AI tools
-
-#### Claude Desktop
-
-To enable the PlanetScale MCP server in Claude Desktop:
-
-```
-pscale mcp install --target claude
-```
-
-#### Cursor Editor
-
-To enable the PlanetScale MCP server in Cursor:
-
-```
-pscale mcp install --target cursor
-```
-
-#### Manual Setup for Other AI Tools
-
-For AI tools that support custom MCP servers but don't have automated installation through the CLI, you can manually configure them:
-
-1. Find your tool's MCP configuration file
-2. Add the following configuration:
-
-```json
-{
-  "mcpServers": {
-    "planetscale": {
-      "command": "pscale",
-      "args": ["mcp", "server"]
-    }
-  }
-}
-```
-
-3. Restart your AI tool to apply the changes
-
-Verify the tool recognizes the PlanetScale MCP server by asking it to list your databases or perform other PlanetScale operations.
-
-Once configured, these AI tools will be able to use PlanetScale-specific context to help you work with your databases. The MCP server provides the following capabilities:
-- List organizations
-- List databases
-- List branches
-- List keyspaces
-- List tables
-- Get table schemas
-- Run read-only SQL queries
+> **Deprecated:** The CLI-based MCP server (`pscale mcp`) is deprecated and will be removed in a future version. Use the PlanetScale MCP server instead: https://planetscale.com/docs/connect/mcp
 
 ## GitHub Actions Usage
 Use the [setup-pscale-action](https://github.com/planetscale/setup-pscale-action) to install and use `pscale` in GitHub Actions.
