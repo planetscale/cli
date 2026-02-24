@@ -39,6 +39,10 @@ func MoveTablesCreateCmd(ch *cmdutil.Helper) *cobra.Command {
 		onDDL                        string
 		shardedAutoIncrementHandling string
 		sourceTimeZone               string
+		cells                        []string
+		tabletTypes                  []string
+		excludeTables                []string
+		atomicCopy                   bool
 	}
 
 	cmd := &cobra.Command{
@@ -71,6 +75,9 @@ func MoveTablesCreateCmd(ch *cmdutil.Helper) *cobra.Command {
 				OnDDL:                        flags.onDDL,
 				ShardedAutoIncrementHandling: flags.shardedAutoIncrementHandling,
 				SourceTimeZone:               flags.sourceTimeZone,
+				Cells:                        flags.cells,
+				TabletTypes:                  flags.tabletTypes,
+				ExcludeTables:                flags.excludeTables,
 			}
 
 			if cmd.Flags().Changed("all-tables") {
@@ -81,6 +88,9 @@ func MoveTablesCreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 			if cmd.Flags().Changed("auto-start") {
 				req.AutoStart = &flags.autoStart
+			}
+			if cmd.Flags().Changed("atomic-copy") {
+				req.AtomicCopy = &flags.atomicCopy
 			}
 
 			data, err := client.MoveTables.Create(ctx, req)
@@ -104,11 +114,16 @@ func MoveTablesCreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().StringVar(&flags.onDDL, "on-ddl", "", "DDL handling strategy (IGNORE, STOP, EXEC, EXEC_IGNORE)")
 	cmd.Flags().StringVar(&flags.shardedAutoIncrementHandling, "sharded-auto-increment-handling", "", "Auto increment handling for sharded keyspaces")
 	cmd.Flags().StringVar(&flags.sourceTimeZone, "source-time-zone", "", "Source time zone")
+	cmd.Flags().StringSliceVar(&flags.cells, "cells", nil, "Cells to restrict the workflow to (comma-separated)")
+	cmd.Flags().StringSliceVar(&flags.tabletTypes, "tablet-types", nil, "Tablet types to use for the workflow (comma-separated)")
+	cmd.Flags().StringSliceVar(&flags.excludeTables, "exclude-tables", nil, "Tables to exclude from the move (comma-separated)")
+	cmd.Flags().BoolVar(&flags.atomicCopy, "atomic-copy", false, "Use atomic copy for the workflow")
 
 	cmd.MarkFlagRequired("workflow")        // nolint:errcheck
 	cmd.MarkFlagRequired("target-keyspace") // nolint:errcheck
 	cmd.MarkFlagRequired("source-keyspace") // nolint:errcheck
 	cmd.MarkFlagsMutuallyExclusive("tables", "all-tables")
+	cmd.MarkFlagsMutuallyExclusive("tables", "exclude-tables")
 
 	return cmd
 }
@@ -214,6 +229,7 @@ func MoveTablesSwitchTrafficCmd(ch *cmdutil.Helper) *cobra.Command {
 		workflow                  string
 		targetKeyspace            string
 		tabletTypes               []string
+		maxReplicationLagAllowed  int64
 		dryRun                    bool
 		initializeTargetSequences bool
 	}
@@ -251,6 +267,9 @@ func MoveTablesSwitchTrafficCmd(ch *cmdutil.Helper) *cobra.Command {
 			if cmd.Flags().Changed("initialize-target-sequences") {
 				req.InitializeTargetSequences = &flags.initializeTargetSequences
 			}
+			if cmd.Flags().Changed("max-replication-lag-allowed") {
+				req.MaxReplicationLagAllowed = &flags.maxReplicationLagAllowed
+			}
 
 			data, err := client.MoveTables.SwitchTraffic(ctx, req)
 			if err != nil {
@@ -267,6 +286,7 @@ func MoveTablesSwitchTrafficCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().StringSliceVar(&flags.tabletTypes, "tablet-types", nil, "Tablet types to switch traffic for (comma-separated)")
 	cmd.Flags().BoolVar(&flags.dryRun, "dry-run", false, "Only show what would be done")
 	cmd.Flags().BoolVar(&flags.initializeTargetSequences, "initialize-target-sequences", false, "Initialize target sequences")
+	cmd.Flags().Int64Var(&flags.maxReplicationLagAllowed, "max-replication-lag-allowed", 0, "Maximum replication lag allowed in seconds")
 	cmd.MarkFlagRequired("workflow")        // nolint:errcheck
 	cmd.MarkFlagRequired("target-keyspace") // nolint:errcheck
 
@@ -275,9 +295,11 @@ func MoveTablesSwitchTrafficCmd(ch *cmdutil.Helper) *cobra.Command {
 
 func MoveTablesReverseTrafficCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
-		workflow       string
-		targetKeyspace string
-		dryRun         bool
+		workflow                 string
+		targetKeyspace           string
+		tabletTypes              []string
+		maxReplicationLagAllowed int64
+		dryRun                   bool
 	}
 
 	cmd := &cobra.Command{
@@ -304,10 +326,14 @@ func MoveTablesReverseTrafficCmd(ch *cmdutil.Helper) *cobra.Command {
 				Branch:         branch,
 				Workflow:       flags.workflow,
 				TargetKeyspace: flags.targetKeyspace,
+				TabletTypes:    flags.tabletTypes,
 			}
 
 			if cmd.Flags().Changed("dry-run") {
 				req.DryRun = &flags.dryRun
+			}
+			if cmd.Flags().Changed("max-replication-lag-allowed") {
+				req.MaxReplicationLagAllowed = &flags.maxReplicationLagAllowed
 			}
 
 			data, err := client.MoveTables.ReverseTraffic(ctx, req)
@@ -322,6 +348,8 @@ func MoveTablesReverseTrafficCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	cmd.Flags().StringVar(&flags.workflow, "workflow", "", "Name of the workflow")
 	cmd.Flags().StringVar(&flags.targetKeyspace, "target-keyspace", "", "Target keyspace")
+	cmd.Flags().StringSliceVar(&flags.tabletTypes, "tablet-types", nil, "Tablet types to reverse traffic for (comma-separated)")
+	cmd.Flags().Int64Var(&flags.maxReplicationLagAllowed, "max-replication-lag-allowed", 0, "Maximum replication lag allowed in seconds")
 	cmd.Flags().BoolVar(&flags.dryRun, "dry-run", false, "Only show what would be done")
 	cmd.MarkFlagRequired("workflow")        // nolint:errcheck
 	cmd.MarkFlagRequired("target-keyspace") // nolint:errcheck
