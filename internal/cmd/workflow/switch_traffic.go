@@ -44,7 +44,7 @@ By default, this command will route all queries for primary, replica, and read-o
 
 			if !force {
 				if ch.Printer.Format() != printer.Human {
-					return fmt.Errorf("cannot switch query traffic with the output format %q (run with --force to override)", ch.Printer.Format())
+					return fmt.Errorf(`cannot switch query traffic with the output format "%s" (run with --force to override)`, ch.Printer.Format())
 				}
 
 				if !printer.IsTTY {
