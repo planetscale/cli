@@ -13,6 +13,7 @@ func VtctldCmd(ch *cmdutil.Helper) *cobra.Command {
 		Hidden: true,
 	}
 
+	cmd.AddCommand(MaterializeCmd(ch))
 	cmd.AddCommand(ListWorkflowsCmd(ch))
 	cmd.AddCommand(ListKeyspacesCmd(ch))
 
