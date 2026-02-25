@@ -13,6 +13,7 @@ func VtctldCmd(ch *cmdutil.Helper) *cobra.Command {
 		Hidden: true,
 	}
 
+	cmd.AddCommand(MaterializeCmd(ch))
 	cmd.AddCommand(VDiffCmd(ch))
 	cmd.AddCommand(LookupVindexCmd(ch))
 	cmd.AddCommand(MoveTablesCmd(ch))
