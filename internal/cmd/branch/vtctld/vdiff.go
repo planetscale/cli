@@ -26,22 +26,22 @@ func VDiffCmd(ch *cmdutil.Helper) *cobra.Command {
 
 func VDiffCreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
-		workflow                  string
-		targetKeyspace            string
-		autoRetry                 bool
-		autoStart                 bool
-		debugQuery                bool
-		onlyPKs                   bool
-		updateTableStats          bool
-		verbose                   bool
-		tables                    []string
-		tabletTypes               []string
-		tabletSelectionPreference string
+		workflow                    string
+		targetKeyspace              string
+		autoRetry                   bool
+		autoStart                   bool
+		debugQuery                  bool
+		onlyPKs                     bool
+		updateTableStats            bool
+		verbose                     bool
+		tables                      []string
+		tabletTypes                 []string
+		tabletSelectionPreference   string
 		filteredReplicationWaitTime int
-		maxReportSampleRows       int
-		maxExtraRowsToCompare     int
-		rowDiffColumnTruncateAt   int
-		limit                     int
+		maxReportSampleRows         int
+		maxExtraRowsToCompare       int
+		rowDiffColumnTruncateAt     int
+		limit                       int
 	}
 
 	cmd := &cobra.Command{
