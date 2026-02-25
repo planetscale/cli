@@ -214,7 +214,7 @@ func LookupVindexExternalizeCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().StringVar(&flags.name, "name", "", "Name of the Lookup Vindex")
 	cmd.Flags().StringVar(&flags.tableKeyspace, "table-keyspace", "", "Keyspace of the table")
 	cmd.Flags().StringVar(&flags.keyspace, "keyspace", "", "Keyspace for the lookup table")
-	cmd.Flags().BoolVar(&flags.delete, "delete", false, "Delete the vindex after externalizing")
+	cmd.Flags().BoolVar(&flags.delete, "delete", false, "Delete the workflow after externalizing")
 	cmd.MarkFlagRequired("name")           // nolint:errcheck
 	cmd.MarkFlagRequired("table-keyspace") // nolint:errcheck
 
