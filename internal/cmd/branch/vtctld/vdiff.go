@@ -111,7 +111,7 @@ func VDiffCreateCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	cmd.Flags().StringVar(&flags.workflow, "workflow", "", "Name of the workflow")
 	cmd.Flags().StringVar(&flags.targetKeyspace, "target-keyspace", "", "Target keyspace")
-	cmd.Flags().BoolVar(&flags.autoRetry, "auto-retry", false, "Automatically retry on error")
+	cmd.Flags().BoolVar(&flags.autoRetry, "auto-retry", true, "Automatically retry on error")
 	cmd.Flags().BoolVar(&flags.autoStart, "auto-start", true, "Automatically start the VDiff")
 	cmd.Flags().BoolVar(&flags.debugQuery, "debug-query", false, "Log the queries used for the VDiff")
 	cmd.Flags().BoolVar(&flags.onlyPKs, "only-pks", false, "Only compare primary keys")
