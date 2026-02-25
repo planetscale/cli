@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/planetscale/cli/internal/cmd/branch/vtctld"
 	"github.com/planetscale/cli/internal/cmdutil"
 	ps "github.com/planetscale/planetscale-go/planetscale"
 	"github.com/spf13/cobra"
@@ -34,6 +35,7 @@ func BranchCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.AddCommand(RoutingRulesCmd(ch))
 	cmd.AddCommand(SafeMigrationsCmd(ch))
 	cmd.AddCommand(LintCmd(ch))
+	cmd.AddCommand(vtctld.VtctldCmd(ch))
 
 	return cmd
 }
