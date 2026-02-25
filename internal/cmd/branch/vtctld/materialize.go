@@ -169,7 +169,7 @@ func MaterializeShowCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	cmd.Flags().StringVar(&flags.workflow, "workflow", "", "Name of the workflow (required)")
 	cmd.Flags().StringVar(&flags.targetKeyspace, "target-keyspace", "", "Target keyspace (required)")
-	cmd.Flags().BoolVar(&flags.includeLogs, "include-logs", false, "Include workflow logs in the response")
+	cmd.Flags().BoolVar(&flags.includeLogs, "include-logs", true, "Include workflow logs in the response")
 
 	_ = cmd.MarkFlagRequired("workflow")
 	_ = cmd.MarkFlagRequired("target-keyspace")
