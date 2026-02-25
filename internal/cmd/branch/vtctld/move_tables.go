@@ -71,7 +71,6 @@ func MoveTablesCreateCmd(ch *cmdutil.Helper) *cobra.Command {
 				TargetKeyspace:               flags.targetKeyspace,
 				SourceKeyspace:               flags.sourceKeyspace,
 				Tables:                       flags.tables,
-				DeferSecondaryKeys:           &flags.deferSecondaryKeys,
 				OnDDL:                        flags.onDDL,
 				ShardedAutoIncrementHandling: flags.shardedAutoIncrementHandling,
 				SourceTimeZone:               flags.sourceTimeZone,
@@ -88,6 +87,9 @@ func MoveTablesCreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 			if cmd.Flags().Changed("auto-start") {
 				req.AutoStart = &flags.autoStart
+			}
+			if cmd.Flags().Changed("defer-secondary-keys") {
+				req.DeferSecondaryKeys = &flags.deferSecondaryKeys
 			}
 			if cmd.Flags().Changed("atomic-copy") {
 				req.AtomicCopy = &flags.atomicCopy
