@@ -60,7 +60,7 @@ func openKeyring() (keyring.Keyring, error) {
 		})
 	}
 
-	return keyring.Open(keyring.Config{
+	ring, err := keyring.Open(keyring.Config{
 		AllowedBackends: []keyring.BackendType{
 			keyring.SecretServiceBackend,
 			keyring.KWalletBackend,
@@ -71,6 +71,23 @@ func openKeyring() (keyring.Keyring, error) {
 		KeychainTrustApplication: true,
 		KeychainSynchronizable:   true,
 	})
+
+	// Fall back to encrypted file storage if no secure backend available
+	if errors.Is(err, keyring.ErrNoAvailImpl) {
+		homeDir, homeErr := os.UserHomeDir()
+		if homeErr != nil {
+			return nil, fmt.Errorf("failed to get home directory: %w", homeErr)
+		}
+
+		return keyring.Open(keyring.Config{
+			AllowedBackends:  []keyring.BackendType{keyring.FileBackend},
+			ServiceName:      keyringService,
+			FileDir:          homeDir + "/.config/planetscale/import-credentials",
+			FilePasswordFunc: keyring.TerminalPrompt,
+		})
+	}
+
+	return ring, err
 }
 
 // keyFor generates a keyring key for the given parameters.
