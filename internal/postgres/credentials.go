@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/99designs/keyring"
 )
@@ -12,29 +13,21 @@ const (
 	keyringService = "pscale"
 )
 
-// CredentialType represents the type of credential being stored.
-type CredentialType string
+// credType represents the type of credential being stored.
+type credType string
 
 const (
-	// CredentialTypeSource is for source database connection strings.
-	CredentialTypeSource CredentialType = "source"
-	// CredentialTypeRoleID is for the replication role ID.
-	CredentialTypeRoleID CredentialType = "role_id"
-	// CredentialTypeRoleUsername is for the replication role username.
-	CredentialTypeRoleUsername CredentialType = "role_username"
-	// CredentialTypeRolePassword is for the replication role password.
-	CredentialTypeRolePassword CredentialType = "role_password"
-	// CredentialTypeRoleHost is for the replication role host.
-	CredentialTypeRoleHost CredentialType = "role_host"
-	// CredentialTypePublication is for the publication name.
-	CredentialTypePublication CredentialType = "publication"
-	// CredentialTypeSubscription is for the subscription name.
-	CredentialTypeSubscription CredentialType = "subscription"
-	// CredentialTypeDBName is for the PostgreSQL database name on the destination.
-	CredentialTypeDBName CredentialType = "dbname"
+	credSource       credType = "source"
+	credRoleID       credType = "role_id"
+	credRoleUsername credType = "role_username"
+	credRolePassword credType = "role_password"
+	credRoleHost     credType = "role_host"
+	credPublication  credType = "publication"
+	credSubscription credType = "subscription"
+	credDBName       credType = "dbname"
 )
 
-// ImportCredentials manages import-related credentials in the keyring.
+// ImportCredentials manages import credentials in the keyring.
 type ImportCredentials struct {
 	ring keyring.Keyring
 }
@@ -90,135 +83,150 @@ func openKeyring() (keyring.Keyring, error) {
 	return ring, err
 }
 
-// keyFor generates a keyring key for the given parameters.
-func keyFor(org, db, branch string, credType CredentialType) string {
-	return fmt.Sprintf("import:%s:%s:%s:%s", org, db, branch, credType)
+// keyForSubscription generates a subscription-scoped keyring key.
+func keyForSubscription(org, db, branch, subscription string, ct credType) string {
+	return fmt.Sprintf("import:%s:%s:%s:%s:%s", org, db, branch, subscription, ct)
 }
 
-// Store stores a credential in the keyring.
-func (c *ImportCredentials) Store(org, db, branch string, credType CredentialType, value string) error {
-	key := keyFor(org, db, branch, credType)
-	return c.ring.Set(keyring.Item{
-		Key:   key,
-		Data:  []byte(value),
-		Label: fmt.Sprintf("PlanetScale Import - %s/%s/%s - %s", org, db, branch, credType),
-	})
+// ImportInfo contains all stored credentials for an import.
+type ImportInfo struct {
+	SourceConnStr    string
+	RoleID           string
+	RoleUsername     string
+	RolePassword     string
+	RoleHost         string
+	PublicationName  string
+	SubscriptionName string
+	DBName           string
 }
 
-// Retrieve retrieves a credential from the keyring.
-func (c *ImportCredentials) Retrieve(org, db, branch string, credType CredentialType) (string, error) {
-	key := keyFor(org, db, branch, credType)
-	item, err := c.ring.Get(key)
-	if err != nil {
-		if errors.Is(err, keyring.ErrKeyNotFound) {
-			return "", fmt.Errorf("credential not found for %s/%s/%s (%s)", org, db, branch, credType)
+// StoreImportForSubscription stores all credentials for a subscription.
+func (c *ImportCredentials) StoreImportForSubscription(org, db, branch, subscription string, info *ImportInfo) error {
+	key := func(ct credType) string {
+		return keyForSubscription(org, db, branch, subscription, ct)
+	}
+
+	items := []struct {
+		ct    credType
+		value string
+	}{
+		{credSource, info.SourceConnStr},
+		{credRoleID, info.RoleID},
+		{credRoleUsername, info.RoleUsername},
+		{credRolePassword, info.RolePassword},
+		{credRoleHost, info.RoleHost},
+		{credPublication, info.PublicationName},
+		{credSubscription, subscription},
+		{credDBName, info.DBName},
+	}
+
+	for _, item := range items {
+		if item.value == "" {
+			continue
 		}
-		return "", fmt.Errorf("failed to retrieve credential: %w", err)
+		if err := c.ring.Set(keyring.Item{
+			Key:   key(item.ct),
+			Data:  []byte(item.value),
+			Label: fmt.Sprintf("PlanetScale Import - %s/%s/%s/%s - %s", org, db, branch, subscription, item.ct),
+		}); err != nil {
+			return fmt.Errorf("failed to store %s: %w", item.ct, err)
+		}
 	}
-	return string(item.Data), nil
-}
 
-// Delete deletes a credential from the keyring.
-func (c *ImportCredentials) Delete(org, db, branch string, credType CredentialType) error {
-	key := keyFor(org, db, branch, credType)
-	err := c.ring.Remove(key)
-	if err != nil && !errors.Is(err, keyring.ErrKeyNotFound) {
-		return fmt.Errorf("failed to delete credential: %w", err)
-	}
 	return nil
 }
 
-// StoreSourceCredentials stores the source database connection string.
-func (c *ImportCredentials) StoreSourceCredentials(org, db, branch, connStr string) error {
-	return c.Store(org, db, branch, CredentialTypeSource, connStr)
-}
-
-// RetrieveSourceCredentials retrieves the source database connection string.
-func (c *ImportCredentials) RetrieveSourceCredentials(org, db, branch string) (string, error) {
-	return c.Retrieve(org, db, branch, CredentialTypeSource)
-}
-
-// StoreRoleID stores the replication role ID.
-func (c *ImportCredentials) StoreRoleID(org, db, branch, roleID string) error {
-	return c.Store(org, db, branch, CredentialTypeRoleID, roleID)
-}
-
-// RetrieveRoleID retrieves the replication role ID.
-func (c *ImportCredentials) RetrieveRoleID(org, db, branch string) (string, error) {
-	return c.Retrieve(org, db, branch, CredentialTypeRoleID)
-}
-
-// StoreRoleCredentials stores the role username, password, and host.
-func (c *ImportCredentials) StoreRoleCredentials(org, db, branch, username, password, host string) error {
-	if err := c.Store(org, db, branch, CredentialTypeRoleUsername, username); err != nil {
-		return err
+// GetImportInfoForSubscription retrieves import info for a subscription.
+func (c *ImportCredentials) GetImportInfoForSubscription(org, db, branch, subscription string) (*ImportInfo, error) {
+	key := func(ct credType) string {
+		return keyForSubscription(org, db, branch, subscription, ct)
 	}
-	if err := c.Store(org, db, branch, CredentialTypeRolePassword, password); err != nil {
-		return err
-	}
-	return c.Store(org, db, branch, CredentialTypeRoleHost, host)
-}
 
-// RetrieveRoleCredentials retrieves the role username, password, and host.
-func (c *ImportCredentials) RetrieveRoleCredentials(org, db, branch string) (username, password, host string, err error) {
-	username, err = c.Retrieve(org, db, branch, CredentialTypeRoleUsername)
+	retrieve := func(ct credType) (string, error) {
+		item, err := c.ring.Get(key(ct))
+		if err != nil {
+			if errors.Is(err, keyring.ErrKeyNotFound) {
+				return "", nil
+			}
+			return "", err
+		}
+		return string(item.Data), nil
+	}
+
+	info := &ImportInfo{}
+	var err error
+
+	info.SourceConnStr, err = retrieve(credSource)
 	if err != nil {
-		return "", "", "", err
+		return nil, fmt.Errorf("failed to retrieve source: %w", err)
 	}
-	password, err = c.Retrieve(org, db, branch, CredentialTypeRolePassword)
+	if info.SourceConnStr == "" {
+		return nil, fmt.Errorf("no import found for subscription %s", subscription)
+	}
+
+	info.RoleID, _ = retrieve(credRoleID)
+	info.RoleUsername, _ = retrieve(credRoleUsername)
+	info.RolePassword, _ = retrieve(credRolePassword)
+	info.RoleHost, _ = retrieve(credRoleHost)
+	info.PublicationName, _ = retrieve(credPublication)
+	info.SubscriptionName, _ = retrieve(credSubscription)
+	info.DBName, _ = retrieve(credDBName)
+
+	if info.DBName == "" {
+		info.DBName = "postgres"
+	}
+
+	return info, nil
+}
+
+// ListStoredSubscriptions lists all subscriptions with stored credentials for a branch.
+func (c *ImportCredentials) ListStoredSubscriptions(org, db, branch string) ([]string, error) {
+	prefix := fmt.Sprintf("import:%s:%s:%s:", org, db, branch)
+
+	keys, err := c.ring.Keys()
 	if err != nil {
-		return "", "", "", err
+		return nil, fmt.Errorf("failed to list keys: %w", err)
 	}
-	host, err = c.Retrieve(org, db, branch, CredentialTypeRoleHost)
-	if err != nil {
-		return "", "", "", err
+
+	subsMap := make(map[string]bool)
+	for _, key := range keys {
+		if !strings.HasPrefix(key, prefix) {
+			continue
+		}
+
+		// Key format: import:org:db:branch:subscription:credType
+		parts := strings.Split(key, ":")
+		if len(parts) >= 6 {
+			sub := parts[4]
+			subsMap[sub] = true
+		}
 	}
-	return username, password, host, nil
+
+	var subs []string
+	for sub := range subsMap {
+		subs = append(subs, sub)
+	}
+
+	return subs, nil
 }
 
-// StorePublicationName stores the publication name.
-func (c *ImportCredentials) StorePublicationName(org, db, branch, pubName string) error {
-	return c.Store(org, db, branch, CredentialTypePublication, pubName)
-}
-
-// RetrievePublicationName retrieves the publication name.
-func (c *ImportCredentials) RetrievePublicationName(org, db, branch string) (string, error) {
-	return c.Retrieve(org, db, branch, CredentialTypePublication)
-}
-
-// StoreSubscriptionName stores the subscription name.
-func (c *ImportCredentials) StoreSubscriptionName(org, db, branch, subName string) error {
-	return c.Store(org, db, branch, CredentialTypeSubscription, subName)
-}
-
-// RetrieveSubscriptionName retrieves the subscription name.
-func (c *ImportCredentials) RetrieveSubscriptionName(org, db, branch string) (string, error) {
-	return c.Retrieve(org, db, branch, CredentialTypeSubscription)
-}
-
-// StoreDBName stores the destination database name.
-func (c *ImportCredentials) StoreDBName(org, db, branch, destDB string) error {
-	return c.Store(org, db, branch, CredentialTypeDBName, destDB)
-}
-
-// RetrieveDBName retrieves the destination database name.
-func (c *ImportCredentials) RetrieveDBName(org, db, branch string) (string, error) {
-	return c.Retrieve(org, db, branch, CredentialTypeDBName)
-}
-
-// ClearImportCredentials clears all import credentials for a branch.
-func (c *ImportCredentials) ClearImportCredentials(org, db, branch string) error {
-	types := []CredentialType{
-		CredentialTypeSource,
-		CredentialTypeRoleID,
-		CredentialTypePublication,
-		CredentialTypeSubscription,
-		CredentialTypeDBName,
+// ClearSubscriptionCredentials clears all credentials for a subscription.
+func (c *ImportCredentials) ClearSubscriptionCredentials(org, db, branch, subscription string) error {
+	types := []credType{
+		credSource,
+		credRoleID,
+		credRoleUsername,
+		credRolePassword,
+		credRoleHost,
+		credPublication,
+		credSubscription,
+		credDBName,
 	}
 
 	var errs []error
-	for _, credType := range types {
-		if err := c.Delete(org, db, branch, credType); err != nil {
+	for _, ct := range types {
+		key := keyForSubscription(org, db, branch, subscription, ct)
+		if err := c.ring.Remove(key); err != nil && !errors.Is(err, keyring.ErrKeyNotFound) {
 			errs = append(errs, err)
 		}
 	}
@@ -227,43 +235,4 @@ func (c *ImportCredentials) ClearImportCredentials(org, db, branch string) error
 		return fmt.Errorf("failed to clear some credentials: %v", errs)
 	}
 	return nil
-}
-
-// HasImportCredentials checks if import credentials exist for a branch.
-func (c *ImportCredentials) HasImportCredentials(org, db, branch string) bool {
-	_, err := c.Retrieve(org, db, branch, CredentialTypeSource)
-	return err == nil
-}
-
-// GetAllImportInfo retrieves all stored import information for a branch.
-type ImportInfo struct {
-	SourceConnStr    string
-	RoleID           string
-	PublicationName  string
-	SubscriptionName string
-	DBName           string
-}
-
-// GetImportInfo retrieves all import information for a branch.
-func (c *ImportCredentials) GetImportInfo(org, db, branch string) (*ImportInfo, error) {
-	info := &ImportInfo{}
-
-	var err error
-	info.SourceConnStr, err = c.RetrieveSourceCredentials(org, db, branch)
-	if err != nil {
-		return nil, err
-	}
-
-	// These are optional, don't error if not found
-	info.RoleID, _ = c.RetrieveRoleID(org, db, branch)
-	info.PublicationName, _ = c.RetrievePublicationName(org, db, branch)
-	info.SubscriptionName, _ = c.RetrieveSubscriptionName(org, db, branch)
-	info.DBName, _ = c.RetrieveDBName(org, db, branch)
-
-	// Default to postgres if not stored
-	if info.DBName == "" {
-		info.DBName = "postgres"
-	}
-
-	return info, nil
 }
