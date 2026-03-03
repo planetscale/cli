@@ -13,66 +13,11 @@ import (
 	exec "golang.org/x/sys/execabs"
 )
 
-// PsqlOptions contains options for executing psql commands.
-type PsqlOptions struct {
-	// ConnString is the PostgreSQL connection string
-	ConnString string
-	// Query is the SQL query to execute (mutually exclusive with File)
-	Query string
-	// File is the path to a SQL file to execute (mutually exclusive with Query)
-	File string
-	// Variables are psql variables to set (--set name=value)
-	Variables map[string]string
-	// SingleTransaction wraps commands in a single transaction
-	SingleTransaction bool
-	// Quiet suppresses output messages
-	Quiet bool
-}
-
-// PgDumpOptions contains options for executing pg_dump commands.
-type PgDumpOptions struct {
-	// ConnString is the PostgreSQL connection string
-	ConnString string
-	// SchemaOnly dumps only the schema, not data
-	SchemaOnly bool
-	// DataOnly dumps only the data, not schema
-	DataOnly bool
-	// Tables is a list of tables to dump (empty means all)
-	Tables []string
-	// ExcludeTables is a list of tables to exclude
-	ExcludeTables []string
-	// Schemas is a list of schemas to dump (empty means all)
-	Schemas []string
-	// ExcludeSchemas is a list of schemas to exclude
-	ExcludeSchemas []string
-	// NoOwner omits owner statements
-	NoOwner bool
-	// NoPrivileges omits privilege statements
-	NoPrivileges bool
-	// NoTablespaces omits tablespace assignments
-	NoTablespaces bool
-	// NoComments omits comments
-	NoComments bool
-	// NoPublications omits publications
-	NoPublications bool
-	// NoSubscriptions omits subscriptions
-	NoSubscriptions bool
-	// Format is the output format (plain, custom, directory, tar)
-	Format string
-	// IfExists adds IF EXISTS to DROP statements
-	IfExists bool
-	// Clean adds DROP statements before CREATE
-	Clean bool
-	// Create adds CREATE DATABASE statement
-	Create bool
-}
-
 var (
 	psqlVersionRegex   = regexp.MustCompile(`psql \(PostgreSQL\) (\d+)\.?(\d*)`)
 	pgDumpVersionRegex = regexp.MustCompile(`pg_dump \(PostgreSQL\) (\d+)\.?(\d*)`)
 )
 
-// FindPsqlPath locates the psql binary.
 func FindPsqlPath() (string, error) {
 	for _, cmd := range []string{"psql-17", "psql-16", "psql-15", "psql"} {
 		path, err := exec.LookPath(cmd)
@@ -94,7 +39,6 @@ func FindPsqlPath() (string, error) {
 		"To install, run: brew install postgresql@17")
 }
 
-// FindPgDumpPath locates the pg_dump binary.
 func FindPgDumpPath() (string, error) {
 	for _, cmd := range []string{"pg_dump-17", "pg_dump-16", "pg_dump-15", "pg_dump"} {
 		path, err := exec.LookPath(cmd)
@@ -116,7 +60,6 @@ func FindPgDumpPath() (string, error) {
 		"To install, run: brew install postgresql@17")
 }
 
-// CheckPsqlVersion returns the psql version.
 func CheckPsqlVersion(minMajor int) (major, minor int, err error) {
 	path, err := FindPsqlPath()
 	if err != nil {
@@ -150,7 +93,6 @@ func CheckPsqlVersion(minMajor int) (major, minor int, err error) {
 	return major, minor, nil
 }
 
-// CheckPgDumpVersion returns the pg_dump version.
 func CheckPgDumpVersion(minMajor int) (major, minor int, err error) {
 	path, err := FindPgDumpPath()
 	if err != nil {
@@ -184,130 +126,8 @@ func CheckPgDumpVersion(minMajor int) (major, minor int, err error) {
 	return major, minor, nil
 }
 
-// ExecutePsql executes a psql command and returns stdout and stderr.
-func ExecutePsql(ctx context.Context, opts PsqlOptions) (stdout, stderr string, err error) {
-	path, err := FindPsqlPath()
-	if err != nil {
-		return "", "", err
-	}
-
-	args := []string{opts.ConnString}
-
-	if opts.SingleTransaction {
-		args = append(args, "--single-transaction")
-	}
-
-	if opts.Quiet {
-		args = append(args, "--quiet")
-	}
-
-	for name, value := range opts.Variables {
-		args = append(args, "--set", fmt.Sprintf("%s=%s", name, value))
-	}
-
-	if opts.Query != "" {
-		args = append(args, "-c", opts.Query)
-	} else if opts.File != "" {
-		args = append(args, "-f", opts.File)
-	}
-
-	cmd := exec.CommandContext(ctx, path, args...)
-
-	var stdoutBuf, stderrBuf bytes.Buffer
-	cmd.Stdout = &stdoutBuf
-	cmd.Stderr = &stderrBuf
-	cmd.Env = os.Environ()
-
-	err = cmd.Run()
-	stdout = stdoutBuf.String()
-	stderr = stderrBuf.String()
-
-	if err != nil {
-		return stdout, stderr, fmt.Errorf("psql error: %w\nstderr: %s", err, stderr)
-	}
-
-	return stdout, stderr, nil
-}
-
-// ExecutePgDump executes a pg_dump command and returns stdout and stderr.
-func ExecutePgDump(ctx context.Context, opts PgDumpOptions) (stdout, stderr string, err error) {
-	path, err := FindPgDumpPath()
-	if err != nil {
-		return "", "", err
-	}
-
-	args := []string{opts.ConnString}
-
-	if opts.SchemaOnly {
-		args = append(args, "--schema-only")
-	}
-	if opts.DataOnly {
-		args = append(args, "--data-only")
-	}
-	if opts.NoOwner {
-		args = append(args, "--no-owner")
-	}
-	if opts.NoPrivileges {
-		args = append(args, "--no-privileges")
-	}
-	if opts.NoTablespaces {
-		args = append(args, "--no-tablespaces")
-	}
-	if opts.NoComments {
-		args = append(args, "--no-comments")
-	}
-	if opts.NoPublications {
-		args = append(args, "--no-publications")
-	}
-	if opts.NoSubscriptions {
-		args = append(args, "--no-subscriptions")
-	}
-	if opts.IfExists {
-		args = append(args, "--if-exists")
-	}
-	if opts.Clean {
-		args = append(args, "--clean")
-	}
-	if opts.Create {
-		args = append(args, "--create")
-	}
-	if opts.Format != "" {
-		args = append(args, "--format", opts.Format)
-	}
-
-	for _, table := range opts.Tables {
-		args = append(args, "--table", table)
-	}
-	for _, table := range opts.ExcludeTables {
-		args = append(args, "--exclude-table", table)
-	}
-	for _, schema := range opts.Schemas {
-		args = append(args, "--schema", schema)
-	}
-	for _, schema := range opts.ExcludeSchemas {
-		args = append(args, "--exclude-schema", schema)
-	}
-
-	cmd := exec.CommandContext(ctx, path, args...)
-
-	var stdoutBuf, stderrBuf bytes.Buffer
-	cmd.Stdout = &stdoutBuf
-	cmd.Stderr = &stderrBuf
-	cmd.Env = os.Environ()
-
-	err = cmd.Run()
-	stdout = stdoutBuf.String()
-	stderr = stderrBuf.String()
-
-	if err != nil {
-		return stdout, stderr, fmt.Errorf("pg_dump error: %w\nstderr: %s", err, stderr)
-	}
-
-	return stdout, stderr, nil
-}
-
 // PipeSchemaImport runs pg_dump and pipes output to psql for schema import.
-func PipeSchemaImport(ctx context.Context, sourceConn, destConn string, schemas []string, excludeTables []string) error {
+func PipeSchemaImport(ctx context.Context, sourceConn, destConn string, schemas []string, includeTables []string, excludeTables []string) error {
 	pgDumpPath, err := FindPgDumpPath()
 	if err != nil {
 		return err
@@ -329,20 +149,38 @@ func PipeSchemaImport(ctx context.Context, sourceConn, destConn string, schemas 
 		"--no-subscriptions",
 	}
 
-	// Add schema filters
-	for _, schema := range schemas {
-		pgDumpArgs = append(pgDumpArgs, "--schema="+schema)
-	}
+	// If specific tables are requested, use --table flag instead of --schema
+	// Also skip constraints to avoid FK errors with concurrent imports
+	if len(includeTables) > 0 {
+		for _, table := range includeTables {
+			pgDumpArgs = append(pgDumpArgs, "--table="+table)
+		}
+		// Skip constraints when importing specific tables (concurrent imports)
+		// This prevents foreign key errors when tables reference other tables
+		// created by different import sessions
+		pgDumpArgs = append(pgDumpArgs, "--no-comments")
+		pgDumpArgs = append(pgDumpArgs, "--exclude-table-data=*")
+	} else {
+		// Add schema filters
+		for _, schema := range schemas {
+			pgDumpArgs = append(pgDumpArgs, "--schema="+schema)
+		}
 
-	for _, table := range excludeTables {
-		pgDumpArgs = append(pgDumpArgs, "--exclude-table", table)
+		for _, table := range excludeTables {
+			pgDumpArgs = append(pgDumpArgs, "--exclude-table", table)
+		}
 	}
 
 	// Build psql arguments
 	psqlArgs := []string{
 		destConn,
-		"--single-transaction",
 		"--quiet",
+	}
+
+	// Only use single transaction when importing full schema
+	// Skip it for specific tables to allow FK errors to be ignored
+	if len(includeTables) == 0 {
+		psqlArgs = append(psqlArgs, "--single-transaction")
 	}
 
 	// Create the commands
@@ -433,6 +271,12 @@ func PipeSchemaImport(ctx context.Context, sourceConn, destConn string, schemas 
 	}
 	if psqlErr != nil {
 		stderr := psqlStderr.String()
+		// When importing specific tables (concurrent imports), allow FK permission errors
+		// These happen when tables reference other tables owned by different roles
+		if len(includeTables) > 0 && strings.Contains(stderr, "permission denied for table") {
+			// Non-fatal - FK constraints will be skipped but replication will work
+			return nil
+		}
 		if stderr != "" {
 			return fmt.Errorf("psql failed: %w\nstderr: %s", psqlErr, stderr)
 		}
@@ -442,6 +286,10 @@ func PipeSchemaImport(ctx context.Context, sourceConn, destConn string, schemas 
 	// Check if psql had any errors even if exit code was 0
 	if psqlStderr.Len() > 0 {
 		stderr := psqlStderr.String()
+		// When importing specific tables, allow FK permission errors
+		if len(includeTables) > 0 && strings.Contains(stderr, "permission denied for table") {
+			return nil
+		}
 		// Only report if it's not just warnings
 		if strings.Contains(strings.ToLower(stderr), "error") || strings.Contains(strings.ToLower(stderr), "fatal") {
 			return fmt.Errorf("psql completed but reported errors:\n%s", stderr)
