@@ -10,39 +10,24 @@ import (
 	_ "github.com/lib/pq"
 )
 
-// PublicationOptions contains options for creating a publication.
 type PublicationOptions struct {
-	// Name is the publication name
-	Name string
-	// Tables is a list of tables to include (empty means all tables)
-	Tables []string
-	// AllTables publishes all tables in the database
-	AllTables bool
-	// Schemas limits ALL TABLES to specific schemas (PostgreSQL 15+)
-	Schemas []string
-	// PublishOperations specifies which operations to publish (insert, update, delete, truncate)
-	PublishOperations []string
+	Name              string
+	Tables            []string // Empty means all tables
+	AllTables         bool
+	Schemas           []string // Limits ALL TABLES to specific schemas (PostgreSQL 15+)
+	PublishOperations []string // insert, update, delete, truncate
 }
 
-// SubscriptionOptions contains options for creating a subscription.
 type SubscriptionOptions struct {
-	// Name is the subscription name
-	Name string
-	// SourceConnString is the connection string to the source database
+	Name             string
 	SourceConnString string
-	// PublicationName is the name of the publication to subscribe to
-	PublicationName string
-	// CopyData determines whether to copy existing data
-	CopyData bool
-	// CreateSlot determines whether to create a replication slot
-	CreateSlot bool
-	// SlotName is the replication slot name (defaults to subscription name)
-	SlotName string
-	// Enabled determines whether the subscription starts enabled
-	Enabled bool
+	PublicationName  string
+	CopyData         bool
+	CreateSlot       bool
+	SlotName         string // Defaults to subscription name
+	Enabled          bool
 }
 
-// SubscriptionStatus represents the status of a subscription.
 type SubscriptionStatus struct {
 	Name            string
 	Enabled         bool
@@ -56,7 +41,6 @@ type SubscriptionStatus struct {
 	ReplicationLag  *time.Duration
 }
 
-// TableReplicationState represents the replication state of a single table.
 type TableReplicationState struct {
 	SchemaName string
 	TableName  string
@@ -64,7 +48,6 @@ type TableReplicationState struct {
 	LSN        string
 }
 
-// PreflightCheck represents results of pre-flight checks for replication.
 type PreflightCheck struct {
 	WALLevel                 string
 	WALLevelOK               bool
@@ -74,21 +57,6 @@ type PreflightCheck struct {
 	Extensions               []string
 }
 
-// OpenConnection opens a PostgreSQL connection.
-func OpenConnection(connStr string) (*sql.DB, error) {
-	db, err := sql.Open("postgres", connStr)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open connection: %w", err)
-	}
-
-	db.SetMaxOpenConns(5)
-	db.SetMaxIdleConns(2)
-	db.SetConnMaxLifetime(5 * time.Minute)
-
-	return db, nil
-}
-
-// RunPreflightChecks performs pre-flight checks.
 func RunPreflightChecks(ctx context.Context, db *sql.DB) (*PreflightCheck, error) {
 	check := &PreflightCheck{}
 
@@ -157,7 +125,66 @@ func RunPreflightChecks(ctx context.Context, db *sql.DB) (*PreflightCheck, error
 	return check, nil
 }
 
-// CreatePublication creates a publication.
+type ForeignKeyDependency struct {
+	Table          string
+	Column         string
+	ReferencedTable string
+	ReferencedColumn string
+}
+
+// GetForeignKeyDependencies returns all FK dependencies for the given tables.
+func GetForeignKeyDependencies(ctx context.Context, db *sql.DB, tables []string) ([]ForeignKeyDependency, error) {
+	if len(tables) == 0 {
+		return nil, nil
+	}
+
+	// Build list of table names (both qualified and unqualified) for the query
+	var tableLiterals []string
+	for _, t := range tables {
+		tableLiterals = append(tableLiterals, fmt.Sprintf("'%s'", t))
+		// Also add unqualified version if the table name contains a schema
+		if strings.Contains(t, ".") {
+			parts := strings.SplitN(t, ".", 2)
+			if len(parts) == 2 {
+				tableLiterals = append(tableLiterals, fmt.Sprintf("'%s'", parts[1]))
+			}
+		}
+	}
+
+	query := fmt.Sprintf(`
+		SELECT
+			n.nspname || '.' || c.conrelid::regclass::text AS table_name,
+			a.attname AS column_name,
+			nf.nspname || '.' || c.confrelid::regclass::text AS referenced_table,
+			af.attname AS referenced_column
+		FROM pg_constraint c
+		JOIN pg_namespace n ON n.oid = (SELECT relnamespace FROM pg_class WHERE oid = c.conrelid)
+		JOIN pg_namespace nf ON nf.oid = (SELECT relnamespace FROM pg_class WHERE oid = c.confrelid)
+		JOIN pg_attribute a ON a.attnum = ANY(c.conkey) AND a.attrelid = c.conrelid
+		JOIN pg_attribute af ON af.attnum = ANY(c.confkey) AND af.attrelid = c.confrelid
+		WHERE c.contype = 'f'
+		AND c.conrelid::regclass::text IN (%s)
+		ORDER BY c.conrelid::regclass::text, a.attname
+	`, strings.Join(tableLiterals, ", "))
+
+	rows, err := db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query foreign keys: %w", err)
+	}
+	defer rows.Close()
+
+	var deps []ForeignKeyDependency
+	for rows.Next() {
+		var dep ForeignKeyDependency
+		if err := rows.Scan(&dep.Table, &dep.Column, &dep.ReferencedTable, &dep.ReferencedColumn); err != nil {
+			return nil, fmt.Errorf("failed to scan foreign key: %w", err)
+		}
+		deps = append(deps, dep)
+	}
+
+	return deps, rows.Err()
+}
+
 func CreatePublication(ctx context.Context, db *sql.DB, opts PublicationOptions) error {
 	// If schemas are specified but no specific tables, query for tables in those schemas
 	if opts.AllTables && len(opts.Schemas) > 0 && len(opts.Tables) == 0 {
@@ -227,7 +254,6 @@ func CreatePublication(ctx context.Context, db *sql.DB, opts PublicationOptions)
 	return nil
 }
 
-// DropPublication drops a publication.
 func DropPublication(ctx context.Context, db *sql.DB, name string, ifExists bool) error {
 	query := "DROP PUBLICATION "
 	if ifExists {
@@ -243,7 +269,6 @@ func DropPublication(ctx context.Context, db *sql.DB, name string, ifExists bool
 	return nil
 }
 
-// CreateSubscription creates a subscription.
 func CreateSubscription(ctx context.Context, db *sql.DB, opts SubscriptionOptions) error {
 	var query strings.Builder
 	query.WriteString(fmt.Sprintf("CREATE SUBSCRIPTION %s CONNECTION '%s' PUBLICATION %s",
@@ -271,7 +296,6 @@ func CreateSubscription(ctx context.Context, db *sql.DB, opts SubscriptionOption
 	return nil
 }
 
-// DisableSubscription disables a subscription.
 func DisableSubscription(ctx context.Context, db *sql.DB, name string) error {
 	query := fmt.Sprintf("ALTER SUBSCRIPTION %s DISABLE", QuoteIdentifier(name))
 	_, err := db.ExecContext(ctx, query)
@@ -281,17 +305,6 @@ func DisableSubscription(ctx context.Context, db *sql.DB, name string) error {
 	return nil
 }
 
-// EnableSubscription enables a subscription.
-func EnableSubscription(ctx context.Context, db *sql.DB, name string) error {
-	query := fmt.Sprintf("ALTER SUBSCRIPTION %s ENABLE", QuoteIdentifier(name))
-	_, err := db.ExecContext(ctx, query)
-	if err != nil {
-		return fmt.Errorf("failed to enable subscription: %w", err)
-	}
-	return nil
-}
-
-// DropSubscription drops a subscription from the database.
 func DropSubscription(ctx context.Context, db *sql.DB, name string, ifExists bool) error {
 	query := "DROP SUBSCRIPTION "
 	if ifExists {
@@ -307,7 +320,6 @@ func DropSubscription(ctx context.Context, db *sql.DB, name string, ifExists boo
 	return nil
 }
 
-// GetSubscriptionStatus retrieves the status of a subscription.
 func GetSubscriptionStatus(ctx context.Context, db *sql.DB, name string) (*SubscriptionStatus, error) {
 	status := &SubscriptionStatus{}
 
@@ -371,7 +383,6 @@ func GetSubscriptionStatus(ctx context.Context, db *sql.DB, name string) (*Subsc
 	return status, nil
 }
 
-// GetTableReplicationStates retrieves the replication state of all tables for a subscription.
 func GetTableReplicationStates(ctx context.Context, db *sql.DB, subName string) ([]TableReplicationState, error) {
 	rows, err := db.QueryContext(ctx, `
 		SELECT
@@ -417,40 +428,6 @@ func GetTableReplicationStates(ctx context.Context, db *sql.DB, subName string) 
 	return states, nil
 }
 
-// ListSubscriptions lists all subscriptions in the database.
-func ListSubscriptions(ctx context.Context, db *sql.DB) ([]SubscriptionStatus, error) {
-	rows, err := db.QueryContext(ctx, `
-		SELECT
-			s.subname,
-			s.subenabled,
-			s.subslotname,
-			s.subpublications[1]
-		FROM pg_subscription s
-		ORDER BY s.subname
-	`)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list subscriptions: %w", err)
-	}
-	defer rows.Close()
-
-	var subs []SubscriptionStatus
-	for rows.Next() {
-		var status SubscriptionStatus
-		err := rows.Scan(&status.Name, &status.Enabled, &status.SlotName, &status.PublicationName)
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan subscription: %w", err)
-		}
-		subs = append(subs, status)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error iterating subscriptions: %w", err)
-	}
-
-	return subs, nil
-}
-
-// CreateReplicationSlot creates a logical replication slot using SQL.
 func CreateReplicationSlot(ctx context.Context, db *sql.DB, slotName string) error {
 	_, err := db.ExecContext(ctx, "SELECT pg_create_logical_replication_slot($1, 'pgoutput')", slotName)
 	if err != nil {
@@ -459,7 +436,6 @@ func CreateReplicationSlot(ctx context.Context, db *sql.DB, slotName string) err
 	return nil
 }
 
-// DropReplicationSlot drops a replication slot on the source database.
 func DropReplicationSlot(ctx context.Context, db *sql.DB, slotName string) error {
 	_, err := db.ExecContext(ctx, "SELECT pg_drop_replication_slot($1)", slotName)
 	if err != nil {
@@ -468,21 +444,6 @@ func DropReplicationSlot(ctx context.Context, db *sql.DB, slotName string) error
 	return nil
 }
 
-// GetReplicationSlotLag retrieves the lag of a replication slot in bytes.
-func GetReplicationSlotLag(ctx context.Context, db *sql.DB, slotName string) (int64, error) {
-	var lag int64
-	err := db.QueryRowContext(ctx, `
-		SELECT pg_current_wal_lsn() - confirmed_flush_lsn
-		FROM pg_replication_slots
-		WHERE slot_name = $1
-	`, slotName).Scan(&lag)
-	if err != nil {
-		return 0, fmt.Errorf("failed to get replication slot lag: %w", err)
-	}
-	return lag, nil
-}
-
-// QuoteIdentifier quotes a PostgreSQL identifier.
 func QuoteIdentifier(name string) string {
 	return `"` + strings.ReplaceAll(name, `"`, `""`) + `"`
 }
