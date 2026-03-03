@@ -10,7 +10,6 @@ require (
 	github.com/benbjohnson/clock v1.3.5
 	github.com/briandowns/spinner v1.23.2
 	github.com/charmbracelet/huh v0.8.0
-	github.com/dustin/go-humanize v1.0.1
 	github.com/fatih/color v1.18.0
 	github.com/frankban/quicktest v1.14.6
 	github.com/go-sql-driver/mysql v1.9.3
@@ -18,10 +17,9 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-version v1.8.0
-	github.com/kataras/tablewriter v0.0.0-20180708051242-e063d29b7c23
 	github.com/lensesio/tableprinter v0.0.0-20201125135848-89e81fc956e7
 	github.com/lib/pq v1.11.2
-	github.com/mark3labs/mcp-go v0.44.0
+	github.com/mark3labs/mcp-go v0.44.1
 	github.com/matoous/go-nanoid/v2 v2.1.0
 	github.com/mattn/go-isatty v0.0.20
 	github.com/mattn/go-shellwords v1.0.12
@@ -70,6 +68,7 @@ require (
 	github.com/clipperhouse/uax29/v2 v2.3.0 // indirect
 	github.com/danieljoos/wincred v1.2.3 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
+	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/dvsekhvalnov/jose2go v1.8.0 // indirect
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
@@ -80,6 +79,7 @@ require (
 	github.com/gsterjov/go-libsecret v0.0.0-20161001094733-a6f4afe4910c // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/invopop/jsonschema v0.13.0 // indirect
+	github.com/kataras/tablewriter v0.0.0-20180708051242-e063d29b7c23 // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/klauspost/compress v1.18.2 // indirect
 	github.com/klauspost/connect-compress/v2 v2.1.0 // indirect
