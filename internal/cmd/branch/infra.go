@@ -13,16 +13,16 @@ import (
 )
 
 type InfraPod struct {
-	Component    string `header:"component" json:"component"`
-	Size         string `header:"size" json:"size"`
-	Cell         string `header:"cell" json:"cell"`
-	TabletType   string `header:"tablet type" json:"tablet_type"`
+	Component     string `header:"component" json:"component"`
+	Size          string `header:"size" json:"size"`
+	Cell          string `header:"cell" json:"cell"`
+	TabletType    string `header:"tablet type" json:"tablet_type"`
 	KeyspaceShard string `header:"keyspace/shard" json:"keyspace_shard"`
-	Ready        string `header:"ready" json:"ready"`
-	Restarts     int    `header:"restarts" json:"restarts"`
-	Status       string `header:"status" json:"status"`
-	Age          string `header:"age" json:"age"`
-	Name         string `header:"pod name" json:"name"`
+	Ready         string `header:"ready" json:"ready"`
+	Restarts      int    `header:"restarts" json:"restarts"`
+	Status        string `header:"status" json:"status"`
+	Age           string `header:"age" json:"age"`
+	Name          string `header:"pod name" json:"name"`
 
 	orig *ps.BranchInfraPod
 }
@@ -100,9 +100,10 @@ func humanAge(d time.Duration) string {
 // InfraCmd shows infrastructure (pods) for a branch.
 func InfraCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "infra <database> <branch>",
-		Short: "Show infrastructure (pods) for a branch",
-		Args:  cmdutil.RequiredArgs("database", "branch"),
+		Use:    "infra <database> <branch>",
+		Short:  "Show infrastructure (pods) for a branch",
+		Hidden: true,
+		Args:   cmdutil.RequiredArgs("database", "branch"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			database := args[0]
