@@ -2,7 +2,6 @@
 package postgres
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
 	"net/url"
@@ -13,7 +12,6 @@ import (
 	_ "github.com/lib/pq"
 )
 
-// Config holds PostgreSQL connection parameters.
 type Config struct {
 	Host     string
 	Port     int
@@ -24,8 +22,7 @@ type Config struct {
 	Options  map[string]string
 }
 
-// ParseConnectionURI parses a PostgreSQL connection URI.
-// Supports URI and keyword/value formats.
+// ParseConnectionURI supports both URI and keyword/value formats.
 func ParseConnectionURI(uri string) (*Config, error) {
 	// Handle postgresql:// or postgres:// URIs
 	if strings.HasPrefix(uri, "postgresql://") || strings.HasPrefix(uri, "postgres://") {
@@ -48,7 +45,6 @@ func parseURIFormat(uri string) (*Config, error) {
 		Options: make(map[string]string),
 	}
 
-	// Parse port if present
 	if portStr := u.Port(); portStr != "" {
 		port, err := strconv.Atoi(portStr)
 		if err != nil {
@@ -57,16 +53,14 @@ func parseURIFormat(uri string) (*Config, error) {
 		cfg.Port = port
 	}
 
-	// Parse user info
 	if u.User != nil {
 		cfg.User = u.User.Username()
 		cfg.Password, _ = u.User.Password()
 	}
 
-	// Parse database name (path without leading /)
+	// Database name from path without leading /
 	cfg.Database = strings.TrimPrefix(u.Path, "/")
 
-	// Parse query parameters
 	for key, values := range u.Query() {
 		if len(values) > 0 {
 			switch key {
@@ -125,7 +119,6 @@ func parseKeyValueFormat(connStr string) (*Config, error) {
 	return cfg, nil
 }
 
-// BuildConnectionString builds a connection string from cfg.
 func BuildConnectionString(cfg *Config) string {
 	var parts []string
 
@@ -155,35 +148,6 @@ func BuildConnectionString(cfg *Config) string {
 	return strings.Join(parts, " ")
 }
 
-// BuildConnectionURL builds a connection URL from cfg.
-func BuildConnectionURL(cfg *Config) string {
-	u := url.URL{
-		Scheme: "postgresql",
-		Host:   fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),
-		Path:   "/" + cfg.Database,
-	}
-
-	if cfg.User != "" {
-		if cfg.Password != "" {
-			u.User = url.UserPassword(cfg.User, cfg.Password)
-		} else {
-			u.User = url.User(cfg.User)
-		}
-	}
-
-	q := u.Query()
-	if cfg.SSLMode != "" {
-		q.Set("sslmode", cfg.SSLMode)
-	}
-	for key, value := range cfg.Options {
-		q.Set(key, value)
-	}
-	u.RawQuery = q.Encode()
-
-	return u.String()
-}
-
-// quoteValue quotes s if needed.
 func quoteValue(s string) string {
 	if strings.ContainsAny(s, " '\"\\") {
 		return "'" + strings.ReplaceAll(s, "'", "\\'") + "'"
@@ -191,29 +155,20 @@ func quoteValue(s string) string {
 	return s
 }
 
-// TestConnection tests a PostgreSQL connection.
-func TestConnection(ctx context.Context, connStr string, timeout time.Duration) error {
-	if timeout > 0 {
-		connStr = fmt.Sprintf("%s connect_timeout=%d", connStr, int(timeout.Seconds()))
-	}
-
+// OpenConnection opens a PostgreSQL connection with sensible defaults.
+func OpenConnection(connStr string) (*sql.DB, error) {
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
-		return fmt.Errorf("failed to connect: %w", err)
-	}
-	defer db.Close()
-
-	pingCtx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-
-	if err := db.PingContext(pingCtx); err != nil {
-		return fmt.Errorf("failed to ping database: %w", err)
+		return nil, fmt.Errorf("failed to open connection: %w", err)
 	}
 
-	return nil
+	db.SetMaxOpenConns(5)
+	db.SetMaxIdleConns(2)
+	db.SetConnMaxLifetime(5 * time.Minute)
+
+	return db, nil
 }
 
-// RedactPassword redacts passwords in connStr.
 func RedactPassword(connStr string) string {
 	if strings.HasPrefix(connStr, "postgresql://") || strings.HasPrefix(connStr, "postgres://") {
 		u, err := url.Parse(connStr)
@@ -235,45 +190,4 @@ func RedactPassword(connStr string) string {
 		}
 	}
 	return strings.Join(result, " ")
-}
-
-// MergeConfig merges base and override, with override taking precedence.
-func MergeConfig(base, override *Config) *Config {
-	result := &Config{
-		Host:     base.Host,
-		Port:     base.Port,
-		User:     base.User,
-		Password: base.Password,
-		Database: base.Database,
-		SSLMode:  base.SSLMode,
-		Options:  make(map[string]string),
-	}
-
-	for k, v := range base.Options {
-		result.Options[k] = v
-	}
-
-	if override.Host != "" {
-		result.Host = override.Host
-	}
-	if override.Port != 0 {
-		result.Port = override.Port
-	}
-	if override.User != "" {
-		result.User = override.User
-	}
-	if override.Password != "" {
-		result.Password = override.Password
-	}
-	if override.Database != "" {
-		result.Database = override.Database
-	}
-	if override.SSLMode != "" {
-		result.SSLMode = override.SSLMode
-	}
-	for k, v := range override.Options {
-		result.Options[k] = v
-	}
-
-	return result
 }
