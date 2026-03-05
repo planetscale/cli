@@ -1,6 +1,7 @@
 package branch
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
@@ -28,7 +29,6 @@ type ImportListItem struct {
 	Status       string `json:"status"`
 }
 
-// ImportListCmd returns the command for listing PostgreSQL imports.
 func ImportListCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
 		status          string
@@ -37,38 +37,30 @@ func ImportListCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:   "list <database> [branch]",
-		Short: "List active PostgreSQL imports",
-		Long: `List active PostgreSQL imports for a database or specific branch.
+		Use:   "list <database> <branch>",
+		Short: "List active PostgreSQL imports for a branch",
+		Long: `List active PostgreSQL imports for a specific branch.
 
 Shows all active subscriptions that were created by the import process,
 along with their current status and progress.`,
-		Example: `  # List all imports for a database
-  pscale branch import list mydb
-
-  # List import for a specific branch
+		Example: `  # List imports for a branch
   pscale branch import list mydb main
 
   # Output as JSON
-  pscale branch import list mydb --format json
+  pscale branch import list mydb main --format json
 
   # Filter by status
-  pscale branch import list mydb --status active`,
-		Args: cmdutil.RequiredArgs("database"),
+  pscale branch import list mydb main --status active`,
+		Args: cmdutil.RequiredArgs("database", "branch"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			database := args[0]
-			var specificBranch string
-			if len(args) > 1 {
-				specificBranch = args[1]
-			}
+			database, branch := args[0], args[1]
 
 			client, err := ch.Client()
 			if err != nil {
 				return err
 			}
 
-			// Check if this is a PostgreSQL database
 			db, err := client.Databases.Get(ctx, &ps.GetDatabaseRequest{
 				Organization: ch.Config.Organization,
 				Database:     database,
@@ -86,162 +78,17 @@ along with their current status and progress.`,
 				return fmt.Errorf("database %s is not a PostgreSQL database", printer.BoldBlue(database))
 			}
 
-			// Get list of branches
-			var branches []string
-			if specificBranch != "" {
-				branches = []string{specificBranch}
-			} else {
-				// List all branches
-				branchList, err := client.PostgresBranches.List(ctx, &ps.ListPostgresBranchesRequest{
-					Organization: ch.Config.Organization,
-					Database:     database,
-				})
-				if err != nil {
-					return fmt.Errorf("failed to list branches: %w", err)
-				}
-				for _, b := range branchList {
-					branches = append(branches, b.Name)
-				}
-			}
-
-			// Check credentials for each branch
 			creds, err := postgres.NewImportCredentials()
 			if err != nil {
 				return fmt.Errorf("failed to access credentials: %w", err)
 			}
 
-			var imports []ImportListItem
+			imports := importItems(ctx, client, creds, ch.Config.Organization, database, branch, flags.status)
 
-			for _, branch := range branches {
-				// Check if this branch has import credentials
-				if !creds.HasImportCredentials(ch.Config.Organization, database, branch) {
-					continue
-				}
-
-				info, err := creds.GetImportInfo(ch.Config.Organization, database, branch)
-				if err != nil {
-					continue
-				}
-
-				item := ImportListItem{
-					Database:     database,
-					Branch:       branch,
-					Subscription: info.SubscriptionName,
-					Publication:  info.PublicationName,
-					Status:       "unknown",
-				}
-
-				// Try to get detailed status
-				role, err := createTempRole(ctx, client, ch.Config.Organization, database, branch)
-				if err == nil {
-					dstCfg := &postgres.Config{
-						Host:     role.Role.AccessHostURL,
-						Port:     5432,
-						User:     role.Role.Username,
-						Password: role.Role.Password,
-						Database: info.DBName,
-						SSLMode:  "require",
-						Options:  make(map[string]string),
-					}
-					dst := postgres.BuildConnectionString(dstCfg)
-
-					dstDB, err := postgres.OpenConnection(dst)
-					if err == nil {
-						// Get subscription status
-						status, err := postgres.GetSubscriptionStatus(ctx, dstDB, info.SubscriptionName)
-						if err == nil {
-							item.Enabled = status.Enabled
-							if status.Enabled {
-								item.Status = "active"
-							} else {
-								item.Status = "disabled"
-							}
-						}
-
-						// Get table states
-						tableStates, err := postgres.GetTableReplicationStates(ctx, dstDB, info.SubscriptionName)
-						if err == nil {
-							item.TablesTotal = len(tableStates)
-							for _, t := range tableStates {
-								if t.State == "r" {
-									item.TablesReady++
-								}
-							}
-							if item.TablesReady == item.TablesTotal && item.TablesTotal > 0 {
-								item.Status = "ready"
-							} else if item.TablesReady < item.TablesTotal {
-								item.Status = "syncing"
-							}
-						}
-
-						dstDB.Close()
-					}
-					role.Cleanup(ctx, "postgres")
-				}
-
-				// Apply status filter
-				if flags.status != "" && flags.status != item.Status {
-					continue
-				}
-
-				imports = append(imports, item)
-			}
-
-			// Output
 			if flags.format == printer.JSON {
-				output := ImportListOutput{Imports: imports}
-				data, err := json.MarshalIndent(output, "", "  ")
-				if err != nil {
-					return err
-				}
-				ch.Printer.Println(string(data))
-				return nil
+				return formatImportsJSON(ch, imports)
 			}
-
-			// Human-readable output
-			if len(imports) == 0 {
-				if specificBranch != "" {
-					ch.Printer.Printf("No active imports found for branch %s in database %s\n",
-						printer.BoldBlue(specificBranch), printer.BoldBlue(database))
-				} else {
-					ch.Printer.Printf("No active imports found for database %s\n", printer.BoldBlue(database))
-				}
-				return nil
-			}
-
-			ch.Printer.Printf("%s\n\n", printer.Bold("Active Imports"))
-
-			for _, imp := range imports {
-				ch.Printer.Printf("%s/%s:\n", printer.BoldBlue(imp.Database), printer.BoldBlue(imp.Branch))
-				ch.Printer.Printf("  Subscription: %s\n", imp.Subscription)
-				ch.Printer.Printf("  Publication: %s\n", imp.Publication)
-
-				statusColor := printer.BoldYellow
-				switch imp.Status {
-				case "ready":
-					statusColor = printer.BoldGreen
-				case "active", "syncing":
-					statusColor = printer.BoldBlue
-				case "disabled":
-					statusColor = printer.BoldRed
-				}
-				ch.Printer.Printf("  Status: %s\n", statusColor(imp.Status))
-
-				if imp.TablesTotal > 0 {
-					ch.Printer.Printf("  Tables: %d/%d ready\n", imp.TablesReady, imp.TablesTotal)
-				}
-
-				if flags.showCredentials {
-					info, _ := creds.GetImportInfo(ch.Config.Organization, database, imp.Branch)
-					if info != nil {
-						ch.Printer.Printf("  Source: %s\n", postgres.RedactPassword(info.SourceConnStr))
-					}
-				}
-
-				ch.Printer.Printf("\n")
-			}
-
-			return nil
+			return printImports(ch, creds, database, branch, imports, flags.showCredentials)
 		},
 	}
 
@@ -250,4 +97,139 @@ along with their current status and progress.`,
 	cmd.Flags().Var(printer.NewFormatValue(printer.Human, &flags.format), "format", "Output format (human, json)")
 
 	return cmd
+}
+
+func importItems(ctx context.Context, client *ps.Client, creds *postgres.ImportCredentials, org, database, branch, statusFilter string) []ImportListItem {
+	var imports []ImportListItem
+
+	subs, err := creds.ListStoredSubscriptions(org, database, branch)
+	if err != nil || len(subs) == 0 {
+		return imports
+	}
+
+	for _, subName := range subs {
+		info, err := creds.GetImportInfoForSubscription(org, database, branch, subName)
+		if err != nil {
+			continue
+		}
+
+		item := ImportListItem{
+			Database:     database,
+			Branch:       branch,
+			Subscription: info.SubscriptionName,
+			Publication:  info.PublicationName,
+			Status:       "unknown",
+		}
+
+		fetchImportItemStatus(ctx, client, org, database, branch, info, &item)
+
+		if statusFilter != "" && statusFilter != item.Status {
+			continue
+		}
+
+		imports = append(imports, item)
+	}
+
+	return imports
+}
+
+func fetchImportItemStatus(ctx context.Context, client *ps.Client, org, database, branch string, info *postgres.ImportInfo, item *ImportListItem) {
+	role, err := createTempRole(ctx, client, org, database, branch)
+	if err != nil {
+		return
+	}
+	defer role.Cleanup(ctx, "postgres")
+
+	cfg := &postgres.Config{
+		Host:     role.Role.AccessHostURL,
+		Port:     5432,
+		User:     role.Role.Username,
+		Password: role.Role.Password,
+		Database: info.DBName,
+		SSLMode:  "require",
+		Options:  make(map[string]string),
+	}
+
+	db, err := postgres.OpenConnection(postgres.BuildConnectionString(cfg))
+	if err != nil {
+		return
+	}
+	defer db.Close()
+
+	status, err := postgres.GetSubscriptionStatus(ctx, db, info.SubscriptionName)
+	if err == nil {
+		item.Enabled = status.Enabled
+		if status.Enabled {
+			item.Status = "active"
+		} else {
+			item.Status = "disabled"
+		}
+	}
+
+	tables, err := postgres.GetTableReplicationStates(ctx, db, info.SubscriptionName)
+	if err == nil {
+		item.TablesTotal = len(tables)
+		for _, t := range tables {
+			if t.State == "r" {
+				item.TablesReady++
+			}
+		}
+		if item.TablesReady == item.TablesTotal && item.TablesTotal > 0 {
+			item.Status = "ready"
+		} else if item.TablesReady < item.TablesTotal {
+			item.Status = "syncing"
+		}
+	}
+}
+
+func formatImportsJSON(ch *cmdutil.Helper, imports []ImportListItem) error {
+	output := ImportListOutput{Imports: imports}
+	data, err := json.MarshalIndent(output, "", "  ")
+	if err != nil {
+		return err
+	}
+	ch.Printer.Println(string(data))
+	return nil
+}
+
+func printImports(ch *cmdutil.Helper, creds *postgres.ImportCredentials, database, branch string, imports []ImportListItem, showCreds bool) error {
+	if len(imports) == 0 {
+		ch.Printer.Printf("No active imports found for %s/%s\n",
+			printer.BoldBlue(database), printer.BoldBlue(branch))
+		return nil
+	}
+
+	ch.Printer.Printf("%s for %s/%s\n\n", printer.Bold("Active Imports"),
+		printer.BoldBlue(database), printer.BoldBlue(branch))
+
+	for _, imp := range imports {
+		ch.Printer.Printf("Subscription: %s\n", printer.BoldBlue(imp.Subscription))
+		ch.Printer.Printf("  Publication: %s\n", imp.Publication)
+
+		statusColor := printer.BoldYellow
+		switch imp.Status {
+		case "ready":
+			statusColor = printer.BoldGreen
+		case "active", "syncing":
+			statusColor = printer.BoldBlue
+		case "disabled":
+			statusColor = printer.BoldRed
+		}
+		ch.Printer.Printf("  Status: %s\n", statusColor(imp.Status))
+
+		if imp.TablesTotal > 0 {
+			ch.Printer.Printf("  Tables: %d/%d ready\n", imp.TablesReady, imp.TablesTotal)
+		}
+
+		if showCreds {
+			info, _ := creds.GetImportInfoForSubscription(ch.Config.Organization, database, branch, imp.Subscription)
+			if info != nil {
+				ch.Printer.Printf("  Source: %s\n", postgres.RedactPassword(info.SourceConnStr))
+			}
+		}
+
+		ch.Printer.Printf("\n")
+	}
+
+	return nil
 }

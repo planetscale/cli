@@ -2,11 +2,13 @@ package branch
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
 
+	"github.com/AlecAivazis/survey/v2"
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/postgres"
 	"github.com/planetscale/cli/internal/printer"
@@ -41,7 +43,6 @@ type ImportStatusSummaryOutput struct {
 	Initializing int `json:"initializing"`
 }
 
-// ImportStatusCmd returns the command for checking PostgreSQL import status.
 func ImportStatusCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
 		publication  string
@@ -80,7 +81,6 @@ Use --watch to continuously monitor the import progress.`,
 				return err
 			}
 
-			// Check if this is a PostgreSQL database
 			db, err := client.Databases.Get(ctx, &ps.GetDatabaseRequest{
 				Organization: ch.Config.Organization,
 				Database:     database,
@@ -99,46 +99,23 @@ Use --watch to continuously monitor the import progress.`,
 				return fmt.Errorf("database %s is not a PostgreSQL database", printer.BoldBlue(database))
 			}
 
-			// Get subscription name from flag or keychain
-			var subName string
-			var dbName string
-
-			if flags.subscription != "" {
-				// Use provided subscription name (teammate scenario)
-				subName = flags.subscription
-				dbName = flags.dbname
-				if dbName == "" {
-					dbName = "postgres" // Default
-				}
-			} else {
-				// Try to get from keychain (original starter scenario)
-				creds, err := postgres.NewImportCredentials()
-				if err != nil {
-					return fmt.Errorf("failed to access credentials: %w\nHint: If you didn't start this import, use --subscription flag", err)
-				}
-
-				info, err := creds.GetImportInfo(ch.Config.Organization, database, branch)
-				if err != nil {
-					return fmt.Errorf("no active import found for %s/%s\nHint: If you didn't start this import, use --subscription flag to specify the subscription name",
-						database, branch)
-				}
-
-				subName = info.SubscriptionName
-				dbName = info.DBName
-				if subName == "" {
-					return fmt.Errorf("subscription name not found in stored credentials")
-				}
+			creds, err := postgres.NewImportCredentials()
+			if err != nil {
+				return fmt.Errorf("failed to access credentials: %w", err)
 			}
 
-			// Connect to destination to check subscription status
-			// We need to create a temporary role to access the branch
+			subName, dbName, err := resolveSubscriptionName(ctx, creds, ch.Config.Organization, database, branch, flags.subscription, flags.dbname)
+			if err != nil {
+				return err
+			}
+
 			role, err := createTempRole(ctx, client, ch.Config.Organization, database, branch)
 			if err != nil {
 				return fmt.Errorf("failed to create temporary role: %w", err)
 			}
 			defer role.Cleanup(ctx, "postgres")
 
-			dstCfg := &postgres.Config{
+			dst := postgres.BuildConnectionString(&postgres.Config{
 				Host:     role.Role.AccessHostURL,
 				Port:     5432,
 				User:     role.Role.Username,
@@ -146,8 +123,7 @@ Use --watch to continuously monitor the import progress.`,
 				Database: dbName,
 				SSLMode:  "require",
 				Options:  make(map[string]string),
-			}
-			dst := postgres.BuildConnectionString(dstCfg)
+			})
 
 			dstDB, err := postgres.OpenConnection(dst)
 			if err != nil {
@@ -155,144 +131,27 @@ Use --watch to continuously monitor the import progress.`,
 			}
 			defer dstDB.Close()
 
-			// Define the status check function
 			showStatus := func() error {
-				// Get subscription status
-				status, err := postgres.GetSubscriptionStatus(ctx, dstDB, subName)
+				status, tables, err := fetchImportStatus(ctx, dstDB, subName)
 				if err != nil {
-					return fmt.Errorf("failed to get subscription status: %w", err)
+					return err
 				}
 
-				// Get table states
-				tableStates, err := postgres.GetTableReplicationStates(ctx, dstDB, subName)
-				if err != nil {
-					return fmt.Errorf("failed to get table states: %w", err)
-				}
+				summary := calculateSummary(tables)
 
-				// Calculate summary
-				summary := &ImportStatusSummaryOutput{
-					Total: len(tableStates),
-				}
-				for _, t := range tableStates {
-					switch t.State {
-					case "r":
-						summary.Ready++
-					case "d", "f", "s":
-						summary.Copying++
-					case "i":
-						summary.Initializing++
-					}
-				}
-
-				// Handle different output formats
 				if flags.format == printer.JSON {
-					output := ImportStatusOutput{
-						Subscription: status.Name,
-						Enabled:      status.Enabled,
-						Publication:  status.PublicationName,
-						ReceivedLSN:  status.ReceivedLSN,
-						Summary:      summary,
-					}
-					for _, t := range tableStates {
-						output.Tables = append(output.Tables, ImportTableStatusOutput{
-							Schema: t.SchemaName,
-							Table:  t.TableName,
-							State:  postgres.TableStateDescription(t.State),
-							LSN:    t.LSN,
-						})
-					}
-					data, err := json.MarshalIndent(output, "", "  ")
-					if err != nil {
-						return err
-					}
-					ch.Printer.Println(string(data))
-					return nil
+					return formatStatusJSON(ch, status, tables, summary)
 				}
-
-				// Human-readable output
-				if flags.watch {
-					// Clear screen for watch mode
-					fmt.Print("\033[H\033[2J")
-				}
-
-				ch.Printer.Printf("%s\n\n", printer.Bold("Import Status"))
-				ch.Printer.Printf("Subscription: %s\n", printer.BoldBlue(status.Name))
-
-				enabledStr := printer.BoldGreen("enabled")
-				if !status.Enabled {
-					enabledStr = printer.BoldRed("disabled")
-				}
-				ch.Printer.Printf("Status: %s\n", enabledStr)
-
-				ch.Printer.Printf("Publication: %s\n", status.PublicationName)
-
-				if status.ReceivedLSN != "" {
-					ch.Printer.Printf("Received LSN: %s\n", status.ReceivedLSN)
-				}
-
-				if status.ReplicationLag != nil {
-					ch.Printer.Printf("Replication lag: %s\n", status.ReplicationLag.String())
-				}
-
-				ch.Printer.Printf("\n%s\n", printer.Bold("Table Progress:"))
-				ch.Printer.Printf("  Ready: %d/%d", summary.Ready, summary.Total)
-				if summary.Copying > 0 {
-					ch.Printer.Printf(" | Copying: %d", summary.Copying)
-				}
-				if summary.Initializing > 0 {
-					ch.Printer.Printf(" | Initializing: %d", summary.Initializing)
-				}
-				ch.Printer.Printf("\n")
-
-				// Progress bar
-				if summary.Total > 0 {
-					pct := float64(summary.Ready) / float64(summary.Total) * 100
-					barWidth := 40
-					filled := int(pct / 100 * float64(barWidth))
-					bar := strings.Repeat("=", filled) + strings.Repeat("-", barWidth-filled)
-					ch.Printer.Printf("  [%s] %.1f%%\n", bar, pct)
-				}
-
-				// Show tables that are not ready
-				var notReady []postgres.TableReplicationState
-				for _, t := range tableStates {
-					if t.State != "r" {
-						notReady = append(notReady, t)
-					}
-				}
-
-				if len(notReady) > 0 && len(notReady) <= 10 {
-					ch.Printer.Printf("\n%s\n", printer.Bold("Tables in progress:"))
-					for _, t := range notReady {
-						ch.Printer.Printf("  %s.%s: %s\n", t.SchemaName, t.TableName, postgres.TableStateDescription(t.State))
-					}
-				} else if len(notReady) > 10 {
-					ch.Printer.Printf("\n  ... and %d more tables in progress\n", len(notReady)-10)
-				}
-
-				if summary.Ready == summary.Total && summary.Total > 0 {
-					ch.Printer.Printf("\n%s All tables are ready for replication!\n", printer.BoldGreen(""))
-					ch.Printer.Printf("Run 'pscale branch import complete %s %s' to finish the import.\n", database, branch)
-				}
-
-				if flags.watch {
-					ch.Printer.Printf("\nLast updated: %s (refreshing every %s)\n",
-						time.Now().Format("15:04:05"), flags.interval)
-				}
-
-				return nil
+				return printStatus(ch, database, branch, status, tables, summary, flags.watch, flags.interval)
 			}
 
-			// Run once or in watch mode
 			if !flags.watch {
 				return showStatus()
 			}
 
-			// Watch mode
 			ticker := time.NewTicker(flags.interval)
 			defer ticker.Stop()
 
-			// Show initial status
 			if err := showStatus(); err != nil {
 				return err
 			}
@@ -320,7 +179,171 @@ Use --watch to continuously monitor the import progress.`,
 	return cmd
 }
 
-// createTempRole creates a temporary role for accessing the branch.
+func resolveSubscriptionName(ctx context.Context, creds *postgres.ImportCredentials, org, db, branch, flagSub, flagDB string) (sub, dbname string, err error) {
+	if flagSub != "" {
+		dbname = flagDB
+		if dbname == "" {
+			dbname = "postgres"
+		}
+		return flagSub, dbname, nil
+	}
+
+	subs, err := creds.ListStoredSubscriptions(org, db, branch)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to list imports: %w", err)
+	}
+
+	if len(subs) == 0 {
+		return "", "", fmt.Errorf("no active imports found for %s/%s\nHint: Use --subscription flag to specify the subscription name", db, branch)
+	}
+
+	if len(subs) > 1 {
+		var selected string
+		prompt := &survey.Select{
+			Message: "Multiple imports found. Which one would you like to check?",
+			Options: subs,
+		}
+		if err := survey.AskOne(prompt, &selected); err != nil {
+			return "", "", err
+		}
+		sub = selected
+	} else {
+		sub = subs[0]
+	}
+
+	info, err := creds.GetImportInfoForSubscription(org, db, branch, sub)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to retrieve import info: %w", err)
+	}
+
+	return sub, info.DBName, nil
+}
+
+func fetchImportStatus(ctx context.Context, db *sql.DB, subName string) (*postgres.SubscriptionStatus, []postgres.TableReplicationState, error) {
+	status, err := postgres.GetSubscriptionStatus(ctx, db, subName)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get subscription status: %w", err)
+	}
+
+	tables, err := postgres.GetTableReplicationStates(ctx, db, subName)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get table states: %w", err)
+	}
+
+	return status, tables, nil
+}
+
+func calculateSummary(states []postgres.TableReplicationState) *ImportStatusSummaryOutput {
+	summary := &ImportStatusSummaryOutput{
+		Total: len(states),
+	}
+	for _, t := range states {
+		switch t.State {
+		case "r":
+			summary.Ready++
+		case "d", "f", "s":
+			summary.Copying++
+		case "i":
+			summary.Initializing++
+		}
+	}
+	return summary
+}
+
+func formatStatusJSON(ch *cmdutil.Helper, status *postgres.SubscriptionStatus, tables []postgres.TableReplicationState, summary *ImportStatusSummaryOutput) error {
+	output := ImportStatusOutput{
+		Subscription: status.Name,
+		Enabled:      status.Enabled,
+		Publication:  status.PublicationName,
+		ReceivedLSN:  status.ReceivedLSN,
+		Summary:      summary,
+	}
+	for _, t := range tables {
+		output.Tables = append(output.Tables, ImportTableStatusOutput{
+			Schema: t.SchemaName,
+			Table:  t.TableName,
+			State:  postgres.TableStateDescription(t.State),
+			LSN:    t.LSN,
+		})
+	}
+	data, err := json.MarshalIndent(output, "", "  ")
+	if err != nil {
+		return err
+	}
+	ch.Printer.Println(string(data))
+	return nil
+}
+
+func printStatus(ch *cmdutil.Helper, database, branch string, status *postgres.SubscriptionStatus, tables []postgres.TableReplicationState, summary *ImportStatusSummaryOutput, watch bool, interval time.Duration) error {
+	if watch {
+		fmt.Print("\033[H\033[2J")
+	}
+
+	ch.Printer.Printf("%s\n\n", printer.Bold("Import Status"))
+	ch.Printer.Printf("Subscription: %s\n", printer.BoldBlue(status.Name))
+
+	enabledStr := printer.BoldGreen("enabled")
+	if !status.Enabled {
+		enabledStr = printer.BoldRed("disabled")
+	}
+	ch.Printer.Printf("Status: %s\n", enabledStr)
+	ch.Printer.Printf("Publication: %s\n", status.PublicationName)
+
+	if status.ReceivedLSN != "" {
+		ch.Printer.Printf("Received LSN: %s\n", status.ReceivedLSN)
+	}
+
+	if status.ReplicationLag != nil {
+		ch.Printer.Printf("Replication lag: %s\n", status.ReplicationLag.String())
+	}
+
+	ch.Printer.Printf("\n%s\n", printer.Bold("Table Progress:"))
+	ch.Printer.Printf("  Ready: %d/%d", summary.Ready, summary.Total)
+	if summary.Copying > 0 {
+		ch.Printer.Printf(" | Copying: %d", summary.Copying)
+	}
+	if summary.Initializing > 0 {
+		ch.Printer.Printf(" | Initializing: %d", summary.Initializing)
+	}
+	ch.Printer.Printf("\n")
+
+	if summary.Total > 0 {
+		pct := float64(summary.Ready) / float64(summary.Total) * 100
+		barWidth := 40
+		filled := int(pct / 100 * float64(barWidth))
+		bar := strings.Repeat("=", filled) + strings.Repeat("-", barWidth-filled)
+		ch.Printer.Printf("  [%s] %.1f%%\n", bar, pct)
+	}
+
+	var notReady []postgres.TableReplicationState
+	for _, t := range tables {
+		if t.State != "r" {
+			notReady = append(notReady, t)
+		}
+	}
+
+	if len(notReady) > 0 && len(notReady) <= 10 {
+		ch.Printer.Printf("\n%s\n", printer.Bold("Tables in progress:"))
+		for _, t := range notReady {
+			ch.Printer.Printf("  %s.%s: %s\n", t.SchemaName, t.TableName, postgres.TableStateDescription(t.State))
+		}
+	} else if len(notReady) > 10 {
+		ch.Printer.Printf("\n  ... and %d more tables in progress\n", len(notReady)-10)
+	}
+
+	if summary.Ready == summary.Total && summary.Total > 0 {
+		ch.Printer.Printf("\n%s All tables are ready for replication!\n", printer.BoldGreen(""))
+		ch.Printer.Printf("Run 'pscale branch import complete %s %s' to finish the import.\n", database, branch)
+	}
+
+	if watch {
+		ch.Printer.Printf("\nLast updated: %s (refreshing every %s)\n",
+			time.Now().Format("15:04:05"), interval)
+	}
+
+	return nil
+}
+
 func createTempRole(ctx context.Context, client *ps.Client, org, database, branch string) (*roleutil.Role, error) {
 	return roleutil.New(ctx, client, roleutil.Options{
 		Organization:   org,
