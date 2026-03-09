@@ -37,6 +37,9 @@ func setMoveTablesPollInterval(t *testing.T, interval time.Duration) {
 	t.Helper()
 
 	previous := moveTablesOperationPollInterval
+	if interval <= 0 {
+		interval = time.Nanosecond
+	}
 	moveTablesOperationPollInterval = interval
 
 	t.Cleanup(func() {

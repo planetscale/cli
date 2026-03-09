@@ -524,13 +524,37 @@ func waitForMoveTablesOperationResult(ctx context.Context, client *ps.Client, or
 		ID:           operationID,
 	}
 
-	pollCtx := ctx
-	cancel := func() {}
+	operation, err := client.Vtctld.GetOperation(ctx, request)
+	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return nil, fmt.Errorf("timed out waiting for vtctld operation %s to finish", operationID)
+		}
+
+		return nil, err
+	}
+
+	result, done, err := moveTablesOperationResult(operation, operationID)
+	if done || err != nil {
+		return result, err
+	}
+
+	pollCtx, cancel := context.WithTimeout(ctx, moveTablesOperationTimeout(operation))
 	defer cancel()
-	configuredTimeout := false
+	ticker := time.NewTicker(moveTablesOperationPollInterval)
+	defer ticker.Stop()
 
 	for {
-		operation, err := client.Vtctld.GetOperation(pollCtx, request)
+		select {
+		case <-pollCtx.Done():
+			if errors.Is(pollCtx.Err(), context.DeadlineExceeded) {
+				return nil, fmt.Errorf("timed out waiting for vtctld operation %s to finish", operationID)
+			}
+
+			return nil, pollCtx.Err()
+		case <-ticker.C:
+		}
+
+		operation, err = client.Vtctld.GetOperation(pollCtx, request)
 		if err != nil {
 			if errors.Is(err, context.DeadlineExceeded) {
 				return nil, fmt.Errorf("timed out waiting for vtctld operation %s to finish", operationID)
@@ -539,39 +563,33 @@ func waitForMoveTablesOperationResult(ctx context.Context, client *ps.Client, or
 			return nil, err
 		}
 
-		if !configuredTimeout {
-			pollCtx, cancel = context.WithTimeout(ctx, moveTablesOperationTimeout(operation))
-			configuredTimeout = true
+		result, done, err = moveTablesOperationResult(operation, operationID)
+		if done || err != nil {
+			return result, err
+		}
+	}
+}
+
+func moveTablesOperationResult(operation *ps.VtctldOperation, operationID string) (json.RawMessage, bool, error) {
+	if !operation.Completed {
+		return nil, false, nil
+	}
+
+	switch operation.State {
+	case "completed":
+		if len(operation.Result) == 0 {
+			return json.RawMessage(`{}`), true, nil
 		}
 
-		if operation.Completed {
-			switch operation.State {
-			case "completed":
-				if len(operation.Result) == 0 {
-					return json.RawMessage(`{}`), nil
-				}
-
-				return operation.Result, nil
-			case "failed", "cancelled":
-				if operation.Error != "" {
-					return nil, errors.New(operation.Error)
-				}
-
-				return nil, fmt.Errorf("vtctld operation %s ended in state %q", operationID, operation.State)
-			default:
-				return nil, fmt.Errorf("vtctld operation %s reached unexpected terminal state %q", operationID, operation.State)
-			}
+		return operation.Result, true, nil
+	case "failed", "cancelled":
+		if operation.Error != "" {
+			return nil, true, errors.New(operation.Error)
 		}
 
-		select {
-		case <-pollCtx.Done():
-			if errors.Is(pollCtx.Err(), context.DeadlineExceeded) {
-				return nil, fmt.Errorf("timed out waiting for vtctld operation %s to finish", operationID)
-			}
-
-			return nil, pollCtx.Err()
-		case <-time.After(moveTablesOperationPollInterval):
-		}
+		return nil, true, fmt.Errorf("vtctld operation %s ended in state %q", operationID, operation.State)
+	default:
+		return nil, true, fmt.Errorf("vtctld operation %s reached unexpected terminal state %q", operationID, operation.State)
 	}
 }
 
