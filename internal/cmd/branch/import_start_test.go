@@ -191,3 +191,81 @@ func TestValidateSourceConfig(t *testing.T) {
 		})
 	}
 }
+
+func TestBuildSourceConfig(t *testing.T) {
+	// Pass password so survey prompt is never used
+	tests := []struct {
+		name      string
+		sourceURI string
+		host      string
+		port      int
+		username  string
+		password  string
+		sourceDB  string
+		sslMode   string
+		wantHost  string
+		wantPort  int
+		wantUser  string
+		wantDB    string
+		wantErr   bool
+	}{
+		{
+			name:      "uri only",
+			sourceURI: "postgresql://u:p@localhost:5432/mydb",
+			password:  "p",
+			wantHost:  "localhost",
+			wantPort:  5432,
+			wantUser:  "u",
+			wantDB:    "mydb",
+		},
+		{
+			name:      "flags override uri",
+			sourceURI: "postgresql://u:p@oldhost:5432/olddb",
+			host:      "newhost",
+			port:      5433,
+			username:  "newuser",
+			password:  "p",
+			sourceDB:  "newdb",
+			sslMode:   "disable",
+			wantHost:  "newhost",
+			wantPort:  5433,
+			wantUser:  "newuser",
+			wantDB:    "newdb",
+		},
+		{
+			name:     "missing host without uri",
+			host:     "",
+			username: "u",
+			password: "p",
+			sourceDB: "db",
+			wantErr:  true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg, connStr, err := buildSourceConfig(tt.sourceURI, tt.host, tt.port, tt.username, tt.password, tt.sourceDB, tt.sslMode)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("buildSourceConfig() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.wantErr {
+				return
+			}
+			if cfg.Host != tt.wantHost {
+				t.Errorf("Host = %v, want %v", cfg.Host, tt.wantHost)
+			}
+			if cfg.Port != tt.wantPort {
+				t.Errorf("Port = %v, want %v", cfg.Port, tt.wantPort)
+			}
+			if cfg.User != tt.wantUser {
+				t.Errorf("User = %v, want %v", cfg.User, tt.wantUser)
+			}
+			if cfg.Database != tt.wantDB {
+				t.Errorf("Database = %v, want %v", cfg.Database, tt.wantDB)
+			}
+			if connStr == "" {
+				t.Error("BuildConnectionString result should be non-empty")
+			}
+		})
+	}
+}
