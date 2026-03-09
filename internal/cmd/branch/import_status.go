@@ -9,12 +9,13 @@ import (
 	"time"
 
 	"github.com/AlecAivazis/survey/v2"
+	ps "github.com/planetscale/planetscale-go/planetscale"
+	"github.com/spf13/cobra"
+
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/postgres"
 	"github.com/planetscale/cli/internal/printer"
 	"github.com/planetscale/cli/internal/roleutil"
-	ps "github.com/planetscale/planetscale-go/planetscale"
-	"github.com/spf13/cobra"
 )
 
 // ImportStatusOutput represents the JSON output for import status.
@@ -109,25 +110,12 @@ Use --watch to continuously monitor the import progress.`,
 				return err
 			}
 
-			role, err := createTempRole(ctx, client, ch.Config.Organization, database, branch)
-			if err != nil {
-				return fmt.Errorf("failed to create temporary role: %w", err)
+			dstDB, cleanup, err := connectForStatus(ctx, client, creds, ch.Config.Organization, database, branch, subName, dbName)
+			if cleanup != nil {
+				defer cleanup()
 			}
-			defer role.Cleanup(ctx, "postgres")
-
-			dst := postgres.BuildConnectionString(&postgres.Config{
-				Host:     role.Role.AccessHostURL,
-				Port:     5432,
-				User:     role.Role.Username,
-				Password: role.Role.Password,
-				Database: dbName,
-				SSLMode:  "require",
-				Options:  make(map[string]string),
-			})
-
-			dstDB, err := postgres.OpenConnection(dst)
 			if err != nil {
-				return fmt.Errorf("failed to connect to destination: %w", err)
+				return err
 			}
 			defer dstDB.Close()
 
@@ -217,6 +205,52 @@ func resolveSubscriptionName(ctx context.Context, creds *postgres.ImportCredenti
 	}
 
 	return sub, info.DBName, nil
+}
+
+func connectForStatus(ctx context.Context, client *ps.Client, creds *postgres.ImportCredentials, org, database, branch, subName, dbName string) (*sql.DB, func(), error) {
+	info, err := creds.GetImportInfoForSubscription(org, database, branch, subName)
+	if err == nil && info.RoleUsername != "" && info.RolePassword != "" && info.RoleHost != "" {
+		dbName := info.DBName
+		if dbName == "" {
+			dbName = "postgres"
+		}
+		cfg := &postgres.Config{
+			Host:     info.RoleHost,
+			Port:     5432,
+			User:     info.RoleUsername,
+			Password: info.RolePassword,
+			Database: dbName,
+			SSLMode:  "require",
+			Options:  make(map[string]string),
+		}
+		db, err := postgres.OpenConnection(postgres.BuildConnectionString(cfg))
+		if err == nil {
+			if err := db.PingContext(ctx); err == nil {
+				return db, nil, nil
+			}
+			db.Close()
+		}
+	}
+
+	role, err := createTempRole(ctx, client, org, database, branch)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create temporary role: %w", err)
+	}
+	cfg := &postgres.Config{
+		Host:     role.Role.AccessHostURL,
+		Port:     5432,
+		User:     role.Role.Username,
+		Password: role.Role.Password,
+		Database: dbName,
+		SSLMode:  "require",
+		Options:  make(map[string]string),
+	}
+	db, err := postgres.OpenConnection(postgres.BuildConnectionString(cfg))
+	if err != nil {
+		role.Cleanup(ctx, "postgres")
+		return nil, nil, fmt.Errorf("failed to connect to destination: %w", err)
+	}
+	return db, func() { role.Cleanup(ctx, "postgres") }, nil
 }
 
 func fetchImportStatus(ctx context.Context, db *sql.DB, subName string) (*postgres.SubscriptionStatus, []postgres.TableReplicationState, error) {
@@ -332,7 +366,7 @@ func printStatus(ch *cmdutil.Helper, database, branch string, status *postgres.S
 	}
 
 	if summary.Ready == summary.Total && summary.Total > 0 {
-		ch.Printer.Printf("\n%s All tables are ready for replication!\n", printer.BoldGreen(""))
+		ch.Printer.Printf("\n%s All tables are ready for replication!\n", printer.BoldGreen("✓"))
 		ch.Printer.Printf("Run 'pscale branch import complete %s %s' to finish the import.\n", database, branch)
 	}
 

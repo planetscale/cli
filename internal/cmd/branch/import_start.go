@@ -8,12 +8,13 @@ import (
 	"time"
 
 	"github.com/AlecAivazis/survey/v2"
+	ps "github.com/planetscale/planetscale-go/planetscale"
+	"github.com/spf13/cobra"
+
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/postgres"
 	"github.com/planetscale/cli/internal/printer"
 	"github.com/planetscale/cli/internal/roleutil"
-	ps "github.com/planetscale/planetscale-go/planetscale"
-	"github.com/spf13/cobra"
 )
 
 func ImportStartCmd(ch *cmdutil.Helper) *cobra.Command {
@@ -478,7 +479,7 @@ func setupDestinationRole(ctx context.Context, ch *cmdutil.Helper, client *ps.Cl
 		Database:       database,
 		Branch:         branch,
 		Name:           roleName,
-		TTL:            24 * time.Hour,
+		TTL:            7 * 24 * time.Hour, // 7 days - imports can take a long time for large databases
 		InheritedRoles: []string{"postgres"},
 	})
 	if err != nil {

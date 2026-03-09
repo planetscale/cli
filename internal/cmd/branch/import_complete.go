@@ -7,11 +7,12 @@ import (
 	"time"
 
 	"github.com/AlecAivazis/survey/v2"
+	ps "github.com/planetscale/planetscale-go/planetscale"
+	"github.com/spf13/cobra"
+
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/postgres"
 	"github.com/planetscale/cli/internal/printer"
-	ps "github.com/planetscale/planetscale-go/planetscale"
-	"github.com/spf13/cobra"
 )
 
 func ImportCompleteCmd(ch *cmdutil.Helper) *cobra.Command {
@@ -213,12 +214,9 @@ func printCompleteSummary(ch *cmdutil.Helper, database, branch, subName, pubName
 }
 
 func connectForComplete(ctx context.Context, ch *cmdutil.Helper, client *ps.Client, org, database, branch string, info *postgres.ImportInfo) (*sql.DB, func(), error) {
-	var cfg *postgres.Config
-	var cleanup func()
-
 	if info.RoleUsername != "" && info.RolePassword != "" && info.RoleHost != "" {
 		ch.Printer.Printf("Using existing replication role\n")
-		cfg = &postgres.Config{
+		cfg := &postgres.Config{
 			Host:     info.RoleHost,
 			Port:     5432,
 			User:     info.RoleUsername,
@@ -227,29 +225,35 @@ func connectForComplete(ctx context.Context, ch *cmdutil.Helper, client *ps.Clie
 			SSLMode:  "require",
 			Options:  make(map[string]string),
 		}
-	} else {
-		role, err := createTempRole(ctx, client, org, database, branch)
-		if err != nil {
-			return nil, nil, fmt.Errorf("failed to create temporary role: %w", err)
+		db, err := postgres.OpenConnection(postgres.BuildConnectionString(cfg))
+		if err == nil {
+			if err := db.PingContext(ctx); err == nil {
+				return db, nil, nil
+			}
+			db.Close()
 		}
-		cfg = &postgres.Config{
-			Host:     role.Role.AccessHostURL,
-			Port:     5432,
-			User:     role.Role.Username,
-			Password: role.Role.Password,
-			Database: info.DBName,
-			SSLMode:  "require",
-			Options:  make(map[string]string),
-		}
-		cleanup = func() { role.Cleanup(ctx, "postgres") }
+		ch.Printer.Printf("Stored credentials failed, creating temporary role\n")
 	}
 
+	role, err := createTempRole(ctx, client, org, database, branch)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create temporary role: %w", err)
+	}
+	cfg := &postgres.Config{
+		Host:     role.Role.AccessHostURL,
+		Port:     5432,
+		User:     role.Role.Username,
+		Password: role.Role.Password,
+		Database: info.DBName,
+		SSLMode:  "require",
+		Options:  make(map[string]string),
+	}
 	db, err := postgres.OpenConnection(postgres.BuildConnectionString(cfg))
 	if err != nil {
-		return nil, cleanup, fmt.Errorf("failed to connect to destination: %w", err)
+		role.Cleanup(ctx, "postgres")
+		return nil, nil, fmt.Errorf("failed to connect to destination: %w", err)
 	}
-
-	return db, cleanup, nil
+	return db, func() { role.Cleanup(ctx, "postgres") }, nil
 }
 
 func verifyReplicationReady(ctx context.Context, ch *cmdutil.Helper, db *sql.DB, subName string, force bool) (*postgres.SubscriptionStatus, error) {

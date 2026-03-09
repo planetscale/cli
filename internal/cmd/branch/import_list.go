@@ -5,11 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 
+	ps "github.com/planetscale/planetscale-go/planetscale"
+	"github.com/spf13/cobra"
+
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/postgres"
 	"github.com/planetscale/cli/internal/printer"
-	ps "github.com/planetscale/planetscale-go/planetscale"
-	"github.com/spf13/cobra"
 )
 
 // ImportListOutput represents the JSON output for import list.

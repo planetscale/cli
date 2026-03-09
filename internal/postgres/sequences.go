@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -149,11 +150,10 @@ func FastForwardSequences(ctx context.Context, srcDB, destDB *sql.DB, sampleDura
 			continue
 		}
 
-		// Set the sequence to the projected value
+		// Set the sequence to the projected value (escape single quotes for regclass literal)
 		_, err = destDB.ExecContext(ctx, fmt.Sprintf(
-			"SELECT setval('%s.%s', $1, true)",
-			s2.SchemaName,
-			s2.SequenceName,
+			"SELECT setval('%s', $1, true)",
+			escapeSequenceRegclass(s2.SchemaName, s2.SequenceName),
 		), projectedValue)
 		if err != nil {
 			return nil, fmt.Errorf("failed to fast-forward sequence %s.%s: %w", s2.SchemaName, s2.SequenceName, err)
@@ -171,4 +171,10 @@ func FastForwardSequences(ctx context.Context, srcDB, destDB *sql.DB, sampleDura
 	}
 
 	return result, nil
+}
+
+// escapeSequenceRegclass returns a safe schema.sequence string for use inside a regclass literal.
+func escapeSequenceRegclass(schema, sequence string) string {
+	escape := func(s string) string { return strings.ReplaceAll(s, "'", "''") }
+	return escape(schema) + "." + escape(sequence)
 }

@@ -138,15 +138,17 @@ func GetForeignKeyDependencies(ctx context.Context, db *sql.DB, tables []string)
 		return nil, nil
 	}
 
-	// Build list of table names (both qualified and unqualified) for the query
+	// Build list of table names (both qualified and unqualified) for the query.
+	// Escape single quotes for safe use in SQL string literals.
+	quoteLiteral := func(s string) string { return "'" + strings.ReplaceAll(s, "'", "''") + "'" }
 	var tableLiterals []string
 	for _, t := range tables {
-		tableLiterals = append(tableLiterals, fmt.Sprintf("'%s'", t))
+		tableLiterals = append(tableLiterals, quoteLiteral(t))
 		// Also add unqualified version if the table name contains a schema
 		if strings.Contains(t, ".") {
 			parts := strings.SplitN(t, ".", 2)
 			if len(parts) == 2 {
-				tableLiterals = append(tableLiterals, fmt.Sprintf("'%s'", parts[1]))
+				tableLiterals = append(tableLiterals, quoteLiteral(parts[1]))
 			}
 		}
 	}
@@ -200,17 +202,15 @@ func CreatePublication(ctx context.Context, db *sql.DB, opts PublicationOptions)
 			if err != nil {
 				return fmt.Errorf("failed to query tables in schema %s: %w", schema, err)
 			}
-			defer rows.Close()
-
 			for rows.Next() {
 				var schemaName, tableName string
 				if err := rows.Scan(&schemaName, &tableName); err != nil {
+					rows.Close()
 					return fmt.Errorf("failed to scan table name: %w", err)
 				}
-				// Build schema-qualified table name without quotes for the list
-				// We'll handle quoting when building the query
 				tables = append(tables, schemaName+"."+tableName)
 			}
+			rows.Close()
 			if err := rows.Err(); err != nil {
 				return fmt.Errorf("error iterating tables: %w", err)
 			}
@@ -426,6 +426,37 @@ func GetTableReplicationStates(ctx context.Context, db *sql.DB, subName string) 
 	}
 
 	return states, nil
+}
+
+// GetSubscriptionSchemas returns distinct schema names that contain tables in the subscription.
+// Call before dropping the subscription so pg_subscription_rel is still populated.
+func GetSubscriptionSchemas(ctx context.Context, db *sql.DB, subName string) ([]string, error) {
+	rows, err := db.QueryContext(ctx, `
+		SELECT DISTINCT n.nspname
+		FROM pg_subscription_rel sr
+		JOIN pg_subscription s ON sr.srsubid = s.oid
+		JOIN pg_class c ON sr.srrelid = c.oid
+		JOIN pg_namespace n ON c.relnamespace = n.oid
+		WHERE s.subname = $1
+		ORDER BY n.nspname
+	`, subName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get subscription schemas: %w", err)
+	}
+	defer rows.Close()
+
+	var schemas []string
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return nil, fmt.Errorf("failed to scan schema name: %w", err)
+		}
+		schemas = append(schemas, name)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating subscription schemas: %w", err)
+	}
+	return schemas, nil
 }
 
 func CreateReplicationSlot(ctx context.Context, db *sql.DB, slotName string) error {

@@ -4,13 +4,15 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
+	ps "github.com/planetscale/planetscale-go/planetscale"
+	"github.com/spf13/cobra"
+
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/postgres"
 	"github.com/planetscale/cli/internal/printer"
-	ps "github.com/planetscale/planetscale-go/planetscale"
-	"github.com/spf13/cobra"
 )
 
 func ImportCancelCmd(ch *cmdutil.Helper) *cobra.Command {
@@ -32,7 +34,7 @@ This command performs graceful cleanup:
 2. Drops the subscription
 3. Drops the publication on the source (if accessible)
 4. Drops the replication slot (if accessible)
-5. Optionally drops the imported schema
+5. Optionally drops all imported tables (in schemas used by this import)
 6. Cleans up the replication role
 7. Clears stored credentials
 
@@ -41,7 +43,7 @@ as much cleanup as possible is performed.`,
 		Example: `  # Cancel an import
   pscale branch import cancel mydb main
 
-  # Cancel and drop imported schema
+  # Cancel and drop all imported tables (schemas are detected from the import)
   pscale branch import cancel mydb main --drop-schema
 
   # Force cancel without confirmation
@@ -93,7 +95,7 @@ as much cleanup as possible is performed.`,
 				pubName = flags.publication
 			}
 
-			if err := printCancelSummary(ch, database, branch, subName, pubName, flags.dropSchema, flags.force); err != nil {
+			if err := printCancelSummary(ch, database, branch, subName, pubName, flags.dropSchema, nil, flags.force); err != nil {
 				return err
 			}
 
@@ -104,10 +106,23 @@ as much cleanup as possible is performed.`,
 				defer cleanup()
 			}
 
-			if dstDB != nil {
-				defer dstDB.Close()
-				cleanupDestination(ctx, ch, dstDB, subName, flags.dropSchema, &errs)
+			if err != nil {
+				printCancelResult(ch, errs)
+				return err
 			}
+			defer dstDB.Close()
+
+			var schemas []string
+			if flags.dropSchema {
+				schemas, err = postgres.GetSubscriptionSchemas(ctx, dstDB, subName)
+				if err != nil {
+					ch.Printer.Printf("%s Could not detect import schemas: %v (skipping table drop)\n", printer.BoldYellow("[WARN]"), err)
+				} else if len(schemas) > 0 {
+					ch.Printer.Printf("Will drop tables in schema(s): %s\n", strings.Join(schemas, ", "))
+				}
+			}
+
+			cleanupDestination(ctx, ch, dstDB, subName, flags.dropSchema, schemas, &errs)
 
 			cleanupSource(ctx, ch, info.SourceConnStr, pubName, subName, &errs)
 			cleanupRoleAndCredentials(ctx, ch, client, creds, ch.Config.Organization, database, branch, subName, info.RoleID, flags.keepCredentials, &errs)
@@ -119,7 +134,7 @@ as much cleanup as possible is performed.`,
 
 	cmd.Flags().StringVar(&flags.subscription, "subscription", "", "Subscription name (for selecting specific import)")
 	cmd.Flags().StringVar(&flags.publication, "publication", "", "Publication name (if not using stored value)")
-	cmd.Flags().BoolVar(&flags.dropSchema, "drop-schema", false, "Drop imported tables and schema")
+	cmd.Flags().BoolVar(&flags.dropSchema, "drop-schema", false, "Drop all imported tables (schemas are detected from the import)")
 	cmd.Flags().BoolVar(&flags.force, "force", false, "Skip confirmation prompt")
 	cmd.Flags().BoolVar(&flags.keepCredentials, "keep-credentials", false, "Keep stored credentials")
 
@@ -155,7 +170,7 @@ func resolveSubscriptionForCancel(creds *postgres.ImportCredentials, org, db, br
 	return subs[0], nil
 }
 
-func printCancelSummary(ch *cmdutil.Helper, database, branch, subName, pubName string, dropSchema, force bool) error {
+func printCancelSummary(ch *cmdutil.Helper, database, branch, subName, pubName string, dropSchema bool, schemas []string, force bool) error {
 	ch.Printer.Printf("%s\n", printer.Bold("Cancel Import"))
 	ch.Printer.Printf("Database: %s/%s (branch: %s)\n", ch.Config.Organization, database, branch)
 	ch.Printer.Printf("Subscription: %s\n", subName)
@@ -170,7 +185,11 @@ func printCancelSummary(ch *cmdutil.Helper, database, branch, subName, pubName s
 	ch.Printer.Printf("  - Drop the subscription on destination\n")
 	ch.Printer.Printf("  - Drop the publication on source\n")
 	if dropSchema {
-		ch.Printer.Printf("  - Drop all imported tables and schema\n")
+		if len(schemas) > 0 {
+			ch.Printer.Printf("  - Drop imported tables in schema(s): %s\n", strings.Join(schemas, ", "))
+		} else {
+			ch.Printer.Printf("  - Drop all imported tables (schemas will be detected from the import)\n")
+		}
 	}
 	ch.Printer.Printf("  - Clean up replication resources\n")
 
@@ -178,11 +197,8 @@ func printCancelSummary(ch *cmdutil.Helper, database, branch, subName, pubName s
 }
 
 func connectForCleanup(ctx context.Context, client *ps.Client, org, database, branch string, info *postgres.ImportInfo, errs *[]string) (*sql.DB, func(), error) {
-	var cfg *postgres.Config
-	var cleanup func()
-
 	if info.RoleUsername != "" && info.RolePassword != "" && info.RoleHost != "" {
-		cfg = &postgres.Config{
+		cfg := &postgres.Config{
 			Host:     info.RoleHost,
 			Port:     5432,
 			User:     info.RoleUsername,
@@ -191,26 +207,32 @@ func connectForCleanup(ctx context.Context, client *ps.Client, org, database, br
 			SSLMode:  "require",
 			Options:  make(map[string]string),
 		}
-	} else {
-		role, err := createTempRole(ctx, client, org, database, branch)
-		if err != nil {
-			*errs = append(*errs, fmt.Sprintf("create temp role: %v", err))
-			return nil, nil, err
+		db, err := postgres.OpenConnection(postgres.BuildConnectionString(cfg))
+		if err == nil {
+			if err := db.PingContext(ctx); err == nil {
+				return db, nil, nil
+			}
+			db.Close()
 		}
-		cfg = &postgres.Config{
-			Host:     role.Role.AccessHostURL,
-			Port:     5432,
-			User:     role.Role.Username,
-			Password: role.Role.Password,
-			Database: info.DBName,
-			SSLMode:  "require",
-			Options:  make(map[string]string),
-		}
-		cleanup = func() { role.Cleanup(ctx, "postgres") }
 	}
 
-	connStr := postgres.BuildConnectionString(cfg)
-	db, err := postgres.OpenConnection(connStr)
+	role, err := createTempRole(ctx, client, org, database, branch)
+	if err != nil {
+		*errs = append(*errs, fmt.Sprintf("create temp role: %v", err))
+		return nil, nil, err
+	}
+	cfg := &postgres.Config{
+		Host:     role.Role.AccessHostURL,
+		Port:     5432,
+		User:     role.Role.Username,
+		Password: role.Role.Password,
+		Database: info.DBName,
+		SSLMode:  "require",
+		Options:  make(map[string]string),
+	}
+	cleanup := func() { role.Cleanup(ctx, "postgres") }
+
+	db, err := postgres.OpenConnection(postgres.BuildConnectionString(cfg))
 	if err != nil {
 		*errs = append(*errs, fmt.Sprintf("connect to destination: %v", err))
 		return nil, cleanup, err
@@ -219,7 +241,7 @@ func connectForCleanup(ctx context.Context, client *ps.Client, org, database, br
 	return db, cleanup, nil
 }
 
-func cleanupDestination(ctx context.Context, ch *cmdutil.Helper, db *sql.DB, subName string, dropSchema bool, errs *[]string) {
+func cleanupDestination(ctx context.Context, ch *cmdutil.Helper, db *sql.DB, subName string, dropSchema bool, schemas []string, errs *[]string) {
 	end := ch.Printer.PrintProgress("Disabling subscription...")
 	if err := postgres.DisableSubscription(ctx, db, subName); err != nil {
 		end()
@@ -244,25 +266,32 @@ func cleanupDestination(ctx context.Context, ch *cmdutil.Helper, db *sql.DB, sub
 		return
 	}
 
-	end = ch.Printer.PrintProgress("Dropping imported schema...")
-	_, err := db.ExecContext(ctx, `
-		DO $$
-		DECLARE
-			r RECORD;
-		BEGIN
-			FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public')
-			LOOP
-				EXECUTE 'DROP TABLE IF EXISTS public.' || quote_ident(r.tablename) || ' CASCADE';
-			END LOOP;
-		END $$;
-	`)
-	end()
-	if err != nil {
-		*errs = append(*errs, fmt.Sprintf("drop schema: %v", err))
-		ch.Printer.Printf("%s Failed to drop schema: %v\n", printer.BoldYellow("[WARN]"), err)
-	} else {
-		ch.Printer.Printf("Schema dropped: %s\n", printer.BoldGreen("OK"))
+	if len(schemas) == 0 {
+		ch.Printer.Printf("No imported tables to drop (no schemas detected)\n")
+		return
 	}
+
+	end = ch.Printer.PrintProgress("Dropping imported tables...")
+	for _, schema := range schemas {
+		escaped := strings.ReplaceAll(schema, "'", "''")
+		doBlock := fmt.Sprintf(`DO $body$
+DECLARE
+  r RECORD;
+  sch TEXT := '%s';
+BEGIN
+  FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = sch)
+  LOOP
+    EXECUTE 'DROP TABLE IF EXISTS ' || quote_ident(sch) || '.' || quote_ident(r.tablename) || ' CASCADE';
+  END LOOP;
+END $body$`, escaped)
+		_, err := db.ExecContext(ctx, doBlock)
+		if err != nil {
+			*errs = append(*errs, fmt.Sprintf("drop tables in schema %s: %v", schema, err))
+			ch.Printer.Printf("%s Failed to drop tables in schema %s: %v\n", printer.BoldYellow("[WARN]"), schema, err)
+		}
+	}
+	end()
+	ch.Printer.Printf("Imported tables dropped: %s\n", printer.BoldGreen("OK"))
 }
 
 func cleanupSource(ctx context.Context, ch *cmdutil.Helper, connStr, pubName, subName string, errs *[]string) {

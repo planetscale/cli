@@ -1,8 +1,9 @@
 package branch
 
 import (
-	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/spf13/cobra"
+
+	"github.com/planetscale/cli/internal/cmdutil"
 )
 
 // ImportCmd is the top-level command for PostgreSQL database imports.

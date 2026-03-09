@@ -215,7 +215,8 @@ func PipeSchemaImport(ctx context.Context, sourceConn, destConn string, schemas 
 
 	// Start psql
 	if err := psqlCmd.Start(); err != nil {
-		pgDumpCmd.Process.Kill()
+		_ = pgDumpCmd.Process.Kill()
+		_ = pgDumpCmd.Wait()
 		return fmt.Errorf("failed to start psql: %w", err)
 	}
 
