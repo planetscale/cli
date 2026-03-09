@@ -1,12 +1,22 @@
 package vtctld
 
 import (
+	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"time"
 
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
 	ps "github.com/planetscale/planetscale-go/planetscale"
 	"github.com/spf13/cobra"
+)
+
+var (
+	moveTablesOperationPollInterval   = time.Second
+	moveTablesOperationTimeoutBuffer  = 30 * time.Second
+	moveTablesOperationDefaultTimeout = 10 * time.Minute
 )
 
 func MoveTablesCmd(ch *cmdutil.Helper) *cobra.Command {
@@ -273,7 +283,12 @@ func MoveTablesSwitchTrafficCmd(ch *cmdutil.Helper) *cobra.Command {
 				req.MaxReplicationLagAllowed = &flags.maxReplicationLagAllowed
 			}
 
-			data, err := client.MoveTables.SwitchTraffic(ctx, req)
+			operation, err := client.MoveTables.SwitchTraffic(ctx, req)
+			if err != nil {
+				return cmdutil.HandleError(err)
+			}
+
+			data, err := waitForMoveTablesOperationResult(ctx, client, ch.Config.Organization, database, branch, operation.ID)
 			if err != nil {
 				return cmdutil.HandleError(err)
 			}
@@ -338,7 +353,12 @@ func MoveTablesReverseTrafficCmd(ch *cmdutil.Helper) *cobra.Command {
 				req.MaxReplicationLagAllowed = &flags.maxReplicationLagAllowed
 			}
 
-			data, err := client.MoveTables.ReverseTraffic(ctx, req)
+			operation, err := client.MoveTables.ReverseTraffic(ctx, req)
+			if err != nil {
+				return cmdutil.HandleError(err)
+			}
+
+			data, err := waitForMoveTablesOperationResult(ctx, client, ch.Config.Organization, database, branch, operation.ID)
 			if err != nil {
 				return cmdutil.HandleError(err)
 			}
@@ -426,6 +446,7 @@ func MoveTablesCompleteCmd(ch *cmdutil.Helper) *cobra.Command {
 		targetKeyspace   string
 		keepData         bool
 		keepRoutingRules bool
+		renameTables     bool
 		dryRun           bool
 	}
 
@@ -461,11 +482,19 @@ func MoveTablesCompleteCmd(ch *cmdutil.Helper) *cobra.Command {
 			if cmd.Flags().Changed("keep-routing-rules") {
 				req.KeepRoutingRules = &flags.keepRoutingRules
 			}
+			if cmd.Flags().Changed("rename-tables") {
+				req.RenameTables = &flags.renameTables
+			}
 			if cmd.Flags().Changed("dry-run") {
 				req.DryRun = &flags.dryRun
 			}
 
-			data, err := client.MoveTables.Complete(ctx, req)
+			operation, err := client.MoveTables.Complete(ctx, req)
+			if err != nil {
+				return cmdutil.HandleError(err)
+			}
+
+			data, err := waitForMoveTablesOperationResult(ctx, client, ch.Config.Organization, database, branch, operation.ID)
 			if err != nil {
 				return cmdutil.HandleError(err)
 			}
@@ -479,9 +508,95 @@ func MoveTablesCompleteCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().StringVar(&flags.targetKeyspace, "target-keyspace", "", "Target keyspace")
 	cmd.Flags().BoolVar(&flags.keepData, "keep-data", false, "Keep the data in the target keyspace")
 	cmd.Flags().BoolVar(&flags.keepRoutingRules, "keep-routing-rules", false, "Keep the routing rules")
+	cmd.Flags().BoolVar(&flags.renameTables, "rename-tables", false, "Rename source tables instead of dropping them")
 	cmd.Flags().BoolVar(&flags.dryRun, "dry-run", false, "Only show what would be done")
 	cmd.MarkFlagRequired("workflow")        // nolint:errcheck
 	cmd.MarkFlagRequired("target-keyspace") // nolint:errcheck
 
 	return cmd
+}
+
+func waitForMoveTablesOperationResult(ctx context.Context, client *ps.Client, organization, database, branch, operationID string) (json.RawMessage, error) {
+	request := &ps.GetVtctldOperationRequest{
+		Organization: organization,
+		Database:     database,
+		Branch:       branch,
+		ID:           operationID,
+	}
+
+	operation, err := client.Vtctld.GetOperation(ctx, request)
+	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return nil, fmt.Errorf("timed out waiting for vtctld operation %s to finish", operationID)
+		}
+
+		return nil, err
+	}
+
+	result, done, err := moveTablesOperationResult(operation, operationID)
+	if done || err != nil {
+		return result, err
+	}
+
+	pollCtx, cancel := context.WithTimeout(ctx, moveTablesOperationTimeout(operation))
+	defer cancel()
+	ticker := time.NewTicker(moveTablesOperationPollInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-pollCtx.Done():
+			if errors.Is(pollCtx.Err(), context.DeadlineExceeded) {
+				return nil, fmt.Errorf("timed out waiting for vtctld operation %s to finish", operationID)
+			}
+
+			return nil, pollCtx.Err()
+		case <-ticker.C:
+		}
+
+		operation, err = client.Vtctld.GetOperation(pollCtx, request)
+		if err != nil {
+			if errors.Is(err, context.DeadlineExceeded) {
+				return nil, fmt.Errorf("timed out waiting for vtctld operation %s to finish", operationID)
+			}
+
+			return nil, err
+		}
+
+		result, done, err = moveTablesOperationResult(operation, operationID)
+		if done || err != nil {
+			return result, err
+		}
+	}
+}
+
+func moveTablesOperationResult(operation *ps.VtctldOperation, operationID string) (json.RawMessage, bool, error) {
+	if !operation.Completed {
+		return nil, false, nil
+	}
+
+	switch operation.State {
+	case "completed":
+		if len(operation.Result) == 0 {
+			return json.RawMessage(`{}`), true, nil
+		}
+
+		return operation.Result, true, nil
+	case "failed", "cancelled":
+		if operation.Error != "" {
+			return nil, true, errors.New(operation.Error)
+		}
+
+		return nil, true, fmt.Errorf("vtctld operation %s ended in state %q", operationID, operation.State)
+	default:
+		return nil, true, fmt.Errorf("vtctld operation %s reached unexpected terminal state %q", operationID, operation.State)
+	}
+}
+
+func moveTablesOperationTimeout(operation *ps.VtctldOperation) time.Duration {
+	if operation.Timeout > 0 {
+		return time.Duration(operation.Timeout)*time.Second + moveTablesOperationTimeoutBuffer
+	}
+
+	return moveTablesOperationDefaultTimeout
 }

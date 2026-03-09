@@ -320,7 +320,22 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 	roleCmd.GroupID = "postgres"
 	rootCmd.AddCommand(roleCmd)
 
+	annotateRequiredFlags(rootCmd)
+
 	return rootCmd.ExecuteContext(ctx)
+}
+
+// annotateRequiredFlags walks the command tree and appends "(required)" to the
+// usage text of every flag marked as required, so it's visible in --help.
+func annotateRequiredFlags(cmd *cobra.Command) {
+	cmd.Flags().VisitAll(func(f *pflag.Flag) {
+		if ann, ok := f.Annotations[cobra.BashCompOneRequiredFlag]; ok && len(ann) > 0 && ann[0] == "true" {
+			f.Usage += " (required)"
+		}
+	})
+	for _, child := range cmd.Commands() {
+		annotateRequiredFlags(child)
+	}
 }
 
 // initConfig reads in config file and ENV variables if set.

@@ -17,16 +17,16 @@ type MoveTablesService struct {
 	StatusFn        func(context.Context, *ps.MoveTablesStatusRequest) (json.RawMessage, error)
 	StatusFnInvoked bool
 
-	SwitchTrafficFn        func(context.Context, *ps.MoveTablesSwitchTrafficRequest) (json.RawMessage, error)
+	SwitchTrafficFn        func(context.Context, *ps.MoveTablesSwitchTrafficRequest) (*ps.VtctldOperationReference, error)
 	SwitchTrafficFnInvoked bool
 
-	ReverseTrafficFn        func(context.Context, *ps.MoveTablesReverseTrafficRequest) (json.RawMessage, error)
+	ReverseTrafficFn        func(context.Context, *ps.MoveTablesReverseTrafficRequest) (*ps.VtctldOperationReference, error)
 	ReverseTrafficFnInvoked bool
 
 	CancelFn        func(context.Context, *ps.MoveTablesCancelRequest) (json.RawMessage, error)
 	CancelFnInvoked bool
 
-	CompleteFn        func(context.Context, *ps.MoveTablesCompleteRequest) (json.RawMessage, error)
+	CompleteFn        func(context.Context, *ps.MoveTablesCompleteRequest) (*ps.VtctldOperationReference, error)
 	CompleteFnInvoked bool
 }
 
@@ -45,12 +45,12 @@ func (s *MoveTablesService) Status(ctx context.Context, req *ps.MoveTablesStatus
 	return s.StatusFn(ctx, req)
 }
 
-func (s *MoveTablesService) SwitchTraffic(ctx context.Context, req *ps.MoveTablesSwitchTrafficRequest) (json.RawMessage, error) {
+func (s *MoveTablesService) SwitchTraffic(ctx context.Context, req *ps.MoveTablesSwitchTrafficRequest) (*ps.VtctldOperationReference, error) {
 	s.SwitchTrafficFnInvoked = true
 	return s.SwitchTrafficFn(ctx, req)
 }
 
-func (s *MoveTablesService) ReverseTraffic(ctx context.Context, req *ps.MoveTablesReverseTrafficRequest) (json.RawMessage, error) {
+func (s *MoveTablesService) ReverseTraffic(ctx context.Context, req *ps.MoveTablesReverseTrafficRequest) (*ps.VtctldOperationReference, error) {
 	s.ReverseTrafficFnInvoked = true
 	return s.ReverseTrafficFn(ctx, req)
 }
@@ -60,7 +60,7 @@ func (s *MoveTablesService) Cancel(ctx context.Context, req *ps.MoveTablesCancel
 	return s.CancelFn(ctx, req)
 }
 
-func (s *MoveTablesService) Complete(ctx context.Context, req *ps.MoveTablesCompleteRequest) (json.RawMessage, error) {
+func (s *MoveTablesService) Complete(ctx context.Context, req *ps.MoveTablesCompleteRequest) (*ps.VtctldOperationReference, error) {
 	s.CompleteFnInvoked = true
 	return s.CompleteFn(ctx, req)
 }
