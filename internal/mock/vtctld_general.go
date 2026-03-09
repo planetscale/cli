@@ -19,6 +19,9 @@ type VtctldService struct {
 
 	StopWorkflowFn        func(context.Context, *ps.VtctldStopWorkflowRequest) (json.RawMessage, error)
 	StopWorkflowFnInvoked bool
+
+	GetOperationFn        func(context.Context, *ps.GetVtctldOperationRequest) (*ps.VtctldOperation, error)
+	GetOperationFnInvoked bool
 }
 
 func (s *VtctldService) ListWorkflows(ctx context.Context, req *ps.VtctldListWorkflowsRequest) (json.RawMessage, error) {
@@ -39,4 +42,9 @@ func (s *VtctldService) StartWorkflow(ctx context.Context, req *ps.VtctldStartWo
 func (s *VtctldService) StopWorkflow(ctx context.Context, req *ps.VtctldStopWorkflowRequest) (json.RawMessage, error) {
 	s.StopWorkflowFnInvoked = true
 	return s.StopWorkflowFn(ctx, req)
+}
+
+func (s *VtctldService) GetOperation(ctx context.Context, req *ps.GetVtctldOperationRequest) (*ps.VtctldOperation, error) {
+	s.GetOperationFnInvoked = true
+	return s.GetOperationFn(ctx, req)
 }
