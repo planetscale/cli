@@ -215,6 +215,9 @@ func CreatePublication(ctx context.Context, db *sql.DB, opts PublicationOptions)
 				return fmt.Errorf("error iterating tables: %w", err)
 			}
 		}
+		if len(tables) == 0 {
+			return fmt.Errorf("no tables found in schema(s) %s; use --schemas to specify the correct schema(s)", strings.Join(opts.Schemas, ", "))
+		}
 		opts.Tables = tables
 		opts.AllTables = false
 	}
