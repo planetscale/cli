@@ -19,7 +19,7 @@ var (
 )
 
 func FindPsqlPath() (string, error) {
-	for _, cmd := range []string{"psql-17", "psql-16", "psql-15", "psql"} {
+	for _, cmd := range []string{"psql-18", "psql-17", "psql-16", "psql-15", "psql"} {
 		path, err := exec.LookPath(cmd)
 		if err == nil {
 			cmd := exec.Command(path, "--version")
@@ -36,11 +36,11 @@ func FindPsqlPath() (string, error) {
 	}
 
 	return "", fmt.Errorf("couldn't find the 'psql' command-line tool required for PostgreSQL imports.\n" +
-		"To install, run: brew install postgresql@17")
+		"To install, run: brew install postgresql@18")
 }
 
 func FindPgDumpPath() (string, error) {
-	for _, cmd := range []string{"pg_dump-17", "pg_dump-16", "pg_dump-15", "pg_dump"} {
+	for _, cmd := range []string{"pg_dump-18", "pg_dump-17", "pg_dump-16", "pg_dump-15", "pg_dump"} {
 		path, err := exec.LookPath(cmd)
 		if err == nil {
 			// Verify it's a working pg_dump
@@ -57,7 +57,7 @@ func FindPgDumpPath() (string, error) {
 	}
 
 	return "", fmt.Errorf("couldn't find the 'pg_dump' command-line tool required for PostgreSQL imports.\n" +
-		"To install, run: brew install postgresql@17")
+		"To install, run: brew install postgresql@18")
 }
 
 func CheckPsqlVersion(minMajor int) (major, minor int, err error) {
