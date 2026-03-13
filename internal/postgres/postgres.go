@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	_ "github.com/lib/pq"
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 type Config struct {
@@ -157,7 +157,7 @@ func quoteValue(s string) string {
 
 // OpenConnection opens a PostgreSQL connection with sensible defaults.
 func OpenConnection(connStr string) (*sql.DB, error) {
-	db, err := sql.Open("postgres", connStr)
+	db, err := sql.Open("pgx", connStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open connection: %w", err)
 	}
