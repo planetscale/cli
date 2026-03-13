@@ -141,31 +141,8 @@ func PipeSchemaImport(ctx context.Context, sourceConn, destConn string, schemas 
 	// When importing specific tables, pg_dump --table=schema.table does NOT output
 	// CREATE SCHEMA statements. We must explicitly create schemas first.
 	if len(includeTables) > 0 {
-		schemaSet := make(map[string]bool)
-		for _, table := range includeTables {
-			if idx := strings.Index(table, "."); idx > 0 {
-				schema := table[:idx]
-				schemaSet[schema] = true
-			}
-		}
-
-		if len(schemaSet) > 0 {
-			// Create all required schemas on destination
-			var createSchemas []string
-			for schema := range schemaSet {
-				createSchemas = append(createSchemas, fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s;", QuoteIdentifier(schema)))
-			}
-
-			schemaSQL := strings.Join(createSchemas, "\n")
-			psqlCmd := exec.CommandContext(ctx, psqlPath, destConn, "--quiet", "-c", schemaSQL)
-			psqlCmd.Env = os.Environ()
-
-			var stderr bytes.Buffer
-			psqlCmd.Stderr = &stderr
-
-			if err := psqlCmd.Run(); err != nil {
-				return fmt.Errorf("failed to create schemas: %w\nstderr: %s", err, stderr.String())
-			}
+		if err := createSchemasForTables(ctx, psqlPath, destConn, includeTables); err != nil {
+			return err
 		}
 	}
 
@@ -326,6 +303,42 @@ func PipeSchemaImport(ctx context.Context, sourceConn, destConn string, schemas 
 		if strings.Contains(strings.ToLower(stderr), "error") || strings.Contains(strings.ToLower(stderr), "fatal") {
 			return fmt.Errorf("psql completed but reported errors:\n%s", stderr)
 		}
+	}
+
+	return nil
+}
+
+// createSchemasForTables extracts schemas from qualified table names and creates them.
+// pg_dump --table=schema.table doesn't output CREATE SCHEMA, so we must do it explicitly.
+func createSchemasForTables(ctx context.Context, psqlPath, destConn string, tables []string) error {
+	// Extract unique schemas from table names
+	schemas := make(map[string]bool)
+	for _, t := range tables {
+		if idx := strings.Index(t, "."); idx > 0 {
+			schemas[t[:idx]] = true
+		}
+	}
+
+	if len(schemas) == 0 {
+		return nil
+	}
+
+	// Build CREATE SCHEMA statements
+	var stmts []string
+	for s := range schemas {
+		stmts = append(stmts, fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s;", QuoteIdentifier(s)))
+	}
+
+	// Execute all schema creations
+	sql := strings.Join(stmts, "\n")
+	cmd := exec.CommandContext(ctx, psqlPath, destConn, "--quiet", "-c", sql)
+	cmd.Env = os.Environ()
+
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to create schemas: %w\nstderr: %s", err, stderr.String())
 	}
 
 	return nil
