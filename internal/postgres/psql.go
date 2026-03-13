@@ -138,6 +138,37 @@ func PipeSchemaImport(ctx context.Context, sourceConn, destConn string, schemas 
 		return err
 	}
 
+	// When importing specific tables, pg_dump --table=schema.table does NOT output
+	// CREATE SCHEMA statements. We must explicitly create schemas first.
+	if len(includeTables) > 0 {
+		schemaSet := make(map[string]bool)
+		for _, table := range includeTables {
+			if idx := strings.Index(table, "."); idx > 0 {
+				schema := table[:idx]
+				schemaSet[schema] = true
+			}
+		}
+
+		if len(schemaSet) > 0 {
+			// Create all required schemas on destination
+			var createSchemas []string
+			for schema := range schemaSet {
+				createSchemas = append(createSchemas, fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s;", QuoteIdentifier(schema)))
+			}
+
+			schemaSQL := strings.Join(createSchemas, "\n")
+			psqlCmd := exec.CommandContext(ctx, psqlPath, destConn, "--quiet", "-c", schemaSQL)
+			psqlCmd.Env = os.Environ()
+
+			var stderr bytes.Buffer
+			psqlCmd.Stderr = &stderr
+
+			if err := psqlCmd.Run(); err != nil {
+				return fmt.Errorf("failed to create schemas: %w\nstderr: %s", err, stderr.String())
+			}
+		}
+	}
+
 	// Build pg_dump arguments
 	pgDumpArgs := []string{
 		sourceConn,
