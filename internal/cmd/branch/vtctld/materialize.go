@@ -56,8 +56,8 @@ func MaterializeCreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			end := ch.Printer.PrintProgress(
-				fmt.Sprintf("Creating Materialize workflow %s on %s/%s\u2026",
-					printer.BoldBlue(flags.workflow), printer.BoldBlue(database), printer.BoldBlue(branch)))
+				fmt.Sprintf("Creating Materialize workflow %s on %s\u2026",
+					printer.BoldBlue(flags.workflow), progressTarget(ch.Config.Organization, database, branch)))
 			defer end()
 
 			req := &ps.MaterializeCreateRequest{
@@ -141,8 +141,8 @@ func MaterializeShowCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			end := ch.Printer.PrintProgress(
-				fmt.Sprintf("Fetching Materialize workflow %s on %s/%s\u2026",
-					printer.BoldBlue(flags.workflow), printer.BoldBlue(database), printer.BoldBlue(branch)))
+				fmt.Sprintf("Fetching Materialize workflow %s on %s\u2026",
+					printer.BoldBlue(flags.workflow), progressTarget(ch.Config.Organization, database, branch)))
 			defer end()
 
 			req := &ps.MaterializeShowRequest{
@@ -197,8 +197,8 @@ func MaterializeStartCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			end := ch.Printer.PrintProgress(
-				fmt.Sprintf("Starting Materialize workflow %s on %s/%s\u2026",
-					printer.BoldBlue(flags.workflow), printer.BoldBlue(database), printer.BoldBlue(branch)))
+				fmt.Sprintf("Starting Materialize workflow %s on %s\u2026",
+					printer.BoldBlue(flags.workflow), progressTarget(ch.Config.Organization, database, branch)))
 			defer end()
 
 			data, err := client.Materialize.Start(ctx, &ps.MaterializeStartRequest{
@@ -246,8 +246,8 @@ func MaterializeStopCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			end := ch.Printer.PrintProgress(
-				fmt.Sprintf("Stopping Materialize workflow %s on %s/%s\u2026",
-					printer.BoldBlue(flags.workflow), printer.BoldBlue(database), printer.BoldBlue(branch)))
+				fmt.Sprintf("Stopping Materialize workflow %s on %s\u2026",
+					printer.BoldBlue(flags.workflow), progressTarget(ch.Config.Organization, database, branch)))
 			defer end()
 
 			data, err := client.Materialize.Stop(ctx, &ps.MaterializeStopRequest{
@@ -297,8 +297,8 @@ func MaterializeCancelCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			end := ch.Printer.PrintProgress(
-				fmt.Sprintf("Canceling Materialize workflow %s on %s/%s\u2026",
-					printer.BoldBlue(flags.workflow), printer.BoldBlue(database), printer.BoldBlue(branch)))
+				fmt.Sprintf("Canceling Materialize workflow %s on %s\u2026",
+					printer.BoldBlue(flags.workflow), progressTarget(ch.Config.Organization, database, branch)))
 			defer end()
 
 			req := &ps.MaterializeCancelRequest{

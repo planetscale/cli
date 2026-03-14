@@ -45,8 +45,8 @@ func VDiffListCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			end := ch.Printer.PrintProgress(
-				fmt.Sprintf("Fetching VDiffs for workflow %s on %s/%s\u2026",
-					printer.BoldBlue(flags.workflow), printer.BoldBlue(database), printer.BoldBlue(branch)))
+				fmt.Sprintf("Fetching VDiffs for workflow %s on %s\u2026",
+					printer.BoldBlue(flags.workflow), progressTarget(ch.Config.Organization, database, branch)))
 			defer end()
 
 			data, err := client.VDiff.List(ctx, &ps.VDiffListRequest{
@@ -107,8 +107,8 @@ func VDiffCreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			end := ch.Printer.PrintProgress(
-				fmt.Sprintf("Creating VDiff for workflow %s on %s/%s\u2026",
-					printer.BoldBlue(flags.workflow), printer.BoldBlue(database), printer.BoldBlue(branch)))
+				fmt.Sprintf("Creating VDiff for workflow %s on %s\u2026",
+					printer.BoldBlue(flags.workflow), progressTarget(ch.Config.Organization, database, branch)))
 			defer end()
 
 			req := &ps.VDiffCreateRequest{
@@ -201,8 +201,8 @@ func VDiffShowCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			end := ch.Printer.PrintProgress(
-				fmt.Sprintf("Fetching VDiff %s on %s/%s\u2026",
-					printer.BoldBlue(flags.uuid), printer.BoldBlue(database), printer.BoldBlue(branch)))
+				fmt.Sprintf("Fetching VDiff %s on %s\u2026",
+					printer.BoldBlue(flags.uuid), progressTarget(ch.Config.Organization, database, branch)))
 			defer end()
 
 			data, err := client.VDiff.Show(ctx, &ps.VDiffShowRequest{
@@ -254,8 +254,8 @@ func VDiffStopCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			end := ch.Printer.PrintProgress(
-				fmt.Sprintf("Stopping VDiff %s on %s/%s\u2026",
-					printer.BoldBlue(flags.uuid), printer.BoldBlue(database), printer.BoldBlue(branch)))
+				fmt.Sprintf("Stopping VDiff %s on %s\u2026",
+					printer.BoldBlue(flags.uuid), progressTarget(ch.Config.Organization, database, branch)))
 			defer end()
 
 			data, err := client.VDiff.Stop(ctx, &ps.VDiffStopRequest{
@@ -309,8 +309,8 @@ func VDiffResumeCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			end := ch.Printer.PrintProgress(
-				fmt.Sprintf("Resuming VDiff %s on %s/%s\u2026",
-					printer.BoldBlue(flags.uuid), printer.BoldBlue(database), printer.BoldBlue(branch)))
+				fmt.Sprintf("Resuming VDiff %s on %s\u2026",
+					printer.BoldBlue(flags.uuid), progressTarget(ch.Config.Organization, database, branch)))
 			defer end()
 
 			data, err := client.VDiff.Resume(ctx, &ps.VDiffResumeRequest{
@@ -363,8 +363,8 @@ func VDiffDeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			end := ch.Printer.PrintProgress(
-				fmt.Sprintf("Deleting VDiff %s on %s/%s\u2026",
-					printer.BoldBlue(flags.uuid), printer.BoldBlue(database), printer.BoldBlue(branch)))
+				fmt.Sprintf("Deleting VDiff %s on %s\u2026",
+					printer.BoldBlue(flags.uuid), progressTarget(ch.Config.Organization, database, branch)))
 			defer end()
 
 			data, err := client.VDiff.Delete(ctx, &ps.VDiffDeleteRequest{
