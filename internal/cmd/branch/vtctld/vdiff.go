@@ -15,11 +15,60 @@ func VDiffCmd(ch *cmdutil.Helper) *cobra.Command {
 		Short: "Manage VDiff operations",
 	}
 
+	cmd.AddCommand(VDiffListCmd(ch))
 	cmd.AddCommand(VDiffCreateCmd(ch))
 	cmd.AddCommand(VDiffShowCmd(ch))
 	cmd.AddCommand(VDiffStopCmd(ch))
 	cmd.AddCommand(VDiffResumeCmd(ch))
 	cmd.AddCommand(VDiffDeleteCmd(ch))
+
+	return cmd
+}
+
+func VDiffListCmd(ch *cmdutil.Helper) *cobra.Command {
+	var flags struct {
+		workflow       string
+		targetKeyspace string
+	}
+
+	cmd := &cobra.Command{
+		Use:   "list <database> <branch>",
+		Short: "List VDiffs",
+		Args:  cmdutil.RequiredArgs("database", "branch"),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			database, branch := args[0], args[1]
+
+			client, err := ch.Client()
+			if err != nil {
+				return err
+			}
+
+			end := ch.Printer.PrintProgress(
+				fmt.Sprintf("Fetching VDiffs for workflow %s on %s/%s\u2026",
+					printer.BoldBlue(flags.workflow), printer.BoldBlue(database), printer.BoldBlue(branch)))
+			defer end()
+
+			data, err := client.VDiff.List(ctx, &ps.VDiffListRequest{
+				Organization:   ch.Config.Organization,
+				Database:       database,
+				Branch:         branch,
+				Workflow:       flags.workflow,
+				TargetKeyspace: flags.targetKeyspace,
+			})
+			if err != nil {
+				return cmdutil.HandleError(err)
+			}
+
+			end()
+			return ch.Printer.PrettyPrintJSON(data)
+		},
+	}
+
+	cmd.Flags().StringVar(&flags.workflow, "workflow", "", "Name of the workflow")
+	cmd.Flags().StringVar(&flags.targetKeyspace, "target-keyspace", "", "Target keyspace")
+	cmd.MarkFlagRequired("workflow")        // nolint:errcheck
+	cmd.MarkFlagRequired("target-keyspace") // nolint:errcheck
 
 	return cmd
 }
