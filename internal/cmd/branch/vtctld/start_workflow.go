@@ -28,8 +28,8 @@ func StartWorkflowCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			end := ch.Printer.PrintProgress(
-				fmt.Sprintf("Starting workflow %s on %s/%s\u2026",
-					printer.BoldBlue(workflow), printer.BoldBlue(database), printer.BoldBlue(branch)))
+				fmt.Sprintf("Starting workflow %s on %s\u2026",
+					printer.BoldBlue(workflow), progressTarget(ch.Config.Organization, database, branch)))
 			defer end()
 
 			data, err := client.Vtctld.StartWorkflow(ctx, &ps.VtctldStartWorkflowRequest{
