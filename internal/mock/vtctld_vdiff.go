@@ -11,6 +11,9 @@ type VDiffService struct {
 	CreateFn        func(context.Context, *ps.VDiffCreateRequest) (json.RawMessage, error)
 	CreateFnInvoked bool
 
+	ListFn        func(context.Context, *ps.VDiffListRequest) (json.RawMessage, error)
+	ListFnInvoked bool
+
 	ShowFn        func(context.Context, *ps.VDiffShowRequest) (json.RawMessage, error)
 	ShowFnInvoked bool
 
@@ -27,6 +30,11 @@ type VDiffService struct {
 func (s *VDiffService) Create(ctx context.Context, req *ps.VDiffCreateRequest) (json.RawMessage, error) {
 	s.CreateFnInvoked = true
 	return s.CreateFn(ctx, req)
+}
+
+func (s *VDiffService) List(ctx context.Context, req *ps.VDiffListRequest) (json.RawMessage, error) {
+	s.ListFnInvoked = true
+	return s.ListFn(ctx, req)
 }
 
 func (s *VDiffService) Show(ctx context.Context, req *ps.VDiffShowRequest) (json.RawMessage, error) {
