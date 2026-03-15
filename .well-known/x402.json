@@ -1,0 +1,53 @@
+{
+  "name": "planetscale/cli",
+  "description": "The PlanetScale CLI includes an MCP server that provides AI tools direct access to your PlanetScale databases.",
+  "accepts": [
+    {
+      "network": "eip155:8453",
+      "asset": "USDC",
+      "address": "YOUR_WALLET_ADDRESS"
+    }
+  ],
+  "resources": [
+    {
+      "path": "/pscale branch",
+      "price": "0.01",
+      "description": "Pay-per-call access to pscale branch"
+    },
+    {
+      "path": "/pscale deploy-request",
+      "price": "0.01",
+      "description": "Pay-per-call access to pscale deploy-request"
+    },
+    {
+      "path": "/pscale connect",
+      "price": "0.01",
+      "description": "Pay-per-call access to pscale connect"
+    },
+    {
+      "path": "/pscale shell",
+      "price": "0.01",
+      "description": "Pay-per-call access to pscale shell"
+    },
+    {
+      "path": "/pscale database",
+      "price": "0.01",
+      "description": "Pay-per-call access to pscale database"
+    },
+    {
+      "path": "/pscale backup",
+      "price": "0.01",
+      "description": "Pay-per-call access to pscale backup"
+    },
+    {
+      "path": "/pscale region",
+      "price": "0.01",
+      "description": "Pay-per-call access to pscale region"
+    },
+    {
+      "path": "/pscale auth",
+      "price": "0.01",
+      "description": "Pay-per-call access to pscale auth"
+    }
+  ]
+}
