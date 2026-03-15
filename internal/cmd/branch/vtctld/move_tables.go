@@ -69,8 +69,8 @@ func MoveTablesCreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			end := ch.Printer.PrintProgress(
-				fmt.Sprintf("Creating MoveTables workflow %s on %s/%s\u2026",
-					printer.BoldBlue(flags.workflow), printer.BoldBlue(database), printer.BoldBlue(branch)))
+				fmt.Sprintf("Creating MoveTables workflow %s on %s\u2026",
+					printer.BoldBlue(flags.workflow), progressTarget(ch.Config.Organization, database, branch)))
 			defer end()
 
 			req := &ps.MoveTablesCreateRequest{
@@ -160,8 +160,8 @@ func MoveTablesShowCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			end := ch.Printer.PrintProgress(
-				fmt.Sprintf("Fetching MoveTables workflow %s on %s/%s\u2026",
-					printer.BoldBlue(flags.workflow), printer.BoldBlue(database), printer.BoldBlue(branch)))
+				fmt.Sprintf("Fetching MoveTables workflow %s on %s\u2026",
+					printer.BoldBlue(flags.workflow), progressTarget(ch.Config.Organization, database, branch)))
 			defer end()
 
 			data, err := client.MoveTables.Show(ctx, &ps.MoveTablesShowRequest{
@@ -208,8 +208,8 @@ func MoveTablesStatusCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			end := ch.Printer.PrintProgress(
-				fmt.Sprintf("Fetching MoveTables workflow status for %s on %s/%s\u2026",
-					printer.BoldBlue(flags.workflow), printer.BoldBlue(database), printer.BoldBlue(branch)))
+				fmt.Sprintf("Fetching MoveTables workflow status for %s on %s\u2026",
+					printer.BoldBlue(flags.workflow), progressTarget(ch.Config.Organization, database, branch)))
 			defer end()
 
 			data, err := client.MoveTables.Status(ctx, &ps.MoveTablesStatusRequest{
@@ -260,8 +260,8 @@ func MoveTablesSwitchTrafficCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			end := ch.Printer.PrintProgress(
-				fmt.Sprintf("Switching traffic for MoveTables workflow %s on %s/%s\u2026",
-					printer.BoldBlue(flags.workflow), printer.BoldBlue(database), printer.BoldBlue(branch)))
+				fmt.Sprintf("Switching traffic for MoveTables workflow %s on %s\u2026",
+					printer.BoldBlue(flags.workflow), progressTarget(ch.Config.Organization, database, branch)))
 			defer end()
 
 			req := &ps.MoveTablesSwitchTrafficRequest{
@@ -333,8 +333,8 @@ func MoveTablesReverseTrafficCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			end := ch.Printer.PrintProgress(
-				fmt.Sprintf("Reversing traffic for MoveTables workflow %s on %s/%s\u2026",
-					printer.BoldBlue(flags.workflow), printer.BoldBlue(database), printer.BoldBlue(branch)))
+				fmt.Sprintf("Reversing traffic for MoveTables workflow %s on %s\u2026",
+					printer.BoldBlue(flags.workflow), progressTarget(ch.Config.Organization, database, branch)))
 			defer end()
 
 			req := &ps.MoveTablesReverseTrafficRequest{
@@ -401,8 +401,8 @@ func MoveTablesCancelCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			end := ch.Printer.PrintProgress(
-				fmt.Sprintf("Canceling MoveTables workflow %s on %s/%s\u2026",
-					printer.BoldBlue(flags.workflow), printer.BoldBlue(database), printer.BoldBlue(branch)))
+				fmt.Sprintf("Canceling MoveTables workflow %s on %s\u2026",
+					printer.BoldBlue(flags.workflow), progressTarget(ch.Config.Organization, database, branch)))
 			defer end()
 
 			req := &ps.MoveTablesCancelRequest{
@@ -464,8 +464,8 @@ func MoveTablesCompleteCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			end := ch.Printer.PrintProgress(
-				fmt.Sprintf("Completing MoveTables workflow %s on %s/%s\u2026",
-					printer.BoldBlue(flags.workflow), printer.BoldBlue(database), printer.BoldBlue(branch)))
+				fmt.Sprintf("Completing MoveTables workflow %s on %s\u2026",
+					printer.BoldBlue(flags.workflow), progressTarget(ch.Config.Organization, database, branch)))
 			defer end()
 
 			req := &ps.MoveTablesCompleteRequest{
