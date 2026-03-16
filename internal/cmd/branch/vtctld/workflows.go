@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/planetscale/cli/internal/cmdutil"
-	"github.com/planetscale/cli/internal/printer"
 	ps "github.com/planetscale/planetscale-go/planetscale"
 	"github.com/spf13/cobra"
 )
@@ -30,8 +29,8 @@ func ListWorkflowsCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			end := ch.Printer.PrintProgress(
-				fmt.Sprintf("Fetching workflows for %s/%s\u2026",
-					printer.BoldBlue(database), printer.BoldBlue(branch)))
+				fmt.Sprintf("Fetching workflows for %s\u2026",
+					progressTarget(ch.Config.Organization, database, branch)))
 			defer end()
 
 			req := &ps.VtctldListWorkflowsRequest{

@@ -56,8 +56,8 @@ func LookupVindexCreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			end := ch.Printer.PrintProgress(
-				fmt.Sprintf("Creating Lookup Vindex %s on %s/%s\u2026",
-					printer.BoldBlue(flags.name), printer.BoldBlue(database), printer.BoldBlue(branch)))
+				fmt.Sprintf("Creating Lookup Vindex %s on %s\u2026",
+					printer.BoldBlue(flags.name), progressTarget(ch.Config.Organization, database, branch)))
 			defer end()
 
 			req := &ps.LookupVindexCreateRequest{
@@ -134,8 +134,8 @@ func LookupVindexShowCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			end := ch.Printer.PrintProgress(
-				fmt.Sprintf("Fetching Lookup Vindex %s on %s/%s\u2026",
-					printer.BoldBlue(flags.name), printer.BoldBlue(database), printer.BoldBlue(branch)))
+				fmt.Sprintf("Fetching Lookup Vindex %s on %s\u2026",
+					printer.BoldBlue(flags.name), progressTarget(ch.Config.Organization, database, branch)))
 			defer end()
 
 			data, err := client.LookupVindex.Show(ctx, &ps.LookupVindexShowRequest{
@@ -184,8 +184,8 @@ func LookupVindexExternalizeCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			end := ch.Printer.PrintProgress(
-				fmt.Sprintf("Externalizing Lookup Vindex %s on %s/%s\u2026",
-					printer.BoldBlue(flags.name), printer.BoldBlue(database), printer.BoldBlue(branch)))
+				fmt.Sprintf("Externalizing Lookup Vindex %s on %s\u2026",
+					printer.BoldBlue(flags.name), progressTarget(ch.Config.Organization, database, branch)))
 			defer end()
 
 			req := &ps.LookupVindexExternalizeRequest{
@@ -242,8 +242,8 @@ func LookupVindexInternalizeCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			end := ch.Printer.PrintProgress(
-				fmt.Sprintf("Internalizing Lookup Vindex %s on %s/%s\u2026",
-					printer.BoldBlue(flags.name), printer.BoldBlue(database), printer.BoldBlue(branch)))
+				fmt.Sprintf("Internalizing Lookup Vindex %s on %s\u2026",
+					printer.BoldBlue(flags.name), progressTarget(ch.Config.Organization, database, branch)))
 			defer end()
 
 			data, err := client.LookupVindex.Internalize(ctx, &ps.LookupVindexInternalizeRequest{
@@ -292,8 +292,8 @@ func LookupVindexCancelCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			end := ch.Printer.PrintProgress(
-				fmt.Sprintf("Canceling Lookup Vindex %s on %s/%s\u2026",
-					printer.BoldBlue(flags.name), printer.BoldBlue(database), printer.BoldBlue(branch)))
+				fmt.Sprintf("Canceling Lookup Vindex %s on %s\u2026",
+					printer.BoldBlue(flags.name), progressTarget(ch.Config.Organization, database, branch)))
 			defer end()
 
 			data, err := client.LookupVindex.Cancel(ctx, &ps.LookupVindexCancelRequest{
@@ -341,8 +341,8 @@ func LookupVindexCompleteCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			end := ch.Printer.PrintProgress(
-				fmt.Sprintf("Completing Lookup Vindex %s on %s/%s\u2026",
-					printer.BoldBlue(flags.name), printer.BoldBlue(database), printer.BoldBlue(branch)))
+				fmt.Sprintf("Completing Lookup Vindex %s on %s\u2026",
+					printer.BoldBlue(flags.name), progressTarget(ch.Config.Organization, database, branch)))
 			defer end()
 
 			data, err := client.LookupVindex.Complete(ctx, &ps.LookupVindexCompleteRequest{
