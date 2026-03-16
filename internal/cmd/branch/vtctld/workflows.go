@@ -11,8 +11,9 @@ import (
 
 func ListWorkflowsCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
-		keyspace string
-		workflow string
+		keyspace    string
+		workflow    string
+		includeLogs bool
 	}
 
 	cmd := &cobra.Command{
@@ -33,13 +34,18 @@ func ListWorkflowsCmd(ch *cmdutil.Helper) *cobra.Command {
 					printer.BoldBlue(database), printer.BoldBlue(branch)))
 			defer end()
 
-			data, err := client.Vtctld.ListWorkflows(ctx, &ps.VtctldListWorkflowsRequest{
+			req := &ps.VtctldListWorkflowsRequest{
 				Organization: ch.Config.Organization,
 				Database:     database,
 				Branch:       branch,
 				Keyspace:     flags.keyspace,
 				Workflow:     flags.workflow,
-			})
+			}
+			if cmd.Flags().Changed("include-logs") {
+				req.IncludeLogs = &flags.includeLogs
+			}
+
+			data, err := client.Vtctld.ListWorkflows(ctx, req)
 			if err != nil {
 				return cmdutil.HandleError(err)
 			}
@@ -51,6 +57,7 @@ func ListWorkflowsCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	cmd.Flags().StringVar(&flags.keyspace, "keyspace", "", "Keyspace to list workflows for")
 	cmd.Flags().StringVar(&flags.workflow, "workflow", "", "Filter by workflow name")
+	cmd.Flags().BoolVar(&flags.includeLogs, "include-logs", true, "Include workflow logs in the response")
 	cmd.MarkFlagRequired("keyspace") // nolint:errcheck
 
 	return cmd
