@@ -29,6 +29,7 @@ import (
 	"github.com/planetscale/cli/internal/cmd/mcp"
 	"github.com/planetscale/cli/internal/cmd/role"
 	"github.com/planetscale/cli/internal/cmd/size"
+	"github.com/planetscale/cli/internal/cmd/trafficcontrol"
 	"github.com/planetscale/cli/internal/cmd/workflow"
 
 	"github.com/fatih/color"
@@ -319,6 +320,10 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 	roleCmd := role.RoleCmd(ch)
 	roleCmd.GroupID = "postgres"
 	rootCmd.AddCommand(roleCmd)
+
+	trafficCmd := trafficcontrol.TrafficCmd(ch)
+	trafficCmd.GroupID = "postgres"
+	rootCmd.AddCommand(trafficCmd)
 
 	annotateRequiredFlags(rootCmd)
 
