@@ -28,6 +28,8 @@ func TrafficCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 	budgetCmd.AddCommand(
 		BudgetShowCmd(ch),
+		BudgetCreateCmd(ch),
+		BudgetUpdateCmd(ch),
 	)
 
 	cmd.AddCommand(budgetCmd)
