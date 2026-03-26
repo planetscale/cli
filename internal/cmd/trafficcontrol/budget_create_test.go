@@ -48,6 +48,8 @@ func TestBudgetCreateCmd(t *testing.T) {
 			c.Assert(req.Mode, qt.Equals, "enforce")
 			c.Assert(*req.Capacity, qt.Equals, 80)
 			c.Assert(*req.Rate, qt.Equals, 50)
+			c.Assert(*req.Burst, qt.Equals, 60)
+			c.Assert(*req.Concurrency, qt.Equals, 40)
 			return created, nil
 		},
 	}
