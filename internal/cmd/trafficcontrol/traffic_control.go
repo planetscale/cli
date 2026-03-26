@@ -2,7 +2,9 @@ package trafficcontrol
 
 import (
 	"encoding/json"
+	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
@@ -32,7 +34,15 @@ func TrafficCmd(ch *cmdutil.Helper) *cobra.Command {
 		BudgetUpdateCmd(ch),
 	)
 
-	cmd.AddCommand(budgetCmd)
+	ruleCmd := &cobra.Command{
+		Use:   "rule <command>",
+		Short: "Manage traffic rules",
+	}
+	ruleCmd.AddCommand(
+		RuleCreateCmd(ch),
+	)
+
+	cmd.AddCommand(budgetCmd, ruleCmd)
 	return cmd
 }
 
@@ -58,13 +68,6 @@ func (b *TrafficBudget) MarshalCSVValue() any {
 	return []*TrafficBudget{b}
 }
 
-func formatOptionalInt(v *int) string {
-	if v == nil {
-		return "-"
-	}
-	return strconv.Itoa(*v)
-}
-
 func toTrafficBudget(b *ps.TrafficBudget) *TrafficBudget {
 	return &TrafficBudget{
 		ID:          b.ID,
@@ -78,4 +81,66 @@ func toTrafficBudget(b *ps.TrafficBudget) *TrafficBudget {
 		UpdatedAt:   printer.GetMilliseconds(b.UpdatedAt),
 		orig:        b,
 	}
+}
+
+type TrafficRuleDisplay struct {
+	ID          string `header:"id" json:"id"`
+	Kind        string `header:"kind" json:"kind"`
+	Fingerprint string `header:"fingerprint" json:"fingerprint"`
+	Keyspace    string `header:"keyspace" json:"keyspace"`
+	Tags        string `header:"tags" json:"tags"`
+	CreatedAt   int64  `header:"created_at,timestamp(ms|utc|human)" json:"created_at"`
+	UpdatedAt   int64  `header:"updated_at,timestamp(ms|utc|human)" json:"updated_at"`
+
+	orig *ps.TrafficRule
+}
+
+func (r *TrafficRuleDisplay) MarshalJSON() ([]byte, error) {
+	return json.MarshalIndent(r.orig, "", "  ")
+}
+
+func (r *TrafficRuleDisplay) MarshalCSVValue() any {
+	return []*TrafficRuleDisplay{r}
+}
+
+func toTrafficRule(r *ps.TrafficRule) *TrafficRuleDisplay {
+	return &TrafficRuleDisplay{
+		ID:          r.ID,
+		Kind:        r.Kind,
+		Fingerprint: formatOptionalString(r.Fingerprint),
+		Keyspace:    formatOptionalString(r.Keyspace),
+		Tags:        formatTags(r.Tags),
+		CreatedAt:   printer.GetMilliseconds(r.CreatedAt),
+		UpdatedAt:   printer.GetMilliseconds(r.UpdatedAt),
+		orig:        r,
+	}
+}
+
+func formatOptionalInt(v *int) string {
+	if v == nil {
+		return "-"
+	}
+	return strconv.Itoa(*v)
+}
+
+func formatOptionalString(v *string) string {
+	if v == nil {
+		return "-"
+	}
+	return *v
+}
+
+func formatTags(tags []ps.TrafficRuleTag) string {
+	if len(tags) == 0 {
+		return "-"
+	}
+	parts := make([]string, len(tags))
+	for i, t := range tags {
+		if t.Source == "sql" {
+			parts[i] = fmt.Sprintf("%s=%s", t.Key, t.Value)
+		} else {
+			parts[i] = fmt.Sprintf("%s=%s (%s)", t.Key, t.Value, t.Source)
+		}
+	}
+	return strings.Join(parts, ", ")
 }

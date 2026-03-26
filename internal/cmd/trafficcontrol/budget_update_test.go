@@ -22,10 +22,6 @@ func TestBudgetUpdateCmd(t *testing.T) {
 	p := printer.NewPrinter(&format)
 	p.SetResourceOutput(&buf)
 
-	org := "planetscale"
-	db := "mydb"
-	branch := "main"
-	budgetID := "budget-123"
 	cap := 90
 
 	updated := &ps.TrafficBudget{
