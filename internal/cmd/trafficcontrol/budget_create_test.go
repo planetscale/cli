@@ -22,13 +22,10 @@ func TestBudgetCreateCmd(t *testing.T) {
 	p := printer.NewPrinter(&format)
 	p.SetResourceOutput(&buf)
 
-	org := "planetscale"
-	db := "mydb"
-	branch := "main"
 	cap, rate, burst, conc := 80, 50, 60, 40
 
 	created := &ps.TrafficBudget{
-		ID:          "budget-456",
+		ID:          budgetID,
 		Name:        "CPU Limiter",
 		Mode:        "enforce",
 		Capacity:    &cap,

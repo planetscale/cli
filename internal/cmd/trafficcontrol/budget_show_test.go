@@ -14,6 +14,13 @@ import (
 	ps "github.com/planetscale/planetscale-go/planetscale"
 )
 
+var (
+	org      = "planetscale"
+	db       = "database"
+	branch   = "main"
+	budgetID = "qok87ki4xlau"
+)
+
 func TestBudgetShowCmd(t *testing.T) {
 	c := qt.New(t)
 
@@ -22,10 +29,6 @@ func TestBudgetShowCmd(t *testing.T) {
 	p := printer.NewPrinter(&format)
 	p.SetResourceOutput(&buf)
 
-	org := "planetscale"
-	db := "database"
-	branch := "main"
-	budgetID := "qok87ki4xlau"
 	cap := 80
 
 	budget := &ps.TrafficBudget{
@@ -74,11 +77,6 @@ func TestBudgetShowCmd_NotFound(t *testing.T) {
 	format := printer.JSON
 	p := printer.NewPrinter(&format)
 	p.SetResourceOutput(&buf)
-
-	org := "planetscale"
-	db := "database"
-	branch := "main"
-	budgetID := "qok87ki4xlau"
 
 	svc := &mock.TrafficBudgetsService{
 		GetFn: func(ctx context.Context, req *ps.GetTrafficBudgetRequest) (*ps.TrafficBudget, error) {
