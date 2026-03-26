@@ -32,6 +32,7 @@ func TrafficCmd(ch *cmdutil.Helper) *cobra.Command {
 		BudgetShowCmd(ch),
 		BudgetCreateCmd(ch),
 		BudgetUpdateCmd(ch),
+		BudgetDeleteCmd(ch),
 	)
 
 	ruleCmd := &cobra.Command{
@@ -40,6 +41,7 @@ func TrafficCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 	ruleCmd.AddCommand(
 		RuleCreateCmd(ch),
+		RuleDeleteCmd(ch),
 	)
 
 	cmd.AddCommand(budgetCmd, ruleCmd)
