@@ -45,7 +45,21 @@ func BudgetShowCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			end()
-			return ch.Printer.PrintResource(toTrafficBudget(budget))
+
+			if err := ch.Printer.PrintResource(toTrafficBudget(budget)); err != nil {
+				return err
+			}
+
+			if ch.Printer.Format() == printer.Human && len(budget.Rules) > 0 {
+				ch.Printer.Printf("\n%s\n", printer.Bold("Rules:"))
+				rules := make([]*TrafficRuleDisplay, len(budget.Rules))
+				for i := range budget.Rules {
+					rules[i] = toTrafficRule(&budget.Rules[i])
+				}
+				return ch.Printer.PrintResource(rules)
+			}
+
+			return nil
 		},
 	}
 
