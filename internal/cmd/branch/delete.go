@@ -16,6 +16,7 @@ import (
 
 func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 	var force bool
+	var deleteDescendants bool
 
 	cmd := &cobra.Command{
 		Use:     "delete <database> <branch>",
@@ -122,15 +123,17 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			if db.Kind == "mysql" {
 				err = client.DatabaseBranches.Delete(ctx, &planetscale.DeleteDatabaseBranchRequest{
-					Organization: ch.Config.Organization,
-					Database:     source,
-					Branch:       branch,
+					Organization:      ch.Config.Organization,
+					Database:          source,
+					Branch:            branch,
+					DeleteDescendants: deleteDescendants,
 				})
 			} else {
 				err = client.PostgresBranches.Delete(ctx, &planetscale.DeletePostgresBranchRequest{
-					Organization: ch.Config.Organization,
-					Database:     source,
-					Branch:       branch,
+					Organization:      ch.Config.Organization,
+					Database:          source,
+					Branch:            branch,
+					DeleteDescendants: deleteDescendants,
 				})
 			}
 
@@ -158,5 +161,6 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 
 	cmd.Flags().BoolVar(&force, "force", false, "Delete a branch without confirmation")
+	cmd.Flags().BoolVar(&deleteDescendants, "delete-descendants", false, "Delete the branch and all of its descendant branches")
 	return cmd
 }
