@@ -49,15 +49,16 @@ func TrafficCmd(ch *cmdutil.Helper) *cobra.Command {
 }
 
 type TrafficBudget struct {
-	ID          string `header:"id" json:"id"`
-	Name        string `header:"name" json:"name"`
-	Mode        string `header:"mode" json:"mode"`
-	Capacity    string `header:"capacity" json:"capacity"`
-	Rate        string `header:"rate" json:"rate"`
-	Burst       string `header:"burst" json:"burst"`
-	Concurrency string `header:"concurrency" json:"concurrency"`
-	CreatedAt   int64  `header:"created_at,timestamp(ms|utc|human)" json:"created_at"`
-	UpdatedAt   int64  `header:"updated_at,timestamp(ms|utc|human)" json:"updated_at"`
+	ID               string `header:"id" json:"id"`
+	Name             string `header:"name" json:"name"`
+	Mode             string `header:"mode" json:"mode"`
+	Capacity         string `header:"capacity" json:"capacity"`
+	Rate             string `header:"rate" json:"rate"`
+	Burst            string `header:"burst" json:"burst"`
+	Concurrency      string `header:"concurrency" json:"concurrency"`
+	WarningThreshold string `header:"warning_threshold" json:"warning_threshold"`
+	CreatedAt        int64  `header:"created_at,timestamp(ms|utc|human)" json:"created_at"`
+	UpdatedAt        int64  `header:"updated_at,timestamp(ms|utc|human)" json:"updated_at"`
 
 	orig *ps.TrafficBudget
 }
@@ -72,16 +73,17 @@ func (b *TrafficBudget) MarshalCSVValue() any {
 
 func toTrafficBudget(b *ps.TrafficBudget) *TrafficBudget {
 	return &TrafficBudget{
-		ID:          b.ID,
-		Name:        b.Name,
-		Mode:        b.Mode,
-		Capacity:    formatOptionalInt(b.Capacity),
-		Rate:        formatOptionalInt(b.Rate),
-		Burst:       formatOptionalInt(b.Burst),
-		Concurrency: formatOptionalInt(b.Concurrency),
-		CreatedAt:   printer.GetMilliseconds(b.CreatedAt),
-		UpdatedAt:   printer.GetMilliseconds(b.UpdatedAt),
-		orig:        b,
+		ID:               b.ID,
+		Name:             b.Name,
+		Mode:             b.Mode,
+		Capacity:         formatOptionalInt(b.Capacity),
+		Rate:             formatOptionalInt(b.Rate),
+		Burst:            formatOptionalInt(b.Burst),
+		Concurrency:      formatOptionalInt(b.Concurrency),
+		WarningThreshold: formatOptionalInt(b.WarningThreshold),
+		CreatedAt:        printer.GetMilliseconds(b.CreatedAt),
+		UpdatedAt:        printer.GetMilliseconds(b.UpdatedAt),
+		orig:             b,
 	}
 }
 

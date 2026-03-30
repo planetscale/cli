@@ -45,6 +45,7 @@ func TestBudgetUpdateCmd(t *testing.T) {
 			c.Assert(req.Rate, qt.IsNil)
 			c.Assert(req.Burst, qt.IsNil)
 			c.Assert(req.Concurrency, qt.IsNil)
+			c.Assert(req.WarningThreshold, qt.IsNil)
 			c.Assert(req.Rules, qt.IsNil)
 			return updated, nil
 		},
