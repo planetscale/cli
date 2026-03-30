@@ -11,11 +11,17 @@ on:
 
 jobs:
   release:
-    if: github.ref == 'refs/heads/main'
+    # This workflow should always be run on main - this is enforced by the
+    # `release` environment directly but added here for visibility.
+    # If the workflow fails during publishing, run a new workflow
+    # with the `version` that needs to be published.
+    if: github.ref == 'refs/heads/main' && github.run_attempt == '1'
+
     runs-on: ubuntu-latest
     environment: release
     permissions:
       contents: read
+
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
