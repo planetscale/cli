@@ -13,14 +13,8 @@ export GORELEASER_CURRENT_TAG
 
 VERSION="${GORELEASER_CURRENT_TAG#v}"
 
-all_targets=(publish docker homebrew scoop aur)
+all_targets=(docker homebrew scoop aur)
 skip=()
-
-asset_count=$(gh release view "$GORELEASER_CURRENT_TAG" --json assets --jq '.assets | length' 2>/dev/null || echo "0")
-if [ "$asset_count" -gt 0 ]; then
-  echo "==> GitHub Release assets already exist, skipping publish"
-  skip+=(publish)
-fi
 
 if docker manifest inspect "planetscale/pscale:${GORELEASER_CURRENT_TAG}" >/dev/null 2>&1; then
   echo "==> Docker image already exists, skipping docker"
