@@ -90,7 +90,7 @@ func BudgetCreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().IntVar(&flags.rate, "rate", 0, "Rate at which capacity refills, as a percentage of server resources (0-100). Unlimited when not set.")
 	cmd.Flags().IntVar(&flags.burst, "burst", 0, "Maximum capacity a single query can consume (0-6000). Unlimited when not set.")
 	cmd.Flags().IntVar(&flags.concurrency, "concurrency", 0, "Percentage of available worker processes (0-100). Unlimited when not set.")
-	cmd.Flags().IntVar(&flags.warningThreshold, "warning-threshold", 0, "Percentage (0-100) of capacity, burst, or concurrency at which to emit warnings for enforced budgets.`")
+	cmd.Flags().IntVar(&flags.warningThreshold, "warning-threshold", 0, "Percentage (0-100) of capacity, burst, or concurrency at which to emit warnings for enforced budgets.")
 
 	cmd.MarkFlagRequired("name") // nolint:errcheck
 
