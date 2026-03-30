@@ -4,7 +4,10 @@ set -eu
 
 WORKDIR=$(pwd)
 
-GORELEASER_CURRENT_TAG=$(buildkite-agent meta-data get "release-version")
+if [ -z "${GORELEASER_CURRENT_TAG:-}" ]; then
+  echo "error: GORELEASER_CURRENT_TAG must be set" >&2
+  exit 1
+fi
 export GORELEASER_CURRENT_TAG
 
 tmpdir=$(mktemp -d)
