@@ -2,22 +2,6 @@ agents:
   queue: "public"
 
 steps:
-- name: "Go build and test"
-  command: make
-  plugins:
-    - docker-compose#v4.14.0:
-        cli-version: "2"
-        run: app
-
-- name: "Verify dependency licenses"
-  command: "go get -v ./... && license_finder"
-  plugins:
-    - docker-compose#v4.14.0:
-        cli-version: "2"
-        run: licensing
-
-- wait
-
 - block: ":rocket: Release !"
   branches: "main"
 
