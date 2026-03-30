@@ -17,7 +17,7 @@ echo "+++ :boom: Bumping to version $RELEASE_VERSION"
 
 git config --global --add url."https://${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
 
-echo "release-version=$RELEASE_VERSION" >>"$GITHUB_OUTPUT"
+echo "RELEASE_VERSION=$RELEASE_VERSION" >>"$GITHUB_OUTPUT"
 
 git tag "$RELEASE_VERSION"
 git push origin "$RELEASE_VERSION"
