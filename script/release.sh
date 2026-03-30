@@ -70,7 +70,7 @@ if [ "$DRY_RUN" = "true" ]; then
   exit 0
 fi
 
-GORELEASER_SKIP=$(IFS=,; echo "${skip[*]}")
+GORELEASER_SKIP=$(IFS=,; echo ${skip[*]+"${skip[*]}"})
 
 tmpdir=$(mktemp -d)
 cat >"$tmpdir/docker.json" <<EOF
