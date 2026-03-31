@@ -22,18 +22,19 @@ func TestBudgetCreateCmd(t *testing.T) {
 	p := printer.NewPrinter(&format)
 	p.SetResourceOutput(&buf)
 
-	cap, rate, burst, conc := 80, 50, 60, 40
+	cap, rate, burst, conc, warnTh := 80, 50, 60, 40, 30
 
 	created := &ps.TrafficBudget{
-		ID:          budgetID,
-		Name:        "CPU Limiter",
-		Mode:        "enforce",
-		Capacity:    &cap,
-		Rate:        &rate,
-		Burst:       &burst,
-		Concurrency: &conc,
-		CreatedAt:   time.Date(2025, 6, 15, 10, 0, 0, 0, time.UTC),
-		UpdatedAt:   time.Date(2025, 6, 15, 10, 0, 0, 0, time.UTC),
+		ID:               budgetID,
+		Name:             "CPU Limiter",
+		Mode:             "enforce",
+		Capacity:         &cap,
+		Rate:             &rate,
+		Burst:            &burst,
+		Concurrency:      &conc,
+		WarningThreshold: &warnTh,
+		CreatedAt:        time.Date(2025, 6, 15, 10, 0, 0, 0, time.UTC),
+		UpdatedAt:        time.Date(2025, 6, 15, 10, 0, 0, 0, time.UTC),
 	}
 
 	svc := &mock.TrafficBudgetsService{
@@ -47,6 +48,7 @@ func TestBudgetCreateCmd(t *testing.T) {
 			c.Assert(*req.Rate, qt.Equals, 50)
 			c.Assert(*req.Burst, qt.Equals, 60)
 			c.Assert(*req.Concurrency, qt.Equals, 40)
+			c.Assert(*req.WarningThreshold, qt.Equals, 30)
 			return created, nil
 		},
 	}
@@ -67,6 +69,7 @@ func TestBudgetCreateCmd(t *testing.T) {
 		"--rate", "50",
 		"--burst", "60",
 		"--concurrency", "40",
+		"--warning-threshold", "30",
 	})
 	err := cmd.Execute()
 

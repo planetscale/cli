@@ -16,26 +16,36 @@ jobs:
       contents: read
 
     steps:
+      - uses: actions/create-github-app-token@f8d387b68d61c58ab83c6c016672934102569859 # v3.0.0
+        id: app-token
+        with:
+          app-id: ${{ vars.CLI_APP_ID }}
+          private-key: ${{ secrets.CLI_APP_PRIVATE_KEY }}
+          permission-contents: write
+          owner: planetscale
+          repositories: |
+            cli
+            homebrew-tap
+            scoop-bucket
+
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
-          token: ${{ secrets.RELEASE_GITHUB_TOKEN }}
+          token: ${{ steps.app-token.outputs.token }}
           persist-credentials: true
 
       - name: Configure Git
         run: |
-          git config user.name "planetscale-actions-bot"
-          git config user.email "60239337+planetscale-actions-bot@users.noreply.github.com"
+          git config user.name "planetscale-cli[bot]"
+          git config user.email "272331943+planetscale-cli[bot]@users.noreply.github.com"
 
       - name: Bump version and push tag
         id: bump
-        env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}
         run: script/bump-version.sh
 
       - name: Publish artifacts
         env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           GORELEASER_CURRENT_TAG: ${{ steps.bump.outputs.RELEASE_VERSION }}
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
