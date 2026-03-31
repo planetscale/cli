@@ -20,6 +20,7 @@ func VtctldCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.AddCommand(PlannedReparentShardCmd(ch))
 	cmd.AddCommand(ListWorkflowsCmd(ch))
 	cmd.AddCommand(ListKeyspacesCmd(ch))
+	cmd.AddCommand(ListTabletsCmd(ch))
 	cmd.AddCommand(StartWorkflowCmd(ch))
 	cmd.AddCommand(StopWorkflowCmd(ch))
 
