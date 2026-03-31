@@ -11,12 +11,13 @@ import (
 
 func BudgetUpdateCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
-		name        string
-		mode        string
-		capacity    int
-		rate        int
-		burst       int
-		concurrency int
+		name             string
+		mode             string
+		capacity         int
+		rate             int
+		burst            int
+		concurrency      int
+		warningThreshold int
 	}
 
 	cmd := &cobra.Command{
@@ -59,6 +60,9 @@ func BudgetUpdateCmd(ch *cmdutil.Helper) *cobra.Command {
 			if cmd.Flags().Changed("concurrency") {
 				req.Concurrency = &flags.concurrency
 			}
+			if cmd.Flags().Changed("warning-threshold") {
+				req.WarningThreshold = &flags.warningThreshold
+			}
 
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Updating traffic budget %s in %s/%s",
 				printer.BoldBlue(budgetID), printer.BoldBlue(database), printer.BoldBlue(branch)))
@@ -91,6 +95,7 @@ func BudgetUpdateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().IntVar(&flags.rate, "rate", 0, "Rate at which capacity refills, as a percentage of server resources (0-100). Unlimited when not set.")
 	cmd.Flags().IntVar(&flags.burst, "burst", 0, "Maximum capacity a single query can consume (0-6000). Unlimited when not set.")
 	cmd.Flags().IntVar(&flags.concurrency, "concurrency", 0, "Percentage of available worker processes (0-100). Unlimited when not set.")
+	cmd.Flags().IntVar(&flags.warningThreshold, "warning-threshold", 0, "Percentage (0-100) of capacity, burst, or concurrency at which to emit warnings for enforced budgets.")
 
 	return cmd
 }
