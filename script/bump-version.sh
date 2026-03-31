@@ -15,8 +15,6 @@ RELEASE_VERSION=$(/tmp/svu minor)
 
 echo "+++ :boom: Bumping to version $RELEASE_VERSION"
 
-git config --global --add url."https://${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
-
 echo "RELEASE_VERSION=$RELEASE_VERSION" >>"$GITHUB_OUTPUT"
 
 git tag "$RELEASE_VERSION"
