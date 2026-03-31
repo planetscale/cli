@@ -2,19 +2,12 @@ name: Release
 
 on:
   workflow_dispatch:
-    inputs:
-      version:
-        description: >-
-          Existing version tag to re-publish (e.g. v0.200.0).
-          Leave empty to bump and release a new version.
-        required: false
 
 jobs:
   release:
     # This workflow should always be run on main - this is enforced by the
     # `release` environment directly but added here for visibility.
-    # If the workflow fails during publishing, run a new workflow
-    # with the `version` that needs to be published.
+    # If the workflow fails during publishing, a new release must be published
     if: github.ref == 'refs/heads/main' && github.run_attempt == '1'
 
     runs-on: ubuntu-latest
@@ -34,30 +27,16 @@ jobs:
           git config user.name "planetscale-actions-bot"
           git config user.email "60239337+planetscale-actions-bot@users.noreply.github.com"
 
-      - name: Checkout existing tag
-        if: inputs.version != ''
-        run: git checkout "refs/tags/$VERSION"
-        env:
-          VERSION: ${{ inputs.version }}
-
       - name: Bump version and push tag
-        if: inputs.version == ''
         id: bump
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}
         run: script/bump-version.sh
 
-      - name: Resolve version
-        id: version
-        env:
-          INPUT_VERSION: ${{ inputs.version }}
-          BUMP_VERSION: ${{ steps.bump.outputs.RELEASE_VERSION }}
-        run: echo "TAG=${INPUT_VERSION:-$BUMP_VERSION}" >> "$GITHUB_OUTPUT"
-
       - name: Publish artifacts
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}
-          GORELEASER_CURRENT_TAG: ${{ steps.version.outputs.TAG }}
+          GORELEASER_CURRENT_TAG: ${{ steps.bump.outputs.RELEASE_VERSION }}
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
           AUR_KEY: ${{ secrets.AUR_KEY }}
