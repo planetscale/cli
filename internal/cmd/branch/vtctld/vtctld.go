@@ -17,6 +17,7 @@ func VtctldCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.AddCommand(VDiffCmd(ch))
 	cmd.AddCommand(LookupVindexCmd(ch))
 	cmd.AddCommand(MoveTablesCmd(ch))
+	cmd.AddCommand(PlannedReparentShardCmd(ch))
 	cmd.AddCommand(ListWorkflowsCmd(ch))
 	cmd.AddCommand(ListKeyspacesCmd(ch))
 	cmd.AddCommand(StartWorkflowCmd(ch))
