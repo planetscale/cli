@@ -298,6 +298,113 @@ func TestBranch_CreateCmdWithMajorVersion(t *testing.T) {
 	c.Assert(buf.String(), qt.JSONEquals, res)
 }
 
+func TestBranch_CreateCmdWithStorageMySQLError(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	db := "planetscale"
+	branch := "development"
+
+	dbSvc := &mock.DatabaseService{
+		GetFn: func(ctx context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
+			return &ps.Database{Kind: "mysql"}, nil
+		},
+	}
+
+	svc := &mock.DatabaseBranchesService{
+		CreateFn: func(ctx context.Context, req *ps.CreateDatabaseBranchRequest) (*ps.DatabaseBranch, error) {
+			c.Fatal("CreateFn should not be called for MySQL with storage flags")
+			return nil, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: org,
+		},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{
+				DatabaseBranches: svc,
+				Databases:        dbSvc,
+			}, nil
+		},
+	}
+
+	cmd := CreateCmd(ch)
+	cmd.SetArgs([]string{db, branch, "--region", "us-east", "--min-storage", "10737418240"})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNotNil)
+	c.Assert(err, qt.ErrorMatches, ".*only supported for PostgreSQL.*")
+	c.Assert(svc.CreateFnInvoked, qt.IsFalse)
+}
+
+func TestBranch_CreateCmdWithStorage(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	db := "planetscale"
+	branch := "development"
+
+	res := &ps.PostgresBranch{Name: branch}
+
+	svc := &mock.PostgresBranchesService{
+		CreateFn: func(ctx context.Context, req *ps.CreatePostgresBranchRequest) (*ps.PostgresBranch, error) {
+			c.Assert(req.Name, qt.Equals, branch)
+			c.Assert(req.Database, qt.Equals, db)
+			c.Assert(req.Region, qt.Equals, "us-east")
+			c.Assert(req.Organization, qt.Equals, org)
+			c.Assert(req.Storage, qt.IsNotNil)
+			c.Assert(req.Storage.MinimumStorageBytes, qt.IsNotNil)
+			c.Assert(*req.Storage.MinimumStorageBytes, qt.Equals, int64(10737418240))
+			c.Assert(req.Storage.MaximumStorageBytes, qt.IsNotNil)
+			c.Assert(*req.Storage.MaximumStorageBytes, qt.Equals, int64(107374182400))
+
+			return res, nil
+		},
+	}
+
+	dbSvc := &mock.DatabaseService{
+		GetFn: func(ctx context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
+			c.Assert(req.Database, qt.Equals, db)
+			c.Assert(req.Organization, qt.Equals, org)
+			return &ps.Database{Kind: "postgresql"}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: org,
+		},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{
+				PostgresBranches: svc,
+				Databases:        dbSvc,
+			}, nil
+		},
+	}
+
+	cmd := CreateCmd(ch)
+	cmd.SetArgs([]string{db, branch, "--region", "us-east", "--min-storage", "10737418240", "--max-storage", "107374182400"})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.CreateFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.JSONEquals, res)
+}
+
 func TestBranch_CreateCmd_ServiceTokenAuthError(t *testing.T) {
 	c := qt.New(t)
 

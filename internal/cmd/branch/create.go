@@ -21,6 +21,8 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 		clusterSize   string
 		backupID      string
 		majorVersion  string
+		minStorage    int64
+		maxStorage    int64
 	}
 
 	cmd := &cobra.Command{
@@ -103,6 +105,10 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			if db.Kind == "mysql" {
+				if cmd.Flags().Changed("min-storage") || cmd.Flags().Changed("max-storage") {
+					return fmt.Errorf("--min-storage and --max-storage are only supported for PostgreSQL databases")
+				}
+
 				createReq := &ps.CreateDatabaseBranchRequest{
 					Organization: ch.Config.Organization,
 					Database:     source,
@@ -171,6 +177,16 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 					MajorVersion: flags.majorVersion,
 				}
 
+				if cmd.Flags().Changed("min-storage") || cmd.Flags().Changed("max-storage") {
+					createReq.Storage = &ps.StorageConfig{}
+					if cmd.Flags().Changed("min-storage") {
+						createReq.Storage.MinimumStorageBytes = &flags.minStorage
+					}
+					if cmd.Flags().Changed("max-storage") {
+						createReq.Storage.MaximumStorageBytes = &flags.maxStorage
+					}
+				}
+
 				dbBranch, err := client.PostgresBranches.Create(cmd.Context(), createReq)
 				if err != nil {
 					switch cmdutil.ErrCode(err) {
@@ -224,6 +240,9 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().BoolVar(&flags.dataBranching, "seed-data", false, "Add seed data using the Data Branching™ feature. This branch will be created with the same resources as the base branch.")
 	cmd.Flags().BoolVar(&flags.wait, "wait", false, "Wait until the branch is ready")
 	cmd.Flags().StringVar(&flags.majorVersion, "major-version", "", "For PostgreSQL databases, the PostgreSQL major version to use for the branch. Defaults to the major version of the parent branch if it exists or the database's default branch major version. Ignored for branches restored from backups.")
+	cmd.Flags().Int64Var(&flags.minStorage, "min-storage", 0, "Minimum storage size in bytes")
+	cmd.Flags().Int64Var(&flags.maxStorage, "max-storage", 0, "Maximum storage size in bytes for autoscaling")
+
 	cmd.MarkFlagsMutuallyExclusive("from", "restore")
 	cmd.MarkFlagsMutuallyExclusive("restore", "seed-data")
 

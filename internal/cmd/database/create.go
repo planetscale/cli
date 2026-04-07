@@ -24,6 +24,8 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 		wait         bool
 		replicas     *int
 		majorVersion string
+		minStorage   int64
+		maxStorage   int64
 	}
 
 	cmd := &cobra.Command{
@@ -49,6 +51,20 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			if flags.majorVersion != "" {
 				createReq.MajorVersion = flags.majorVersion
+			}
+
+			if (cmd.Flags().Changed("min-storage") || cmd.Flags().Changed("max-storage")) && engine != ps.DatabaseEnginePostgres {
+				return fmt.Errorf("--min-storage and --max-storage are only supported for PostgreSQL databases")
+			}
+
+			if cmd.Flags().Changed("min-storage") || cmd.Flags().Changed("max-storage") {
+				createReq.Storage = &ps.StorageConfig{}
+				if cmd.Flags().Changed("min-storage") {
+					createReq.Storage.MinimumStorageBytes = &flags.minStorage
+				}
+				if cmd.Flags().Changed("max-storage") {
+					createReq.Storage.MaximumStorageBytes = &flags.maxStorage
+				}
 			}
 
 			client, err := ch.Client()
@@ -120,6 +136,9 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.RegisterFlagCompletionFunc("cluster-size", func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
 		return cmdutil.ClusterSizesCompletionFunc(ch, cmd, args, toComplete)
 	})
+	cmd.Flags().Int64Var(&flags.minStorage, "min-storage", 0, "Minimum storage size in bytes")
+	cmd.Flags().Int64Var(&flags.maxStorage, "max-storage", 0, "Maximum storage size in bytes for autoscaling")
+
 	cmd.Flags().BoolVar(&flags.wait, "wait", false, "Wait until the database is ready")
 
 	return cmd

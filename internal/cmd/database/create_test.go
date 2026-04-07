@@ -228,6 +228,103 @@ func TestDatabase_CreateCmdWithReplicas(t *testing.T) {
 	c.Assert(buf.String(), qt.JSONEquals, res)
 }
 
+func TestDatabase_CreateCmdWithStorageMySQLError(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	db := "planetscale"
+
+	svc := &mock.DatabaseService{
+		CreateFn: func(ctx context.Context, req *ps.CreateDatabaseRequest) (*ps.Database, error) {
+			c.Fatal("CreateFn should not be called for MySQL with storage flags")
+			return nil, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: org,
+		},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{
+				Databases: svc,
+			}, nil
+		},
+	}
+
+	cmd := CreateCmd(ch)
+	cmd.SetArgs([]string{db, "--region", "us-east", "--min-storage", "10737418240"})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNotNil)
+	c.Assert(err, qt.ErrorMatches, ".*only supported for PostgreSQL.*")
+	c.Assert(svc.CreateFnInvoked, qt.IsFalse)
+}
+
+func TestDatabase_CreateCmdWithStorage(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	db := "planetscale"
+
+	res := &ps.Database{Name: "foo"}
+
+	svc := &mock.DatabaseService{
+		CreateFn: func(ctx context.Context, req *ps.CreateDatabaseRequest) (*ps.Database, error) {
+			c.Assert(req.Organization, qt.Equals, org)
+			c.Assert(req.Name, qt.Equals, db)
+			c.Assert(req.Region, qt.Equals, "us-east")
+			c.Assert(req.Kind, qt.Equals, ps.DatabaseEnginePostgres)
+			c.Assert(req.Storage, qt.IsNotNil)
+			c.Assert(req.Storage.MinimumStorageBytes, qt.IsNotNil)
+			c.Assert(*req.Storage.MinimumStorageBytes, qt.Equals, int64(10737418240))
+			c.Assert(req.Storage.MaximumStorageBytes, qt.IsNotNil)
+			c.Assert(*req.Storage.MaximumStorageBytes, qt.Equals, int64(107374182400))
+
+			return res, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: org,
+		},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{
+				Databases: svc,
+				Organizations: &mock.OrganizationsService{
+					GetFn: func(ctx context.Context, request *ps.GetOrganizationRequest) (*ps.Organization, error) {
+						return &ps.Organization{
+							RemainingFreeDatabases: 1,
+							Name:                   request.Organization,
+						}, nil
+					},
+				},
+			}, nil
+		},
+	}
+
+	cmd := CreateCmd(ch)
+	cmd.SetArgs([]string{db, "--region", "us-east", "--engine", "postgresql", "--min-storage", "10737418240", "--max-storage", "107374182400"})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.CreateFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.JSONEquals, res)
+}
+
 func TestDatabase_CreateCmdPostgresWithMajorVersion(t *testing.T) {
 	c := qt.New(t)
 
