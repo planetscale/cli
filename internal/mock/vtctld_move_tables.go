@@ -8,7 +8,7 @@ import (
 )
 
 type MoveTablesService struct {
-	CreateFn        func(context.Context, *ps.MoveTablesCreateRequest) (json.RawMessage, error)
+	CreateFn        func(context.Context, *ps.MoveTablesCreateRequest) (*ps.VtctldOperationReference, error)
 	CreateFnInvoked bool
 
 	ShowFn        func(context.Context, *ps.MoveTablesShowRequest) (json.RawMessage, error)
@@ -30,7 +30,7 @@ type MoveTablesService struct {
 	CompleteFnInvoked bool
 }
 
-func (s *MoveTablesService) Create(ctx context.Context, req *ps.MoveTablesCreateRequest) (json.RawMessage, error) {
+func (s *MoveTablesService) Create(ctx context.Context, req *ps.MoveTablesCreateRequest) (*ps.VtctldOperationReference, error) {
 	s.CreateFnInvoked = true
 	return s.CreateFn(ctx, req)
 }

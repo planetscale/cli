@@ -105,7 +105,12 @@ func MoveTablesCreateCmd(ch *cmdutil.Helper) *cobra.Command {
 				req.AtomicCopy = &flags.atomicCopy
 			}
 
-			data, err := client.MoveTables.Create(ctx, req)
+			operation, err := client.MoveTables.Create(ctx, req)
+			if err != nil {
+				return cmdutil.HandleError(err)
+			}
+
+			data, err := waitForMoveTablesOperationResult(ctx, client, ch.Config.Organization, database, branch, operation.ID)
 			if err != nil {
 				return cmdutil.HandleError(err)
 			}

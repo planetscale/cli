@@ -63,13 +63,14 @@ func setMoveTablesOperationTimeouts(t *testing.T, defaultTimeout, timeoutBuffer 
 
 func TestMoveTablesCreate(t *testing.T) {
 	c := qt.New(t)
+	setMoveTablesPollInterval(t, 0)
 
 	org := "my-org"
 	db := "my-db"
 	branch := "my-branch"
 
 	svc := &mock.MoveTablesService{
-		CreateFn: func(ctx context.Context, req *ps.MoveTablesCreateRequest) (json.RawMessage, error) {
+		CreateFn: func(ctx context.Context, req *ps.MoveTablesCreateRequest) (*ps.VtctldOperationReference, error) {
 			c.Assert(req.Organization, qt.Equals, org)
 			c.Assert(req.Database, qt.Equals, db)
 			c.Assert(req.Branch, qt.Equals, branch)
@@ -82,24 +83,28 @@ func TestMoveTablesCreate(t *testing.T) {
 			c.Assert(req.TabletTypes, qt.IsNil)
 			c.Assert(req.ExcludeTables, qt.IsNil)
 			c.Assert(req.AtomicCopy, qt.IsNil)
-			return json.RawMessage(`{"summary":"created"}`), nil
+			return &ps.VtctldOperationReference{ID: "create-op"}, nil
+		},
+	}
+
+	vtctldSvc := &mock.VtctldService{
+		GetOperationFn: func(ctx context.Context, req *ps.GetVtctldOperationRequest) (*ps.VtctldOperation, error) {
+			c.Assert(req.Organization, qt.Equals, org)
+			c.Assert(req.Database, qt.Equals, db)
+			c.Assert(req.Branch, qt.Equals, branch)
+			c.Assert(req.ID, qt.Equals, "create-op")
+
+			return &ps.VtctldOperation{
+				ID:        "create-op",
+				State:     "completed",
+				Completed: true,
+				Result:    json.RawMessage(`{"summary":"created"}`),
+			}, nil
 		},
 	}
 
 	var buf bytes.Buffer
-	format := printer.JSON
-	p := printer.NewPrinter(&format)
-	p.SetResourceOutput(&buf)
-
-	ch := &cmdutil.Helper{
-		Printer: p,
-		Config:  &config.Config{Organization: org},
-		Client: func() (*ps.Client, error) {
-			return &ps.Client{
-				MoveTables: svc,
-			}, nil
-		},
-	}
+	ch := moveTablesTestHelper(org, svc, vtctldSvc, &buf)
 
 	cmd := MoveTablesCmd(ch)
 	cmd.SetArgs([]string{"create", db, branch,
@@ -110,40 +115,42 @@ func TestMoveTablesCreate(t *testing.T) {
 	err := cmd.Execute()
 	c.Assert(err, qt.IsNil)
 	c.Assert(svc.CreateFnInvoked, qt.IsTrue)
+	c.Assert(vtctldSvc.GetOperationFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.JSONEquals, map[string]string{"summary": "created"})
 }
 
 func TestMoveTablesCreateWithDeferSecondaryKeysFalse(t *testing.T) {
 	c := qt.New(t)
+	setMoveTablesPollInterval(t, 0)
 
 	org := "my-org"
 	db := "my-db"
 	branch := "my-branch"
 
 	svc := &mock.MoveTablesService{
-		CreateFn: func(ctx context.Context, req *ps.MoveTablesCreateRequest) (json.RawMessage, error) {
+		CreateFn: func(ctx context.Context, req *ps.MoveTablesCreateRequest) (*ps.VtctldOperationReference, error) {
 			c.Assert(req.Workflow, qt.Equals, "my-workflow")
 			c.Assert(req.TargetKeyspace, qt.Equals, "target-ks")
 			c.Assert(req.SourceKeyspace, qt.Equals, "source-ks")
 			c.Assert(req.DeferSecondaryKeys, qt.IsNotNil)
 			c.Assert(*req.DeferSecondaryKeys, qt.IsFalse)
-			return json.RawMessage(`{"summary":"created"}`), nil
+			return &ps.VtctldOperationReference{ID: "create-op"}, nil
+		},
+	}
+
+	vtctldSvc := &mock.VtctldService{
+		GetOperationFn: func(ctx context.Context, req *ps.GetVtctldOperationRequest) (*ps.VtctldOperation, error) {
+			return &ps.VtctldOperation{
+				ID:        "create-op",
+				State:     "completed",
+				Completed: true,
+				Result:    json.RawMessage(`{"summary":"created"}`),
+			}, nil
 		},
 	}
 
 	var buf bytes.Buffer
-	format := printer.JSON
-	p := printer.NewPrinter(&format)
-	p.SetResourceOutput(&buf)
-
-	ch := &cmdutil.Helper{
-		Printer: p,
-		Config:  &config.Config{Organization: org},
-		Client: func() (*ps.Client, error) {
-			return &ps.Client{
-				MoveTables: svc,
-			}, nil
-		},
-	}
+	ch := moveTablesTestHelper(org, svc, vtctldSvc, &buf)
 
 	cmd := MoveTablesCmd(ch)
 	cmd.SetArgs([]string{"create", db, branch,
@@ -155,17 +162,19 @@ func TestMoveTablesCreateWithDeferSecondaryKeysFalse(t *testing.T) {
 	err := cmd.Execute()
 	c.Assert(err, qt.IsNil)
 	c.Assert(svc.CreateFnInvoked, qt.IsTrue)
+	c.Assert(vtctldSvc.GetOperationFnInvoked, qt.IsTrue)
 }
 
 func TestMoveTablesCreateWithAllFlags(t *testing.T) {
 	c := qt.New(t)
+	setMoveTablesPollInterval(t, 0)
 
 	org := "my-org"
 	db := "my-db"
 	branch := "my-branch"
 
 	svc := &mock.MoveTablesService{
-		CreateFn: func(ctx context.Context, req *ps.MoveTablesCreateRequest) (json.RawMessage, error) {
+		CreateFn: func(ctx context.Context, req *ps.MoveTablesCreateRequest) (*ps.VtctldOperationReference, error) {
 			c.Assert(req.Workflow, qt.Equals, "my-workflow")
 			c.Assert(req.TargetKeyspace, qt.Equals, "target-ks")
 			c.Assert(req.SourceKeyspace, qt.Equals, "source-ks")
@@ -176,24 +185,23 @@ func TestMoveTablesCreateWithAllFlags(t *testing.T) {
 			c.Assert(*req.AtomicCopy, qt.IsTrue)
 			c.Assert(req.AllTables, qt.IsNotNil)
 			c.Assert(*req.AllTables, qt.IsTrue)
-			return json.RawMessage(`{"summary":"created"}`), nil
+			return &ps.VtctldOperationReference{ID: "create-op"}, nil
+		},
+	}
+
+	vtctldSvc := &mock.VtctldService{
+		GetOperationFn: func(ctx context.Context, req *ps.GetVtctldOperationRequest) (*ps.VtctldOperation, error) {
+			return &ps.VtctldOperation{
+				ID:        "create-op",
+				State:     "completed",
+				Completed: true,
+				Result:    json.RawMessage(`{"summary":"created"}`),
+			}, nil
 		},
 	}
 
 	var buf bytes.Buffer
-	format := printer.JSON
-	p := printer.NewPrinter(&format)
-	p.SetResourceOutput(&buf)
-
-	ch := &cmdutil.Helper{
-		Printer: p,
-		Config:  &config.Config{Organization: org},
-		Client: func() (*ps.Client, error) {
-			return &ps.Client{
-				MoveTables: svc,
-			}, nil
-		},
-	}
+	ch := moveTablesTestHelper(org, svc, vtctldSvc, &buf)
 
 	cmd := MoveTablesCmd(ch)
 	cmd.SetArgs([]string{"create", db, branch,
@@ -209,6 +217,8 @@ func TestMoveTablesCreateWithAllFlags(t *testing.T) {
 	err := cmd.Execute()
 	c.Assert(err, qt.IsNil)
 	c.Assert(svc.CreateFnInvoked, qt.IsTrue)
+	c.Assert(vtctldSvc.GetOperationFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.JSONEquals, map[string]string{"summary": "created"})
 }
 
 func TestMoveTablesSwitchTrafficWithMaxLag(t *testing.T) {
