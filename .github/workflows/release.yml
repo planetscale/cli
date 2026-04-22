@@ -34,6 +34,9 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
           persist-credentials: true
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4.0.0
+
       - name: Configure Git
         run: |
           git config user.name "planetscale-cli[bot]"

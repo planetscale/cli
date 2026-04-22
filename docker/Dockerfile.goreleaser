@@ -5,3 +5,8 @@ RUN apt-get update --allow-releaseinfo-change || apt-get update; apt-get install
 
 ARG SYFT_VERSION=1.38.0
 RUN wget -O syft.deb https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/syft_${SYFT_VERSION}_linux_amd64.deb && dpkg -i syft.deb
+
+RUN mv /entrypoint.sh /base-entrypoint.sh
+COPY docker/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+ENTRYPOINT ["/usr/bin/tini", "--", "/entrypoint.sh"]
