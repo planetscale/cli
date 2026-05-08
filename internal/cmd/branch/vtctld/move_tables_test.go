@@ -82,6 +82,7 @@ func TestMoveTablesCreate(t *testing.T) {
 			c.Assert(req.Cells, qt.IsNil)
 			c.Assert(req.TabletTypes, qt.IsNil)
 			c.Assert(req.ExcludeTables, qt.IsNil)
+			c.Assert(req.TenantID, qt.Equals, "")
 			c.Assert(req.AtomicCopy, qt.IsNil)
 			return &ps.VtctldOperationReference{ID: "create-op"}, nil
 		},
@@ -181,6 +182,7 @@ func TestMoveTablesCreateWithAllFlags(t *testing.T) {
 			c.Assert(req.Cells, qt.DeepEquals, []string{"us-east-1", "us-west-2"})
 			c.Assert(req.TabletTypes, qt.DeepEquals, []string{"PRIMARY", "REPLICA"})
 			c.Assert(req.ExcludeTables, qt.DeepEquals, []string{"t1", "t2"})
+			c.Assert(req.TenantID, qt.Equals, "tenant-123")
 			c.Assert(req.AtomicCopy, qt.IsNotNil)
 			c.Assert(*req.AtomicCopy, qt.IsTrue)
 			c.Assert(req.AllTables, qt.IsNotNil)
@@ -212,6 +214,7 @@ func TestMoveTablesCreateWithAllFlags(t *testing.T) {
 		"--cells", "us-east-1,us-west-2",
 		"--tablet-types", "PRIMARY,REPLICA",
 		"--exclude-tables", "t1,t2",
+		"--tenant-id", "tenant-123",
 		"--atomic-copy",
 	})
 	err := cmd.Execute()

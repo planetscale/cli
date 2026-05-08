@@ -49,6 +49,7 @@ func MoveTablesCreateCmd(ch *cmdutil.Helper) *cobra.Command {
 		onDDL                        string
 		shardedAutoIncrementHandling string
 		sourceTimeZone               string
+		tenantID                     string
 		cells                        []string
 		tabletTypes                  []string
 		excludeTables                []string
@@ -84,6 +85,7 @@ func MoveTablesCreateCmd(ch *cmdutil.Helper) *cobra.Command {
 				OnDDL:                        flags.onDDL,
 				ShardedAutoIncrementHandling: flags.shardedAutoIncrementHandling,
 				SourceTimeZone:               flags.sourceTimeZone,
+				TenantID:                     flags.tenantID,
 				Cells:                        flags.cells,
 				TabletTypes:                  flags.tabletTypes,
 				ExcludeTables:                flags.excludeTables,
@@ -131,6 +133,7 @@ func MoveTablesCreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().StringVar(&flags.onDDL, "on-ddl", "", "DDL handling strategy (IGNORE, STOP, EXEC, EXEC_IGNORE)")
 	cmd.Flags().StringVar(&flags.shardedAutoIncrementHandling, "sharded-auto-increment-handling", "", "Auto increment handling for sharded keyspaces")
 	cmd.Flags().StringVar(&flags.sourceTimeZone, "source-time-zone", "", "Source time zone")
+	cmd.Flags().StringVar(&flags.tenantID, "tenant-id", "", "Tenant ID")
 	cmd.Flags().StringSliceVar(&flags.cells, "cells", nil, "Cells to restrict the workflow to (comma-separated)")
 	cmd.Flags().StringSliceVar(&flags.tabletTypes, "tablet-types", nil, "Tablet types to use for the workflow (comma-separated)")
 	cmd.Flags().StringSliceVar(&flags.excludeTables, "exclude-tables", nil, "Tables to exclude from the move (comma-separated)")
