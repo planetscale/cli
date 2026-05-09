@@ -190,6 +190,16 @@ func TestHexBlobWrapperEncodeToHexPrefix(t *testing.T) {
 	c.Assert(string(result), qt.Equals, "0x00ffaabb")
 }
 
+func TestHexBlobWrapperEncodeToHexEmpty(t *testing.T) {
+	c := qt.New(t)
+
+	mock := &mockTableWriter{}
+	wrapper := NewHexBlobWrapper(mock, []string{"data"})
+
+	result := wrapper.encodeToHex([]byte{})
+	c.Assert(string(result), qt.Equals, "X''")
+}
+
 func TestHexBlobWrapperShouldHexEncodeDetectsNull(t *testing.T) {
 	c := qt.New(t)
 

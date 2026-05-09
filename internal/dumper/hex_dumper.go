@@ -60,6 +60,10 @@ func (w *hexBlobWrapper) shouldHexEncode(v sqltypes.Value) bool {
 
 // encodeToHex converts raw bytes to hex with 0x prefix (MySQL format)
 func (w *hexBlobWrapper) encodeToHex(raw []byte) []byte {
+	if len(raw) == 0 {
+		return []byte("X''")
+	}
+
 	encoded := hex.EncodeToString(raw)
 	// Prefix with 0x for MySQL compatibility
 	return append([]byte("0x"), []byte(encoded)...)
