@@ -43,7 +43,7 @@ func (w *sqlWriter) WriteRow(row []sqltypes.Value) (int, error) {
 		} else {
 			str := v.String()
 			switch {
-			case v.IsSigned(), v.IsUnsigned(), v.IsFloat(), v.IsIntegral(), v.Type() == querypb.Type_DECIMAL:
+			case v.IsSigned(), v.IsUnsigned(), v.IsFloat(), v.IsIntegral(), v.Type() == querypb.Type_DECIMAL, v.Type() == querypb.Type_VARBINARY:
 				values = append(values, str)
 			default:
 				values = append(values, fmt.Sprintf("\"%s\"", escapeBytes(v.Raw())))
