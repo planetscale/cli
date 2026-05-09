@@ -12,6 +12,7 @@ func TestSQLWriterVARBINARYHex(t *testing.T) {
 	c := qt.New(t)
 
 	cfg := &Config{
+		HexBlob:  true,
 		StmtSize: 1024,
 	}
 
@@ -41,6 +42,7 @@ func TestSQLWriterVARBINARYNotQuoted(t *testing.T) {
 	c := qt.New(t)
 
 	cfg := &Config{
+		HexBlob:  true,
 		StmtSize: 1024,
 	}
 
@@ -64,6 +66,33 @@ func TestSQLWriterVARBINARYNotQuoted(t *testing.T) {
 	rowStr := rows[0]
 	c.Assert(rowStr, qt.Not(qt.Contains), `"0x`)
 	c.Assert(rowStr, qt.Contains, "0x776f726c64")
+}
+
+func TestSQLWriterVARBINARYQuotedWithoutHexBlob(t *testing.T) {
+	c := qt.New(t)
+
+	cfg := &Config{
+		StmtSize: 1024,
+	}
+
+	writer := newSQLWriter(cfg, "test_table")
+	err := writer.Initialize([]string{"id", "data"})
+	c.Assert(err, qt.IsNil)
+
+	row := []sqltypes.Value{
+		sqltypes.MakeTrusted(querypb.Type_INT32, []byte("456")),
+		sqltypes.MakeTrusted(querypb.Type_VARBINARY, []byte("world")),
+	}
+
+	_, err = writer.WriteRow(row)
+	c.Assert(err, qt.IsNil)
+
+	rows := writer.rows
+	c.Assert(len(rows), qt.Equals, 1)
+
+	rowStr := rows[0]
+	c.Assert(rowStr, qt.Contains, `"world"`)
+	c.Assert(rowStr, qt.Not(qt.Contains), "0x776f726c64")
 }
 
 func TestSQLWriterVARINTAR(t *testing.T) {
