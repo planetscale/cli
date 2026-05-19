@@ -314,6 +314,7 @@ func MoveTablesSwitchTrafficCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().Int64Var(&flags.maxReplicationLagAllowed, "max-replication-lag-allowed", 0, "Maximum replication lag allowed in seconds")
 	cmd.MarkFlagRequired("workflow")        // nolint:errcheck
 	cmd.MarkFlagRequired("target-keyspace") // nolint:errcheck
+	cmd.MarkFlagRequired("tablet-types")    // nolint:errcheck
 
 	return cmd
 }
