@@ -442,8 +442,10 @@ func MoveTablesCancelCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().StringVar(&flags.targetKeyspace, "target-keyspace", "", "Target keyspace")
 	cmd.Flags().BoolVar(&flags.keepData, "keep-data", false, "Keep the data in the target keyspace")
 	cmd.Flags().BoolVar(&flags.keepRoutingRules, "keep-routing-rules", false, "Keep the routing rules")
-	cmd.MarkFlagRequired("workflow")        // nolint:errcheck
-	cmd.MarkFlagRequired("target-keyspace") // nolint:errcheck
+	cmd.MarkFlagRequired("workflow")           // nolint:errcheck
+	cmd.MarkFlagRequired("target-keyspace")    // nolint:errcheck
+	cmd.MarkFlagRequired("keep-data")          // nolint:errcheck
+	cmd.MarkFlagRequired("keep-routing-rules") // nolint:errcheck
 
 	return cmd
 }
@@ -518,8 +520,10 @@ func MoveTablesCompleteCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().BoolVar(&flags.keepRoutingRules, "keep-routing-rules", false, "Keep the routing rules")
 	cmd.Flags().BoolVar(&flags.renameTables, "rename-tables", false, "Rename source tables instead of dropping them")
 	cmd.Flags().BoolVar(&flags.dryRun, "dry-run", false, "Only show what would be done")
-	cmd.MarkFlagRequired("workflow")        // nolint:errcheck
-	cmd.MarkFlagRequired("target-keyspace") // nolint:errcheck
+	cmd.MarkFlagRequired("workflow")           // nolint:errcheck
+	cmd.MarkFlagRequired("target-keyspace")    // nolint:errcheck
+	cmd.MarkFlagRequired("keep-data")          // nolint:errcheck
+	cmd.MarkFlagRequired("keep-routing-rules") // nolint:errcheck
 
 	return cmd
 }
