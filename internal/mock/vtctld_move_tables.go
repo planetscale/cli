@@ -23,7 +23,7 @@ type MoveTablesService struct {
 	ReverseTrafficFn        func(context.Context, *ps.MoveTablesReverseTrafficRequest) (*ps.VtctldOperationReference, error)
 	ReverseTrafficFnInvoked bool
 
-	CancelFn        func(context.Context, *ps.MoveTablesCancelRequest) (json.RawMessage, error)
+	CancelFn        func(context.Context, *ps.MoveTablesCancelRequest) (*ps.VtctldOperationReference, error)
 	CancelFnInvoked bool
 
 	CompleteFn        func(context.Context, *ps.MoveTablesCompleteRequest) (*ps.VtctldOperationReference, error)
@@ -55,7 +55,7 @@ func (s *MoveTablesService) ReverseTraffic(ctx context.Context, req *ps.MoveTabl
 	return s.ReverseTrafficFn(ctx, req)
 }
 
-func (s *MoveTablesService) Cancel(ctx context.Context, req *ps.MoveTablesCancelRequest) (json.RawMessage, error) {
+func (s *MoveTablesService) Cancel(ctx context.Context, req *ps.MoveTablesCancelRequest) (*ps.VtctldOperationReference, error) {
 	s.CancelFnInvoked = true
 	return s.CancelFn(ctx, req)
 }

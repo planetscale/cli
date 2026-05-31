@@ -314,6 +314,7 @@ func MoveTablesSwitchTrafficCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().Int64Var(&flags.maxReplicationLagAllowed, "max-replication-lag-allowed", 0, "Maximum replication lag allowed in seconds")
 	cmd.MarkFlagRequired("workflow")        // nolint:errcheck
 	cmd.MarkFlagRequired("target-keyspace") // nolint:errcheck
+	cmd.MarkFlagRequired("tablet-types")    // nolint:errcheck
 
 	return cmd
 }
@@ -428,7 +429,12 @@ func MoveTablesCancelCmd(ch *cmdutil.Helper) *cobra.Command {
 				req.KeepRoutingRules = &flags.keepRoutingRules
 			}
 
-			data, err := client.MoveTables.Cancel(ctx, req)
+			operation, err := client.MoveTables.Cancel(ctx, req)
+			if err != nil {
+				return cmdutil.HandleError(err)
+			}
+
+			data, err := waitForMoveTablesOperationResult(ctx, client, ch.Config.Organization, database, branch, operation.ID)
 			if err != nil {
 				return cmdutil.HandleError(err)
 			}

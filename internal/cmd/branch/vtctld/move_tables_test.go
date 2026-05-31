@@ -284,6 +284,30 @@ func TestMoveTablesSwitchTrafficWithMaxLag(t *testing.T) {
 	c.Assert(buf.String(), qt.JSONEquals, map[string]string{"summary": "switched"})
 }
 
+func TestMoveTablesSwitchTrafficRequiresTabletTypes(t *testing.T) {
+	c := qt.New(t)
+
+	org := "my-org"
+	db := "my-db"
+	branch := "my-branch"
+
+	svc := &mock.MoveTablesService{}
+	var buf bytes.Buffer
+	ch := moveTablesTestHelper(org, svc, &mock.VtctldService{}, &buf)
+
+	cmd := MoveTablesCmd(ch)
+	cmd.SetArgs([]string{"switch-traffic", db, branch,
+		"--workflow", "my-workflow",
+		"--target-keyspace", "target-ks",
+	})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNotNil)
+	c.Assert(err.Error(), qt.Contains, "required flag")
+	c.Assert(svc.SwitchTrafficFnInvoked, qt.IsFalse)
+	c.Assert(buf.String(), qt.Equals, "")
+}
+
 func TestMoveTablesReverseTrafficWithFlags(t *testing.T) {
 	c := qt.New(t)
 	setMoveTablesPollInterval(t, 0)
@@ -426,6 +450,7 @@ func TestMoveTablesSwitchTrafficOperationFailure(t *testing.T) {
 	cmd.SetArgs([]string{"switch-traffic", db, branch,
 		"--workflow", "my-workflow",
 		"--target-keyspace", "target-ks",
+		"--tablet-types", "PRIMARY",
 	})
 
 	err := cmd.Execute()
@@ -464,11 +489,62 @@ func TestMoveTablesSwitchTrafficOperationTimeout(t *testing.T) {
 	cmd.SetArgs([]string{"switch-traffic", db, branch,
 		"--workflow", "my-workflow",
 		"--target-keyspace", "target-ks",
+		"--tablet-types", "PRIMARY",
 	})
 
 	err := cmd.Execute()
 	c.Assert(err, qt.ErrorMatches, "timed out waiting for vtctld operation switch-op to finish")
 	c.Assert(buf.String(), qt.Equals, "")
+}
+
+func TestMoveTablesCancelWithFlags(t *testing.T) {
+	c := qt.New(t)
+	setMoveTablesPollInterval(t, 0)
+
+	org := "my-org"
+	db := "my-db"
+	branch := "my-branch"
+
+	keepData := false
+	svc := &mock.MoveTablesService{
+		CancelFn: func(ctx context.Context, req *ps.MoveTablesCancelRequest) (*ps.VtctldOperationReference, error) {
+			c.Assert(req.Workflow, qt.Equals, "my-workflow")
+			c.Assert(req.TargetKeyspace, qt.Equals, "target-ks")
+			c.Assert(req.KeepData, qt.IsNotNil)
+			c.Assert(*req.KeepData, qt.Equals, keepData)
+			return &ps.VtctldOperationReference{ID: "cancel-op"}, nil
+		},
+	}
+	vtctldSvc := &mock.VtctldService{
+		GetOperationFn: func(ctx context.Context, req *ps.GetVtctldOperationRequest) (*ps.VtctldOperation, error) {
+			c.Assert(req.Organization, qt.Equals, org)
+			c.Assert(req.Database, qt.Equals, db)
+			c.Assert(req.Branch, qt.Equals, branch)
+			c.Assert(req.ID, qt.Equals, "cancel-op")
+
+			return &ps.VtctldOperation{
+				ID:        "cancel-op",
+				State:     "completed",
+				Completed: true,
+				Result:    json.RawMessage(`{"summary":"cancelled"}`),
+			}, nil
+		},
+	}
+
+	var buf bytes.Buffer
+	ch := moveTablesTestHelper(org, svc, vtctldSvc, &buf)
+
+	cmd := MoveTablesCmd(ch)
+	cmd.SetArgs([]string{"cancel", db, branch,
+		"--workflow", "my-workflow",
+		"--target-keyspace", "target-ks",
+		"--keep-data=false",
+	})
+	err := cmd.Execute()
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.CancelFnInvoked, qt.IsTrue)
+	c.Assert(vtctldSvc.GetOperationFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.JSONEquals, map[string]string{"summary": "cancelled"})
 }
 
 func TestMoveTablesShow(t *testing.T) {
