@@ -506,12 +506,15 @@ func TestMoveTablesCancelWithFlags(t *testing.T) {
 	branch := "my-branch"
 
 	keepData := false
+	keepRoutingRules := false
 	svc := &mock.MoveTablesService{
 		CancelFn: func(ctx context.Context, req *ps.MoveTablesCancelRequest) (*ps.VtctldOperationReference, error) {
 			c.Assert(req.Workflow, qt.Equals, "my-workflow")
 			c.Assert(req.TargetKeyspace, qt.Equals, "target-ks")
 			c.Assert(req.KeepData, qt.IsNotNil)
 			c.Assert(*req.KeepData, qt.Equals, keepData)
+			c.Assert(req.KeepRoutingRules, qt.IsNotNil)
+			c.Assert(*req.KeepRoutingRules, qt.Equals, keepRoutingRules)
 			return &ps.VtctldOperationReference{ID: "cancel-op"}, nil
 		},
 	}
@@ -539,6 +542,7 @@ func TestMoveTablesCancelWithFlags(t *testing.T) {
 		"--workflow", "my-workflow",
 		"--target-keyspace", "target-ks",
 		"--keep-data=false",
+		"--keep-routing-rules=false",
 	})
 	err := cmd.Execute()
 	c.Assert(err, qt.IsNil)
