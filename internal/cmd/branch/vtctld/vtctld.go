@@ -23,6 +23,7 @@ func VtctldCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.AddCommand(ListTabletsCmd(ch))
 	cmd.AddCommand(StartWorkflowCmd(ch))
 	cmd.AddCommand(StopWorkflowCmd(ch))
+	cmd.AddCommand(ThrottlerCmd(ch))
 
 	return cmd
 }
