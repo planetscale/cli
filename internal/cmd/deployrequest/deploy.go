@@ -19,6 +19,7 @@ func DeployCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
 		wait        bool
 		instant_ddl bool
+		strategy    string
 	}
 
 	cmd := &cobra.Command{
@@ -51,11 +52,16 @@ func DeployCmd(ch *cmdutil.Helper) *cobra.Command {
 					printer.BoldBlue(database), printer.BoldBlue(number))
 			}
 
+			if flags.strategy != "" && flags.strategy != "serial" && flags.strategy != "parallel" {
+				return fmt.Errorf("invalid --strategy %q: must be \"serial\" or \"parallel\"", flags.strategy)
+			}
+
 			dr, err := client.DeployRequests.Deploy(ctx, &planetscale.PerformDeployRequest{
 				Organization: ch.Config.Organization,
 				Database:     database,
 				Number:       number,
 				InstantDDL:   flags.instant_ddl,
+				Strategy:     flags.strategy,
 			})
 
 			if err != nil {
@@ -111,6 +117,9 @@ func DeployCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().BoolVar(&flags.wait, "wait", false, "wait until the branch is deployed")
 	cmd.Flags().BoolVar(&flags.instant_ddl, "instant", false, "If enabled, the schema migrations from this deploy request will be applied using MySQL’s built-in ALGORITHM=INSTANT option. Deployment will be faster, but cannot be reverted.")
 	// cmd.Flags().MarkHidden("instant")
+
+	cmd.Flags().StringVar(&flags.strategy, "strategy", "", "Deployment strategy: \"serial\" (default) or \"parallel\". Parallel deployments must be enabled for the database.")
+	_ = cmd.Flags().MarkHidden("strategy")
 
 	return cmd
 }

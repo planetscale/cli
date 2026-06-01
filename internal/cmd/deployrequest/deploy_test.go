@@ -116,3 +116,92 @@ func TestDeployRequest_DeployBranchName(t *testing.T) {
 	res := &ps.DeployRequest{Number: number}
 	c.Assert(buf.String(), qt.JSONEquals, res)
 }
+
+func TestDeployRequest_DeployStrategyFlag(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	db := "planetscale"
+	var number uint64 = 10
+
+	svc := &mock.DeployRequestsService{
+		DeployFn: func(ctx context.Context, req *ps.PerformDeployRequest) (*ps.DeployRequest, error) {
+			c.Assert(req.Strategy, qt.Equals, "parallel")
+			return &ps.DeployRequest{Number: number}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: org,
+		},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{
+				DeployRequests: svc,
+			}, nil
+		},
+	}
+
+	cmd := DeployCmd(ch)
+	cmd.SetArgs([]string{db, strconv.FormatUint(number, 10), "--strategy", "parallel"})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.DeployFnInvoked, qt.IsTrue)
+}
+
+func TestDeployRequest_DeployStrategyFlagInvalid(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	db := "planetscale"
+	var number uint64 = 10
+
+	svc := &mock.DeployRequestsService{
+		DeployFn: func(ctx context.Context, req *ps.PerformDeployRequest) (*ps.DeployRequest, error) {
+			t.Fatal("Deploy should not be called when --strategy is invalid")
+			return nil, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: org,
+		},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{
+				DeployRequests: svc,
+			}, nil
+		},
+	}
+
+	cmd := DeployCmd(ch)
+	cmd.SetArgs([]string{db, strconv.FormatUint(number, 10), "--strategy", "nope"})
+	cmd.SetOut(&bytes.Buffer{})
+	cmd.SetErr(&bytes.Buffer{})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.ErrorMatches, `invalid --strategy "nope".*`)
+	c.Assert(svc.DeployFnInvoked, qt.IsFalse)
+}
+
+func TestDeployRequest_DeployStrategyFlagHidden(t *testing.T) {
+	c := qt.New(t)
+
+	cmd := DeployCmd(&cmdutil.Helper{})
+	flag := cmd.Flags().Lookup("strategy")
+	c.Assert(flag, qt.IsNotNil)
+	c.Assert(flag.Hidden, qt.IsTrue)
+}
