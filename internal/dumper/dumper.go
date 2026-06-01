@@ -89,7 +89,8 @@ type dumpContext struct {
 }
 
 func (d *Dumper) Run(ctx context.Context) error {
-	initPool, err := NewPool(d.log, d.cfg.Threads, d.cfg.Address, d.cfg.User, d.cfg.Password, nil, "")
+	// dumpTableSchema runs against initPool, so it needs --shard's USE pin in SessionVars too.
+	initPool, err := NewPool(d.log, d.cfg.Threads, d.cfg.Address, d.cfg.User, d.cfg.Password, d.cfg.SessionVars, "")
 	if err != nil {
 		return err
 	}
