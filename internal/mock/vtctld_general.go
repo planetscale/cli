@@ -23,6 +23,15 @@ type VtctldService struct {
 	StopWorkflowFn        func(context.Context, *ps.VtctldStopWorkflowRequest) (json.RawMessage, error)
 	StopWorkflowFnInvoked bool
 
+	GetThrottlerStatusFn        func(context.Context, *ps.VtctldGetThrottlerStatusRequest) (json.RawMessage, error)
+	GetThrottlerStatusFnInvoked bool
+
+	CheckThrottlerFn        func(context.Context, *ps.VtctldCheckThrottlerRequest) (json.RawMessage, error)
+	CheckThrottlerFnInvoked bool
+
+	UpdateThrottlerConfigFn        func(context.Context, *ps.VtctldUpdateThrottlerConfigRequest) (json.RawMessage, error)
+	UpdateThrottlerConfigFnInvoked bool
+
 	GetOperationFn        func(context.Context, *ps.GetVtctldOperationRequest) (*ps.VtctldOperation, error)
 	GetOperationFnInvoked bool
 }
@@ -50,6 +59,21 @@ func (s *VtctldService) StartWorkflow(ctx context.Context, req *ps.VtctldStartWo
 func (s *VtctldService) StopWorkflow(ctx context.Context, req *ps.VtctldStopWorkflowRequest) (json.RawMessage, error) {
 	s.StopWorkflowFnInvoked = true
 	return s.StopWorkflowFn(ctx, req)
+}
+
+func (s *VtctldService) GetThrottlerStatus(ctx context.Context, req *ps.VtctldGetThrottlerStatusRequest) (json.RawMessage, error) {
+	s.GetThrottlerStatusFnInvoked = true
+	return s.GetThrottlerStatusFn(ctx, req)
+}
+
+func (s *VtctldService) CheckThrottler(ctx context.Context, req *ps.VtctldCheckThrottlerRequest) (json.RawMessage, error) {
+	s.CheckThrottlerFnInvoked = true
+	return s.CheckThrottlerFn(ctx, req)
+}
+
+func (s *VtctldService) UpdateThrottlerConfig(ctx context.Context, req *ps.VtctldUpdateThrottlerConfigRequest) (json.RawMessage, error) {
+	s.UpdateThrottlerConfigFnInvoked = true
+	return s.UpdateThrottlerConfigFn(ctx, req)
 }
 
 func (s *VtctldService) GetOperation(ctx context.Context, req *ps.GetVtctldOperationRequest) (*ps.VtctldOperation, error) {
