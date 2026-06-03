@@ -21,6 +21,18 @@ type Process struct {
 	Info    string `header:"info" json:"info"`
 }
 
+// ProcesslistResult is the CLI representation of a process list response.
+type ProcesslistResult struct {
+	Keyspace  string       `json:"keyspace"`
+	Shard     string       `json:"shard"`
+	Tablet    string       `json:"tablet"`
+	Processes []ps.Process `json:"processes"`
+}
+
+func (p *ProcesslistResult) MarshalCSVValue() interface{} {
+	return toProcesses(p.Processes)
+}
+
 func toProcesses(processes []ps.Process) []*Process {
 	rows := make([]*Process, 0, len(processes))
 	for _, p := range processes {
@@ -36,6 +48,15 @@ func toProcesses(processes []ps.Process) []*Process {
 		})
 	}
 	return rows
+}
+
+func toProcesslistResult(result *ps.ProcesslistResult) *ProcesslistResult {
+	return &ProcesslistResult{
+		Keyspace:  result.Keyspace,
+		Shard:     result.Shard,
+		Tablet:    result.Tablet,
+		Processes: result.Processes,
+	}
 }
 
 // ProcesslistCmd manages MySQL process lists for a Vitess branch.
@@ -115,7 +136,7 @@ pass --shard. Process IDs shown here can be passed to
 				return ch.Printer.PrintResource(toProcesses(result.Processes))
 			}
 
-			return ch.Printer.PrintJSON(result)
+			return ch.Printer.PrintResource(toProcesslistResult(result))
 		},
 	}
 

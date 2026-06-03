@@ -10,6 +10,31 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// KillProcessResult is the CLI representation of a killed process response.
+type KillProcessResult struct {
+	Success  bool   `header:"success" json:"success"`
+	Keyspace string `header:"keyspace" json:"keyspace"`
+	Shard    string `header:"shard" json:"shard"`
+	Tablet   string `header:"tablet" json:"tablet"`
+	ID       int64  `header:"id,text" json:"id"`
+	Kind     string `header:"kind" json:"kind"`
+}
+
+func (k *KillProcessResult) MarshalCSVValue() interface{} {
+	return []*KillProcessResult{k}
+}
+
+func toKillProcessResult(result *ps.KillProcessResult) *KillProcessResult {
+	return &KillProcessResult{
+		Success:  result.Success,
+		Keyspace: result.Keyspace,
+		Shard:    result.Shard,
+		Tablet:   result.Tablet,
+		ID:       result.ID,
+		Kind:     result.Kind,
+	}
+}
+
 // ProcesslistKillCmd kills a running MySQL process on a Vitess branch.
 func ProcesslistKillCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
@@ -84,7 +109,7 @@ the same primary tablet that the process list was read from, so the same
 				return nil
 			}
 
-			return ch.Printer.PrintJSON(result)
+			return ch.Printer.PrintResource(toKillProcessResult(result))
 		},
 	}
 

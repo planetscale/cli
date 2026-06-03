@@ -63,6 +63,37 @@ func TestProcesslist(t *testing.T) {
 	c.Assert(buf.String(), qt.Contains, `"user": "vt_app"`)
 }
 
+func TestProcesslist_CSVOutput(t *testing.T) {
+	c := qt.New(t)
+
+	org, db, branch := "my-org", "my-db", "my-branch"
+
+	svc := &mock.ProcesslistService{
+		ListFn: func(ctx context.Context, req *ps.ProcesslistRequest) (*ps.ProcesslistResult, error) {
+			return &ps.ProcesslistResult{
+				Keyspace: "commerce",
+				Shard:    "-80",
+				Tablet:   "zone1-1001",
+				Processes: []ps.Process{
+					{ID: 101, User: "vt_app", Host: "10.0.0.1", DB: "main", Command: "Query", Time: 42, State: "running", Info: "SELECT 1"},
+				},
+			}, nil
+		},
+	}
+
+	var buf bytes.Buffer
+	ch := processlistTestHelper(org, svc, printer.CSV, &buf)
+
+	cmd := ProcesslistCmd(ch)
+	cmd.SetArgs([]string{"show", db, branch})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(buf.String(), qt.Contains, "101,vt_app,10.0.0.1,main,Query,42,running,SELECT 1")
+	c.Assert(buf.String(), qt.Not(qt.Contains), "{")
+	c.Assert(buf.String(), qt.Not(qt.Contains), `"processes"`)
+}
+
 func TestProcesslist_NoTargetFlags(t *testing.T) {
 	c := qt.New(t)
 

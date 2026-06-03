@@ -42,6 +42,32 @@ func TestKill(t *testing.T) {
 	c.Assert(buf.String(), qt.Contains, `"success": true`)
 }
 
+func TestKill_CSVOutput(t *testing.T) {
+	c := qt.New(t)
+
+	org, db, branch := "my-org", "my-db", "my-branch"
+
+	svc := &mock.ProcesslistService{
+		KillFn: func(ctx context.Context, req *ps.KillProcessRequest) (*ps.KillProcessResult, error) {
+			return &ps.KillProcessResult{
+				Success: true, Keyspace: "main", Shard: "-", Tablet: "zone1-2001", ID: req.ID, Kind: "connection",
+			}, nil
+		},
+	}
+
+	var buf bytes.Buffer
+	ch := processlistTestHelper(org, svc, printer.CSV, &buf)
+
+	cmd := ProcesslistCmd(ch)
+	cmd.SetArgs([]string{"kill", db, branch, "101"})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(buf.String(), qt.Contains, "true,main,-,zone1-2001,101,connection")
+	c.Assert(buf.String(), qt.Not(qt.Contains), "{")
+	c.Assert(buf.String(), qt.Not(qt.Contains), `"success"`)
+}
+
 func TestKill_QueryFlag(t *testing.T) {
 	c := qt.New(t)
 
