@@ -68,7 +68,7 @@ the same primary tablet that the process list was read from, so the same
 				case ps.ErrNotFound:
 					return cmdutil.HandleNotFoundWithServiceTokenCheck(
 						ctx, cmd, ch.Config, ch.Client, err, "read_branch",
-						"process %s does not exist on branch %s in database %s (organization: %s)",
+						"process %s or branch %s does not exist in database %s (organization: %s)",
 						printer.BoldBlue(id), printer.BoldBlue(branch), printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
 				default:
 					return cmdutil.HandleError(err)

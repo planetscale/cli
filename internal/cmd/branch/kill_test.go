@@ -105,6 +105,7 @@ func TestKill_NotFound(t *testing.T) {
 
 	c.Assert(err, qt.IsNotNil)
 	c.Assert(err.Error(), qt.Contains, "process")
+	c.Assert(err.Error(), qt.Contains, "or branch")
 	c.Assert(err.Error(), qt.Contains, "101")
 	c.Assert(err.Error(), qt.Contains, branch)
 	c.Assert(err.Error(), qt.Contains, db)
