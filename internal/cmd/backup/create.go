@@ -56,5 +56,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 		},
 	}
 
+	cmd.Flags().StringVar(&createReq.Name, "name", "", "Optional name for the backup")
+
 	return cmd
 }
