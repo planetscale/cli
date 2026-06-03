@@ -35,6 +35,7 @@ func BranchCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.AddCommand(RoutingRulesCmd(ch))
 	cmd.AddCommand(SafeMigrationsCmd(ch))
 	cmd.AddCommand(LintCmd(ch))
+	cmd.AddCommand(ProcesslistCmd(ch))
 	cmd.AddCommand(vtctld.VtctldCmd(ch))
 	cmd.AddCommand(InfraCmd(ch))
 
