@@ -182,6 +182,8 @@ github.com/planetscale/planetscale-go v0.168.1-0.20260610223405-068c67a15c9b h1:
 github.com/planetscale/planetscale-go v0.168.1-0.20260610223405-068c67a15c9b/go.mod h1:paQCI5SgquuoewvMQM7R+r1XJO868bdP6/ihGidYRM0=
 github.com/planetscale/planetscale-go v0.168.1 h1:ikGvRC5YlQQiNf7vF9vxi6WBXNs2NokNie0sazMTTcA=
 github.com/planetscale/planetscale-go v0.168.1/go.mod h1:paQCI5SgquuoewvMQM7R+r1XJO868bdP6/ihGidYRM0=
+github.com/planetscale/planetscale-go v0.168.2-0.20260611211624-109b07535906 h1:n+R4KmP6Ud62T8tvCK9uJ5pzpx4g0NHaRahecOH/C4M=
+github.com/planetscale/planetscale-go v0.168.2-0.20260611211624-109b07535906/go.mod h1:paQCI5SgquuoewvMQM7R+r1XJO868bdP6/ihGidYRM0=
 github.com/planetscale/psdb v0.0.0-20250717190954-65c6661ab6e4 h1:Xv5pj20Rhfty1Tv0OVcidg4ez4PvGrpKvb6rvUwQgDs=
 github.com/planetscale/psdb v0.0.0-20250717190954-65c6661ab6e4/go.mod h1:M52h5IWxAcbdQ1hSZrLAGQC4ZXslxEsK/Wh9nu3wdWs=
 github.com/planetscale/psdbproxy v0.0.0-20250728082226-3f4ea3a74ec7 h1:aRd6vdE1fyuSI4RVj7oCr8lFmgqXvpnPUmN85VbZCp8=

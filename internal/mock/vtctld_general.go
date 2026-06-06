@@ -17,6 +17,9 @@ type VtctldService struct {
 	GetRoutingRulesFn        func(context.Context, *ps.VtctldGetRoutingRulesRequest) (json.RawMessage, error)
 	GetRoutingRulesFnInvoked bool
 
+	GetShardFn        func(context.Context, *ps.VtctldGetShardRequest) (json.RawMessage, error)
+	GetShardFnInvoked bool
+
 	ListTabletsFn        func(context.Context, *ps.ListBranchTabletsRequest) ([]*ps.TabletGroup, error)
 	ListTabletsFnInvoked bool
 
@@ -52,6 +55,11 @@ func (s *VtctldService) ListKeyspaces(ctx context.Context, req *ps.VtctldListKey
 func (s *VtctldService) GetRoutingRules(ctx context.Context, req *ps.VtctldGetRoutingRulesRequest) (json.RawMessage, error) {
 	s.GetRoutingRulesFnInvoked = true
 	return s.GetRoutingRulesFn(ctx, req)
+}
+
+func (s *VtctldService) GetShard(ctx context.Context, req *ps.VtctldGetShardRequest) (json.RawMessage, error) {
+	s.GetShardFnInvoked = true
+	return s.GetShardFn(ctx, req)
 }
 
 func (s *VtctldService) ListTablets(ctx context.Context, req *ps.ListBranchTabletsRequest) ([]*ps.TabletGroup, error) {
