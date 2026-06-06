@@ -14,6 +14,9 @@ type VtctldService struct {
 	ListKeyspacesFn        func(context.Context, *ps.VtctldListKeyspacesRequest) (json.RawMessage, error)
 	ListKeyspacesFnInvoked bool
 
+	GetRoutingRulesFn        func(context.Context, *ps.VtctldGetRoutingRulesRequest) (json.RawMessage, error)
+	GetRoutingRulesFnInvoked bool
+
 	ListTabletsFn        func(context.Context, *ps.ListBranchTabletsRequest) ([]*ps.TabletGroup, error)
 	ListTabletsFnInvoked bool
 
@@ -44,6 +47,11 @@ func (s *VtctldService) ListWorkflows(ctx context.Context, req *ps.VtctldListWor
 func (s *VtctldService) ListKeyspaces(ctx context.Context, req *ps.VtctldListKeyspacesRequest) (json.RawMessage, error) {
 	s.ListKeyspacesFnInvoked = true
 	return s.ListKeyspacesFn(ctx, req)
+}
+
+func (s *VtctldService) GetRoutingRules(ctx context.Context, req *ps.VtctldGetRoutingRulesRequest) (json.RawMessage, error) {
+	s.GetRoutingRulesFnInvoked = true
+	return s.GetRoutingRulesFn(ctx, req)
 }
 
 func (s *VtctldService) ListTablets(ctx context.Context, req *ps.ListBranchTabletsRequest) ([]*ps.TabletGroup, error) {
