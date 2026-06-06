@@ -27,7 +27,7 @@ func TestGetRoutingRules(t *testing.T) {
 			c.Assert(req.Organization, qt.Equals, org)
 			c.Assert(req.Database, qt.Equals, db)
 			c.Assert(req.Branch, qt.Equals, branch)
-			return json.RawMessage(`{"rules":{"rules":[]}}`), nil
+			return json.RawMessage(`{"rules":[]}`), nil
 		},
 	}
 
