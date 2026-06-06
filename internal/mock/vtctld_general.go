@@ -20,6 +20,9 @@ type VtctldService struct {
 	GetShardFn        func(context.Context, *ps.VtctldGetShardRequest) (json.RawMessage, error)
 	GetShardFnInvoked bool
 
+	SetShardTabletControlFn        func(context.Context, *ps.VtctldSetShardTabletControlRequest) (json.RawMessage, error)
+	SetShardTabletControlFnInvoked bool
+
 	ListTabletsFn        func(context.Context, *ps.ListBranchTabletsRequest) ([]*ps.TabletGroup, error)
 	ListTabletsFnInvoked bool
 
@@ -60,6 +63,11 @@ func (s *VtctldService) GetRoutingRules(ctx context.Context, req *ps.VtctldGetRo
 func (s *VtctldService) GetShard(ctx context.Context, req *ps.VtctldGetShardRequest) (json.RawMessage, error) {
 	s.GetShardFnInvoked = true
 	return s.GetShardFn(ctx, req)
+}
+
+func (s *VtctldService) SetShardTabletControl(ctx context.Context, req *ps.VtctldSetShardTabletControlRequest) (json.RawMessage, error) {
+	s.SetShardTabletControlFnInvoked = true
+	return s.SetShardTabletControlFn(ctx, req)
 }
 
 func (s *VtctldService) ListTablets(ctx context.Context, req *ps.ListBranchTabletsRequest) ([]*ps.TabletGroup, error) {

@@ -176,12 +176,6 @@ github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c/go.mod h1:7rwL4CYBLnjL
 github.com/pkg/diff v0.0.0-20210226163009-20ebb0f2a09e/go.mod h1:pJLUxLENpZxwdsKMEsNbx1VGcRFpLqf3715MtcvvzbA=
 github.com/planetscale/noglog v0.2.1-0.20210421230640-bea75fcd2e8e h1:MZ8D+Z3m2vvqGZLvoQfpaGg/j1fNDr4j03s3PRz4rVY=
 github.com/planetscale/noglog v0.2.1-0.20210421230640-bea75fcd2e8e/go.mod h1:hwAsSPQdvPa3WcfKfzTXxtEq/HlqwLjQasfO6QbGo4Q=
-github.com/planetscale/planetscale-go v0.168.1-0.20260609224250-8001bcf5eba5 h1:z+ao9YVEVP9GHpyB1Gmw48dt2+RQsS+BAOTE1QUigrw=
-github.com/planetscale/planetscale-go v0.168.1-0.20260609224250-8001bcf5eba5/go.mod h1:paQCI5SgquuoewvMQM7R+r1XJO868bdP6/ihGidYRM0=
-github.com/planetscale/planetscale-go v0.168.1-0.20260610223405-068c67a15c9b h1:VJwfNPEI1sYyo52bhN/f8xxeHoh/BhE/0XWaNy5jYOk=
-github.com/planetscale/planetscale-go v0.168.1-0.20260610223405-068c67a15c9b/go.mod h1:paQCI5SgquuoewvMQM7R+r1XJO868bdP6/ihGidYRM0=
-github.com/planetscale/planetscale-go v0.168.1 h1:ikGvRC5YlQQiNf7vF9vxi6WBXNs2NokNie0sazMTTcA=
-github.com/planetscale/planetscale-go v0.168.1/go.mod h1:paQCI5SgquuoewvMQM7R+r1XJO868bdP6/ihGidYRM0=
 github.com/planetscale/planetscale-go v0.168.2-0.20260611211624-109b07535906 h1:n+R4KmP6Ud62T8tvCK9uJ5pzpx4g0NHaRahecOH/C4M=
 github.com/planetscale/planetscale-go v0.168.2-0.20260611211624-109b07535906/go.mod h1:paQCI5SgquuoewvMQM7R+r1XJO868bdP6/ihGidYRM0=
 github.com/planetscale/psdb v0.0.0-20250717190954-65c6661ab6e4 h1:Xv5pj20Rhfty1Tv0OVcidg4ez4PvGrpKvb6rvUwQgDs=
