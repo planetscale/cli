@@ -169,8 +169,18 @@ type ClusterSKUSingleEngine struct {
 	orig *planetscale.ClusterSKU
 }
 
+type clusterSKUJSON struct {
+	*planetscale.ClusterSKU
+	Configuration string `json:"configuration"`
+	Replicas      string `json:"replicas"`
+}
+
 func (c *ClusterSKU) MarshalJSON() ([]byte, error) {
-	return json.MarshalIndent(c.orig, "", " ")
+	return json.MarshalIndent(&clusterSKUJSON{
+		ClusterSKU:    c.orig,
+		Configuration: c.Configuration,
+		Replicas:      c.Replicas,
+	}, "", " ")
 }
 
 func (c *ClusterSKU) MarshalCSVValue() interface{} {
@@ -178,7 +188,11 @@ func (c *ClusterSKU) MarshalCSVValue() interface{} {
 }
 
 func (c *ClusterSKUSingleEngine) MarshalJSON() ([]byte, error) {
-	return json.MarshalIndent(c.orig, "", " ")
+	return json.MarshalIndent(&clusterSKUJSON{
+		ClusterSKU:    c.orig,
+		Configuration: c.Configuration,
+		Replicas:      c.Replicas,
+	}, "", " ")
 }
 
 func (c *ClusterSKUSingleEngine) MarshalCSVValue() interface{} {

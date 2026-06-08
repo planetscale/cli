@@ -110,8 +110,8 @@ func TestSizeCluster_ListCmd_PostgreSQL(t *testing.T) {
 	// PostgreSQL clusters use ClusterSKUSingleEngine type (no engine column, has configuration and replicas)
 	// Each cluster shows twice: once as HA and once as single node
 	res := []*ClusterSKUSingleEngine{
-		{orig: orig[0]},
-		{orig: orig[0]},
+		{Configuration: "highly available", Replicas: "2", orig: orig[0]},
+		{Configuration: "single node", Replicas: "0", orig: orig[0]},
 	}
 
 	c.Assert(buf.String(), qt.JSONEquals, res)
@@ -158,7 +158,7 @@ func TestSizeCluster_ListCmd_MySQL(t *testing.T) {
 
 	// MySQL uses ClusterSKUSingleEngine type (no engine column, but has configuration and replicas)
 	res := []*ClusterSKUSingleEngine{
-		{orig: orig[0]},
+		{Configuration: "highly available", Replicas: "2", orig: orig[0]},
 	}
 
 	c.Assert(buf.String(), qt.JSONEquals, res)
