@@ -1574,6 +1574,124 @@ func TestEscapeBytes(t *testing.T) {
 	}
 }
 
+func TestQuoteIdentifier(t *testing.T) {
+	c := qt.New(t)
+
+	c.Assert(quoteIdentifier("simple"), qt.Equals, "`simple`")
+	c.Assert(quoteIdentifier("customer_report`$probe"), qt.Equals, "`customer_report``$probe`")
+	c.Assert(quoteIdentifier("display`name"), qt.Equals, "`display``name`")
+}
+
+func TestQuoteStringLiteral(t *testing.T) {
+	c := qt.New(t)
+
+	c.Assert(quoteStringLiteral("simple"), qt.Equals, "'simple'")
+	c.Assert(quoteStringLiteral("test'db"), qt.Equals, "'test''db'")
+}
+
+func TestDumperEscapesDiscoveredIdentifiers(t *testing.T) {
+	c := qt.New(t)
+
+	log := xlog.NewStdLog(xlog.Level(xlog.INFO))
+	fakedbs := driver.NewTestHandler(log)
+	server, err := driver.MockMysqlServer(log, fakedbs)
+	c.Assert(err, qt.IsNil)
+	c.Cleanup(func() { server.Close() })
+
+	address := server.Addr()
+	database := "test`db"
+	table := "customer_report`$probe"
+	column := "display`name"
+
+	selectResult := &sqltypes.Result{
+		Fields: []*querypb.Field{
+			{Name: column, Type: querypb.Type_VARCHAR},
+		},
+		Rows: [][]sqltypes.Value{
+			{sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("ok"))},
+		},
+	}
+
+	schemaResult := &sqltypes.Result{
+		Fields: []*querypb.Field{
+			{Name: "Table", Type: querypb.Type_VARCHAR},
+			{Name: "Create Table", Type: querypb.Type_VARCHAR},
+		},
+		Rows: [][]sqltypes.Value{
+			{
+				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte(table)),
+				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("CREATE TABLE `customer_report``$probe` (`display``name` varchar(255)) ENGINE=InnoDB")),
+			},
+		},
+	}
+
+	tablesResult := &sqltypes.Result{
+		Fields: []*querypb.Field{
+			{Name: "Tables_in_test`db", Type: querypb.Type_VARCHAR},
+		},
+		Rows: [][]sqltypes.Value{
+			{sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte(table))},
+		},
+	}
+
+	viewsResult := &sqltypes.Result{
+		Fields: []*querypb.Field{
+			{Name: "TABLE_NAME", Type: querypb.Type_VARCHAR},
+		},
+		Rows: [][]sqltypes.Value{},
+	}
+
+	fieldsResult := &sqltypes.Result{
+		Fields: []*querypb.Field{
+			{Name: "Field", Type: querypb.Type_VARCHAR},
+			{Name: "Type", Type: querypb.Type_VARCHAR},
+			{Name: "Null", Type: querypb.Type_VARCHAR},
+			{Name: "Key", Type: querypb.Type_VARCHAR},
+			{Name: "Default", Type: querypb.Type_VARCHAR},
+			{Name: "Extra", Type: querypb.Type_VARCHAR},
+		},
+		Rows: [][]sqltypes.Value{
+			testRow(column, ""),
+		},
+	}
+
+	fakedbs.AddQueryPattern("use .*", &sqltypes.Result{})
+	fakedbs.AddQueryPattern("show create table .*", schemaResult)
+	fakedbs.AddQueryPattern("show tables from .*", tablesResult)
+	fakedbs.AddQueryPattern("select table_name .* from information_schema.tables .*", viewsResult)
+	fakedbs.AddQueryPattern("show fields from .*", fieldsResult)
+	fakedbs.AddQueryPattern("select .* from .*", selectResult)
+	fakedbs.AddQueryPattern("set .*", &sqltypes.Result{})
+
+	cfg := &Config{
+		Database:      database,
+		Outdir:        c.TempDir(),
+		User:          "mock",
+		Password:      "mock",
+		Address:       address,
+		ChunksizeInMB: 1,
+		Threads:       16,
+		StmtSize:      10000,
+		IntervalMs:    500,
+		SessionVars:   []string{"SET @@radon_streaming_fetch='ON'"},
+	}
+
+	d, err := NewDumper(cfg)
+	c.Assert(err, qt.IsNil)
+
+	err = d.Run(context.Background())
+	c.Assert(err, qt.IsNil)
+
+	c.Assert(fakedbs.GetQueryCalledNum("SHOW TABLES FROM `test``db`"), qt.Equals, 1)
+	c.Assert(fakedbs.GetQueryCalledNum("SHOW CREATE TABLE `test``db`.`customer_report``$probe`"), qt.Equals, 1)
+	c.Assert(fakedbs.GetQueryCalledNum("SHOW FIELDS FROM `customer_report``$probe`"), qt.Equals, 1)
+	c.Assert(fakedbs.GetQueryCalledNum("SELECT `display``name` FROM `test``db`.`customer_report``$probe` "), qt.Equals, 1)
+
+	dat, err := os.ReadFile(cfg.Outdir + "/" + database + "." + table + ".00001.sql")
+	c.Assert(err, qt.IsNil)
+	c.Assert(string(dat), qt.Contains, "INSERT INTO `customer_report``$probe`(`display``name`) VALUES")
+}
+
 func TestDumperColumnIncludes(t *testing.T) {
 	c := qt.New(t)
 

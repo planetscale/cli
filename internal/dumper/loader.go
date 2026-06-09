@@ -270,7 +270,7 @@ func (l *Loader) restoreTableSchema(overwrite bool, tables []string, conn *Conne
 		name := strings.TrimSuffix(base, schemaSuffix)
 		db := l.databaseNameFromFilename(name)
 		tbl := strings.Split(name, ".")[1]
-		name = fmt.Sprintf("`%v`.`%v`", db, tbl)
+		name = fmt.Sprintf("%s.%s", quoteIdentifier(db), quoteIdentifier(tbl))
 
 		l.log.Info(
 			"working table",
@@ -278,7 +278,7 @@ func (l *Loader) restoreTableSchema(overwrite bool, tables []string, conn *Conne
 			zap.String("table ", tbl),
 		)
 
-		err := conn.Execute(fmt.Sprintf("USE `%s`", db))
+		err := conn.Execute(fmt.Sprintf("USE %s", quoteIdentifier(db)))
 		if err != nil {
 			return err
 		}
@@ -386,7 +386,7 @@ func (l *Loader) restoreViews(overwrite bool, views []string, conn *Connection) 
 		name := strings.TrimSuffix(base, viewSuffix)
 		db := strings.Split(name, ".")[0]
 		view := strings.Split(name, ".")[1]
-		name = fmt.Sprintf("`%v`.`%v`", db, view)
+		name = fmt.Sprintf("%s.%s", quoteIdentifier(db), quoteIdentifier(view))
 
 		l.log.Info(
 			"working view",
@@ -394,7 +394,7 @@ func (l *Loader) restoreViews(overwrite bool, views []string, conn *Connection) 
 			zap.String("view ", view),
 		)
 
-		err := conn.Execute(fmt.Sprintf("USE `%s`", db))
+		err := conn.Execute(fmt.Sprintf("USE %s", quoteIdentifier(db)))
 		if err != nil {
 			return err
 		}
@@ -483,7 +483,7 @@ func (l *Loader) restoreTable(ctx context.Context, table string, conn *Connectio
 		zap.Int("thread_conn_id", conn.ID),
 	)
 
-	err := conn.Execute(fmt.Sprintf("USE `%s`", db))
+	err := conn.Execute(fmt.Sprintf("USE %s", quoteIdentifier(db)))
 	if err != nil {
 		return 0, err
 	}

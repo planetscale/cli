@@ -249,7 +249,7 @@ func writeMetaData(outdir string) error {
 }
 
 func (d *Dumper) dumpTableSchema(conn *Connection, database string, table string, views map[string]bool) error {
-	qr, err := conn.Fetch(fmt.Sprintf("SHOW CREATE TABLE `%s`.`%s`", database, table))
+	qr, err := conn.Fetch(fmt.Sprintf("SHOW CREATE TABLE %s.%s", quoteIdentifier(database), quoteIdentifier(table)))
 	if err != nil {
 		return err
 	}
@@ -293,7 +293,7 @@ func (d *Dumper) dumpTable(ctx context.Context, conn *Connection, database strin
 		return err
 	}
 
-	cursor, err := conn.StreamFetch(fmt.Sprintf("SELECT %s FROM `%s`.`%s` %s", strings.Join(dumpCtx.selfields, ", "), database, table, dumpCtx.where))
+	cursor, err := conn.StreamFetch(fmt.Sprintf("SELECT %s FROM %s.%s %s", strings.Join(dumpCtx.selfields, ", "), quoteIdentifier(database), quoteIdentifier(table), dumpCtx.where))
 	if err != nil {
 		return err
 	}
@@ -387,9 +387,9 @@ func (d *Dumper) tableDumpContext(conn *Connection, table string) (*dumpContext,
 		ctx.fieldNames = append(ctx.fieldNames, name)
 		replacement, ok := d.cfg.Selects[table][name]
 		if ok {
-			ctx.selfields = append(ctx.selfields, fmt.Sprintf("%s AS `%s`", replacement, name))
+			ctx.selfields = append(ctx.selfields, fmt.Sprintf("%s AS %s", replacement, quoteIdentifier(name)))
 		} else {
-			ctx.selfields = append(ctx.selfields, fmt.Sprintf("`%s`", name))
+			ctx.selfields = append(ctx.selfields, quoteIdentifier(name))
 		}
 	}
 
@@ -406,7 +406,7 @@ func (d *Dumper) tableDumpContext(conn *Connection, table string) (*dumpContext,
 }
 
 func (d *Dumper) allTables(conn *Connection, database string) ([]string, error) {
-	qr, err := conn.Fetch(fmt.Sprintf("SHOW TABLES FROM `%s`", database))
+	qr, err := conn.Fetch(fmt.Sprintf("SHOW TABLES FROM %s", quoteIdentifier(database)))
 	if err != nil {
 		return nil, err
 	}
@@ -419,12 +419,12 @@ func (d *Dumper) allTables(conn *Connection, database string) ([]string, error) 
 }
 
 func (d *Dumper) allViews(conn *Connection, database string) (map[string]bool, error) {
-	query := `SELECT TABLE_NAME 
-			 FROM information_schema.TABLES 
-			 WHERE TABLE_SCHEMA LIKE '%s' 
-			 AND TABLE_TYPE = 'VIEW'
-			`
-	qr, err := conn.Fetch(fmt.Sprintf(query, database))
+	query := "SELECT TABLE_NAME \n" +
+		"\t\t\t FROM information_schema.TABLES \n" +
+		"\t\t\t WHERE TABLE_SCHEMA LIKE %s \n" +
+		"\t\t\t AND TABLE_TYPE = 'VIEW'\n" +
+		"\t\t\t"
+	qr, err := conn.Fetch(fmt.Sprintf(query, quoteStringLiteral(database)))
 	if err != nil {
 		return nil, err
 	}
@@ -466,7 +466,7 @@ func (d *Dumper) filterDatabases(conn *Connection, filter *regexp.Regexp, invert
 
 // dumpableFieldNames returns a slice that contains valid field names for the dump.
 func (d *Dumper) dumpableFieldNames(conn *Connection, table string) ([]string, error) {
-	qr, err := conn.Fetch(fmt.Sprintf("SHOW FIELDS FROM `%s`", table))
+	qr, err := conn.Fetch(fmt.Sprintf("SHOW FIELDS FROM %s", quoteIdentifier(table)))
 	if err != nil {
 		return nil, err
 	}
@@ -513,6 +513,14 @@ func writeFile(file string, data string) error {
 		return io.ErrShortWrite
 	}
 	return nil
+}
+
+func quoteIdentifier(identifier string) string {
+	return "`" + strings.ReplaceAll(identifier, "`", "``") + "`"
+}
+
+func quoteStringLiteral(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", "''") + "'"
 }
 
 // escapeBytes used to escape the literal byte.

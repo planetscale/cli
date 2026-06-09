@@ -100,3 +100,12 @@ func TestParseColumnIncludes(t *testing.T) {
 		})
 	}
 }
+
+func TestShardUseCommand(t *testing.T) {
+	c := qt.New(t)
+
+	c.Assert(shardUseCommand("commerce", "-80", false, false), qt.Equals, "USE `commerce/-80`;")
+	c.Assert(shardUseCommand("commerce", "-80", true, false), qt.Equals, "USE `commerce/-80@replica`;")
+	c.Assert(shardUseCommand("commerce", "-80", false, true), qt.Equals, "USE `commerce/-80@rdonly`;")
+	c.Assert(shardUseCommand("key`space", "sh`ard", false, false), qt.Equals, "USE `key``space/sh``ard`;")
+}
