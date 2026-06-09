@@ -9,6 +9,13 @@ import (
 )
 
 func ListTabletsCmd(ch *cmdutil.Helper) *cobra.Command {
+	var flags struct {
+		keyspace      string
+		shard         string
+		tabletType    string
+		tabletAliases []string
+	}
+
 	cmd := &cobra.Command{
 		Use:   "list-tablets <database> <branch>",
 		Short: "List tablets for a branch, grouped by keyspace and shard",
@@ -28,9 +35,13 @@ func ListTabletsCmd(ch *cmdutil.Helper) *cobra.Command {
 			defer end()
 
 			groups, err := client.Vtctld.ListTablets(ctx, &ps.ListBranchTabletsRequest{
-				Organization: ch.Config.Organization,
-				Database:     database,
-				Branch:       branch,
+				Organization:  ch.Config.Organization,
+				Database:      database,
+				Branch:        branch,
+				Keyspace:      flags.keyspace,
+				Shard:         flags.shard,
+				TabletType:    flags.tabletType,
+				TabletAliases: flags.tabletAliases,
 			})
 			if err != nil {
 				return cmdutil.HandleError(err)
@@ -40,6 +51,12 @@ func ListTabletsCmd(ch *cmdutil.Helper) *cobra.Command {
 			return ch.Printer.PrintJSON(groups)
 		},
 	}
+
+	cmd.Flags().StringVar(&flags.keyspace, "keyspace", "", "Only list tablets in this keyspace")
+	cmd.Flags().StringVar(&flags.shard, "shard", "", "Only list tablets in this shard (requires --keyspace)")
+	cmd.Flags().StringVar(&flags.tabletType, "tablet-type", "", "Only list tablets of this type (e.g. primary, replica, rdonly)")
+	cmd.Flags().StringSliceVar(&flags.tabletAliases, "tablet-alias", nil,
+		"Only list the tablet(s) with these aliases, e.g. zone1-0000000100 (comma-separated; overrides the other filters)")
 
 	return cmd
 }
