@@ -254,13 +254,13 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 
 	if flags.shard != "" {
 		if flags.replica {
-			useCmd := fmt.Sprintf("USE `%s/%s@replica`;", dbName, flags.shard)
+			useCmd := shardUseCommand(dbName, flags.shard, flags.replica, flags.rdonly)
 			cfg.SessionVars = append([]string{useCmd}, cfg.SessionVars...)
 		} else if flags.rdonly {
-			useCmd := fmt.Sprintf("USE `%s/%s@rdonly`;", dbName, flags.shard)
+			useCmd := shardUseCommand(dbName, flags.shard, flags.replica, flags.rdonly)
 			cfg.SessionVars = append([]string{useCmd}, cfg.SessionVars...)
 		} else {
-			useCmd := fmt.Sprintf("USE `%s/%s`;", dbName, flags.shard)
+			useCmd := shardUseCommand(dbName, flags.shard, flags.replica, flags.rdonly)
 			cfg.SessionVars = append([]string{useCmd}, cfg.SessionVars...)
 		}
 	}
@@ -391,4 +391,18 @@ func parseColumnIncludes(columns []string) (map[string]map[string]bool, error) {
 	}
 
 	return result, nil
+}
+
+func shardUseCommand(dbName string, shard string, replica bool, rdonly bool) string {
+	target := fmt.Sprintf("%s/%s", dbName, shard)
+	if replica {
+		target += "@replica"
+	} else if rdonly {
+		target += "@rdonly"
+	}
+	return fmt.Sprintf("USE %s;", quoteIdentifier(target))
+}
+
+func quoteIdentifier(identifier string) string {
+	return "`" + strings.ReplaceAll(identifier, "`", "``") + "`"
 }

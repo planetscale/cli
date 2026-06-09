@@ -231,3 +231,137 @@ func TestRestoreTableSchema_DropTableCalledOnce(t *testing.T) {
 	err = loader.restoreTableSchema(cfg.OverwriteTables, []string{schemaFile}, conn)
 	c.Assert(err, qt.IsNil, qt.Commentf("DROP TABLE should be called exactly once. If called multiple times, this test will fail."))
 }
+
+func TestRestoreTableSchema_EscapesGeneratedIdentifiers(t *testing.T) {
+	c := qt.New(t)
+
+	log := xlog.NewStdLog(xlog.Level(xlog.ERROR))
+	fakedbs := driver.NewTestHandler(log)
+	server, err := driver.MockMysqlServer(log, fakedbs)
+	c.Assert(err, qt.IsNil)
+	defer server.Close()
+
+	address := server.Addr()
+	fakedbs.AddQuery("USE `test``db`", &sqltypes.Result{})
+	fakedbs.AddQuery("SET FOREIGN_KEY_CHECKS=0", &sqltypes.Result{})
+	fakedbs.AddQuery("DROP TABLE IF EXISTS `test``db`.`customer_report``$probe`", &sqltypes.Result{})
+	fakedbs.AddQuery("CREATE TABLE `customer_report``$probe` (\n    id INT PRIMARY KEY\n)", &sqltypes.Result{})
+
+	tempDir := c.TempDir()
+	schemaFile := tempDir + "/test`db.customer_report`$probe-schema.sql"
+	schemaContent := "CREATE TABLE `customer_report``$probe` (\n    id INT PRIMARY KEY\n);"
+	err = os.WriteFile(schemaFile, []byte(schemaContent), 0644)
+	c.Assert(err, qt.IsNil)
+
+	cfg := &Config{
+		Database:        "test`db",
+		Outdir:          tempDir,
+		User:            "mock",
+		Password:        "mock",
+		Threads:         1,
+		Address:         address,
+		IntervalMs:      500,
+		OverwriteTables: true,
+	}
+	loader, err := NewLoader(cfg)
+	c.Assert(err, qt.IsNil)
+
+	pool, err := NewPool(loader.log, cfg.Threads, cfg.Address, cfg.User, cfg.Password, cfg.SessionVars, "")
+	c.Assert(err, qt.IsNil)
+	defer pool.Close()
+
+	conn := pool.Get()
+	defer pool.Put(conn)
+
+	err = loader.restoreTableSchema(cfg.OverwriteTables, []string{schemaFile}, conn)
+	c.Assert(err, qt.IsNil)
+}
+
+func TestRestoreViews_EscapesGeneratedIdentifiers(t *testing.T) {
+	c := qt.New(t)
+
+	log := xlog.NewStdLog(xlog.Level(xlog.ERROR))
+	fakedbs := driver.NewTestHandler(log)
+	server, err := driver.MockMysqlServer(log, fakedbs)
+	c.Assert(err, qt.IsNil)
+	defer server.Close()
+
+	address := server.Addr()
+	fakedbs.AddQuery("USE `test``db`", &sqltypes.Result{})
+	fakedbs.AddQuery("SET FOREIGN_KEY_CHECKS=0", &sqltypes.Result{})
+	fakedbs.AddQuery("DROP VIEW IF EXISTS `test``db`.`report``view`", &sqltypes.Result{})
+	fakedbs.AddQueryPattern("create view .*", &sqltypes.Result{})
+
+	tempDir := c.TempDir()
+	viewFile := tempDir + "/test`db.report`view-schema-view.sql"
+	viewContent := "CREATE VIEW `report``view` AS SELECT 1;"
+	err = os.WriteFile(viewFile, []byte(viewContent), 0644)
+	c.Assert(err, qt.IsNil)
+
+	cfg := &Config{
+		Database:        "test`db",
+		Outdir:          tempDir,
+		User:            "mock",
+		Password:        "mock",
+		Threads:         1,
+		Address:         address,
+		IntervalMs:      500,
+		OverwriteTables: true,
+	}
+	loader, err := NewLoader(cfg)
+	c.Assert(err, qt.IsNil)
+
+	pool, err := NewPool(loader.log, cfg.Threads, cfg.Address, cfg.User, cfg.Password, cfg.SessionVars, "")
+	c.Assert(err, qt.IsNil)
+	defer pool.Close()
+
+	conn := pool.Get()
+	defer pool.Put(conn)
+
+	err = loader.restoreViews(cfg.OverwriteTables, []string{viewFile}, conn)
+	c.Assert(err, qt.IsNil)
+}
+
+func TestRestoreTable_EscapesUseDatabase(t *testing.T) {
+	c := qt.New(t)
+
+	log := xlog.NewStdLog(xlog.Level(xlog.ERROR))
+	fakedbs := driver.NewTestHandler(log)
+	server, err := driver.MockMysqlServer(log, fakedbs)
+	c.Assert(err, qt.IsNil)
+	defer server.Close()
+
+	address := server.Addr()
+	fakedbs.AddQuery("USE `test``db`", &sqltypes.Result{})
+	fakedbs.AddQuery("SET FOREIGN_KEY_CHECKS=0", &sqltypes.Result{})
+	fakedbs.AddQuery("INSERT INTO `customer_report``$probe` VALUES (1)", &sqltypes.Result{})
+
+	tempDir := c.TempDir()
+	dataFile := tempDir + "/test`db.customer_report`$probe.00001.sql"
+	dataContent := "INSERT INTO `customer_report``$probe` VALUES (1);"
+	err = os.WriteFile(dataFile, []byte(dataContent), 0644)
+	c.Assert(err, qt.IsNil)
+
+	cfg := &Config{
+		Database:     "test`db",
+		Outdir:       tempDir,
+		User:         "mock",
+		Password:     "mock",
+		Threads:      1,
+		Address:      address,
+		IntervalMs:   500,
+		MaxQuerySize: 1024,
+	}
+	loader, err := NewLoader(cfg)
+	c.Assert(err, qt.IsNil)
+
+	pool, err := NewPool(loader.log, cfg.Threads, cfg.Address, cfg.User, cfg.Password, cfg.SessionVars, "")
+	c.Assert(err, qt.IsNil)
+	defer pool.Close()
+
+	conn := pool.Get()
+	defer pool.Put(conn)
+
+	_, err = loader.restoreTable(context.Background(), dataFile, conn)
+	c.Assert(err, qt.IsNil)
+}

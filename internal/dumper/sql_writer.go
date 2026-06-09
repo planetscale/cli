@@ -21,7 +21,7 @@ type sqlWriter struct {
 func newSQLWriter(cfg *Config, table string) *sqlWriter {
 	return &sqlWriter{
 		cfg:     cfg,
-		table:   table,
+		table:   quoteIdentifier(table),
 		rows:    make([]string, 0, 256),
 		inserts: make([]string, 0, 256),
 	}
@@ -30,7 +30,7 @@ func newSQLWriter(cfg *Config, table string) *sqlWriter {
 func (w *sqlWriter) Initialize(fieldNames []string) error {
 	w.fields = make([]string, len(fieldNames))
 	for i, name := range fieldNames {
-		w.fields[i] = fmt.Sprintf("`%s`", name)
+		w.fields[i] = quoteIdentifier(name)
 	}
 	return nil
 }
@@ -58,7 +58,7 @@ func (w *sqlWriter) WriteRow(row []sqltypes.Value) (int, error) {
 	w.chunkbytes += rowBytes
 
 	if w.stmtsize >= w.cfg.StmtSize {
-		insertone := fmt.Sprintf("INSERT INTO `%s`(%s) VALUES\n%s", w.table, strings.Join(w.fields, ","), strings.Join(w.rows, ",\n"))
+		insertone := fmt.Sprintf("INSERT INTO %s(%s) VALUES\n%s", w.table, strings.Join(w.fields, ","), strings.Join(w.rows, ",\n"))
 		w.inserts = append(w.inserts, insertone)
 		w.rows = w.rows[:0]
 		w.stmtsize = 0
@@ -87,7 +87,7 @@ func (w *sqlWriter) Flush(outdir, database, table string, fileNo int) error {
 func (w *sqlWriter) Close(outdir, database, table string, fileNo int) error {
 	if w.chunkbytes > 0 {
 		if len(w.rows) > 0 {
-			insertone := fmt.Sprintf("INSERT INTO `%s`(%s) VALUES\n%s", w.table, strings.Join(w.fields, ","), strings.Join(w.rows, ",\n"))
+			insertone := fmt.Sprintf("INSERT INTO %s(%s) VALUES\n%s", w.table, strings.Join(w.fields, ","), strings.Join(w.rows, ",\n"))
 			w.inserts = append(w.inserts, insertone)
 		}
 		return w.Flush(outdir, database, table, fileNo)
