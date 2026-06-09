@@ -219,13 +219,22 @@ func MySQLClientPath() (string, mysql.AuthMethodDescription, error) {
 		return "", authMethod, fmt.Errorf("failed to run 'mysql --version': %w", err)
 	}
 
-	v := versionRegex.FindStringSubmatch(string(out))
+	outStr := string(out)
+
+	// Handle MariaDB clients gracefully
+	if strings.Contains(outStr, "MariaDB") {
+		// MariaDB clients use mysql_native_password by default
+		// https://mariadb.com/docs/server/reference/plugins/authentication-plugins/authentication-plugin-mysql_native_password
+		return path, mysql.MysqlNativePassword, nil
+	}
+
+	v := versionRegex.FindStringSubmatch(outStr)
 	if len(v) != 4 {
-		return "", authMethod, fmt.Errorf("could not parse server version from: %s", string(out))
+		return "", authMethod, fmt.Errorf("could not parse server version from: %s", outStr)
 	}
 	major, err := strconv.Atoi(v[1])
 	if err != nil {
-		return "", authMethod, fmt.Errorf("could not parse server version from: %s", string(out))
+		return "", authMethod, fmt.Errorf("could not parse server version from: %s", outStr)
 	}
 
 	if major < 8 {
