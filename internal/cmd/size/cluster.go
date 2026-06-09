@@ -153,6 +153,7 @@ type ClusterSKU struct {
 	Replicas      string `header:"replicas" json:"replicas"`
 
 	orig *planetscale.ClusterSKU
+	rate *int64
 }
 
 // ClusterSKUSingleEngine is the format for single-engine views (--engine mysql or --engine postgresql).
@@ -167,10 +168,23 @@ type ClusterSKUSingleEngine struct {
 	Replicas      string `header:"replicas" json:"replicas"`
 
 	orig *planetscale.ClusterSKU
+	rate *int64
+}
+
+type clusterSKUJSON struct {
+	*planetscale.ClusterSKU
+	Rate          *int64 `json:"rate"`
+	Configuration string `json:"configuration"`
+	Replicas      string `json:"replicas"`
 }
 
 func (c *ClusterSKU) MarshalJSON() ([]byte, error) {
-	return json.MarshalIndent(c.orig, "", " ")
+	return json.MarshalIndent(&clusterSKUJSON{
+		ClusterSKU:    c.orig,
+		Rate:          c.rate,
+		Configuration: c.Configuration,
+		Replicas:      c.Replicas,
+	}, "", " ")
 }
 
 func (c *ClusterSKU) MarshalCSVValue() interface{} {
@@ -178,7 +192,12 @@ func (c *ClusterSKU) MarshalCSVValue() interface{} {
 }
 
 func (c *ClusterSKUSingleEngine) MarshalJSON() ([]byte, error) {
-	return json.MarshalIndent(c.orig, "", " ")
+	return json.MarshalIndent(&clusterSKUJSON{
+		ClusterSKU:    c.orig,
+		Rate:          c.rate,
+		Configuration: c.Configuration,
+		Replicas:      c.Replicas,
+	}, "", " ")
 }
 
 func (c *ClusterSKUSingleEngine) MarshalCSVValue() interface{} {
@@ -261,6 +280,7 @@ func toClusterSKUs(items []clusterSKUWithEngine, onlyMetal bool) []*ClusterSKU {
 				Configuration: "highly available",
 				Replicas:      "2",
 				orig:          item.sku,
+				rate:          item.sku.Rate,
 			})
 
 			// Single node version using replica_rate (only for non-metal clusters)
@@ -277,6 +297,7 @@ func toClusterSKUs(items []clusterSKUWithEngine, onlyMetal bool) []*ClusterSKU {
 					Configuration: "single node",
 					Replicas:      "0",
 					orig:          item.sku,
+					rate:          item.sku.ReplicaRate,
 				})
 			}
 		} else {
@@ -292,6 +313,7 @@ func toClusterSKUs(items []clusterSKUWithEngine, onlyMetal bool) []*ClusterSKU {
 				Configuration: "highly available",
 				Replicas:      "2",
 				orig:          item.sku,
+				rate:          item.sku.Rate,
 			})
 		}
 	}
@@ -322,6 +344,7 @@ func toClusterSKUsSingleEngine(items []clusterSKUWithEngine, onlyMetal bool) []*
 				Configuration: "highly available",
 				Replicas:      "2",
 				orig:          item.sku,
+				rate:          item.sku.Rate,
 			})
 
 			// Single node version using replica_rate (only for non-metal clusters)
@@ -337,6 +360,7 @@ func toClusterSKUsSingleEngine(items []clusterSKUWithEngine, onlyMetal bool) []*
 					Configuration: "single node",
 					Replicas:      "0",
 					orig:          item.sku,
+					rate:          item.sku.ReplicaRate,
 				})
 			}
 		} else {
@@ -351,6 +375,7 @@ func toClusterSKUsSingleEngine(items []clusterSKUWithEngine, onlyMetal bool) []*
 				Configuration: "highly available",
 				Replicas:      "2",
 				orig:          item.sku,
+				rate:          item.sku.Rate,
 			})
 		}
 	}

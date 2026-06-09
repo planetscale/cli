@@ -529,3 +529,96 @@ func TestBranch_CreateCmd_GenuineNotFound(t *testing.T) {
 	c.Assert(branchSvc.CreateFnInvoked, qt.IsTrue)
 	c.Assert(orgSvc.ListFnInvoked, qt.IsTrue)
 }
+
+func TestBranch_CreateCmd_OrgNotFound(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "nonexistent-org"
+	db := "planetscale"
+	branch := "development"
+
+	orgSvc := &mock.OrganizationsService{
+		GetFn: func(ctx context.Context, req *ps.GetOrganizationRequest) (*ps.Organization, error) {
+			c.Assert(req.Organization, qt.Equals, org)
+			return nil, &ps.Error{Code: ps.ErrNotFound}
+		},
+	}
+
+	dbSvc := &mock.DatabaseService{
+		GetFn: func(ctx context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
+			return nil, &ps.Error{Code: ps.ErrNotFound}
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: org},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{
+				Organizations: orgSvc,
+				Databases:     dbSvc,
+			}, nil
+		},
+	}
+
+	cmd := CreateCmd(ch)
+	cmd.SetArgs([]string{db, branch})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNotNil)
+	c.Assert(err.Error(), qt.Contains, "organization "+org+" does not exist")
+	c.Assert(err.Error(), qt.Not(qt.Contains), branch)
+	c.Assert(orgSvc.GetFnInvoked, qt.IsTrue)
+}
+
+func TestBranch_CreateCmd_SourceDatabaseNotFound(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	db := "nonexistent-db"
+	branch := "development"
+
+	orgSvc := &mock.OrganizationsService{
+		GetFn: func(ctx context.Context, req *ps.GetOrganizationRequest) (*ps.Organization, error) {
+			c.Assert(req.Organization, qt.Equals, org)
+			return &ps.Organization{Name: org}, nil
+		},
+	}
+
+	dbSvc := &mock.DatabaseService{
+		GetFn: func(ctx context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
+			c.Assert(req.Database, qt.Equals, db)
+			return nil, &ps.Error{Code: ps.ErrNotFound}
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: org},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{
+				Organizations: orgSvc,
+				Databases:     dbSvc,
+			}, nil
+		},
+	}
+
+	cmd := CreateCmd(ch)
+	cmd.SetArgs([]string{db, branch})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNotNil)
+	c.Assert(err.Error(), qt.Contains, "source database "+db+" does not exist in organization "+org)
+	c.Assert(err.Error(), qt.Not(qt.Contains), branch)
+	c.Assert(orgSvc.GetFnInvoked, qt.IsTrue)
+}
