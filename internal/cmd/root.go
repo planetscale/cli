@@ -25,7 +25,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/planetscale/cli/internal/cmd/dataimports"
 	"github.com/planetscale/cli/internal/cmd/mcp"
 	"github.com/planetscale/cli/internal/cmd/role"
 	"github.com/planetscale/cli/internal/cmd/size"
@@ -40,6 +39,7 @@ import (
 	"github.com/planetscale/cli/internal/cmd/branch"
 	"github.com/planetscale/cli/internal/cmd/connect"
 	"github.com/planetscale/cli/internal/cmd/database"
+	"github.com/planetscale/cli/internal/cmd/dataimports"
 	"github.com/planetscale/cli/internal/cmd/deployrequest"
 	"github.com/planetscale/cli/internal/cmd/keyspace"
 	"github.com/planetscale/cli/internal/cmd/org"
@@ -316,7 +316,6 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 	workflowCmd.GroupID = "vitess"
 	rootCmd.AddCommand(workflowCmd)
 
-	// Postgres-specific commands
 	roleCmd := role.RoleCmd(ch)
 	roleCmd.GroupID = "postgres"
 	rootCmd.AddCommand(roleCmd)
