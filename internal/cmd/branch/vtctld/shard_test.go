@@ -29,7 +29,7 @@ func TestGetShard(t *testing.T) {
 			c.Assert(req.Branch, qt.Equals, branch)
 			c.Assert(req.Keyspace, qt.Equals, "commerce")
 			c.Assert(req.Shard, qt.Equals, "-")
-			return json.RawMessage(`{"keyspace":"commerce","name":"-"}`), nil
+			return json.RawMessage(`{"tablet_controls":[{"tablet_type":"TABLET_TYPE_RDONLY","cells":["zone1"],"denied_tables":["t"]}]}`), nil
 		},
 	}
 
