@@ -236,6 +236,9 @@ func (s *Client) List(ctx context.Context, sort SortMode) (ConnectionList, error
 		select {
 		case <-time.After(delay):
 		case <-ctx.Done():
+			if callerCtx.Err() != nil {
+				return ConnectionList{}, fmt.Errorf("list connections: %w", callerCtx.Err())
+			}
 			if havePartial {
 				return partial, nil
 			}

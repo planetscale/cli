@@ -652,6 +652,36 @@ func TestClient_ListRetryWaitHonorsContextCancellation(t *testing.T) {
 	}
 }
 
+func TestClient_ListPartialRetryWaitHonorsContextCancellation(t *testing.T) {
+	var calls atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		calls.Add(1)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, partialInstanceListResponse)
+	}))
+	defer srv.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+
+	c := newClientWithTimings(t, srv.URL, 500*time.Millisecond, 250*time.Millisecond, 0)
+	start := time.Now()
+	_, err := c.List(ctx, SortByTransactionStart)
+	elapsed := time.Since(start)
+	if err == nil {
+		t.Fatal("List: want context error, got nil")
+	}
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("err = %v, want errors.Is(err, context.DeadlineExceeded)", err)
+	}
+	if got := calls.Load(); got != 1 {
+		t.Fatalf("calls = %d, want 1 because context expired during partial retry wait", got)
+	}
+	if elapsed > time.Second {
+		t.Fatalf("List took %v, want context cancellation to interrupt partial retry wait", elapsed)
+	}
+}
+
 func TestClient_ListHonorsRetryAfterHeader(t *testing.T) {
 	var calls atomic.Int32
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
