@@ -192,21 +192,33 @@ func (s *Client) List(ctx context.Context, sort SortMode) (ConnectionList, error
 	}
 
 	deadline := time.Now().Add(s.retryBudget)
+	var partial ConnectionList
+	havePartial := false
 	for {
 		list, retryAfter, err := s.tryList(ctx, sort)
-		if err == nil {
+		switch {
+		case err == nil && !hasUnreachableInstance(list):
 			return list, nil
-		}
-		if isTimeoutError(err) && ctx.Err() != nil {
+		case err == nil:
+			// 200 OK, but the server flagged one or more instances unreachable
+			// (a partial fan-out failure). These are usually momentary under
+			// load and clear within a poll or two, so retry within the budget.
+			// Retry locally; the response carries no Retry-After hint.
+			partial, havePartial = list, true
+			retryAfter = 0
+		case isTimeoutError(err) && ctx.Err() != nil:
 			if callerCtx.Err() != nil {
 				return ConnectionList{}, fmt.Errorf("list connections: %w", callerCtx.Err())
 			}
 			return ConnectionList{}, fmt.Errorf("list connections: request timed out after %s, please retry", s.cfg.RequestTimeout)
-		}
-		if !errors.Is(err, errListWarming) {
+		case !errors.Is(err, errListWarming):
 			return ConnectionList{}, err
 		}
+
 		if s.retryBudget <= 0 {
+			if havePartial {
+				return partial, nil
+			}
 			return ConnectionList{}, errListWarmingExhausted
 		}
 
@@ -215,15 +227,33 @@ func (s *Client) List(ctx context.Context, sort SortMode) (ConnectionList, error
 			delay = s.retryDelay()
 		}
 		if time.Now().Add(delay).After(deadline) {
+			if havePartial {
+				return partial, nil
+			}
 			return ConnectionList{}, errListWarmingExhausted
 		}
 
 		select {
 		case <-time.After(delay):
 		case <-ctx.Done():
+			if havePartial {
+				return partial, nil
+			}
 			return ConnectionList{}, fmt.Errorf("list connections: %w", ctx.Err())
 		}
 	}
+}
+
+// hasUnreachableInstance reports whether the server flagged any instance as
+// unreachable in an otherwise-successful list response. These partial fan-out
+// failures drive the "N of M instances unreachable" banner.
+func hasUnreachableInstance(list ConnectionList) bool {
+	for _, inst := range list.Instances {
+		if inst.Error != "" {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *Client) tryList(ctx context.Context, sort SortMode) (ConnectionList, time.Duration, error) {

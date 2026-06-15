@@ -20,7 +20,7 @@ const sampleListResponse = `{
   "captured_at": "2026-04-29T12:34:56.789Z",
   "instances": [
     {"id": "primary", "role": "primary", "error": null},
-    {"id": "replica-1", "role": "replica", "error": "timeout after 2s"}
+    {"id": "replica-1", "role": "replica", "error": null}
   ],
   "data": [
     {
@@ -180,8 +180,8 @@ func TestClient_ListDecodesConnectionList(t *testing.T) {
 	if list.Instances[0] != (InstanceMeta{ID: "primary", Role: "primary"}) {
 		t.Errorf("Instances[0] = %+v, want primary/primary/(no error)", list.Instances[0])
 	}
-	if list.Instances[1] != (InstanceMeta{ID: "replica-1", Role: "replica", Error: "timeout after 2s"}) {
-		t.Errorf("Instances[1] = %+v, want replica-1/replica/timeout", list.Instances[1])
+	if list.Instances[1] != (InstanceMeta{ID: "replica-1", Role: "replica"}) {
+		t.Errorf("Instances[1] = %+v, want replica-1/replica/(no error)", list.Instances[1])
 	}
 
 	if first.InstanceRole != "primary" {
@@ -523,6 +523,103 @@ func TestClientListPartialResponseFriendlyMessage(t *testing.T) {
 	}
 	if got, want := err.Error(), "list connections: received an invalid response, please retry"; got != want {
 		t.Fatalf("err = %q, want %q", got, want)
+	}
+}
+
+// partialInstanceListResponse models a 200 OK that the server returns while a
+// fan-out to one instance failed: the primary is flagged unreachable while the
+// replica reports cleanly. The error string mirrors a real captured trace.
+const partialInstanceListResponse = `{
+  "type": "list",
+  "captured_at": "2026-04-29T12:34:56.789Z",
+  "instances": [
+    {"id": "primary", "role": "primary", "error": "remote service unavailable"},
+    {"id": "replica-1", "role": "replica", "error": null}
+  ],
+  "data": []
+}`
+
+func TestClient_ListRetriesPartialInstanceErrorThenReturnsClean(t *testing.T) {
+	var calls atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if calls.Add(1) == 1 {
+			_, _ = io.WriteString(w, partialInstanceListResponse)
+			return
+		}
+		_, _ = io.WriteString(w, sampleListResponse)
+	}))
+	defer srv.Close()
+
+	c := newClientWithTimings(t, srv.URL, 500*time.Millisecond, 10*time.Millisecond, 0)
+	list, err := c.List(context.Background(), SortByTransactionStart)
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if got := calls.Load(); got != 2 {
+		t.Fatalf("calls = %d, want 2 (retried past the partial-instance failure)", got)
+	}
+	for _, inst := range list.Instances {
+		if inst.Error != "" {
+			t.Fatalf("returned list still reports unreachable instance %q (%q), want a clean retry result", inst.ID, inst.Error)
+		}
+	}
+}
+
+func TestClient_ListReturnsPartialAfterRetryBudgetExhausted(t *testing.T) {
+	var calls atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		calls.Add(1)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, partialInstanceListResponse)
+	}))
+	defer srv.Close()
+
+	c := newClientWithTimings(t, srv.URL, 40*time.Millisecond, 10*time.Millisecond, 0)
+	start := time.Now()
+	list, err := c.List(context.Background(), SortByTransactionStart)
+	elapsed := time.Since(start)
+	if err != nil {
+		t.Fatalf("List: want partial list, got error %v", err)
+	}
+	if calls.Load() < 2 {
+		t.Fatalf("calls = %d, want at least 2 (retried before giving up)", calls.Load())
+	}
+	if elapsed > time.Second {
+		t.Fatalf("List took %v, want retry budget to expire promptly", elapsed)
+	}
+	// A persistent partial failure still returns useful data: the reachable
+	// instances plus the per-instance error that drives the unreachable banner.
+	var found bool
+	for _, inst := range list.Instances {
+		if inst.ID == "primary" && inst.Error == "remote service unavailable" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("partial list lost the instance error; instances = %+v", list.Instances)
+	}
+}
+
+func TestClient_ListDoesNotRetryPartialWhenBudgetDisabled(t *testing.T) {
+	var calls atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		calls.Add(1)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, partialInstanceListResponse)
+	}))
+	defer srv.Close()
+
+	c := newClientWithTimings(t, srv.URL, 0, 10*time.Millisecond, 0)
+	list, err := c.List(context.Background(), SortByTransactionStart)
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if got := calls.Load(); got != 1 {
+		t.Fatalf("calls = %d, want 1 (no retry when budget disabled)", got)
+	}
+	if got := list.Instances[0].Error; got != "remote service unavailable" {
+		t.Fatalf("Instances[0].Error = %q, want decoded instance error", got)
 	}
 }
 
