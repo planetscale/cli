@@ -197,7 +197,7 @@ func (s *Client) List(ctx context.Context, sort SortMode) (ConnectionList, error
 	for {
 		list, retryAfter, err := s.tryList(ctx, sort)
 		switch {
-		case err == nil && !hasUnreachableInstance(list):
+		case err == nil && !list.HasUnreachableInstance():
 			return list, nil
 		case err == nil:
 			// 200 OK, but the server flagged one or more instances unreachable
@@ -242,18 +242,6 @@ func (s *Client) List(ctx context.Context, sort SortMode) (ConnectionList, error
 			return ConnectionList{}, fmt.Errorf("list connections: %w", ctx.Err())
 		}
 	}
-}
-
-// hasUnreachableInstance reports whether the server flagged any instance as
-// unreachable in an otherwise-successful list response. These partial fan-out
-// failures drive the "N of M instances unreachable" banner.
-func hasUnreachableInstance(list ConnectionList) bool {
-	for _, inst := range list.Instances {
-		if inst.Error != "" {
-			return true
-		}
-	}
-	return false
 }
 
 func (s *Client) tryList(ctx context.Context, sort SortMode) (ConnectionList, time.Duration, error) {

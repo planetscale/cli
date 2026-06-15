@@ -43,6 +43,18 @@ type ConnectionList struct {
 	Topology     *Topology      `json:"topology,omitempty"`
 }
 
+// HasUnreachableInstance reports whether the server flagged any instance as
+// unreachable in the list response. These partial fan-out failures drive the
+// "N of M instances unreachable" banner.
+func (l ConnectionList) HasUnreachableInstance() bool {
+	for _, inst := range l.Instances {
+		if inst.Error != "" {
+			return true
+		}
+	}
+	return false
+}
+
 type Connection struct {
 	PID             int           `json:"pid"`
 	Instance        string        `json:"instance"`

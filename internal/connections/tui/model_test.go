@@ -140,6 +140,47 @@ func TestModelKeepsLastListWhenRefreshFails(t *testing.T) {
 	c.Assert(view, qt.Contains, "error: connection refused")
 }
 
+func degradedList(captured time.Time, pid int) live.ConnectionList {
+	list := live.NewConnectionList(captured, []live.Connection{{PID: pid, Instance: "primary"}}, live.SortByTransactionStart)
+	list.Instances = []live.InstanceMeta{
+		{ID: "primary", Role: "primary", Error: "remote service unavailable"},
+		{ID: "replica-1", Role: "replica"},
+	}
+	return list
+}
+
+func TestModelHoldsLastGoodListOnPersistentPartial(t *testing.T) {
+	c := qt.New(t)
+	model := NewModel(context.Background(), &clientStub{}, time.Second, 0)
+	good := live.NewConnectionList(time.Now(), []live.Connection{{PID: 10, Instance: "primary"}}, live.SortByTransactionStart)
+
+	updated, _ := model.Update(listMsg{list: good})
+	// A degraded refresh (client retries already exhausted) must not replace the
+	// good frame or show the unreachable banner — it holds and goes stale.
+	updated, _ = updated.(Model).Update(listMsg{list: degradedList(time.Now(), 20)})
+	got := updated.(Model)
+	view := got.View()
+
+	c.Assert(view, qt.Contains, "10")
+	c.Assert(view, qt.Not(qt.Contains), "20")
+	c.Assert(view, qt.Not(qt.Contains), "unreachable")
+	c.Assert(got.consecutiveErrors, qt.Equals, 1)
+}
+
+func TestModelShowsPartialOnFirstLoadWithNoPriorFrame(t *testing.T) {
+	c := qt.New(t)
+	model := NewModel(context.Background(), &clientStub{}, time.Second, 0)
+
+	// No good frame to hold yet, so the first result is shown even if degraded.
+	updated, _ := model.Update(listMsg{list: degradedList(time.Now(), 30)})
+	got := updated.(Model)
+	view := got.View()
+
+	c.Assert(view, qt.Contains, "30")
+	c.Assert(view, qt.Contains, "unreachable")
+	c.Assert(got.consecutiveErrors, qt.Equals, 0)
+}
+
 func TestModelShowsInitialListErrorBeforeAnySuccessfulList(t *testing.T) {
 	c := qt.New(t)
 	model := NewModel(context.Background(), &clientStub{}, time.Second, 0)
