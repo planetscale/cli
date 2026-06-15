@@ -688,3 +688,20 @@ func TestDetailHelpHidesRefreshWhilePaused(t *testing.T) {
 	c.Assert(footer, qt.Not(qt.Contains), "r refresh")
 	c.Assert(footer, qt.Contains, "space resume")
 }
+
+func TestBlockerTreeLabelReservesCaretWidth(t *testing.T) {
+	c := qt.New(t)
+	row := blockerRow{PID: 123, Present: false}
+
+	// The selection caret ("▶ ") must not shift the row text: an unselected
+	// row reserves the caret's width so the label sits at the same column
+	// whether or not it is selected (matching the table view's fixed marker).
+	unselected := blockerTreeLabel(row, false)
+	c.Assert(unselected, qt.Equals, "  "+blockerLabel(row))
+
+	// Selected rows use the caret + a space — the same two display columns as
+	// the unselected padding, so the label text never shifts between states.
+	selectedInner := ansi.Strip(blockerTreeLabel(row, true))
+	c.Assert(strings.HasPrefix(selectedInner, "▶ "), qt.IsTrue)
+	c.Assert(strings.TrimPrefix(selectedInner, "▶ "), qt.Equals, strings.TrimPrefix(unselected, "  "))
+}
