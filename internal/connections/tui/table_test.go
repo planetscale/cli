@@ -116,6 +116,40 @@ func TestRenderTableRendersNonEmptyList(t *testing.T) {
 	c.Assert(rendered, qt.Contains, "SELECT * FROM widgets")
 }
 
+func TestRenderTableKeepsColumnsTightWhenContentIsShort(t *testing.T) {
+	c := qt.New(t)
+	conns := []live.Connection{}
+	for _, app := range []string{"qa_demo_1", "qa_demo_2", "qa_demo_3", "qa_demo_4"} {
+		conns = append(conns, live.Connection{
+			PID:             10,
+			State:           "active",
+			ApplicationName: app,
+			QueryText:       "SELECT pg_sleep(420)",
+		})
+	}
+	list := live.NewConnectionList(tableRenderTestTime, conns, live.SortByTransactionStart)
+
+	// With short, uniform content the table must be content-bound, not
+	// terminal-bound: widening the terminal must not widen the rows (the old
+	// lgtable layout spread columns to fill the whole width). Both widths keep
+	// the START column (>= startColumnMinWidth) so the column set matches.
+	maxDataWidth := func(w int) int {
+		rendered := stripANSI(renderTable(tableState{List: list, HasList: true, Width: w, Height: 12}))
+		widest := 0
+		for _, line := range strings.Split(rendered, "\n") {
+			if strings.Contains(line, "qa_demo_") {
+				widest = max(widest, ansi.StringWidth(line))
+			}
+		}
+		return widest
+	}
+	at150, at200 := maxDataWidth(150), maxDataWidth(200)
+	c.Assert(at200, qt.Equals, at150,
+		qt.Commentf("rows widened with the terminal (150=%d, 200=%d) — columns are being spread", at150, at200))
+	c.Assert(at200 < 150, qt.IsTrue,
+		qt.Commentf("rows fill the terminal (width=%d) instead of staying content-tight", at200))
+}
+
 func TestRenderTableInitialErrorDoesNotRepeatInFooter(t *testing.T) {
 	c := qt.New(t)
 	rendered := stripANSI(renderTable(tableState{
