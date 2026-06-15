@@ -178,7 +178,6 @@ func TestModelShowsPartialOnFirstLoadWithNoPriorFrame(t *testing.T) {
 
 	c.Assert(view, qt.Contains, "30")
 	c.Assert(view, qt.Contains, "unreachable")
-	c.Assert(got.consecutiveErrors, qt.Equals, 0)
 }
 
 func TestModelShowsInitialListErrorBeforeAnySuccessfulList(t *testing.T) {

@@ -751,7 +751,7 @@ func renderConnectionTableTight(display connectionDisplayPreset, headers []strin
 		var conn *live.Connection
 		blockCount := 0
 		base := lipgloss.NewStyle()
-		if i >= 0 && i < len(connections) {
+		if i < len(connections) {
 			c := connections[i]
 			conn = &c
 			blockCount = counts[c.PID]
