@@ -343,6 +343,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.consecutiveErrors++
 			return m, nil
 		}
+		// A degraded result reached us after the client exhausted its retries on
+		// a partial-instance failure. Don't swap it into the live view: hold the
+		// last good frame and let the staleness dot and captured-age surface it,
+		// rather than flashing the "N unreachable" banner over good data. First
+		// load has no good frame to hold, so fall through and show what we have.
+		if m.hasList && msg.list.HasUnreachableInstance() {
+			m.consecutiveErrors++
+			return m, nil
+		}
 		m.consecutiveErrors = 0
 		m.initialAccessDenied = false
 		cursor := m.samples.Push(msg.list)

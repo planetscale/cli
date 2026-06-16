@@ -8,7 +8,6 @@ import (
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/lipgloss"
-	lgtable "github.com/charmbracelet/lipgloss/table"
 	"github.com/charmbracelet/x/ansi"
 	live "github.com/planetscale/cli/internal/connections"
 )
@@ -734,57 +733,36 @@ func renderConnectionTable(state tableState, bodyAvail int) string {
 	selectedInSlice := state.Selected - start
 	counts := live.BlockingCounts(connections)
 	headers, rows := buildConnectionRowsForDisplay(state.DisplayPreset, visible, counts, width, selectedInSlice)
-	if state.DisplayPreset == connectionDisplayProcesslist {
-		return renderProcesslistConnectionTable(headers, rows, visible, selectedInSlice, width)
-	}
-
-	return lgtable.New().
-		Border(lipgloss.HiddenBorder()).
-		BorderTop(false).
-		BorderBottom(false).
-		BorderLeft(false).
-		BorderRight(false).
-		BorderHeader(false).
-		BorderColumn(false).
-		Headers(headers...).
-		Rows(rows...).
-		Width(width).
-		Wrap(false).
-		StyleFunc(func(row, col int) lipgloss.Style {
-			if row == lgtable.HeaderRow {
-				return tableCellStyle(headerStyle, headers, col)
-			}
-			if row >= 0 && row < len(visible) {
-				conn := visible[row]
-				style := connectionRowStyle(conn, counts[conn.PID], row == selectedInSlice)
-				style = connectionColumnStyleForDisplay(state.DisplayPreset, style, conn, counts[conn.PID], col, headers)
-				return tableCellStyle(style, headers, col)
-			}
-			return lipgloss.NewStyle()
-		}).
-		Render()
+	return renderConnectionTableTight(state.DisplayPreset, headers, rows, visible, counts, selectedInSlice, width)
 }
 
-func renderProcesslistConnectionTable(headers []string, rows [][]string, connections []live.Connection, selectedInSlice int, width int) string {
+// renderConnectionTableTight lays the table out with content-based column
+// widths and a fixed inter-column gap, then clips to the terminal width. Unlike
+// a width-filling table layout, this keeps columns packed at the left when the
+// content (notably the trailing QUERY column) is short, so uniform/short rows
+// don't get spread across the whole terminal.
+func renderConnectionTableTight(display connectionDisplayPreset, headers []string, rows [][]string, connections []live.Connection, counts map[int]int, selectedInSlice, width int) string {
 	if len(headers) == 0 {
 		return ""
 	}
-	columnWidths := processlistColumnWidths(headers, rows)
-	lines := []string{renderProcesslistRow(headers, headers, nil, headerStyle, columnWidths, width)}
+	columnWidths := tightColumnWidths(headers, rows)
+	lines := []string{renderTightRow(display, headers, headers, nil, 0, headerStyle, columnWidths, width)}
 	for i, row := range rows {
-		style := lipgloss.NewStyle()
-		if i >= 0 && i < len(connections) {
-			conn := connections[i]
-			style = connectionRowStyle(conn, 0, i == selectedInSlice)
-			lines = append(lines, renderProcesslistRow(row, headers, &conn, style, columnWidths, width))
-			continue
+		var conn *live.Connection
+		blockCount := 0
+		base := lipgloss.NewStyle()
+		if i < len(connections) {
+			c := connections[i]
+			conn = &c
+			blockCount = counts[c.PID]
+			base = connectionRowStyle(c, blockCount, i == selectedInSlice)
 		}
-		lines = append(lines, renderProcesslistRow(row, headers, nil, style, columnWidths, width))
+		lines = append(lines, renderTightRow(display, row, headers, conn, blockCount, base, columnWidths, width))
 	}
 	return strings.Join(lines, "\n")
 }
 
-func processlistColumnWidths(headers []string, rows [][]string) []int {
+func tightColumnWidths(headers []string, rows [][]string) []int {
 	widths := make([]int, len(headers))
 	for i, header := range headers {
 		widths[i] = ansi.StringWidth(header)
@@ -799,16 +777,16 @@ func processlistColumnWidths(headers []string, rows [][]string) []int {
 	return widths
 }
 
-func renderProcesslistRow(cells []string, headers []string, conn *live.Connection, base lipgloss.Style, widths []int, width int) string {
+func renderTightRow(display connectionDisplayPreset, cells, headers []string, conn *live.Connection, blockCount int, base lipgloss.Style, widths []int, width int) string {
 	var line strings.Builder
 	for i, cell := range cells {
 		style := base
-		if conn != nil && i < len(headers) && headers[i] == "STATE" {
-			style = processlistStateStyleFor(style, conn.State)
+		if conn != nil {
+			style = connectionColumnStyleForDisplay(display, base, *conn, blockCount, i, headers)
 		}
 		if i < len(cells)-1 && i < len(widths) {
 			cell = padCellToWidth(cell, widths[i])
-			cell += processlistCellPadding(i)
+			cell += tightCellPadding(i)
 		}
 		line.WriteString(style.Render(cell))
 	}
@@ -822,7 +800,7 @@ func padCellToWidth(text string, width int) string {
 	return text
 }
 
-func processlistCellPadding(index int) string {
+func tightCellPadding(index int) string {
 	if index == 0 {
 		return " "
 	}
@@ -836,13 +814,6 @@ func connectionRowStyle(conn live.Connection, blockCount int, selected bool) lip
 	}
 	if selected {
 		return style.Inherit(selectedRowStyle)
-	}
-	return style
-}
-
-func tableCellStyle(style lipgloss.Style, headers []string, col int) lipgloss.Style {
-	if col < len(headers)-1 {
-		return style.PaddingRight(2)
 	}
 	return style
 }
