@@ -159,11 +159,14 @@ func TestModelHoldsLastGoodListOnPersistentPartial(t *testing.T) {
 	// good frame or show the unreachable banner — it holds and goes stale.
 	updated, _ = updated.(Model).Update(listMsg{list: degradedList(time.Now(), 20)})
 	got := updated.(Model)
-	view := got.View()
 
-	c.Assert(view, qt.Contains, "10")
-	c.Assert(view, qt.Not(qt.Contains), "20")
-	c.Assert(view, qt.Not(qt.Contains), "unreachable")
+	// Held the last good frame (PID 10); the degraded frame (PID 20) was not
+	// swapped in. Assert on the held data, not the rendered string — the header
+	// renders a wall-clock timestamp that can incidentally contain a PID.
+	held := got.currentList().Connections
+	c.Assert(len(held), qt.Equals, 1)
+	c.Assert(held[0].PID, qt.Equals, 10)
+	c.Assert(got.View(), qt.Not(qt.Contains), "unreachable")
 	c.Assert(got.consecutiveErrors, qt.Equals, 1)
 }
 
@@ -174,10 +177,10 @@ func TestModelShowsPartialOnFirstLoadWithNoPriorFrame(t *testing.T) {
 	// No good frame to hold yet, so the first result is shown even if degraded.
 	updated, _ := model.Update(listMsg{list: degradedList(time.Now(), 30)})
 	got := updated.(Model)
-	view := got.View()
 
-	c.Assert(view, qt.Contains, "30")
-	c.Assert(view, qt.Contains, "unreachable")
+	// No prior frame to hold, so the degraded result is shown (banner and all).
+	c.Assert(got.currentList().Connections[0].PID, qt.Equals, 30)
+	c.Assert(got.View(), qt.Contains, "unreachable")
 }
 
 func TestModelShowsInitialListErrorBeforeAnySuccessfulList(t *testing.T) {

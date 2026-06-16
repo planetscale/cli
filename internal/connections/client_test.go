@@ -601,6 +601,47 @@ func TestClient_ListReturnsPartialAfterRetryBudgetExhausted(t *testing.T) {
 	}
 }
 
+func TestClient_ListReturnsSavedPartialWhenLaterAttemptTimesOut(t *testing.T) {
+	var calls atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if calls.Add(1) == 1 {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = io.WriteString(w, partialInstanceListResponse)
+			return
+		}
+		// Hang a later attempt until the request timeout fires; respect the
+		// request context so server shutdown doesn't block on this handler.
+		select {
+		case <-r.Context().Done():
+		case <-time.After(5 * time.Second):
+		}
+	}))
+	defer srv.Close()
+
+	// Budget allows a retry; the per-request timeout fires inside the hung second
+	// attempt — the timeout-while-holding-a-saved-partial path. It must return
+	// the partial (matching the wait path), not a failed-refresh error.
+	c := newClientWithTimings(t, srv.URL, 2*time.Second, 10*time.Millisecond, 0)
+	c.cfg.RequestTimeout = 300 * time.Millisecond
+
+	list, err := c.List(context.Background(), SortByTransactionStart)
+	if err != nil {
+		t.Fatalf("List: want the saved partial, got error %v", err)
+	}
+	if calls.Load() < 2 {
+		t.Fatalf("calls = %d, want at least 2 (timed out on a later attempt)", calls.Load())
+	}
+	var found bool
+	for _, inst := range list.Instances {
+		if inst.ID == "primary" && inst.Error == "remote service unavailable" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("expected the saved partial after the timeout; instances = %+v", list.Instances)
+	}
+}
+
 func TestClient_ListDoesNotRetryPartialWhenBudgetDisabled(t *testing.T) {
 	var calls atomic.Int32
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {

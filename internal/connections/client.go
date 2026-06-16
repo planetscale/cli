@@ -210,6 +210,12 @@ func (s *Client) List(ctx context.Context, sort SortMode) (ConnectionList, error
 			if callerCtx.Err() != nil {
 				return ConnectionList{}, fmt.Errorf("list connections: %w", callerCtx.Err())
 			}
+			// A later attempt timed out, but an earlier one already returned a
+			// usable partial. Surface that (matching the wait path) rather than a
+			// failed-refresh error.
+			if havePartial {
+				return partial, nil
+			}
 			return ConnectionList{}, fmt.Errorf("list connections: request timed out after %s, please retry", s.cfg.RequestTimeout)
 		case !errors.Is(err, errListWarming):
 			return ConnectionList{}, err
