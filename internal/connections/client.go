@@ -192,21 +192,39 @@ func (s *Client) List(ctx context.Context, sort SortMode) (ConnectionList, error
 	}
 
 	deadline := time.Now().Add(s.retryBudget)
+	var partial ConnectionList
+	havePartial := false
 	for {
 		list, retryAfter, err := s.tryList(ctx, sort)
-		if err == nil {
+		switch {
+		case err == nil && !list.HasUnreachableInstance():
 			return list, nil
-		}
-		if isTimeoutError(err) && ctx.Err() != nil {
+		case err == nil:
+			// 200 OK, but the server flagged one or more instances unreachable
+			// (a partial fan-out failure). These are usually momentary under
+			// load and clear within a poll or two, so retry within the budget.
+			// Retry locally; the response carries no Retry-After hint.
+			partial, havePartial = list, true
+			retryAfter = 0
+		case isTimeoutError(err) && ctx.Err() != nil:
 			if callerCtx.Err() != nil {
 				return ConnectionList{}, fmt.Errorf("list connections: %w", callerCtx.Err())
 			}
+			// A later attempt timed out, but an earlier one already returned a
+			// usable partial. Surface that (matching the wait path) rather than a
+			// failed-refresh error.
+			if havePartial {
+				return partial, nil
+			}
 			return ConnectionList{}, fmt.Errorf("list connections: request timed out after %s, please retry", s.cfg.RequestTimeout)
-		}
-		if !errors.Is(err, errListWarming) {
+		case !errors.Is(err, errListWarming):
 			return ConnectionList{}, err
 		}
+
 		if s.retryBudget <= 0 {
+			if havePartial {
+				return partial, nil
+			}
 			return ConnectionList{}, errListWarmingExhausted
 		}
 
@@ -215,12 +233,21 @@ func (s *Client) List(ctx context.Context, sort SortMode) (ConnectionList, error
 			delay = s.retryDelay()
 		}
 		if time.Now().Add(delay).After(deadline) {
+			if havePartial {
+				return partial, nil
+			}
 			return ConnectionList{}, errListWarmingExhausted
 		}
 
 		select {
 		case <-time.After(delay):
 		case <-ctx.Done():
+			if callerCtx.Err() != nil {
+				return ConnectionList{}, fmt.Errorf("list connections: %w", callerCtx.Err())
+			}
+			if havePartial {
+				return partial, nil
+			}
 			return ConnectionList{}, fmt.Errorf("list connections: %w", ctx.Err())
 		}
 	}

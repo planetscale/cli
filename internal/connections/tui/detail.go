@@ -434,7 +434,9 @@ func blockerTreeLabel(row blockerRow, selected bool) string {
 		// consistent across views.
 		return selectedRowStyle.Render("▶ " + label)
 	}
-	return label
+	// Reserve the caret's width on unselected rows so moving the selection
+	// doesn't shift the row text, matching the table view's fixed-width marker.
+	return "  " + label
 }
 
 func wrapLines(text string, width int) []string {
