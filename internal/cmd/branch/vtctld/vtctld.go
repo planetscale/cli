@@ -22,6 +22,7 @@ func VtctldCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.AddCommand(ListKeyspacesCmd(ch))
 	cmd.AddCommand(GetRoutingRulesCmd(ch))
 	cmd.AddCommand(GetShardCmd(ch))
+	cmd.AddCommand(SetShardTabletControlCmd(ch))
 	cmd.AddCommand(ListTabletsCmd(ch))
 	cmd.AddCommand(StartWorkflowCmd(ch))
 	cmd.AddCommand(StopWorkflowCmd(ch))
