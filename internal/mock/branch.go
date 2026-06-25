@@ -146,6 +146,9 @@ type PostgresBranchesService struct {
 
 	ListClusterSKUsFn        func(context.Context, *ps.ListBranchClusterSKUsRequest, ...ps.ListOption) ([]*ps.ClusterSKU, error)
 	ListClusterSKUsFnInvoked bool
+
+	ResizeFn        func(context.Context, *ps.ResizePostgresBranchRequest) (*ps.PostgresBranchClusterResizeRequest, error)
+	ResizeFnInvoked bool
 }
 
 func (p *PostgresBranchesService) Create(ctx context.Context, req *ps.CreatePostgresBranchRequest) (*ps.PostgresBranch, error) {
@@ -176,4 +179,9 @@ func (p *PostgresBranchesService) Schema(ctx context.Context, req *ps.PostgresBr
 func (p *PostgresBranchesService) ListClusterSKUs(ctx context.Context, req *ps.ListBranchClusterSKUsRequest, opts ...ps.ListOption) ([]*ps.ClusterSKU, error) {
 	p.ListClusterSKUsFnInvoked = true
 	return p.ListClusterSKUsFn(ctx, req, opts...)
+}
+
+func (p *PostgresBranchesService) Resize(ctx context.Context, req *ps.ResizePostgresBranchRequest) (*ps.PostgresBranchClusterResizeRequest, error) {
+	p.ResizeFnInvoked = true
+	return p.ResizeFn(ctx, req)
 }
