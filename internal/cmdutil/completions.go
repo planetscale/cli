@@ -136,6 +136,66 @@ func BranchClusterSizesCompletionFunc(ch *Helper, cmd *cobra.Command, args []str
 	return clusterSizes, cobra.ShellCompDirectiveNoFileComp | cobra.ShellCompDirectiveKeepOrder
 }
 
+// PostgresBranchClusterSizesCompletionFunc completes cluster sizes for a
+// specific Postgres branch. It returns the fully-qualified SKU names (e.g.
+// PS_10_GCP_X86) that the branch's resize endpoint accepts, scoped to the
+// branch's engine, provider, and architecture.
+func PostgresBranchClusterSizesCompletionFunc(ch *Helper, cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
+	ctx := cmd.Context()
+
+	org := ch.Config.Organization // --org flag
+	if org == "" {
+		cfg, err := ch.ConfigFS.DefaultConfig()
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+
+		org = cfg.Organization
+	}
+
+	client, err := ch.Client()
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+
+	database, branch := args[0], args[1]
+	clusterSKUs, err := client.PostgresBranches.ListClusterSKUs(ctx, &ps.ListBranchClusterSKUsRequest{
+		Organization: org,
+		Database:     database,
+		Branch:       branch,
+	}, ps.WithRates())
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+
+	clusterSizes := make([]cobra.Completion, 0)
+	for _, c := range clusterSKUs {
+		if c.Enabled && strings.Contains(c.Name, toComplete) && c.Rate != nil && c.Name != "PS_DEV" {
+			var description strings.Builder
+			description.WriteString(c.DisplayName)
+			if *c.Rate > 0 {
+				fmt.Fprintf(&description, " · $%d/month", *c.Rate)
+			}
+
+			if c.CPU != "" {
+				fmt.Fprintf(&description, " · %s vCPUs", c.CPU)
+			}
+
+			if c.Memory > 0 {
+				fmt.Fprintf(&description, " · %s memory", FormatParts(c.Memory).IntString())
+			}
+
+			if c.Storage != nil && *c.Storage > 0 {
+				fmt.Fprintf(&description, " · %s storage", FormatPartsGB(*c.Storage).IntString())
+			}
+
+			clusterSizes = append(clusterSizes, cobra.CompletionWithDesc(c.Name, description.String()))
+		}
+	}
+
+	return clusterSizes, cobra.ShellCompDirectiveNoFileComp | cobra.ShellCompDirectiveKeepOrder
+}
+
 func RegionsCompletionFunc(ch *Helper, cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
 	ctx := cmd.Context()
 

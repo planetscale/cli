@@ -75,6 +75,10 @@ func ResizeCmd(ch *cmdutil.Helper) *cobra.Command {
 			if change == nil {
 				if ch.Printer.Format() == printer.Human {
 					ch.Printer.Printf("Branch %s is already configured with cluster size %s.\n", printer.BoldBlue(branch), printer.BoldBlue(flags.clusterSize))
+				} else {
+					// In non-human formats there is no resource to print, so note
+					// the no-op on stderr to keep stdout clean for scripts.
+					fmt.Fprintf(cmd.ErrOrStderr(), "Branch %s is already configured with cluster size %s; no changes applied.\n", branch, flags.clusterSize)
 				}
 				return nil
 			}
@@ -88,9 +92,9 @@ func ResizeCmd(ch *cmdutil.Helper) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&flags.clusterSize, "cluster-size", "", "New cluster size for the branch. Use 'pscale size cluster list' to see the valid sizes.")
+	cmd.Flags().StringVar(&flags.clusterSize, "cluster-size", "", "New cluster size for the branch (a fully-qualified SKU name, e.g. PS_10_GCP_X86). Use 'pscale size cluster list --engine postgresql' to see the valid sizes.")
 	cmd.RegisterFlagCompletionFunc("cluster-size", func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
-		return cmdutil.ClusterSizesCompletionFunc(ch, cmd, args, toComplete)
+		return cmdutil.PostgresBranchClusterSizesCompletionFunc(ch, cmd, args, toComplete)
 	})
 
 	return cmd
