@@ -225,8 +225,8 @@ func buildPgloaderScript(sqlitePath, destURI string, cfg pgloaderScriptConfig, c
 
 	var b strings.Builder
 	b.WriteString("LOAD DATABASE\n")
-	b.WriteString("     FROM " + src + "\n")
-	b.WriteString("     INTO " + target + "\n")
+	fmt.Fprintf(&b, "     FROM %s\n", src)
+	fmt.Fprintf(&b, "     INTO %s\n", target)
 	b.WriteString("\n")
 
 	if cfg.dataOnly {
@@ -236,28 +236,28 @@ func buildPgloaderScript(sqlitePath, destURI string, cfg pgloaderScriptConfig, c
 		} else {
 			b.WriteString("      reset no sequences,\n")
 		}
-		b.WriteString(fmt.Sprintf("      workers = %d, concurrency = %d,\n", profile.workers, profile.concurrency))
-		b.WriteString(fmt.Sprintf("      batch rows = %d,\n", profile.batchRows))
-		b.WriteString("      batch size = " + pgloaderBatchSize + ",\n")
-		b.WriteString(fmt.Sprintf("      prefetch rows = %d\n", profile.prefetchRows))
+		fmt.Fprintf(&b, "      workers = %d, concurrency = %d,\n", profile.workers, profile.concurrency)
+		fmt.Fprintf(&b, "      batch rows = %d,\n", profile.batchRows)
+		fmt.Fprintf(&b, "      batch size = %s,\n", pgloaderBatchSize)
+		fmt.Fprintf(&b, "      prefetch rows = %d\n", profile.prefetchRows)
 	} else {
 		b.WriteString(" WITH include drop, create tables, create indexes, reset sequences,\n")
-		b.WriteString(fmt.Sprintf("      workers = %d, concurrency = %d,\n", profile.workers, profile.concurrency))
-		b.WriteString(fmt.Sprintf("      batch rows = %d,\n", profile.batchRows))
-		b.WriteString("      batch size = " + pgloaderBatchSize + ",\n")
-		b.WriteString(fmt.Sprintf("      prefetch rows = %d\n", profile.prefetchRows))
+		fmt.Fprintf(&b, "      workers = %d, concurrency = %d,\n", profile.workers, profile.concurrency)
+		fmt.Fprintf(&b, "      batch rows = %d,\n", profile.batchRows)
+		fmt.Fprintf(&b, "      batch size = %s,\n", pgloaderBatchSize)
+		fmt.Fprintf(&b, "      prefetch rows = %d\n", profile.prefetchRows)
 	}
 
 	if cfg.tableName != "" {
 		b.WriteString("\n")
-		b.WriteString(" INCLUDING ONLY TABLE NAMES LIKE " + pgloaderQuotePattern(cfg.tableName) + "\n")
+		fmt.Fprintf(&b, " INCLUDING ONLY TABLE NAMES LIKE %s\n", pgloaderQuotePattern(cfg.tableName))
 	}
 
 	appendPgloaderCasts(&b, castTables, allTables)
 
 	b.WriteString("\n")
-	b.WriteString(fmt.Sprintf(" SET work_mem to '%s', maintenance_work_mem to '%s', synchronous_commit to 'off';\n",
-		pgloaderLoadWorkMem, pgloaderLoadMaintenanceWorkMem))
+	fmt.Fprintf(&b, " SET work_mem to '%s', maintenance_work_mem to '%s', synchronous_commit to 'off';\n",
+		pgloaderLoadWorkMem, pgloaderLoadMaintenanceWorkMem)
 	return b.String()
 }
 
