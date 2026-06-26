@@ -56,7 +56,7 @@ type Config struct {
 	Selects                   map[string]map[string]string
 	Filters                   map[string]map[string]string
 	ColumnIncludes            map[string]map[string]bool
-
+	HexBlob                   bool
 	// Interval in millisecond.
 	IntervalMs int
 	Debug      bool
@@ -287,6 +287,11 @@ func (d *Dumper) dumpTable(ctx context.Context, conn *Connection, database strin
 	dumpCtx, err := d.tableDumpContext(conn, table)
 	if err != nil {
 		return err
+	}
+
+	// Wrap with hex-blob encoder if enabled
+	if d.cfg.HexBlob {
+		writer = NewHexBlobWrapper(writer, dumpCtx.fieldNames)
 	}
 
 	if err := writer.Initialize(dumpCtx.fieldNames); err != nil {

@@ -45,6 +45,8 @@ func (w *sqlWriter) WriteRow(row []sqltypes.Value) (int, error) {
 			switch {
 			case v.IsSigned(), v.IsUnsigned(), v.IsFloat(), v.IsIntegral(), v.Type() == querypb.Type_DECIMAL:
 				values = append(values, str)
+			case v.Type() == querypb.Type_VARBINARY && w.cfg.HexBlob:
+				values = append(values, str)
 			default:
 				values = append(values, fmt.Sprintf("\"%s\"", escapeBytes(v.Raw())))
 			}
