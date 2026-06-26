@@ -2,6 +2,7 @@ package d1
 
 import (
 	"encoding/hex"
+	"strings"
 	"testing"
 )
 
@@ -107,5 +108,28 @@ func TestByteaValuesEqual(t *testing.T) {
 	hex := `\x` + hex.EncodeToString([]byte(text))
 	if !byteaValuesEqual(text, hex) {
 		t.Fatalf("expected bytea hex %q to match text %q", hex, text)
+	}
+}
+
+func TestByteaSignatureExprsUseHex(t *testing.T) {
+	col := ColumnSchema{Name: "payload", Type: "BLOB"}
+	table := TableSchema{Name: "attachments", Columns: []ColumnSchema{col}}
+
+	sqliteExpr := sqliteSignatureColumnExpr(col)
+	if !strings.Contains(sqliteExpr, "hex(") {
+		t.Fatalf("sqlite blob signature should use hex(), got %q", sqliteExpr)
+	}
+
+	pgExpr := postgresSignatureColumnExpr(col, table, nil)
+	if !strings.Contains(pgExpr, "encode(") || !strings.Contains(pgExpr, "'hex'") {
+		t.Fatalf("postgres bytea signature should use encode(..., 'hex'), got %q", pgExpr)
+	}
+}
+
+func TestByteaValuesEqualBinaryHex(t *testing.T) {
+	raw := string([]byte{0x00, 0xff, 0xfe, 0x01})
+	hexSig := hex.EncodeToString([]byte(raw))
+	if !byteaValuesEqual(hexSig, hexSig) {
+		t.Fatalf("expected matching hex signatures for binary blob")
 	}
 }

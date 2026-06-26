@@ -434,6 +434,9 @@ func sqliteSignatureColumnExpr(col ColumnSchema) string {
 	if isJSONText(col) {
 		return fmt.Sprintf(`COALESCE(json(%q), CAST(%q AS TEXT), '')`, col.Name, col.Name)
 	}
+	if isBlobColumn(col) {
+		return fmt.Sprintf(`COALESCE(hex(%q), '')`, col.Name)
+	}
 	return fmt.Sprintf(`COALESCE(CAST(%q AS TEXT), '')`, col.Name)
 }
 
@@ -451,7 +454,7 @@ func postgresSignatureColumnExpr(col ColumnSchema, table TableSchema, all []Tabl
 		return fmt.Sprintf(`COALESCE(%s::jsonb::text, '')`, name)
 	case "BYTEA":
 		name := quoteIdent(col.Name)
-		return fmt.Sprintf(`COALESCE(convert_from(%s, 'UTF8'), '')`, name)
+		return fmt.Sprintf(`COALESCE(encode(%s, 'hex'), '')`, name)
 	default:
 		return fmt.Sprintf(`COALESCE(%s::text, '')`, quoteIdent(col.Name))
 	}
@@ -518,6 +521,10 @@ func byteaValuesEqual(sqliteText, pgText string) bool {
 		}
 	}
 	return false
+}
+
+func isBlobColumn(col ColumnSchema) bool {
+	return strings.Contains(strings.ToUpper(col.Type), "BLOB")
 }
 
 func sqliteRowSignature(ctx context.Context, sqlitePath string, table TableSchema, pkCol, pkVal string) (string, error) {

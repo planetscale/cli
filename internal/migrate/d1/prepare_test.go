@@ -3,6 +3,7 @@ package d1
 import (
 	"bytes"
 	"context"
+	"os"
 	"strings"
 	"testing"
 
@@ -58,6 +59,45 @@ func TestImport_BlocksOnLintErrors(t *testing.T) {
 	requireMigrationErr(t, err, ErrCodeLintBlocked)
 	if result == nil || result.CanProceed {
 		t.Fatal("expected result with can_proceed false")
+	}
+}
+
+func TestPrepareImportRejectsMissingMigrationState(t *testing.T) {
+	t.Setenv("PSCALE_TEST_MODE", "1")
+
+	_, err := PrepareImport(ImportOptions{
+		InputPath:   testFixture(t),
+		Org:         "acme",
+		Database:    "mydb",
+		Branch:      "main",
+		MigrationID: "missing-migration-id",
+	})
+	requireMigrationErr(t, err, ErrCodeNotFound)
+}
+
+func TestPrepareImportRejectsCorruptMigrationState(t *testing.T) {
+	t.Setenv("PSCALE_TEST_MODE", "1")
+
+	store, err := NewStateStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+	migrationID := "corrupt-migration-id"
+	path := store.statePath("acme", "mydb", "main", migrationID)
+	if err := os.WriteFile(path, []byte("{not-json"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Remove(path) })
+
+	_, err = PrepareImport(ImportOptions{
+		InputPath:   testFixture(t),
+		Org:         "acme",
+		Database:    "mydb",
+		Branch:      "main",
+		MigrationID: migrationID,
+	})
+	if err == nil {
+		t.Fatal("expected corrupt migration state to fail")
 	}
 }
 

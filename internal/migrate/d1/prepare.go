@@ -76,15 +76,7 @@ func resolvePlan(opts ImportOptions, method string, lint *LintResult) (*PlanResu
 
 	state, err := LoadState(opts.Org, opts.Database, opts.Branch, opts.MigrationID)
 	if err != nil {
-		return createAndSavePlan(PlanOptions{
-			InputPath:   opts.InputPath,
-			Org:         opts.Org,
-			Database:    opts.Database,
-			Branch:      opts.Branch,
-			Method:      method,
-			MigrationID: opts.MigrationID,
-			Lint:        lint,
-		})
+		return nil, err
 	}
 
 	if opts.InputPath != "" && state.InputPath != "" && state.InputPath != opts.InputPath {
