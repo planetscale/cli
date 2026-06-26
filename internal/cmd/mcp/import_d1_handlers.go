@@ -86,16 +86,9 @@ func handleImportD1Lint(ctx context.Context, request mcp.CallToolRequest, ch *cm
 	if err != nil {
 		return importD1Error("lint", err)
 	}
-	resp := d1.OKResponse("lint", result, d1.LintNextSteps(result))
-	resp.Issues = result.Issues
-	if result.ErrorCount > 0 {
-		resp.Status = "error"
-	} else if result.WarningCount > 0 {
-		resp.Status = "warning"
-	}
+	resp := d1.LintResponse(result)
 	return importD1Result(resp)
 }
-
 
 func handleImportD1Start(ctx context.Context, request mcp.CallToolRequest, ch *cmdutil.Helper) (*mcp.CallToolResult, error) {
 	input, err := request.RequireString("input")

@@ -21,7 +21,7 @@ type PlanOptions struct {
 	Database    string
 	Branch      string
 	Method      string
-	MigrationID string // optional: reuse an existing migration ID from plan/start
+	MigrationID string      // optional: reuse an existing migration ID from plan/start
 	Lint        *LintResult // optional: skip re-lint when already computed
 }
 

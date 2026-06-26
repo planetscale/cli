@@ -17,15 +17,12 @@ func writeD1(ch *cmdutil.Helper, resp d1.Response) error {
 			if err := ch.Printer.PrintJSON(resp); err != nil {
 				return err
 			}
-			return &cmdutil.Error{
-				ExitCode: cmdutil.ActionRequestedExitCode,
-				Printed:  true,
-			}
 		case printer.Human:
-			return humanD1Error(resp)
+			d1.PrintHumanResponse(ch.Printer, resp)
 		default:
 			return fmt.Errorf(`import d1 does not support output format %q (use human or json)`, ch.Printer.Format())
 		}
+		return d1CommandError(resp)
 	}
 
 	switch ch.Printer.Format() {
@@ -39,14 +36,19 @@ func writeD1(ch *cmdutil.Helper, resp d1.Response) error {
 	}
 }
 
-func humanD1Error(resp d1.Response) error {
-	if resp.Error == nil {
-		return fmt.Errorf("import d1 command failed")
+func d1CommandError(resp d1.Response) error {
+	msg := "import d1 command failed"
+	if resp.Error != nil {
+		msg = resp.Error.Message
+		if resp.Error.Remediation != "" {
+			msg += "\n" + resp.Error.Remediation
+		}
 	}
-	if resp.Error.Remediation != "" {
-		return fmt.Errorf("%s\n%s", resp.Error.Message, resp.Error.Remediation)
+	return &cmdutil.Error{
+		Msg:      msg,
+		ExitCode: cmdutil.ActionRequestedExitCode,
+		Printed:  true,
 	}
-	return fmt.Errorf("%s", resp.Error.Message)
 }
 
 // D1Cmd returns the import d1 subcommand group.
@@ -101,8 +103,8 @@ func d1ExportCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:   "export",
-		Short: "Export a D1 database using wrangler",
+		Use:     "export",
+		Short:   "Export a D1 database using wrangler",
 		Example: `  pscale import d1 export --d1-database my-app-db --remote --output ./d1-export.sql --format json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			result, err := d1.Export(cmd.Context(), d1.ExportOptions{
@@ -137,21 +139,15 @@ func d1LintCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:   "lint",
-		Short: "Analyze a D1 SQL export for migration issues",
+		Use:     "lint",
+		Short:   "Analyze a D1 SQL export for migration issues",
 		Example: `  pscale import d1 lint --input ./d1-export.sql --format json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			result, err := d1.Lint(flags.input)
 			if err != nil {
 				return writeD1(ch, d1.ErrorResponse("lint", err))
 			}
-			resp := d1.OKResponse("lint", result, d1.LintNextSteps(result))
-			resp.Issues = result.Issues
-			if result.ErrorCount > 0 {
-				resp.Status = "error"
-			} else if result.WarningCount > 0 {
-				resp.Status = "warning"
-			}
+			resp := d1.LintResponse(result)
 			return writeD1(ch, resp)
 		},
 	}

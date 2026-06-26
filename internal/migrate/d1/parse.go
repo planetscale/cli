@@ -9,10 +9,10 @@ import (
 )
 
 var (
-	createTableRe = regexp.MustCompile(`(?is)^CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:"([^"]+)"|'([^']+)'|` + "`" + `([^` + "`" + `]+)` + "`" + `|([a-zA-Z_][\w]*))\s*\(`)
-	virtualTableRe = regexp.MustCompile(`(?is)^CREATE\s+VIRTUAL\s+TABLE`)
+	createTableRe   = regexp.MustCompile(`(?is)^CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:"([^"]+)"|'([^']+)'|` + "`" + `([^` + "`" + `]+)` + "`" + `|([a-zA-Z_][\w]*))\s*\(`)
+	virtualTableRe  = regexp.MustCompile(`(?is)^CREATE\s+VIRTUAL\s+TABLE`)
 	autoincrementRe = regexp.MustCompile(`(?i)AUTOINCREMENT`)
-	insertRe = regexp.MustCompile(`(?is)^INSERT\s+INTO\s+(?:` + "`" + `([^` + "`" + `]+)` + "`" + `|"([^"]+)"|'([^']+)'|([a-zA-Z_][\w]*))`)
+	insertRe        = regexp.MustCompile(`(?is)^INSERT\s+INTO\s+(?:` + "`" + `([^` + "`" + `]+)` + "`" + `|"([^"]+)"|'([^']+)'|([a-zA-Z_][\w]*))`)
 	valueTupleSepRe = regexp.MustCompile(`\)\s*,\s*\(`)
 )
 

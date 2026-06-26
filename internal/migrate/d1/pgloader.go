@@ -31,8 +31,8 @@ const (
 	// Conservative profile: wide rows / large tables (e.g. attachments).
 	pgloaderSlowPrefetchRows = 5000
 	pgloaderSlowBatchRows    = 10000
-	pgloaderSlowWorkers        = 2
-	pgloaderSlowConcurrency    = 1
+	pgloaderSlowWorkers      = 2
+	pgloaderSlowConcurrency  = 1
 
 	pgloaderLoadWorkMem             = "256MB"
 	pgloaderLoadMaintenanceWorkMem  = "512MB"

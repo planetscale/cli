@@ -21,6 +21,13 @@ func PrintHumanResponse(p *printer.Printer, resp Response) {
 
 	printHumanData(p, resp.Phase, resp.Data)
 
+	if resp.Error != nil {
+		p.Printf("\nError [%s]: %s\n", resp.Error.Code, resp.Error.Message)
+		if resp.Error.Remediation != "" {
+			p.Printf("%s\n", resp.Error.Remediation)
+		}
+	}
+
 	if len(resp.Issues) > 0 {
 		p.Printf("\nIssues (%d):\n", len(resp.Issues))
 		for _, issue := range resp.Issues {
@@ -41,6 +48,24 @@ func PrintHumanResponse(p *printer.Printer, resp Response) {
 				p.Printf("  - %s (%s)\n", step.Tool, step.Reason)
 			}
 		}
+	}
+}
+
+func printImportResultHuman(p *printer.Printer, r ImportResult) {
+	p.Printf("\nMethod: %s", r.Method)
+	if r.DryRun {
+		p.Print(" (dry run)")
+	}
+	p.Println()
+	if r.Plan != nil {
+		sizeMB := float64(r.Plan.EstimatedSizeBytes) / (1024 * 1024)
+		p.Printf("Plan: %d tables, %.1f MB estimated\n", len(r.Plan.Tables), sizeMB)
+	}
+	if r.TablesLoaded > 0 {
+		p.Printf("Tables loaded: %d\n", r.TablesLoaded)
+	}
+	if r.Timings != nil && r.Timings.TotalMs > 0 {
+		p.Printf("Total time: %.1fs\n", float64(r.Timings.TotalMs)/1000)
 	}
 }
 
@@ -67,25 +92,21 @@ func printHumanData(p *printer.Printer, phase string, data any) {
 			p.Printf("\nExported to %s (%d bytes)\n", r.OutputPath, r.SizeBytes)
 		}
 	case "lint":
-		if r, ok := data.(LintResult); ok {
+		switch r := data.(type) {
+		case LintResult:
 			p.Printf("\nTables: %d | Errors: %d | Warnings: %d\n", r.TableCount, r.ErrorCount, r.WarningCount)
+		case *LintResult:
+			if r != nil {
+				p.Printf("\nTables: %d | Errors: %d | Warnings: %d\n", r.TableCount, r.ErrorCount, r.WarningCount)
+			}
 		}
 	case "start":
-		if r, ok := data.(ImportResult); ok {
-			p.Printf("\nMethod: %s", r.Method)
-			if r.DryRun {
-				p.Print(" (dry run)")
-			}
-			p.Println()
-			if r.Plan != nil {
-				sizeMB := float64(r.Plan.EstimatedSizeBytes) / (1024 * 1024)
-				p.Printf("Plan: %d tables, %.1f MB estimated\n", len(r.Plan.Tables), sizeMB)
-			}
-			if r.TablesLoaded > 0 {
-				p.Printf("Tables loaded: %d\n", r.TablesLoaded)
-			}
-			if r.Timings != nil && r.Timings.TotalMs > 0 {
-				p.Printf("Total time: %.1fs\n", float64(r.Timings.TotalMs)/1000)
+		switch r := data.(type) {
+		case ImportResult:
+			printImportResultHuman(p, r)
+		case *ImportResult:
+			if r != nil {
+				printImportResultHuman(p, *r)
 			}
 		}
 	case "verify":
@@ -139,6 +160,23 @@ func ErrorResponse(phase string, err error) Response {
 			Code:    ErrCodeImportFailed,
 			Message: err.Error(),
 		}
+	}
+	return resp
+}
+
+// LintResponse builds the lint command envelope with status derived from issue severity.
+func LintResponse(result *LintResult) Response {
+	resp := OKResponse("lint", result, LintNextSteps(result))
+	resp.Issues = result.Issues
+	if result.ErrorCount > 0 {
+		resp.Status = "error"
+		resp.Error = &ErrorInfo{
+			Code:        ErrCodeLintBlocked,
+			Message:     lintBlockedReason(result.ErrorCount),
+			Remediation: lintBlockedRemediation,
+		}
+	} else if result.WarningCount > 0 {
+		resp.Status = "warning"
 	}
 	return resp
 }

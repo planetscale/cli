@@ -13,7 +13,7 @@ func Lint(inputPath string) (*LintResult, error) {
 	}
 
 	result := &LintResult{
-		InputPath: inputPath,
+		InputPath:  inputPath,
 		TableCount: len(tables),
 		Issues:     []Issue{},
 		Tables:     make([]string, 0, len(tables)),

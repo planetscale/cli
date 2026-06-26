@@ -21,9 +21,9 @@ type Issue struct {
 
 // NextStep guides agents to the next tool or command.
 type NextStep struct {
-	Tool   string `json:"tool,omitempty"`
+	Tool    string `json:"tool,omitempty"`
 	Command string `json:"command,omitempty"`
-	Reason string `json:"reason"`
+	Reason  string `json:"reason"`
 }
 
 // Response is the common JSON envelope for migrate d1 commands.
@@ -61,34 +61,34 @@ type DoctorCheck struct {
 
 // LintResult summarizes lint output.
 type LintResult struct {
-	InputPath   string   `json:"input_path"`
-	TableCount  int      `json:"table_count"`
-	ErrorCount  int      `json:"error_count"`
-	WarningCount int     `json:"warning_count"`
-	Issues      []Issue  `json:"issues"`
-	Tables      []string `json:"tables"`
+	InputPath    string   `json:"input_path"`
+	TableCount   int      `json:"table_count"`
+	ErrorCount   int      `json:"error_count"`
+	WarningCount int      `json:"warning_count"`
+	Issues       []Issue  `json:"issues"`
+	Tables       []string `json:"tables"`
 }
 
 // PlanResult is the migration plan JSON.
 type PlanResult struct {
-	MigrationID   string         `json:"migration_id"`
-	InputPath     string         `json:"input_path"`
-	Org           string         `json:"org"`
-	Database      string         `json:"database"`
-	Branch        string         `json:"branch"`
-	RecommendedMethod string     `json:"recommended_method"`
-	EstimatedSizeBytes int64     `json:"estimated_size_bytes,omitempty"`
-	Tables        []TablePlan    `json:"tables"`
-	CastRules     []CastRule     `json:"cast_rules"`
-	LoadOrder     []string       `json:"load_order"`
-	Issues        []Issue        `json:"issues"`
+	MigrationID        string      `json:"migration_id"`
+	InputPath          string      `json:"input_path"`
+	Org                string      `json:"org"`
+	Database           string      `json:"database"`
+	Branch             string      `json:"branch"`
+	RecommendedMethod  string      `json:"recommended_method"`
+	EstimatedSizeBytes int64       `json:"estimated_size_bytes,omitempty"`
+	Tables             []TablePlan `json:"tables"`
+	CastRules          []CastRule  `json:"cast_rules"`
+	LoadOrder          []string    `json:"load_order"`
+	Issues             []Issue     `json:"issues"`
 }
 
 // TablePlan describes a table in the migration plan.
 type TablePlan struct {
-	Name       string `json:"name"`
-	RowEstimate int   `json:"row_estimate,omitempty"`
-	HasFK      bool   `json:"has_foreign_keys"`
+	Name        string `json:"name"`
+	RowEstimate int    `json:"row_estimate,omitempty"`
+	HasFK       bool   `json:"has_foreign_keys"`
 }
 
 // CastRule maps SQLite types to Postgres casts for pgloader.
@@ -158,10 +158,10 @@ type VerifyResult struct {
 
 // TableVerifyResult is per-table verification.
 type TableVerifyResult struct {
-	Table       string `json:"table"`
-	SourceRows  int64  `json:"source_rows"`
-	DestRows    int64  `json:"dest_rows"`
-	Match       bool   `json:"match"`
+	Table      string `json:"table"`
+	SourceRows int64  `json:"source_rows"`
+	DestRows   int64  `json:"dest_rows"`
+	Match      bool   `json:"match"`
 }
 
 // Migration phases persisted in local state.

@@ -140,24 +140,24 @@ func TestBuildConnectionString(t *testing.T) {
 
 func TestRedactPassword(t *testing.T) {
 	tests := []struct {
-		name   string
+		name    string
 		connStr string
-		want   string
+		want    string
 	}{
 		{
-			name:   "with password",
+			name:    "with password",
 			connStr: "host=localhost port=5432 user=user password=secret dbname=mydb",
-			want:   "host=localhost port=5432 user=user password=**** dbname=mydb",
+			want:    "host=localhost port=5432 user=user password=**** dbname=mydb",
 		},
 		{
-			name:   "without password",
+			name:    "without password",
 			connStr: "host=localhost port=5432 user=user dbname=mydb",
-			want:   "host=localhost port=5432 user=user dbname=mydb",
+			want:    "host=localhost port=5432 user=user dbname=mydb",
 		},
 		{
-			name:   "empty string",
+			name:    "empty string",
 			connStr: "",
-			want:   "",
+			want:    "",
 		},
 	}
 
