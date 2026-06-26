@@ -21,6 +21,11 @@ func PrepareImport(opts ImportOptions) (*ImportPrepareResult, error) {
 	if _, err := ValidateInputPath(opts.InputPath); err != nil {
 		return nil, err
 	}
+	if opts.MigrationID != "" {
+		if _, err := LoadState(opts.Org, opts.Database, opts.Branch, opts.MigrationID); err != nil {
+			return nil, err
+		}
+	}
 	if _, err := FindPgloader(); err != nil {
 		return nil, err
 	}
