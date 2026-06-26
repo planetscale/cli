@@ -41,6 +41,7 @@ import (
 	"github.com/planetscale/cli/internal/cmd/database"
 	"github.com/planetscale/cli/internal/cmd/dataimports"
 	"github.com/planetscale/cli/internal/cmd/deployrequest"
+	"github.com/planetscale/cli/internal/cmd/importcmd"
 	"github.com/planetscale/cli/internal/cmd/keyspace"
 	"github.com/planetscale/cli/internal/cmd/org"
 	"github.com/planetscale/cli/internal/cmd/password"
@@ -118,16 +119,17 @@ func Execute(ctx context.Context, sigc chan os.Signal, signals []os.Signal, ver,
 		return 0
 	}
 
-	// print any user specific messages first
-	switch format {
-	case printer.JSON:
-		fmt.Fprintf(os.Stderr, `{"error": "%s"}`, err)
-	default:
-		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
+	var cmdErr *cmdutil.Error
+	printed := errors.As(err, &cmdErr) && cmdErr.Printed
+	if !printed {
+		switch format {
+		case printer.JSON:
+			fmt.Fprintf(os.Stderr, `{"error": "%s"}`, err)
+		default:
+			fmt.Fprintf(os.Stderr, "Error: %s\n", err)
+		}
 	}
 
-	// check if a sub command wants to return a specific exit code
-	var cmdErr *cmdutil.Error
 	if errors.As(err, &cmdErr) {
 		return cmdErr.ExitCode
 	}
@@ -311,6 +313,10 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 	shellCmd := shell.ShellCmd(ch, sigc, signals...)
 	shellCmd.GroupID = "database"
 	rootCmd.AddCommand(shellCmd)
+
+	importCmd := importcmd.ImportCmd(ch)
+	importCmd.GroupID = "postgres"
+	rootCmd.AddCommand(importCmd)
 
 	workflowCmd := workflow.WorkflowCmd(ch)
 	workflowCmd.GroupID = "vitess"
