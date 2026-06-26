@@ -23,7 +23,7 @@ type ToolDef struct {
 // getToolDefinitions returns the list of all available MCP tools
 func getToolDefinitions() []ToolDef {
 	namingBlurb := ".  Two common naming conventions for PlanetScale databases are <org>/<database> and <org>/<database>/<branch>. When the user provides a database identifier in either of these formats, automatically parse and use the org, database, and branch parameters directly - do not perform discovery steps like list_orgs or list_databases.  Examples: `acme/widgets` -> org=acme, database=widgets.  `acme/widgets/main` -> org=acme, database=widgets, branch=main.  If the user provides an identifier like 'org/database' or 'org/database/branch', parse these components directly and skip organizational/database discovery steps."
-	tools := []ToolDef{
+	return []ToolDef{
 		{
 			tool: mcp.NewTool("list_orgs",
 				mcp.WithDescription("List all available organizations"),
@@ -165,9 +165,6 @@ func getToolDefinitions() []ToolDef {
 			handler: HandleGetInsights,
 		},
 	}
-
-	tools = append(tools, importD1ToolDefs()...)
-	return tools
 }
 
 // ServerCmd returns a new cobra.Command for the mcp server command.

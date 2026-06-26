@@ -18,11 +18,8 @@ var errExpiredAuthMessage = errors.New("the access token has expired. Please run
 // Error can be used by a command to change the exit status of the CLI.
 type Error struct {
 	Msg string
-	// ExitCode is returned to the shell when the command fails.
+	// Status
 	ExitCode int
-	// Printed indicates the error output was already written (e.g. to stdout);
-	// root should not print Msg to stderr again.
-	Printed bool
 }
 
 func (e *Error) Error() string { return e.Msg }
