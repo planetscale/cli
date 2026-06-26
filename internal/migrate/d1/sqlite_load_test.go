@@ -101,6 +101,64 @@ func TestEnsureSQLiteFromDumpReusesExisting(t *testing.T) {
 	}
 }
 
+func TestLoadSQLiteDumpChunkedMultiLineCreate(t *testing.T) {
+	dir := t.TempDir()
+	dumpPath := filepath.Join(dir, "create.sql")
+	sqlitePath := filepath.Join(dir, "create.sqlite")
+
+	var b strings.Builder
+	b.WriteString("PRAGMA defer_foreign_keys=TRUE;\n")
+	b.WriteString("CREATE TABLE multi (\n")
+	for i := 0; i < 40; i++ {
+		fmt.Fprintf(&b, "  col_%d TEXT,\n", i)
+	}
+	b.WriteString("  id INTEGER PRIMARY KEY\n")
+	b.WriteString(");\n")
+	for i := 0; i < 10; i++ {
+		fmt.Fprintf(&b, "INSERT INTO multi (id) VALUES(%d);\n", i)
+	}
+	if err := os.WriteFile(dumpPath, []byte(b.String()), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	sqlite3, err := FindSQLite3()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Small chunks force splits that would bisect CREATE TABLE without boundary-aware flushing.
+	if err := loadSQLiteDumpChunked(context.Background(), sqlite3, dumpPath, sqlitePath, 200); err != nil {
+		t.Fatalf("loadSQLiteDumpChunked: %v", err)
+	}
+
+	counts, err := CountSQLiteRows(context.Background(), sqlitePath, []string{"multi"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if counts["multi"] != 10 {
+		t.Fatalf("expected 10 rows, got %d", counts["multi"])
+	}
+}
+
+func TestSQLStatementBoundary(t *testing.T) {
+	tests := []struct {
+		line string
+		want bool
+	}{
+		{"CREATE TABLE t (id INTEGER);\n", true},
+		{"  );\n", true},
+		{"  payload BLOB\n", false},
+		{"INSERT INTO t VALUES('a;b');\n", true},
+		{"INSERT INTO t VALUES('a;b\n", false},
+		{"-- comment only\n", false},
+		{"PRAGMA defer_foreign_keys=TRUE;\n", true},
+	}
+	for _, tc := range tests {
+		if got := lineEndsSQLStatement([]byte(tc.line)); got != tc.want {
+			t.Fatalf("lineEndsSQLStatement(%q) = %v, want %v", tc.line, got, tc.want)
+		}
+	}
+}
+
 func TestLoadSQLiteDumpChunked(t *testing.T) {
 	dir := t.TempDir()
 	dumpPath := filepath.Join(dir, "multi.sql")

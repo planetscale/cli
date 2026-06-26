@@ -154,7 +154,7 @@ func loadSQLiteDumpChunked(ctx context.Context, sqlite3, dumpPath, sqlitePath st
 				return werr
 			}
 			chunkSize += int64(len(line))
-			if chunkSize >= chunkBytes {
+			if chunkSize >= chunkBytes && lineEndsSQLStatement(line) {
 				if err := flushChunk(); err != nil {
 					return err
 				}
@@ -183,4 +183,33 @@ func truncateLoadError(msg string, max int) string {
 		return msg
 	}
 	return msg[:max] + "..."
+}
+
+// lineEndsSQLStatement reports whether line completes a standalone SQL statement.
+// Chunk flushes use this so multi-line CREATE TABLE blocks are never split.
+func lineEndsSQLStatement(line []byte) bool {
+	s := strings.TrimSpace(string(line))
+	if s == "" || strings.HasPrefix(s, "--") {
+		return false
+	}
+	return sqlEndsWithSemicolon(s)
+}
+
+func sqlEndsWithSemicolon(s string) bool {
+	inSingle := false
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if c == '\'' {
+			if inSingle && i+1 < len(s) && s[i+1] == '\'' {
+				i++
+				continue
+			}
+			inSingle = !inSingle
+			continue
+		}
+		if c == ';' && !inSingle && strings.TrimSpace(s[i+1:]) == "" {
+			return true
+		}
+	}
+	return false
 }
