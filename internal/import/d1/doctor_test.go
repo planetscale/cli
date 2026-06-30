@@ -41,7 +41,7 @@ func TestImport_RequiresPgloader(t *testing.T) {
 		t.Skip("pgloader installed")
 	}
 
-	_, err := Import(context.Background(), nil, nil, ImportOptions{
+	result, err := Import(context.Background(), nil, nil, ImportOptions{
 		InputPath: testFixture(t),
 		Org:       "acme",
 		Database:  "mydb",
@@ -50,4 +50,13 @@ func TestImport_RequiresPgloader(t *testing.T) {
 		t.Fatal("expected missing pgloader error")
 	}
 	requireMigrationErr(t, err, ErrCodeMissingTool)
+	if result == nil {
+		t.Fatal("expected import result on failure")
+	}
+	if result.MigrationID == "" {
+		t.Fatal("expected migration_id in failure result")
+	}
+	if result.Lint == nil || result.Plan == nil {
+		t.Fatal("expected lint and plan in failure result")
+	}
 }

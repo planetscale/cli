@@ -82,9 +82,13 @@ Use --dry-run to lint and save migration state without touching Postgres.`,
 				resp := d1.ErrorResponse("start", err)
 				if result != nil {
 					resp.Data = result
-					resp.Issues = result.Lint.Issues
+					if result.Lint != nil {
+						resp.Issues = result.Lint.Issues
+					}
+					resp.MigrationID = result.MigrationID
+				} else {
+					resp.MigrationID = prepared.MigrationID
 				}
-				resp.MigrationID = prepared.MigrationID
 				return writeD1(ch, resp)
 			}
 			resp := d1.OKResponse("start", result, d1.StartNextSteps(result.MigrationID, database, branch, result.Method, flags.input, flags.dryRun))

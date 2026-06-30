@@ -75,7 +75,7 @@ func Import(ctx context.Context, psClient *ps.Client, client ImportClient, opts 
 	}
 
 	if _, err := FindPgloader(); err != nil {
-		return nil, err
+		return result, err
 	}
 
 	importStarted := false
@@ -102,10 +102,10 @@ func Import(ctx context.Context, psClient *ps.Client, client ImportClient, opts 
 
 	db, err := client.GetDatabase(ctx, opts.Org, opts.Database)
 	if err != nil {
-		return nil, fmt.Errorf("get database: %w", err)
+		return result, fmt.Errorf("get database: %w", err)
 	}
 	if db.Kind != "postgresql" {
-		return nil, newMigrationError(
+		return result, newMigrationError(
 			ErrCodeInvalidInput,
 			fmt.Sprintf("database %s is not PostgreSQL", opts.Database),
 			"Create a PostgreSQL database branch for D1 migration",
@@ -115,7 +115,7 @@ func Import(ctx context.Context, psClient *ps.Client, client ImportClient, opts 
 	sqlitePath := DefaultSQLitePath(opts.InputPath)
 	if state, stateErr := LoadState(opts.Org, opts.Database, opts.Branch, opts.MigrationID); stateErr == nil {
 		if state.InputPath != "" && state.InputPath != opts.InputPath {
-			return nil, newMigrationError(
+			return result, newMigrationError(
 				ErrCodeInvalidInput,
 				fmt.Sprintf("input path %q does not match migration state %q", opts.InputPath, state.InputPath),
 				"Use the same --input as the original import or omit --migration-id to start fresh",
@@ -128,10 +128,10 @@ func Import(ctx context.Context, psClient *ps.Client, client ImportClient, opts 
 
 	if importResumeEnabled(opts) {
 		if err := saveImportMigrationState(opts, PhaseImporting, ""); err != nil {
-			return nil, err
+			return result, err
 		}
 	} else if err := resetImportProgress(opts, PhaseImporting, ""); err != nil {
-		return nil, err
+		return result, err
 	}
 
 	sqliteStart := time.Now()
@@ -141,13 +141,13 @@ func Import(ctx context.Context, psClient *ps.Client, client ImportClient, opts 
 		if errors.Is(err, context.Canceled) {
 			remediation = "Import was interrupted; re-run start to resume or start fresh"
 		}
-		return nil, newMigrationError(ErrCodeImportFailed, err.Error(), remediation)
+		return result, newMigrationError(ErrCodeImportFailed, err.Error(), remediation)
 	}
 	timings.SQLiteStagingMs = time.Since(sqliteStart).Milliseconds()
 
 	destURI, cleanup, err := ResolveDestURI(ctx, psClient, opts)
 	if err != nil {
-		return nil, err
+		return result, err
 	}
 	if cleanup != nil {
 		defer cleanup()
@@ -155,23 +155,23 @@ func Import(ctx context.Context, psClient *ps.Client, client ImportClient, opts 
 
 	currentUser, err := usernameFromDestURI(destURI)
 	if err != nil {
-		return nil, err
+		return result, err
 	}
 	if err := cleanupStaleImportRoles(ctx, psClient, opts, currentUser); err != nil {
-		return nil, err
+		return result, err
 	}
 
 	switch opts.Method {
 	case MethodPgloader:
 		if err := importWithPgloader(ctx, opts, destURI, sqlitePath, timings); err != nil {
-			return nil, err
+			return result, err
 		}
 	case MethodPsql:
 		if err := importSmall(ctx, opts, destURI, sqlitePath); err != nil {
-			return nil, err
+			return result, err
 		}
 	default:
-		return nil, newMigrationError(ErrCodeInvalidInput, "unknown import method: "+opts.Method, "Use pgloader (large dumps) or psql (small dumps; data loaded via pgloader)")
+		return result, newMigrationError(ErrCodeInvalidInput, "unknown import method: "+opts.Method, "Use pgloader (large dumps) or psql (small dumps; data loaded via pgloader)")
 	}
 	importDataLoaded = true
 
