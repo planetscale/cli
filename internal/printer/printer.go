@@ -125,23 +125,57 @@ func (p *Printer) out() io.Writer {
 // function needs to be called in a defer or when it's decided to stop the
 // spinner
 func (p *Printer) PrintProgress(message string) func() {
+	handle := p.StartProgress(message)
+	return handle.Stop
+}
+
+// ProgressHandle is an updatable progress indicator (spinner on TTY).
+type ProgressHandle struct {
+	update func(string)
+	stop   func()
+}
+
+// Update changes the progress message.
+func (h *ProgressHandle) Update(message string) {
+	if h != nil && h.update != nil {
+		h.update(message)
+	}
+}
+
+// Stop ends the progress indicator.
+func (h *ProgressHandle) Stop() {
+	if h != nil && h.stop != nil {
+		h.stop()
+	}
+}
+
+// StartProgress starts a spinner or line-based progress on w when not a TTY.
+func (p *Printer) StartProgress(message string) *ProgressHandle {
+	return p.startProgressOn(p.out(), message)
+}
+
+func (p *Printer) startProgressOn(w io.Writer, message string) *ProgressHandle {
 	if !IsTTY {
-		fmt.Fprintln(p.out(), message)
-		return func() {}
+		fmt.Fprintln(w, message)
+		return &ProgressHandle{
+			update: func(msg string) { fmt.Fprintln(w, msg) },
+		}
 	}
 
-	s := spinner.New(spinner.CharSets[14], 100*time.Millisecond, spinner.WithWriter(p.out()))
+	s := spinner.New(spinner.CharSets[14], 100*time.Millisecond, spinner.WithWriter(w))
 	s.Suffix = fmt.Sprintf(" %s", message)
 
 	_ = s.Color("bold", "green")
 	s.Start()
-	return func() {
-		s.Stop()
-
-		// NOTE(fatih) the spinner library doesn't clear the line properly,
-		// hence remove it ourselves. This line should be removed once it's
-		// fixed in upstream.  https://github.com/briandowns/spinner/pull/117
-		fmt.Fprint(p.out(), "\r\033[2K")
+	return &ProgressHandle{
+		update: func(msg string) { s.Suffix = fmt.Sprintf(" %s", msg) },
+		stop: func() {
+			s.Stop()
+			// NOTE(fatih) the spinner library doesn't clear the line properly,
+			// hence remove it ourselves. This line should be removed once it's
+			// fixed in upstream.  https://github.com/briandowns/spinner/pull/117
+			fmt.Fprint(w, "\r\033[2K")
+		},
 	}
 }
 

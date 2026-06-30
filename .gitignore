@@ -20,3 +20,7 @@ vendor/
 
 # Output of running go build cmd/pscale/main.go
 main
+
+# Local D1 import dev scripts (not shipped with the CLI)
+script/d1-import-test/
+test_import_d1.sh
