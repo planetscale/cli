@@ -237,7 +237,11 @@ func resolveVerifySQLitePath(opts VerifyOptions) (VerifyOptions, string, error) 
 		return opts, opts.SQLitePath, nil
 	}
 
-	if state, err := LoadState(opts.Org, opts.Database, opts.Branch, opts.MigrationID); err == nil {
+	if opts.MigrationID != "" {
+		state, err := LoadState(opts.Org, opts.Database, opts.Branch, opts.MigrationID)
+		if err != nil {
+			return opts, "", err
+		}
 		if err := validateInputPathAgainstState(opts.InputPath, state.InputPath); err != nil {
 			return opts, "", err
 		}
@@ -247,8 +251,14 @@ func resolveVerifySQLitePath(opts VerifyOptions) (VerifyOptions, string, error) 
 		if state.SQLitePath != "" {
 			return opts, state.SQLitePath, nil
 		}
-	} else if opts.InputPath == "" {
-		return opts, "", err
+		if opts.InputPath == "" {
+			return opts, "", newMigrationError(
+				ErrCodeMissingInput,
+				"input dump path required for verify",
+				"Pass --input or run verify with a migration-id from a prior import",
+			)
+		}
+		return opts, DefaultSQLitePath(opts.InputPath), nil
 	}
 
 	if opts.InputPath == "" {

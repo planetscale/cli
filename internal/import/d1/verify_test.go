@@ -101,3 +101,16 @@ func TestResolveVerifySQLitePathDefaultsFromInput(t *testing.T) {
 		t.Fatalf("sqlite path = %q, want %q", sqlitePath, want)
 	}
 }
+
+func TestResolveVerifySQLitePathFailsOnBadMigrationIDWithInput(t *testing.T) {
+	t.Setenv("PSCALE_TEST_MODE", "1")
+
+	_, _, err := resolveVerifySQLitePath(VerifyOptions{
+		Org:         "acme",
+		Database:    "mydb",
+		Branch:      "main",
+		MigrationID: "missing-migration",
+		InputPath:   testFixture(t),
+	})
+	requireMigrationErr(t, err, ErrCodeNotFound)
+}
