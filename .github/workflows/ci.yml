@@ -18,9 +18,6 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Install D1 test dependencies
-        run: sudo apt-get update && sudo apt-get install -y pgloader sqlite3
-
       - run: make
 
   verify-licenses:
