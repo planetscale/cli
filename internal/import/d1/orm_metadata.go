@@ -103,8 +103,7 @@ func matchAnyTableName(names ...string) func(string) bool {
 }
 
 // IsORMMetadataTable reports whether a table holds ORM/framework migration bookkeeping
-// that should not be imported into Postgres. See PRE_DEPLOY.md for pre-ship UX work
-// (post-import ORM baseline guidance for users).
+// that should not be imported into Postgres.
 func IsORMMetadataTable(name string) bool {
 	return ORMMetadataRule(name) != nil
 }
