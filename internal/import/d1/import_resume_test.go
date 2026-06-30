@@ -32,6 +32,16 @@ func TestImportResumeEnabled(t *testing.T) {
 
 	if err := updateMigrationState(org, database, branch, migrationID, func(state *MigrationState) {
 		state.Phase = PhaseFailed
+		state.SchemaApplied = true
+	}); err != nil {
+		t.Fatalf("update state schema applied: %v", err)
+	}
+	if !importResumeEnabled(opts) {
+		t.Fatal("expected resume when failed after schema applied")
+	}
+
+	if err := updateMigrationState(org, database, branch, migrationID, func(state *MigrationState) {
+		state.SchemaApplied = false
 		state.LoadedTables = []string{"users"}
 	}); err != nil {
 		t.Fatalf("update state: %v", err)
@@ -99,6 +109,9 @@ func TestAppendLoadedTableAndReset(t *testing.T) {
 	}
 	if len(state.LoadedTables) != 0 {
 		t.Fatalf("expected loaded_tables cleared, got %v", state.LoadedTables)
+	}
+	if state.SchemaApplied {
+		t.Fatal("expected schema_applied cleared on reset")
 	}
 	if state.DBName != "myapp" {
 		t.Fatalf("db_name = %q, want myapp", state.DBName)

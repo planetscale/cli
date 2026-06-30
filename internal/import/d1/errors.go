@@ -18,6 +18,7 @@ const (
 	ErrCodePrereqFailed        = "PREREQ_FAILED"
 	ErrCodeLintBlocked         = "LINT_BLOCKED"
 	ErrCodeDestinationConflict = "DESTINATION_CONFLICT"
+	ErrCodeStatePersistFailed  = "STATE_PERSIST_FAILED"
 )
 
 const (
@@ -77,6 +78,14 @@ func errExistingImportTables(tables []string) error {
 		ErrCodeDestinationConflict,
 		fmt.Sprintf("destination already has tables from this import: %s", strings.Join(tables, ", ")),
 		"Use a new branch, drop the conflicting tables, or choose a database without overlapping table names before importing",
+	)
+}
+
+func errStatePersist(operation string, err error) error {
+	return newMigrationError(
+		ErrCodeStatePersistFailed,
+		fmt.Sprintf("%s succeeded but local migration state could not be saved: %v", operation, err),
+		"Postgres may already reflect the finished step; re-run status or verify before continuing",
 	)
 }
 

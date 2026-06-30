@@ -172,16 +172,17 @@ const (
 
 // MigrationState is persisted local migration metadata.
 type MigrationState struct {
-	MigrationID  string    `json:"migration_id"`
-	Org          string    `json:"org"`
-	Database     string    `json:"database"`
-	Branch       string    `json:"branch"`
-	InputPath    string    `json:"input_path"`
-	SQLitePath   string    `json:"sqlite_path,omitempty"`
-	DBName       string    `json:"db_name,omitempty"`
-	Method       string    `json:"method,omitempty"`
-	Phase        string    `json:"phase"`
-	LoadedTables []string  `json:"loaded_tables,omitempty"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	MigrationID   string    `json:"migration_id"`
+	Org           string    `json:"org"`
+	Database      string    `json:"database"`
+	Branch        string    `json:"branch"`
+	InputPath     string    `json:"input_path"`
+	SQLitePath    string    `json:"sqlite_path,omitempty"`
+	DBName        string    `json:"db_name,omitempty"`
+	Method        string    `json:"method,omitempty"`
+	Phase         string    `json:"phase"`
+	SchemaApplied bool      `json:"schema_applied,omitempty"`
+	LoadedTables  []string  `json:"loaded_tables,omitempty"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
 }

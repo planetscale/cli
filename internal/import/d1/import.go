@@ -201,10 +201,10 @@ func Import(ctx context.Context, psClient *ps.Client, client ImportClient, opts 
 		LoadedTables: loadedTables,
 	}
 	if !opts.DryRun {
+		if err := SaveState(state); err != nil {
+			return result, errStatePersist("import", err)
+		}
 		NotifyImportEventSync(opts.NotifyAPI, opts.Org, opts.Database, opts.Branch, opts.MigrationID, NotifyEventImported, notifyPayloadFromImport(opts, result))
-	}
-	if err := SaveState(state); err != nil {
-		return result, err
 	}
 
 	return result, nil
@@ -240,10 +240,13 @@ func importResumeEnabled(opts ImportOptions) bool {
 	if err != nil {
 		return false
 	}
-	if len(state.LoadedTables) == 0 {
+	if state.Phase != PhaseFailed && state.Phase != PhaseImporting {
 		return false
 	}
-	return state.Phase == PhaseFailed || state.Phase == PhaseImporting
+	if len(state.LoadedTables) > 0 {
+		return true
+	}
+	return state.SchemaApplied
 }
 
 func loadTablesAndFinalize(ctx context.Context, opts ImportOptions, destURI, sqlitePath string, timings *ImportTimings, resume bool) error {
@@ -386,9 +389,16 @@ func appendLoadedTable(opts ImportOptions, table string) error {
 	})
 }
 
+func setSchemaApplied(opts ImportOptions) error {
+	return updateMigrationState(opts.Org, opts.Database, opts.Branch, opts.MigrationID, func(state *MigrationState) {
+		state.SchemaApplied = true
+	})
+}
+
 func resetImportProgress(opts ImportOptions, phase, sqlitePath string) error {
 	return updateMigrationState(opts.Org, opts.Database, opts.Branch, opts.MigrationID, func(state *MigrationState) {
 		state.Phase = phase
+		state.SchemaApplied = false
 		state.LoadedTables = nil
 		if opts.InputPath != "" {
 			state.InputPath = opts.InputPath
@@ -438,7 +448,10 @@ func applyPostgresSchema(ctx context.Context, opts ImportOptions, destURI string
 		return err
 	}
 
-	return runPsqlFile(ctx, destURI, combinedPath)
+	if err := runPsqlFile(ctx, destURI, combinedPath); err != nil {
+		return err
+	}
+	return setSchemaApplied(opts)
 }
 
 func applyPostgresIndexes(ctx context.Context, opts ImportOptions, destURI string) error {

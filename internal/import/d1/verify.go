@@ -145,18 +145,18 @@ func Verify(ctx context.Context, opts VerifyOptions) (result *VerifyResult, err 
 
 	verifyChecksPassed = true
 
+	if opts.MigrationID != "" {
+		if err := SetMigrationPhase(opts.Org, opts.Database, opts.Branch, opts.MigrationID, PhaseVerified); err != nil {
+			return result, errStatePersist("verify", err)
+		}
+	}
+
 	if !opts.NotifyAPI.Disabled && opts.NotifyAPI.Client != nil {
 		matched := result.Matched
 		NotifyImportEventSync(opts.NotifyAPI, opts.Org, opts.Database, opts.Branch, opts.MigrationID, NotifyEventVerified, importNotificationPayload{
 			Matched:    &matched,
 			DurationMs: time.Since(verifyStart).Milliseconds(),
 		})
-	}
-
-	if opts.MigrationID != "" {
-		if err := SetMigrationPhase(opts.Org, opts.Database, opts.Branch, opts.MigrationID, PhaseVerified); err != nil {
-			return result, err
-		}
 	}
 
 	return result, nil

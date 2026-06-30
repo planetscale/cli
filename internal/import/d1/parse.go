@@ -12,6 +12,7 @@ var (
 	createTableRe   = regexp.MustCompile(`(?is)^CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:"([^"]+)"|'([^']+)'|` + "`" + `([^` + "`" + `]+)` + "`" + `|([a-zA-Z_][\w]*))\s*\(`)
 	virtualTableRe  = regexp.MustCompile(`(?is)^CREATE\s+VIRTUAL\s+TABLE`)
 	autoincrementRe = regexp.MustCompile(`(?i)AUTOINCREMENT`)
+	columnUniqueRe  = regexp.MustCompile(`(?i)\bUNIQUE\b`)
 	insertRe        = regexp.MustCompile(`(?is)^INSERT\s+INTO\s+(?:` + "`" + `([^` + "`" + `]+)` + "`" + `|"([^"]+)"|'([^']+)'|([a-zA-Z_][\w]*))`)
 	valueTupleSepRe = regexp.MustCompile(`\)\s*,\s*\(`)
 )
@@ -179,7 +180,7 @@ func parseColumn(def string) ColumnSchema {
 	if strings.Contains(upper, "PRIMARY KEY") {
 		col.PrimaryKey = true
 	}
-	if strings.Contains(upper, "UNIQUE") && !strings.HasPrefix(upper, "UNIQUE(") && !strings.HasPrefix(upper, "UNIQUE (") {
+	if columnUniqueRe.MatchString(def) {
 		col.Unique = true
 	}
 	if autoincrementRe.MatchString(def) {
