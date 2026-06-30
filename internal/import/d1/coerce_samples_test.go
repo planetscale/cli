@@ -4,12 +4,12 @@ import "testing"
 
 func TestLooksLikeTimestamp(t *testing.T) {
 	cases := map[string]bool{
-		"2024-01-15 12:00:00":      true,
-		"2024-01-15T12:00:00Z":     true,
-		"v1-beta":                  false,
-		"note: pending":            false,
-		"draft-2024":               false,
-		"CURRENT_TIMESTAMP":        false,
+		"2024-01-15 12:00:00":  true,
+		"2024-01-15T12:00:00Z": true,
+		"v1-beta":              false,
+		"note: pending":        false,
+		"draft-2024":           false,
+		"CURRENT_TIMESTAMP":    false,
 	}
 	for val, want := range cases {
 		if got := looksLikeTimestamp(val); got != want {

@@ -234,8 +234,30 @@ func mapSQLiteDefaultFunction(def, pgType string) string {
 	if strings.HasPrefix(upper, "DATETIME(") || strings.HasPrefix(upper, "(DATETIME(") {
 		return "now()"
 	}
-	if strings.HasPrefix(upper, "UNIXEPOCH(") {
-		return "to_timestamp(" + strings.TrimPrefix(strings.TrimSuffix(trimmed, ")"), "unixepoch(") + ")"
+	if arg := sqliteFunctionArg(trimmed, "UNIXEPOCH"); arg != "" {
+		return "to_timestamp(" + arg + ")"
+	}
+	return ""
+}
+
+func sqliteFunctionArg(s, fn string) string {
+	fnUpper := strings.ToUpper(fn)
+	idx := strings.Index(strings.ToUpper(s), fnUpper+"(")
+	if idx < 0 {
+		return ""
+	}
+	start := idx + len(fnUpper) + 1
+	depth := 1
+	for i := start; i < len(s); i++ {
+		switch s[i] {
+		case '(':
+			depth++
+		case ')':
+			depth--
+			if depth == 0 {
+				return strings.TrimSpace(s[start:i])
+			}
+		}
 	}
 	return ""
 }

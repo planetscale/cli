@@ -9,8 +9,8 @@ import (
 )
 
 var (
-	uuidValueRe       = regexp.MustCompile(`(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
-	timestampValueRe  = regexp.MustCompile(`(?i)^\d{4}-\d{2}-\d{2}(?:[ T]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?)?$`)
+	uuidValueRe      = regexp.MustCompile(`(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
+	timestampValueRe = regexp.MustCompile(`(?i)^\d{4}-\d{2}-\d{2}(?:[ T]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?)?$`)
 )
 
 // ColumnSamples holds sampled INSERT values per table/column.
@@ -400,4 +400,3 @@ func samplesAllowTimestamp(table, column string, ctx *TypeCoercionContext) bool 
 	}
 	return true
 }
-
