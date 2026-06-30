@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -234,10 +235,67 @@ func mapSQLiteDefaultFunction(def, pgType string) string {
 	if strings.HasPrefix(upper, "DATETIME(") || strings.HasPrefix(upper, "(DATETIME(") {
 		return "now()"
 	}
-	if arg := sqliteFunctionArg(trimmed, "UNIXEPOCH"); arg != "" {
-		return "to_timestamp(" + arg + ")"
+	if arg := sqliteFunctionArg(trimmed, "UNIXEPOCH"); arg != "" || strings.HasSuffix(upper, "UNIXEPOCH()") {
+		if mapped := mapUnixEpochDefault(arg, pgType); mapped != "" {
+			return mapped
+		}
 	}
 	return ""
+}
+
+func mapUnixEpochDefault(arg, pgType string) string {
+	modifier := strings.ToUpper(strings.Trim(strings.TrimSpace(arg), `'"`))
+	switch modifier {
+	case "", "NOW":
+		return unixEpochNowDefault(pgType)
+	case "SUBSEC":
+		return unixEpochSubsecDefault(pgType)
+	}
+	if pgType == "TIMESTAMPTZ" && unixEpochArgLooksNumeric(arg) {
+		return "to_timestamp(" + strings.TrimSpace(arg) + ")"
+	}
+	if (pgType == "BIGINT" || pgType == "INTEGER" || pgType == "DOUBLE PRECISION") && unixEpochArgLooksNumeric(arg) {
+		return strings.TrimSpace(arg)
+	}
+	return ""
+}
+
+func unixEpochNowDefault(pgType string) string {
+	switch pgType {
+	case "TIMESTAMPTZ":
+		return "now()"
+	case "BIGINT", "INTEGER":
+		return "extract(epoch from now())::bigint"
+	case "DOUBLE PRECISION":
+		return "extract(epoch from now())"
+	default:
+		return "now()"
+	}
+}
+
+func unixEpochSubsecDefault(pgType string) string {
+	switch pgType {
+	case "TIMESTAMPTZ":
+		return "clock_timestamp()"
+	case "BIGINT", "INTEGER":
+		return "extract(epoch from clock_timestamp())::bigint"
+	case "DOUBLE PRECISION":
+		return "extract(epoch from clock_timestamp())"
+	default:
+		return "clock_timestamp()"
+	}
+}
+
+func unixEpochArgLooksNumeric(arg string) bool {
+	arg = strings.TrimSpace(arg)
+	if arg == "" {
+		return false
+	}
+	unquoted := strings.Trim(arg, `'"`)
+	if _, err := strconv.ParseFloat(unquoted, 64); err == nil {
+		return true
+	}
+	return !strings.HasPrefix(arg, "'") && !strings.HasPrefix(arg, `"`)
 }
 
 func sqliteFunctionArg(s, fn string) string {

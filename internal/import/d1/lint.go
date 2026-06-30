@@ -145,9 +145,16 @@ func isBooleanLikeColumn(col ColumnSchema, table TableSchema, ctx *TypeCoercionC
 }
 
 func isTimestampText(col ColumnSchema) bool {
-	name := strings.ToLower(col.Name)
-	if strings.Contains(name, "_at") || strings.Contains(name, "timestamp") || strings.Contains(name, "date") {
-		return col.Type == "TEXT"
+	return col.Type == "TEXT" && looksLikeTimestampColumnName(col.Name)
+}
+
+func looksLikeTimestampColumnName(name string) bool {
+	name = strings.ToLower(name)
+	if strings.Contains(name, "_at") || strings.Contains(name, "timestamp") {
+		return true
+	}
+	if name == "date" || strings.HasSuffix(name, "_date") || strings.HasPrefix(name, "date_") {
+		return true
 	}
 	return false
 }
