@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	ps "github.com/planetscale/planetscale-go/planetscale"
 )
@@ -70,5 +71,49 @@ func TestIsDefaultPostgresRole(t *testing.T) {
 	}
 	if isDefaultPostgresRole("pscale_api_abc123") {
 		t.Fatal("pscale_api should not match")
+	}
+}
+
+func TestWithConnectionRetryRecovers(t *testing.T) {
+	attempts := 0
+	err := withConnectionRetry(context.Background(), func() error {
+		attempts++
+		if attempts < 2 {
+			return errors.New("bad connection")
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("withConnectionRetry: %v", err)
+	}
+	if attempts != 2 {
+		t.Fatalf("attempts = %d, want 2", attempts)
+	}
+}
+
+func TestWithConnectionRetryNonRetryable(t *testing.T) {
+	attempts := 0
+	want := errors.New("syntax error at line 1")
+	err := withConnectionRetry(context.Background(), func() error {
+		attempts++
+		return want
+	})
+	if !errors.Is(err, want) {
+		t.Fatalf("err = %v, want %v", err, want)
+	}
+	if attempts != 1 {
+		t.Fatalf("attempts = %d, want 1", attempts)
+	}
+}
+
+func TestWithConnectionRetryRespectsContext(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+
+	err := withConnectionRetry(ctx, func() error {
+		return errors.New("bad connection")
+	})
+	if err == nil {
+		t.Fatal("expected context or retry error")
 	}
 }

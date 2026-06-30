@@ -61,6 +61,13 @@ func validatePgloaderTableLoad(output, table string, expectedRows int) error {
 		}
 		return newMigrationError(ErrCodeImportFailed, msg, pgloaderNoRowsRemediation)
 	}
+	if rows != int64(expectedRows) {
+		return newMigrationError(
+			ErrCodeImportFailed,
+			fmt.Sprintf("pgloader copied %d rows into %q (expected %d from dump)", rows, table, expectedRows),
+			pgloaderNoRowsRemediation,
+		)
+	}
 
 	return nil
 }

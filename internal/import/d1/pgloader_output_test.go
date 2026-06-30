@@ -52,6 +52,9 @@ func TestValidatePgloaderTableLoad(t *testing.T) {
 	if err := validatePgloaderTableLoad(pgloaderOrganizationsOK, "organizations", 0); err != nil {
 		t.Fatalf("expected skip for empty expected: %v", err)
 	}
+	if err := validatePgloaderTableLoad(pgloaderOrganizationsOK, "organizations", 30); err == nil {
+		t.Fatal("expected error for row count mismatch")
+	}
 	if err := validatePgloaderTableLoad(pgloaderTeamMembersZero, "team_members", 700); err == nil {
 		t.Fatal("expected error for 0-row load")
 	} else if me, ok := err.(*MigrationError); !ok || me.Info.Code != ErrCodeImportFailed {

@@ -5,11 +5,35 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
 	ps "github.com/planetscale/planetscale-go/planetscale"
 )
+
+func TestCompleteRequiresVerifiedPhase(t *testing.T) {
+	t.Setenv("PSCALE_TEST_MODE", "1")
+
+	org, database, branch := "acme", "mydb", "main"
+	migrationID := "complete-unverified"
+	if err := SavePlan(&PlanResult{
+		MigrationID: migrationID,
+		Org:         org,
+		Database:    database,
+		Branch:      branch,
+		InputPath:   testFixture(t),
+	}); err != nil {
+		t.Fatalf("SavePlan: %v", err)
+	}
+	if err := SetMigrationPhase(org, database, branch, migrationID, PhaseImported); err != nil {
+		t.Fatalf("SetMigrationPhase: %v", err)
+	}
+
+	if err := Complete(org, database, branch, migrationID, NotifyAPIConfig{}); err == nil {
+		t.Fatal("expected error completing unverified migration")
+	}
+}
 
 func TestMigrationPhaseTransitions(t *testing.T) {
 	t.Setenv("PSCALE_TEST_MODE", "1")
@@ -187,6 +211,10 @@ func TestComplete_SendsCompletePayload(t *testing.T) {
 	}
 	if body["duration_ms"].(float64) <= 0 {
 		t.Fatalf("duration_ms = %v, want > 0", body["duration_ms"])
+	}
+	msg, _ := body["message"].(string)
+	if msg == "" || !strings.Contains(msg, "re-baseline ORM migrations") {
+		t.Fatalf("message = %v, want ORM re-baseline guidance", body["message"])
 	}
 }
 

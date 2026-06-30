@@ -27,6 +27,10 @@ func TestColumnReferencesUUIDKey(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParseDump: %v", err)
 	}
+	coerceCtx, err := BuildTypeCoercionContext(testFixture(t), tables)
+	if err != nil {
+		t.Fatalf("BuildTypeCoercionContext: %v", err)
+	}
 
 	var entityLinks TableSchema
 	for _, table := range tables {
@@ -49,7 +53,7 @@ func TestColumnReferencesUUIDKey(t *testing.T) {
 	if entityID.Name == "" {
 		t.Fatal("missing entity_id column")
 	}
-	if !columnReferencesUUIDKey(entityID, entityLinks, tables) {
+	if !columnReferencesUUIDKey(entityID, entityLinks, tables, coerceCtx) {
 		t.Fatal("expected entity_id to reference UUID primary key")
 	}
 	if isExplicitUUIDColumn(entityID) {
@@ -115,12 +119,12 @@ func TestByteaSignatureExprsUseHex(t *testing.T) {
 	col := ColumnSchema{Name: "payload", Type: "BLOB"}
 	table := TableSchema{Name: "attachments", Columns: []ColumnSchema{col}}
 
-	sqliteExpr := sqliteSignatureColumnExpr(col)
+	sqliteExpr := sqliteSignatureColumnExpr(col, table, nil)
 	if !strings.Contains(sqliteExpr, "hex(") {
 		t.Fatalf("sqlite blob signature should use hex(), got %q", sqliteExpr)
 	}
 
-	pgExpr := postgresSignatureColumnExpr(col, table, nil)
+	pgExpr := postgresSignatureColumnExpr(col, table, nil, nil)
 	if !strings.Contains(pgExpr, "encode(") || !strings.Contains(pgExpr, "'hex'") {
 		t.Fatalf("postgres bytea signature should use encode(..., 'hex'), got %q", pgExpr)
 	}

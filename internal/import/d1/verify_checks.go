@@ -66,7 +66,7 @@ func truncateSignatureValue(value string, maxLen int, addEllipsis bool) string {
 
 type tableFingerprint struct {
 	RowCount int64
-	IDSum    int64
+	IDSum    string
 }
 
 type booleanDistribution struct {
@@ -181,7 +181,7 @@ func verifyTableSequence(ctx context.Context, db *sql.DB, table, column string) 
 	return check, ok, nil
 }
 
-func verifyBooleanColumns(ctx context.Context, db *sql.DB, sqlitePath string, tables []TableSchema) ([]VerifyCheckResult, bool, error) {
+func verifyBooleanColumns(ctx context.Context, db *sql.DB, sqlitePath string, tables []TableSchema, coerceCtx *TypeCoercionContext) ([]VerifyCheckResult, bool, error) {
 	var checks []VerifyCheckResult
 	matched := true
 
@@ -190,7 +190,7 @@ func verifyBooleanColumns(ctx context.Context, db *sql.DB, sqlitePath string, ta
 			continue
 		}
 		for _, col := range table.Columns {
-			if !isBooleanColumn(col) {
+			if !shouldVerifyBooleanColumn(col, table, coerceCtx) {
 				continue
 			}
 			src, err := sqliteBooleanDistribution(ctx, sqlitePath, table.Name, col.Name)
@@ -283,7 +283,7 @@ func parseSQLiteCLIFields(out []byte) []string {
 	return strings.Fields(s)
 }
 
-func verifyTableFingerprints(ctx context.Context, db *sql.DB, sqlitePath string, tables []TableSchema) ([]VerifyCheckResult, bool, error) {
+func verifyTableFingerprints(ctx context.Context, db *sql.DB, sqlitePath string, tables []TableSchema, coerceCtx *TypeCoercionContext) ([]VerifyCheckResult, bool, error) {
 	var checks []VerifyCheckResult
 	matched := true
 
@@ -292,11 +292,11 @@ func verifyTableFingerprints(ctx context.Context, db *sql.DB, sqlitePath string,
 			continue
 		}
 		pkCol := identityColumn(table)
-		src, err := tableFingerprintFromSQLite(ctx, sqlitePath, table, pkCol, tables)
+		src, err := tableFingerprintFromSQLite(ctx, sqlitePath, table, pkCol, tables, coerceCtx)
 		if err != nil {
 			return checks, false, err
 		}
-		dest, err := tableFingerprintFromPostgres(ctx, db, table, pkCol, tables)
+		dest, err := tableFingerprintFromPostgres(ctx, db, table, pkCol, tables, coerceCtx)
 		if err != nil {
 			return checks, false, err
 		}
@@ -305,13 +305,13 @@ func verifyTableFingerprints(ctx context.Context, db *sql.DB, sqlitePath string,
 			Name:    "table_fingerprint",
 			Table:   table.Name,
 			Matched: ok,
-			Source:  fmt.Sprintf("rows=%d id_sum=%d", src.RowCount, src.IDSum),
-			Dest:    fmt.Sprintf("rows=%d id_sum=%d", dest.RowCount, dest.IDSum),
+			Source:  fmt.Sprintf("rows=%d id_sum=%s", src.RowCount, src.IDSum),
+			Dest:    fmt.Sprintf("rows=%d id_sum=%s", dest.RowCount, dest.IDSum),
 		}
 		if !ok {
 			check.Message = "aggregate fingerprint mismatch"
 			matched = false
-		} else if shouldFingerprintPKSum(table, pkCol, tables) {
+		} else if shouldFingerprintPKSum(table, pkCol, tables, coerceCtx) {
 			check.Message = "row count and integer PK sum match"
 		} else {
 			check.Message = "row count match"
@@ -322,20 +322,42 @@ func verifyTableFingerprints(ctx context.Context, db *sql.DB, sqlitePath string,
 }
 
 func identityColumn(table TableSchema) string {
-	for _, col := range table.Columns {
-		if col.AutoIncrement {
-			return col.Name
-		}
-	}
-	for _, col := range table.Columns {
-		if col.PrimaryKey {
-			return col.Name
-		}
+	if cols := primaryKeyColumns(table); len(cols) == 1 {
+		return cols[0]
 	}
 	return ""
 }
 
-func shouldFingerprintPKSum(table TableSchema, pkCol string, all []TableSchema) bool {
+func primaryKeyColumns(table TableSchema) []string {
+	var pks []string
+	for _, col := range table.Columns {
+		if col.PrimaryKey {
+			pks = append(pks, col.Name)
+		}
+	}
+	if len(pks) > 0 {
+		return pks
+	}
+	for _, col := range table.Columns {
+		if col.AutoIncrement {
+			return []string{col.Name}
+		}
+	}
+	return nil
+}
+
+func shouldVerifyBooleanColumn(col ColumnSchema, table TableSchema, coerceCtx *TypeCoercionContext) bool {
+	if isBooleanColumn(col) {
+		return true
+	}
+	upper := strings.ToUpper(col.Type)
+	if (upper == "INTEGER" || upper == "INT") && coerceCtx != nil && samplesLookBoolean(table.Name, col.Name, coerceCtx) {
+		return true
+	}
+	return false
+}
+
+func shouldFingerprintPKSum(table TableSchema, pkCol string, all []TableSchema, coerceCtx *TypeCoercionContext) bool {
 	if pkCol == "" {
 		return false
 	}
@@ -343,19 +365,19 @@ func shouldFingerprintPKSum(table TableSchema, pkCol string, all []TableSchema) 
 	if col.Name == "" {
 		return false
 	}
-	if isUUIDColumn(col, table, all) {
+	if isUUIDColumn(col, table, all, coerceCtx) {
 		return false
 	}
 	upper := strings.ToUpper(col.Type)
 	return col.AutoIncrement || strings.Contains(upper, "INT")
 }
 
-func tableFingerprintFromSQLite(ctx context.Context, sqlitePath string, table TableSchema, pkCol string, all []TableSchema) (tableFingerprint, error) {
+func tableFingerprintFromSQLite(ctx context.Context, sqlitePath string, table TableSchema, pkCol string, all []TableSchema, coerceCtx *TypeCoercionContext) (tableFingerprint, error) {
 	var query string
-	if pkCol != "" && shouldFingerprintPKSum(table, pkCol, all) {
-		query = fmt.Sprintf(`SELECT COUNT(*), COALESCE(SUM(CAST(%q AS INTEGER)), 0) FROM %q;`, pkCol, table.Name)
+	if pkCol != "" && shouldFingerprintPKSum(table, pkCol, all, coerceCtx) {
+		query = fmt.Sprintf(`SELECT COUNT(*), COALESCE(CAST(SUM(CAST(%q AS INTEGER)) AS TEXT), '0') FROM %q;`, pkCol, table.Name)
 	} else {
-		query = fmt.Sprintf(`SELECT COUNT(*), 0 FROM %q;`, table.Name)
+		query = fmt.Sprintf(`SELECT COUNT(*), '0' FROM %q;`, table.Name)
 	}
 	sqlite3, err := FindSQLite3()
 	if err != nil {
@@ -373,19 +395,17 @@ func tableFingerprintFromSQLite(ctx context.Context, sqlitePath string, table Ta
 	if _, err := fmt.Sscanf(fields[0], "%d", &fp.RowCount); err != nil {
 		return tableFingerprint{}, fmt.Errorf("sqlite fingerprint %s row count: %w", table.Name, err)
 	}
-	if _, err := fmt.Sscanf(fields[1], "%d", &fp.IDSum); err != nil {
-		return tableFingerprint{}, fmt.Errorf("sqlite fingerprint %s id sum: %w", table.Name, err)
-	}
+	fp.IDSum = fields[1]
 	return fp, nil
 }
 
-func tableFingerprintFromPostgres(ctx context.Context, db *sql.DB, table TableSchema, pkCol string, all []TableSchema) (tableFingerprint, error) {
+func tableFingerprintFromPostgres(ctx context.Context, db *sql.DB, table TableSchema, pkCol string, all []TableSchema, coerceCtx *TypeCoercionContext) (tableFingerprint, error) {
 	var fp tableFingerprint
 	var query string
-	if pkCol != "" && shouldFingerprintPKSum(table, pkCol, all) {
-		query = fmt.Sprintf(`SELECT COUNT(*), COALESCE(SUM(%s::bigint), 0) FROM %s`, quoteIdent(pkCol), quoteIdent(table.Name))
+	if pkCol != "" && shouldFingerprintPKSum(table, pkCol, all, coerceCtx) {
+		query = fmt.Sprintf(`SELECT COUNT(*), COALESCE(SUM(%s::numeric)::text, '0') FROM %s`, quoteIdent(pkCol), quoteIdent(table.Name))
 	} else {
-		query = fmt.Sprintf(`SELECT COUNT(*), 0 FROM %s`, quoteIdent(table.Name))
+		query = fmt.Sprintf(`SELECT COUNT(*), '0' FROM %s`, quoteIdent(table.Name))
 	}
 	if err := db.QueryRowContext(ctx, query).Scan(&fp.RowCount, &fp.IDSum); err != nil {
 		return fp, fmt.Errorf("postgres fingerprint %s: %w", table.Name, err)
@@ -393,7 +413,7 @@ func tableFingerprintFromPostgres(ctx context.Context, db *sql.DB, table TableSc
 	return fp, nil
 }
 
-func verifySampleRows(ctx context.Context, db *sql.DB, sqlitePath string, tables []TableSchema, maxTables, samplesPerTable int) ([]VerifyCheckResult, bool, error) {
+func verifySampleRows(ctx context.Context, db *sql.DB, sqlitePath string, tables []TableSchema, coerceCtx *TypeCoercionContext, maxTables, samplesPerTable int) ([]VerifyCheckResult, bool, error) {
 	var checks []VerifyCheckResult
 	matched := true
 	checked := 0
@@ -405,7 +425,17 @@ func verifySampleRows(ctx context.Context, db *sql.DB, sqlitePath string, tables
 		if checked >= maxTables {
 			break
 		}
-		pkCol := identityColumn(table)
+		pkCols := primaryKeyColumns(table)
+		if len(pkCols) != 1 {
+			checks = append(checks, VerifyCheckResult{
+				Name:    "sample_rows",
+				Table:   table.Name,
+				Matched: true,
+				Message: "skipped (requires single-column primary key for row sampling)",
+			})
+			continue
+		}
+		pkCol := pkCols[0]
 		if pkCol == "" {
 			continue
 		}
@@ -419,15 +449,15 @@ func verifySampleRows(ctx context.Context, db *sql.DB, sqlitePath string, tables
 		checked++
 
 		for _, id := range ids {
-			src, err := sqliteRowSignature(ctx, sqlitePath, table, pkCol, id)
+			src, err := sqliteRowSignature(ctx, sqlitePath, table, pkCol, id, coerceCtx)
 			if err != nil {
 				return checks, false, err
 			}
-			dest, err := postgresRowSignature(ctx, db, table, pkCol, id, tables)
+			dest, err := postgresRowSignature(ctx, db, table, pkCol, id, tables, coerceCtx)
 			if err != nil {
 				return checks, false, err
 			}
-			ok := rowSignaturesMatch(src, dest, table, tables)
+			ok := rowSignaturesMatch(src, dest, table, tables, coerceCtx)
 			check := VerifyCheckResult{
 				Name:    "sample_rows",
 				Table:   table.Name,
@@ -469,24 +499,24 @@ func samplePrimaryKeys(ctx context.Context, sqlitePath, table, pkCol string, lim
 	return ids, nil
 }
 
-func sqliteSignatureColumnExpr(col ColumnSchema) string {
+func sqliteSignatureColumnExpr(col ColumnSchema, table TableSchema, coerceCtx *TypeCoercionContext) string {
 	if isBooleanColumn(col) {
 		return fmt.Sprintf(`CASE WHEN %q IN (1, '1') THEN '1' WHEN %q IN (0, '0') THEN '0' ELSE '' END`, col.Name, col.Name)
 	}
-	if isJSONText(col) {
+	if isJSONText(col) && coerceCtx != nil && samplesAllowJSON(table.Name, col.Name, coerceCtx) {
 		return fmt.Sprintf(`COALESCE(json(%q), CAST(%q AS TEXT), '')`, col.Name, col.Name)
 	}
 	if isBlobColumn(col) {
 		return fmt.Sprintf(`COALESCE(hex(%q), '')`, col.Name)
 	}
-	if isTimestampTextColumn(col) {
+	if isTimestampText(col) && coerceCtx != nil && samplesAllowTimestamp(table.Name, col.Name, coerceCtx) {
 		return fmt.Sprintf(`COALESCE(strftime('%%Y-%%m-%%dT%%H:%%M:%%SZ', %q), COALESCE(CAST(%q AS TEXT), ''))`, col.Name, col.Name)
 	}
 	return fmt.Sprintf(`COALESCE(CAST(%q AS TEXT), '')`, col.Name)
 }
 
-func postgresSignatureColumnExpr(col ColumnSchema, table TableSchema, all []TableSchema) string {
-	pgType := sqliteTypeToPostgres(col, table, all)
+func postgresSignatureColumnExpr(col ColumnSchema, table TableSchema, all []TableSchema, coerceCtx *TypeCoercionContext) string {
+	pgType := sqliteTypeToPostgres(col, table, all, coerceCtx)
 	switch pgType {
 	case "BOOLEAN":
 		name := quoteIdent(col.Name)
@@ -505,14 +535,14 @@ func postgresSignatureColumnExpr(col ColumnSchema, table TableSchema, all []Tabl
 	}
 }
 
-func rowSignaturesMatch(src, dest string, table TableSchema, all []TableSchema) bool {
+func rowSignaturesMatch(src, dest string, table TableSchema, all []TableSchema, coerceCtx *TypeCoercionContext) bool {
 	srcParts := strings.Split(src, "|")
 	destParts := strings.Split(dest, "|")
 	if len(srcParts) != len(destParts) || len(srcParts) != len(table.Columns) {
 		return src == dest
 	}
 	for i, col := range table.Columns {
-		pgType := sqliteTypeToPostgres(col, table, all)
+		pgType := sqliteTypeToPostgres(col, table, all, coerceCtx)
 		switch pgType {
 		case "JSONB":
 			if !jsonValuesEqual(srcParts[i], destParts[i]) {
@@ -527,6 +557,12 @@ func rowSignaturesMatch(src, dest string, table TableSchema, all []TableSchema) 
 				return false
 			}
 		default:
+			if looksLikeJSON(srcParts[i]) && looksLikeJSON(destParts[i]) {
+				if !jsonValuesEqual(srcParts[i], destParts[i]) {
+					return false
+				}
+				continue
+			}
 			if srcParts[i] != destParts[i] {
 				return false
 			}
@@ -538,10 +574,16 @@ func rowSignaturesMatch(src, dest string, table TableSchema, all []TableSchema) 
 func jsonValuesEqual(a, b string) bool {
 	ca, errA := canonicalJSON(a)
 	cb, errB := canonicalJSON(b)
-	if errA != nil || errB != nil {
+	if errA == nil && errB == nil {
+		return ca == cb
+	}
+	if errA != nil && errB != nil {
+		if looksLikeJSON(a) || looksLikeJSON(b) {
+			return false
+		}
 		return a == b
 	}
-	return ca == cb
+	return false
 }
 
 func canonicalJSON(s string) (string, error) {
@@ -561,6 +603,9 @@ func canonicalJSON(s string) (string, error) {
 
 func byteaValuesEqual(sqliteText, pgText string) bool {
 	if sqliteText == pgText {
+		return true
+	}
+	if strings.EqualFold(sqliteText, pgText) {
 		return true
 	}
 	if a, okA := decodeByteaSignature(sqliteText); okA {
@@ -590,11 +635,6 @@ func isBlobColumn(col ColumnSchema) bool {
 	return strings.Contains(strings.ToUpper(col.Type), "BLOB")
 }
 
-func isTimestampTextColumn(col ColumnSchema) bool {
-	upper := strings.ToUpper(col.Type)
-	return strings.Contains(upper, "DATE") || strings.Contains(upper, "TIME")
-}
-
 func timestampValuesEqual(a, b string) bool {
 	if a == b {
 		return true
@@ -620,10 +660,10 @@ func normalizeTimestamp(s string) string {
 	return s
 }
 
-func sqliteRowSignature(ctx context.Context, sqlitePath string, table TableSchema, pkCol, pkVal string) (string, error) {
+func sqliteRowSignature(ctx context.Context, sqlitePath string, table TableSchema, pkCol, pkVal string, coerceCtx *TypeCoercionContext) (string, error) {
 	cols := make([]string, 0, len(table.Columns))
 	for _, col := range table.Columns {
-		cols = append(cols, sqliteSignatureColumnExpr(col))
+		cols = append(cols, sqliteSignatureColumnExpr(col, table, coerceCtx))
 	}
 	query := fmt.Sprintf(
 		`SELECT %s FROM %q WHERE %q = %s LIMIT 1;`,
@@ -643,10 +683,10 @@ func sqliteRowSignature(ctx context.Context, sqlitePath string, table TableSchem
 	return strings.TrimSpace(string(out)), nil
 }
 
-func postgresRowSignature(ctx context.Context, db *sql.DB, table TableSchema, pkCol, pkVal string, all []TableSchema) (string, error) {
+func postgresRowSignature(ctx context.Context, db *sql.DB, table TableSchema, pkCol, pkVal string, all []TableSchema, coerceCtx *TypeCoercionContext) (string, error) {
 	cols := make([]string, 0, len(table.Columns))
 	for _, col := range table.Columns {
-		cols = append(cols, postgresSignatureColumnExpr(col, table, all))
+		cols = append(cols, postgresSignatureColumnExpr(col, table, all, coerceCtx))
 	}
 	query := fmt.Sprintf(
 		`SELECT %s FROM %s WHERE %s = $1 LIMIT 1`,
@@ -674,5 +714,9 @@ func sqliteLiteral(val string) string {
 
 func runSQLiteQuery(ctx context.Context, sqlite3, sqlitePath, query string) ([]byte, error) {
 	cmd := execabs.CommandContext(ctx, sqlite3, sqlitePath, query)
-	return cmd.Output()
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("%w: %s", err, strings.TrimSpace(string(out)))
+	}
+	return out, nil
 }

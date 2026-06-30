@@ -3,6 +3,7 @@ package d1
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"time"
 
 	execabs "golang.org/x/sys/execabs"
@@ -49,6 +50,11 @@ func Verify(ctx context.Context, opts VerifyOptions) (result *VerifyResult, err 
 	opts.notifyBase = notifyPayloadFromVerify(opts)
 
 	tables, err := ParseDump(opts.InputPath)
+	if err != nil {
+		return nil, err
+	}
+
+	coerceCtx, err := BuildTypeCoercionContext(opts.InputPath, tables)
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +112,7 @@ func Verify(ctx context.Context, opts VerifyOptions) (result *VerifyResult, err 
 	}
 
 	opts.reportProgress(ImportProgress{Stage: VerifyStageBoolean})
-	boolChecks, ok, err := verifyBooleanColumns(ctx, db, sqlitePath, dataTables)
+	boolChecks, ok, err := verifyBooleanColumns(ctx, db, sqlitePath, dataTables, coerceCtx)
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +122,7 @@ func Verify(ctx context.Context, opts VerifyOptions) (result *VerifyResult, err 
 	}
 
 	opts.reportProgress(ImportProgress{Stage: VerifyStageFingerprints})
-	fpChecks, ok, err := verifyTableFingerprints(ctx, db, sqlitePath, dataTables)
+	fpChecks, ok, err := verifyTableFingerprints(ctx, db, sqlitePath, dataTables, coerceCtx)
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +132,7 @@ func Verify(ctx context.Context, opts VerifyOptions) (result *VerifyResult, err 
 	}
 
 	opts.reportProgress(ImportProgress{Stage: VerifyStageSampleRows})
-	sampleChecks, ok, err := verifySampleRows(ctx, db, sqlitePath, dataTables, 8, 3)
+	sampleChecks, ok, err := verifySampleRows(ctx, db, sqlitePath, dataTables, coerceCtx, 8, 3)
 	if err != nil {
 		return nil, err
 	}
@@ -232,6 +238,9 @@ func resolveVerifySQLitePath(opts VerifyOptions) (VerifyOptions, string, error) 
 	}
 
 	if state, err := LoadState(opts.Org, opts.Database, opts.Branch, opts.MigrationID); err == nil {
+		if err := validateInputPathAgainstState(opts.InputPath, state.InputPath); err != nil {
+			return opts, "", err
+		}
 		if opts.InputPath == "" {
 			opts.InputPath = state.InputPath
 		}
@@ -251,4 +260,26 @@ func resolveVerifySQLitePath(opts VerifyOptions) (VerifyOptions, string, error) 
 	}
 
 	return opts, DefaultSQLitePath(opts.InputPath), nil
+}
+
+func validateInputPathAgainstState(provided, saved string) error {
+	if provided == "" || saved == "" {
+		return nil
+	}
+	a, errA := filepath.Abs(provided)
+	b, errB := filepath.Abs(saved)
+	if errA != nil {
+		a = provided
+	}
+	if errB != nil {
+		b = saved
+	}
+	if a != b {
+		return newMigrationError(
+			ErrCodeInvalidInput,
+			fmt.Sprintf("input path %q does not match migration state %q", provided, saved),
+			"Use the same --input as the original import or omit --input to use saved state",
+		)
+	}
+	return nil
 }

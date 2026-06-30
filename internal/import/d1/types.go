@@ -34,6 +34,7 @@ type Response struct {
 	MigrationID string     `json:"migration_id,omitempty"`
 	Issues      []Issue    `json:"issues,omitempty"`
 	NextSteps   []NextStep `json:"next_steps,omitempty"`
+	Reminder    string     `json:"reminder,omitempty"`
 	Data        any        `json:"data,omitempty"`
 	Error       *ErrorInfo `json:"error,omitempty"`
 }

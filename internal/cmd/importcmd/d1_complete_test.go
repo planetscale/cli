@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	ps "github.com/planetscale/planetscale-go/planetscale"
@@ -70,6 +71,12 @@ func TestD1CompleteCmd(t *testing.T) {
 	assertJSONField(t, &buf, "command", "complete")
 	assertJSONField(t, &buf, "status", "ok")
 	assertJSONField(t, &buf, "migration_id", migrationID)
+	if !strings.Contains(buf.String(), "reminder") {
+		t.Fatalf("expected reminder in complete JSON output:\n%s", buf.String())
+	}
+	if !strings.Contains(buf.String(), "next_steps") {
+		t.Fatalf("expected next_steps in complete JSON output:\n%s", buf.String())
+	}
 }
 
 func TestD1CompleteCmdRequiresMigrationID(t *testing.T) {

@@ -1,6 +1,7 @@
 package d1
 
 import (
+	"context"
 	"testing"
 )
 
@@ -26,7 +27,7 @@ func TestImportResumeEnabled(t *testing.T) {
 		MigrationID: migrationID,
 	}
 
-	if importResumeEnabled(opts) {
+	if importResumeEnabled(context.Background(), opts, "") {
 		t.Fatal("expected no resume before any tables loaded")
 	}
 
@@ -36,8 +37,11 @@ func TestImportResumeEnabled(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("update state schema applied: %v", err)
 	}
-	if !importResumeEnabled(opts) {
-		t.Fatal("expected resume when failed after schema applied")
+	if importResumeEnabled(context.Background(), opts, "") {
+		t.Fatal("expected resume deferred until destination is known when only schema_applied")
+	}
+	if !shouldPreserveImportProgress(context.Background(), opts, "") {
+		t.Fatal("expected import progress preserved when failed after schema applied")
 	}
 
 	if err := updateMigrationState(org, database, branch, migrationID, func(state *MigrationState) {
@@ -46,14 +50,17 @@ func TestImportResumeEnabled(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("update state: %v", err)
 	}
-	if !importResumeEnabled(opts) {
-		t.Fatal("expected resume when failed with loaded tables")
+	if importResumeEnabled(context.Background(), opts, "") {
+		t.Fatal("expected resume deferred until destination is known when tables loaded")
+	}
+	if !shouldPreserveImportProgress(context.Background(), opts, "") {
+		t.Fatal("expected import progress preserved when failed with loaded tables")
 	}
 
 	if err := SetMigrationPhase(org, database, branch, migrationID, PhasePlanned); err != nil {
 		t.Fatalf("SetMigrationPhase: %v", err)
 	}
-	if importResumeEnabled(opts) {
+	if importResumeEnabled(context.Background(), opts, "") {
 		t.Fatal("expected no resume from planned phase even with loaded_tables")
 	}
 }

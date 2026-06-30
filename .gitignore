@@ -24,3 +24,10 @@ main
 # Local D1 import dev scripts (not shipped with the CLI)
 script/d1-import-test/
 test_import_d1.sh
+stress-wrangler-*.sql
+stress-wrangler-*.sqlite
+stress-wrangler-*.sqlite.source
+import-test.sql
+import-test.sqlite
+import-test.sqlite.source
+pscale-test

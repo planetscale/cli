@@ -22,7 +22,7 @@ func TestBuildPgloaderScriptDataOnlyPerTable(t *testing.T) {
 		tableName:      "organizations",
 		resetSequences: false,
 		profile:        pgloaderProfileForTable(0),
-	}, []TableSchema{table}, []TableSchema{table})
+	}, []TableSchema{table}, []TableSchema{table}, nil)
 
 	checks := []string{
 		"WITH data only, create no tables, create no indexes, truncate, disable triggers,",
@@ -31,9 +31,8 @@ func TestBuildPgloaderScriptDataOnlyPerTable(t *testing.T) {
 		"batch rows = 25000,",
 		"batch size = 20 MB,",
 		"prefetch rows = 25000",
-		"INCLUDING ONLY TABLE NAMES LIKE 'organizations' ESCAPE '\\'",
+		"INCLUDING ONLY TABLE NAMES LIKE 'organizations'",
 		"column organizations.is_active to boolean using sqlite-int-to-boolean",
-		"column organizations.created_at to timestamptz using sqlite-timestamp-to-timestamp",
 		"SET work_mem to '256MB'",
 		"synchronous_commit to 'off'",
 	}
@@ -60,7 +59,7 @@ func TestBuildPgloaderScriptLargeTableProfile(t *testing.T) {
 		tableName:      "attachments",
 		resetSequences: true,
 		profile:        pgloaderProfileForTable(pgloaderLargeTableRowThreshold),
-	}, nil, nil)
+	}, nil, nil, nil)
 
 	for _, want := range []string{
 		"workers = 2, concurrency = 1,",
@@ -78,7 +77,7 @@ func TestBuildPgloaderScriptFullLoadResetsSequences(t *testing.T) {
 		dataOnly:       true,
 		resetSequences: true,
 		profile:        pgloaderProfileForTable(0),
-	}, nil, nil)
+	}, nil, nil, nil)
 	if !strings.Contains(script, "reset sequences,") {
 		t.Fatalf("expected reset sequences in final table script:\n%s", script)
 	}
@@ -112,20 +111,20 @@ CREATE TABLE users (id INTEGER PRIMARY KEY, org_id INTEGER);
 
 func TestPgloaderTableNameFilterExactMatch(t *testing.T) {
 	got := pgloaderTableNameFilter("entity_links")
-	want := ` LIKE 'entity\_links' ESCAPE '\'`
+	want := ` LIKE 'entity_links'`
 	if got != want {
 		t.Fatalf("pgloaderTableNameFilter() = %q, want %q", got, want)
 	}
 	got = pgloaderTableNameFilter("100%done")
-	if got != ` LIKE '100\%done' ESCAPE '\'` {
+	if got != ` LIKE '100%done'` {
 		t.Fatalf("pgloaderTableNameFilter() = %q", got)
 	}
 	got = pgloaderTableNameFilter("tbl_a")
-	if got != ` LIKE 'tbl\_a' ESCAPE '\'` {
+	if got != ` LIKE 'tbl_a'` {
 		t.Fatalf("pgloaderTableNameFilter() = %q", got)
 	}
 	got = pgloaderTableNameFilter("O'Brien")
-	if got != ` LIKE 'O''Brien' ESCAPE '\'` {
+	if got != ` LIKE 'O''Brien'` {
 		t.Fatalf("pgloaderTableNameFilter() = %q", got)
 	}
 }

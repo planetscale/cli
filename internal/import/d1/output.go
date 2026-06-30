@@ -46,8 +46,10 @@ func PrintHumanResponse(p *printer.Printer, resp Response) {
 		for _, step := range resp.NextSteps {
 			if step.Command != "" {
 				p.Printf("  - %s (%s)\n", step.Command, step.Reason)
+			} else if step.Tool != "" {
+				p.Printf("  - %s: %s\n", step.Tool, step.Reason)
 			} else {
-				p.Printf("  - %s (%s)\n", step.Tool, step.Reason)
+				p.Printf("  - %s\n", step.Reason)
 			}
 		}
 	}
@@ -59,6 +61,30 @@ func printVerifyResultHuman(p *printer.Printer, r VerifyResult) {
 		matched = "yes"
 	}
 	p.Printf("\nMatched: %s\n", matched)
+
+	for _, table := range r.Tables {
+		if table.Match {
+			continue
+		}
+		p.Printf("  row count mismatch %s: sqlite=%d postgres=%d\n", table.Table, table.SourceRows, table.DestRows)
+	}
+	for _, check := range r.Checks {
+		if check.Matched {
+			continue
+		}
+		label := check.Name
+		if check.Table != "" {
+			label = check.Table
+			if check.Column != "" {
+				label += "." + check.Column
+			}
+		}
+		if check.Message != "" {
+			p.Printf("  check failed %s: %s\n", label, check.Message)
+		} else {
+			p.Printf("  check failed %s\n", label)
+		}
+	}
 }
 
 func printMigrationStateHuman(p *printer.Printer, r MigrationState) {
@@ -165,10 +191,23 @@ func printHumanData(p *printer.Printer, command string, data any) {
 			p.Printf("  Tables: %v\n", m["table_count"])
 		}
 	case "complete":
-		if m, ok := data.(map[string]string); ok {
+		switch r := data.(type) {
+		case CompleteResult:
 			p.Println()
-			p.Printf("  Migration ID: %s\n", m["migration_id"])
-			p.Printf("  Status: %s\n", m["status"])
+			p.Printf("  Migration ID: %s\n", r.MigrationID)
+			p.Printf("  Status: %s\n", r.Status)
+			printCompleteReminderHuman(p, r)
+		case *CompleteResult:
+			if r != nil {
+				p.Println()
+				p.Printf("  Migration ID: %s\n", r.MigrationID)
+				p.Printf("  Status: %s\n", r.Status)
+				printCompleteReminderHuman(p, *r)
+			}
+		case map[string]string:
+			p.Println()
+			p.Printf("  Migration ID: %s\n", r["migration_id"])
+			p.Printf("  Status: %s\n", r["status"])
 		}
 	}
 }

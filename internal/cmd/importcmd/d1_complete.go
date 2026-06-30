@@ -33,16 +33,13 @@ func d1CompleteCmd(ch *cmdutil.Helper) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			err = d1.Complete(d1Org(ch), database, branch, flags.migrationID, d1NotifyAPI(client, flags.noNotify))
+			resp, err := d1.CompleteResponse(d1Org(ch), database, branch, flags.migrationID)
 			if err != nil {
 				return writeD1(ch, d1.ErrorResponse("complete", err))
 			}
-			resp := d1.OKResponse("complete", map[string]string{
-				"migration_id": flags.migrationID,
-				"status":       d1.PhaseComplete,
-			}, nil)
-			resp.MigrationID = flags.migrationID
-			resp.Phase = d1.PhaseComplete
+			if err := d1.Complete(d1Org(ch), database, branch, flags.migrationID, d1NotifyAPI(client, flags.noNotify)); err != nil {
+				return writeD1(ch, d1.ErrorResponse("complete", err))
+			}
 			return writeD1(ch, resp)
 		},
 	}

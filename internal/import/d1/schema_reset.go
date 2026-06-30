@@ -35,10 +35,7 @@ func cleanupStaleImportRoles(ctx context.Context, psClient *ps.Client, opts Impo
 
 	var firstErr error
 	for _, role := range roles {
-		if role == nil || role.Username == currentUsername {
-			continue
-		}
-		if !isEphemeralImportRole(role.Username) {
+		if !isStaleImportRole(role, currentUsername) {
 			continue
 		}
 		err := psClient.PostgresRoles.Delete(ctx, &ps.DeletePostgresRoleRequest{
@@ -79,6 +76,16 @@ func isDefaultPostgresRole(username string) bool {
 
 func isEphemeralImportRole(username string) bool {
 	return strings.HasPrefix(username, "pscale_api_")
+}
+
+func isStaleImportRole(role *ps.PostgresRole, currentUsername string) bool {
+	if role == nil || role.Username == currentUsername {
+		return false
+	}
+	if isEphemeralImportRole(role.Username) {
+		return true
+	}
+	return strings.HasPrefix(role.Name, "d1-import-")
 }
 
 func usernameFromDestURI(destURI string) (string, error) {
@@ -160,7 +167,16 @@ func conflictingImportTables(importNames []string, existing map[string]struct{})
 	return conflicts
 }
 
-func buildImportTablesSQL(tables []TableSchema) string {
+func buildImportTablesSQL(inputPath string, tables []TableSchema) (string, error) {
+	var coerceCtx *TypeCoercionContext
+	if inputPath != "" {
+		var err error
+		coerceCtx, err = BuildTypeCoercionContext(inputPath, tables)
+		if err != nil {
+			return "", err
+		}
+	}
+
 	tableByName := make(map[string]TableSchema, len(tables))
 	for _, table := range tables {
 		tableByName[table.Name] = table
@@ -172,8 +188,8 @@ func buildImportTablesSQL(tables []TableSchema) string {
 		if !ok || IsORMMetadataTable(table.Name) {
 			continue
 		}
-		b.WriteString(convertTableDDL(table, tables))
+		b.WriteString(convertTableDDL(table, tables, coerceCtx))
 		b.WriteString("\n\n")
 	}
-	return b.String()
+	return b.String(), nil
 }

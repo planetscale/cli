@@ -127,6 +127,10 @@ func RunPgloader(ctx context.Context, opts PgloaderOptions) (ImportTimings, erro
 	}
 
 	rowCounts, _ := CountInsertRows(opts.InputPath)
+	coerceCtx, err := BuildTypeCoercionContext(opts.InputPath, tableSchemas)
+	if err != nil {
+		return timings, err
+	}
 
 	if len(tables) == 0 {
 		pgStart := time.Now()
@@ -134,7 +138,7 @@ func RunPgloader(ctx context.Context, opts PgloaderOptions) (ImportTimings, erro
 			dataOnly:       opts.DataOnly,
 			resetSequences: true,
 			profile:        pgloaderProfileForTable(0),
-		}, TableSchema{}, tableSchemas, 0); err != nil {
+		}, TableSchema{}, tableSchemas, 0, coerceCtx); err != nil {
 			return timings, err
 		}
 		timings.PgloaderMs = time.Since(pgStart).Milliseconds()
@@ -171,7 +175,7 @@ func RunPgloader(ctx context.Context, opts PgloaderOptions) (ImportTimings, erro
 			tableName:      name,
 			resetSequences: true,
 			profile:        profile,
-		}, table, tableSchemas, rowCounts[name]); err != nil {
+		}, table, tableSchemas, rowCounts[name], coerceCtx); err != nil {
 			return timings, fmt.Errorf("pgloader table %s: %w", name, err)
 		}
 		timings.TableLoads = append(timings.TableLoads, TableLoadTiming{
@@ -196,7 +200,7 @@ type pgloaderScriptConfig struct {
 	profile        pgloaderMemoryProfile
 }
 
-func runPgloaderScript(ctx context.Context, pgloader string, opts PgloaderOptions, cfg pgloaderScriptConfig, table TableSchema, allTables []TableSchema, expectedRows int) error {
+func runPgloaderScript(ctx context.Context, pgloader string, opts PgloaderOptions, cfg pgloaderScriptConfig, table TableSchema, allTables []TableSchema, expectedRows int, coerceCtx *TypeCoercionContext) error {
 	loadFile := filepath.Join(opts.WorkDir, "load.load")
 	if cfg.tableName != "" {
 		loadFile = filepath.Join(opts.WorkDir, "load-"+cfg.tableName+".load")
@@ -205,7 +209,7 @@ func runPgloaderScript(ctx context.Context, pgloader string, opts PgloaderOption
 	if table.Name != "" {
 		castTables = []TableSchema{table}
 	}
-	content := buildPgloaderScript(opts.SQLitePath, opts.DestURI, cfg, castTables, allTables)
+	content := buildPgloaderScript(opts.SQLitePath, opts.DestURI, cfg, castTables, allTables, coerceCtx)
 	if err := os.WriteFile(loadFile, []byte(content), 0o600); err != nil {
 		return err
 	}
@@ -219,11 +223,19 @@ func runPgloaderScript(ctx context.Context, pgloader string, opts PgloaderOption
 		return err
 	}
 
-	cmd := execabs.CommandContext(ctx, pgloader, "--load-lisp-file", transformsFile, loadFile)
-	cmd.Env = append(os.Environ(),
-		"SBCL_OPTIONS=--dynamic-space-size "+pgloaderDynamicSpace,
-	)
-	out, err := cmd.CombinedOutput()
+	var out []byte
+	err := withConnectionRetry(ctx, func() error {
+		cmd := execabs.CommandContext(ctx, pgloader, "--load-lisp-file", transformsFile, loadFile)
+		cmd.Env = append(os.Environ(),
+			"SBCL_OPTIONS=--dynamic-space-size "+pgloaderDynamicSpace,
+		)
+		var runErr error
+		out, runErr = cmd.CombinedOutput()
+		if runErr != nil {
+			return fmt.Errorf("pgloader: %w: %s", runErr, string(out))
+		}
+		return nil
+	})
 	output := string(out)
 	if err != nil {
 		emitPgloaderOutput(opts, output, true)
@@ -256,7 +268,7 @@ func emitPgloaderOutput(opts PgloaderOptions, output string, force bool) {
 	}
 }
 
-func buildPgloaderScript(sqlitePath, destURI string, cfg pgloaderScriptConfig, castTables, allTables []TableSchema) string {
+func buildPgloaderScript(sqlitePath, destURI string, cfg pgloaderScriptConfig, castTables, allTables []TableSchema, coerceCtx *TypeCoercionContext) string {
 	absSQLite, _ := filepath.Abs(sqlitePath)
 	src := "sqlite:///" + strings.ReplaceAll(absSQLite, " ", "%20")
 	target := destURI
@@ -299,7 +311,7 @@ func buildPgloaderScript(sqlitePath, destURI string, cfg pgloaderScriptConfig, c
 		fmt.Fprintf(&b, " INCLUDING ONLY TABLE NAMES%s\n", pgloaderTableNameFilter(cfg.tableName))
 	}
 
-	appendPgloaderCasts(&b, castTables, allTables)
+	appendPgloaderCasts(&b, castTables, allTables, coerceCtx)
 
 	b.WriteString("\n")
 	fmt.Fprintf(&b, " SET work_mem to '%s', maintenance_work_mem to '%s', synchronous_commit to 'off';\n",
@@ -307,11 +319,11 @@ func buildPgloaderScript(sqlitePath, destURI string, cfg pgloaderScriptConfig, c
 	return b.String()
 }
 
-func appendPgloaderCasts(b *strings.Builder, castTables, allTables []TableSchema) {
+func appendPgloaderCasts(b *strings.Builder, castTables, allTables []TableSchema, coerceCtx *TypeCoercionContext) {
 	var rules []string
 	for _, table := range castTables {
 		for _, col := range table.Columns {
-			pgType := sqliteTypeToPostgres(col, table, allTables)
+			pgType := sqliteTypeToPostgres(col, table, allTables, coerceCtx)
 			ref := fmt.Sprintf("column %s.%s", table.Name, col.Name)
 			switch pgType {
 			case "BOOLEAN":
@@ -338,22 +350,11 @@ func appendPgloaderCasts(b *strings.Builder, castTables, allTables []TableSchema
 }
 
 // pgloaderTableNameFilter returns a pgloader INCLUDING ONLY ... LIKE filter for one table.
-// pgloader 3.6.x parses INCLUDING ONLY TABLE NAMES LIKE 'name' (not MATCHING ~/...$/).
+// pgloader 3.6.x accepts LIKE 'name' but does not parse ESCAPE clauses.
 func pgloaderTableNameFilter(name string) string {
-	return fmt.Sprintf(" LIKE '%s' ESCAPE '\\'", escapeLikeLiteral(name))
+	return fmt.Sprintf(" LIKE '%s'", escapePgloaderQuote(name))
 }
 
-func escapeLikeLiteral(name string) string {
-	var b strings.Builder
-	for _, r := range name {
-		switch r {
-		case '\\', '%', '_':
-			b.WriteByte('\\')
-		case '\'':
-			b.WriteString("''")
-			continue
-		}
-		b.WriteRune(r)
-	}
-	return b.String()
+func escapePgloaderQuote(name string) string {
+	return strings.ReplaceAll(name, "'", "''")
 }

@@ -14,7 +14,6 @@ var (
 	autoincrementRe = regexp.MustCompile(`(?i)AUTOINCREMENT`)
 	columnUniqueRe  = regexp.MustCompile(`(?i)\bUNIQUE\b`)
 	insertRe        = regexp.MustCompile(`(?is)^INSERT\s+INTO\s+(?:` + "`" + `([^` + "`" + `]+)` + "`" + `|"([^"]+)"|'([^']+)'|([a-zA-Z_][\w]*))`)
-	valueTupleSepRe = regexp.MustCompile(`\)\s*,\s*\(`)
 )
 
 // TableSchema holds parsed SQLite table metadata from a dump file.
@@ -127,7 +126,7 @@ func parseTableBody(ddl string) ([]ColumnSchema, []string) {
 	if start < 0 || end <= start {
 		return nil, nil
 	}
-	body := ddl[start+1 : end]
+	body := stripSQLComments(ddl[start+1 : end])
 	parts := splitColumnDefs(body)
 	cols := make([]ColumnSchema, 0, len(parts))
 	var constraints []string
@@ -154,48 +153,43 @@ func parseColumn(def string) ColumnSchema {
 		return ColumnSchema{}
 	}
 
-	// Strip trailing comma
 	def = strings.TrimSuffix(def, ",")
 
-	tokens := strings.Fields(def)
-	if len(tokens) == 0 {
+	name, rest := parseColumnNameAndRest(def)
+	if name == "" {
 		return ColumnSchema{}
 	}
 
-	name := strings.Trim(tokens[0], "`\"'")
-	colType := ""
-	if len(tokens) > 1 {
-		colType = strings.ToUpper(tokens[1])
-	}
+	colType := firstToken(rest)
+	restUpper := strings.ToUpper(rest)
 
 	col := ColumnSchema{
 		Name: name,
 		Type: colType,
 	}
 
-	upper := strings.ToUpper(def)
-	if strings.Contains(upper, "NOT NULL") {
+	if strings.Contains(restUpper, "NOT NULL") {
 		col.NotNull = true
 	}
-	if strings.Contains(upper, "PRIMARY KEY") {
+	if strings.Contains(restUpper, "PRIMARY KEY") {
 		col.PrimaryKey = true
 	}
-	if columnUniqueRe.MatchString(def) {
+	if columnUniqueRe.MatchString(rest) {
 		col.Unique = true
 	}
-	if autoincrementRe.MatchString(def) {
+	if autoincrementRe.MatchString(rest) {
 		col.AutoIncrement = true
 	}
-	if idx := strings.Index(strings.ToUpper(def), "DEFAULT"); idx >= 0 {
-		col.DefaultValue = strings.TrimSpace(def[idx+7:])
+	if idx := strings.Index(strings.ToUpper(rest), "DEFAULT"); idx >= 0 {
+		col.DefaultValue = strings.TrimSpace(rest[idx+7:])
 		col.DefaultValue = strings.TrimSuffix(col.DefaultValue, ",")
 		if refIdx := indexOfIgnoreCase(col.DefaultValue, "REFERENCES"); refIdx >= 0 {
 			col.DefaultValue = strings.TrimSpace(col.DefaultValue[:refIdx])
 			col.DefaultValue = strings.TrimSuffix(col.DefaultValue, ",")
 		}
 	}
-	if strings.Contains(upper, "REFERENCES") {
-		col.ForeignKey = referencesClause(def)
+	if strings.Contains(restUpper, "REFERENCES") {
+		col.ForeignKey = referencesClause(rest)
 	}
 
 	return col
@@ -217,19 +211,30 @@ func ParseIndexes(path string) ([]IndexSchema, error) {
 	scanner := bufio.NewScanner(f)
 	scanner.Buffer(make([]byte, 1024*1024), 10*1024*1024)
 
+	var stmt strings.Builder
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 		if line == "" || strings.HasPrefix(line, "--") {
 			continue
 		}
-		if !strings.HasPrefix(strings.ToUpper(line), "CREATE") {
+		if stmt.Len() > 0 {
+			stmt.WriteByte(' ')
+		}
+		stmt.WriteString(line)
+		if !strings.HasSuffix(line, ";") {
 			continue
 		}
-		upper := strings.ToUpper(line)
+		full := stmt.String()
+		stmt.Reset()
+
+		if !strings.HasPrefix(strings.ToUpper(full), "CREATE") {
+			continue
+		}
+		upper := strings.ToUpper(full)
 		if !strings.Contains(upper, " INDEX ") {
 			continue
 		}
-		m := createIndexRe.FindStringSubmatch(line)
+		m := createIndexRe.FindStringSubmatch(full)
 		if m == nil {
 			continue
 		}
@@ -238,7 +243,7 @@ func ParseIndexes(path string) ([]IndexSchema, error) {
 			Table:   firstNonEmpty(m[6], m[7], m[8], m[9]),
 			Unique:  strings.TrimSpace(m[1]) != "",
 			Columns: m[10],
-			RawDDL:  line,
+			RawDDL:  full,
 		})
 	}
 
@@ -297,7 +302,10 @@ func CountInsertRows(path string) (map[string]int, error) {
 			return
 		}
 		sql := pendingSQL.String()
-		rows := len(valueTupleSepRe.FindAllString(sql, -1)) + 1
+		rows := countInsertValueGroups(sql)
+		if rows == 0 {
+			rows = 1
+		}
 		counts[pendingTable] += rows
 		pendingTable = ""
 		pendingSQL.Reset()
@@ -345,6 +353,14 @@ func FileSize(path string) (int64, error) {
 	return info.Size(), nil
 }
 
+func countInsertValueGroups(line string) int {
+	_, groups, ok := parseInsertColumnsAndValues(line)
+	if !ok || len(groups) == 0 {
+		return 0
+	}
+	return len(groups)
+}
+
 func firstNonEmpty(vals ...string) string {
 	for _, v := range vals {
 		if v != "" {
@@ -352,4 +368,161 @@ func firstNonEmpty(vals ...string) string {
 		}
 	}
 	return ""
+}
+
+// stripSQLComments removes -- line and /* block */ comments outside quoted strings.
+func stripSQLComments(s string) string {
+	var b strings.Builder
+	b.Grow(len(s))
+
+	inSingle := false
+	inDouble := false
+
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+
+		if inSingle {
+			b.WriteByte(c)
+			if c == '\'' {
+				if i+1 < len(s) && s[i+1] == '\'' {
+					b.WriteByte(s[i+1])
+					i++
+					continue
+				}
+				inSingle = false
+			}
+			continue
+		}
+		if inDouble {
+			b.WriteByte(c)
+			if c == '"' {
+				if i+1 < len(s) && s[i+1] == '"' {
+					b.WriteByte(s[i+1])
+					i++
+					continue
+				}
+				inDouble = false
+			}
+			continue
+		}
+
+		switch c {
+		case '\'':
+			inSingle = true
+			b.WriteByte(c)
+		case '"':
+			inDouble = true
+			b.WriteByte(c)
+		case '-':
+			if i+1 < len(s) && s[i+1] == '-' {
+				i += 2
+				for i < len(s) && s[i] != '\n' {
+					i++
+				}
+				continue
+			}
+			b.WriteByte(c)
+		case '/':
+			if i+1 < len(s) && s[i+1] == '*' {
+				i += 2
+				for i+1 < len(s) && !(s[i] == '*' && s[i+1] == '/') {
+					i++
+				}
+				if i+1 < len(s) {
+					i++
+				}
+				continue
+			}
+			b.WriteByte(c)
+		default:
+			b.WriteByte(c)
+		}
+	}
+
+	return b.String()
+}
+
+func parseColumnNameAndRest(def string) (name, rest string) {
+	def = strings.TrimSpace(def)
+	def = strings.TrimSuffix(def, ",")
+	if def == "" {
+		return "", ""
+	}
+
+	switch def[0] {
+	case '"':
+		end := 1
+		var raw strings.Builder
+		for end < len(def) {
+			if def[end] == '"' {
+				if end+1 < len(def) && def[end+1] == '"' {
+					raw.WriteByte('"')
+					end += 2
+					continue
+				}
+				return raw.String(), strings.TrimSpace(def[end+1:])
+			}
+			raw.WriteByte(def[end])
+			end++
+		}
+		return "", def
+	case '[':
+		end := strings.Index(def, "]")
+		if end <= 1 {
+			return "", def
+		}
+		return def[1:end], strings.TrimSpace(def[end+1:])
+	case '`':
+		end := strings.Index(def[1:], "`")
+		if end < 0 {
+			return "", def
+		}
+		return def[1 : end+1], strings.TrimSpace(def[end+2:])
+	case '\'':
+		end := 1
+		var raw strings.Builder
+		for end < len(def) {
+			if def[end] == '\'' {
+				if end+1 < len(def) && def[end+1] == '\'' {
+					raw.WriteByte('\'')
+					end += 2
+					continue
+				}
+				return raw.String(), strings.TrimSpace(def[end+1:])
+			}
+			raw.WriteByte(def[end])
+			end++
+		}
+		return "", def
+	default:
+		i := 0
+		for i < len(def) && !isIdentBreak(def[i]) {
+			i++
+		}
+		if i == 0 {
+			return "", def
+		}
+		return def[:i], strings.TrimSpace(def[i:])
+	}
+}
+
+func isIdentBreak(c byte) bool {
+	switch c {
+	case ' ', '\t', '\n', '\r', '(', ')', ',':
+		return true
+	default:
+		return false
+	}
+}
+
+func firstToken(s string) string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return ""
+	}
+	i := 0
+	for i < len(s) && !isIdentBreak(s[i]) {
+		i++
+	}
+	return strings.ToUpper(s[:i])
 }

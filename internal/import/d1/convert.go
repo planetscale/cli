@@ -25,6 +25,11 @@ func ConvertSchemaParts(inputPath string) (SchemaParts, int, error) {
 		return SchemaParts{}, 0, err
 	}
 
+	coerceCtx, err := BuildTypeCoercionContext(inputPath, tables)
+	if err != nil {
+		return SchemaParts{}, 0, err
+	}
+
 	indexes, err := ParseIndexes(inputPath)
 	if err != nil {
 		return SchemaParts{}, 0, err
@@ -47,7 +52,7 @@ func ConvertSchemaParts(inputPath string) (SchemaParts, int, error) {
 		if IsORMMetadataTable(table.Name) {
 			continue
 		}
-		tableBuf.WriteString(convertTableDDL(table, tables))
+		tableBuf.WriteString(convertTableDDL(table, tables, coerceCtx))
 		tableBuf.WriteString("\n\n")
 		converted++
 	}
@@ -93,13 +98,13 @@ func ConvertSchema(inputPath, outputPath string) (int, error) {
 	return converted, nil
 }
 
-func convertTableDDL(table TableSchema, all []TableSchema) string {
+func convertTableDDL(table TableSchema, all []TableSchema, ctx *TypeCoercionContext) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "CREATE TABLE IF NOT EXISTS %s (\n", quoteIdent(table.Name))
 
 	var lines []string
 	for _, col := range table.Columns {
-		lines = append(lines, "  "+convertColumn(col, table, all))
+		lines = append(lines, "  "+convertColumn(col, table, all, ctx))
 	}
 	for _, constraint := range table.Constraints {
 		if converted := convertTableConstraint(constraint); converted != "" {
@@ -112,8 +117,8 @@ func convertTableDDL(table TableSchema, all []TableSchema) string {
 	return b.String()
 }
 
-func convertColumn(col ColumnSchema, table TableSchema, all []TableSchema) string {
-	pgType := sqliteTypeToPostgres(col, table, all)
+func convertColumn(col ColumnSchema, table TableSchema, all []TableSchema, ctx *TypeCoercionContext) string {
+	pgType := sqliteTypeToPostgres(col, table, all, ctx)
 
 	var parts []string
 	parts = append(parts, quoteIdent(col.Name), pgType)
@@ -146,8 +151,8 @@ func convertColumn(col ColumnSchema, table TableSchema, all []TableSchema) strin
 	return strings.Join(parts, " ")
 }
 
-func sqliteTypeToPostgres(col ColumnSchema, table TableSchema, all []TableSchema) string {
-	if isUUIDColumn(col, table, all) {
+func sqliteTypeToPostgres(col ColumnSchema, table TableSchema, all []TableSchema, ctx *TypeCoercionContext) string {
+	if isUUIDColumn(col, table, all, ctx) {
 		return "UUID"
 	}
 
@@ -169,10 +174,10 @@ func sqliteTypeToPostgres(col ColumnSchema, table TableSchema, all []TableSchema
 		}
 		return "BIGINT"
 	case strings.Contains(t, "CHAR") || strings.Contains(t, "CLOB") || strings.Contains(t, "TEXT"):
-		if isJSONText(col) {
+		if isJSONText(col) && ctx != nil && samplesAllowJSON(table.Name, col.Name, ctx) {
 			return "JSONB"
 		}
-		if isTimestampText(col) {
+		if isTimestampText(col) && ctx != nil && samplesAllowTimestamp(table.Name, col.Name, ctx) {
 			return "TIMESTAMPTZ"
 		}
 		return "TEXT"
@@ -193,6 +198,9 @@ func convertDefault(def, pgType string) string {
 	if upper == "NULL" {
 		return "NULL"
 	}
+	if mapped := mapSQLiteDefaultFunction(def, pgType); mapped != "" {
+		return mapped
+	}
 	if pgType == "BOOLEAN" && (def == "0" || def == "1") {
 		if def == "1" {
 			return "TRUE"
@@ -210,6 +218,26 @@ func convertDefault(def, pgType string) string {
 		return "'" + strings.Trim(def, "'\"") + "'"
 	}
 	return def
+}
+
+func mapSQLiteDefaultFunction(def, pgType string) string {
+	trimmed := strings.TrimSpace(def)
+	upper := strings.ToUpper(trimmed)
+	switch upper {
+	case "CURRENT_TIMESTAMP", "(CURRENT_TIMESTAMP)":
+		return "CURRENT_TIMESTAMP"
+	case "CURRENT_DATE", "(CURRENT_DATE)":
+		return "CURRENT_DATE"
+	case "CURRENT_TIME", "(CURRENT_TIME)":
+		return "CURRENT_TIME"
+	}
+	if strings.HasPrefix(upper, "DATETIME(") || strings.HasPrefix(upper, "(DATETIME(") {
+		return "now()"
+	}
+	if strings.HasPrefix(upper, "UNIXEPOCH(") {
+		return "to_timestamp(" + strings.TrimPrefix(strings.TrimSuffix(trimmed, ")"), "unixepoch(") + ")"
+	}
+	return ""
 }
 
 func quoteIdent(name string) string {

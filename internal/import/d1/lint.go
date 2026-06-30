@@ -12,6 +12,11 @@ func Lint(inputPath string) (*LintResult, error) {
 		return nil, err
 	}
 
+	coerceCtx, err := BuildTypeCoercionContext(inputPath, tables)
+	if err != nil {
+		return nil, err
+	}
+
 	result := &LintResult{
 		InputPath:  inputPath,
 		TableCount: len(tables),
@@ -21,7 +26,7 @@ func Lint(inputPath string) (*LintResult, error) {
 
 	for _, table := range tables {
 		result.Tables = append(result.Tables, table.Name)
-		result.Issues = append(result.Issues, lintTable(table, tables)...)
+		result.Issues = append(result.Issues, lintTable(table, tables, coerceCtx)...)
 	}
 
 	for _, issue := range result.Issues {
@@ -36,7 +41,7 @@ func Lint(inputPath string) (*LintResult, error) {
 	return result, nil
 }
 
-func lintTable(table TableSchema, all []TableSchema) []Issue {
+func lintTable(table TableSchema, all []TableSchema, ctx *TypeCoercionContext) []Issue {
 	var issues []Issue
 
 	issues = append(issues, lintORMMetadata(table)...)
@@ -53,7 +58,7 @@ func lintTable(table TableSchema, all []TableSchema) []Issue {
 			})
 		}
 
-		if isBooleanColumn(col) {
+		if isBooleanLikeColumn(col, table, ctx) {
 			issues = append(issues, Issue{
 				Code:        "BOOLEAN_AS_INTEGER",
 				Severity:    SeverityWarning,
@@ -64,32 +69,56 @@ func lintTable(table TableSchema, all []TableSchema) []Issue {
 		}
 
 		if isTimestampText(col) {
+			severity := SeverityWarning
+			remediation := "TEXT timestamps will cast to timestamptz when sampled values look like timestamps"
+			if ctx != nil && !samplesAllowTimestamp(table.Name, col.Name, ctx) {
+				severity = SeverityInfo
+				remediation = "Column name suggests timestamps but sampled values are not timestamp-like; will stay TEXT"
+			}
 			issues = append(issues, Issue{
 				Code:        "TEXT_TIMESTAMP",
-				Severity:    SeverityWarning,
+				Severity:    severity,
 				Table:       table.Name,
 				Column:      col.Name,
-				Remediation: "TEXT timestamps will cast to timestamptz using pgloader rules",
+				Remediation: remediation,
 			})
 		}
 
 		if isJSONText(col) {
+			severity := SeverityInfo
+			remediation := "TEXT JSON payloads map to jsonb when sampled values parse as JSON"
+			if ctx != nil && !samplesAllowJSON(table.Name, col.Name, ctx) {
+				remediation = "Column name suggests JSON but sampled values are not JSON; will stay TEXT"
+			}
 			issues = append(issues, Issue{
 				Code:        "JSON_IN_TEXT",
-				Severity:    SeverityInfo,
+				Severity:    severity,
 				Table:       table.Name,
 				Column:      col.Name,
-				Remediation: "TEXT JSON payloads can map to jsonb where detected",
+				Remediation: remediation,
 			})
 		}
 
-		if isUUIDColumn(col, table, all) {
+		if isExplicitUUIDColumn(col) {
+			severity := SeverityInfo
+			remediation := "TEXT/UUID-style keys map to UUID when sampled values look like UUIDs"
+			if ctx != nil && !samplesAllowUUID(table.Name, col.Name, ctx) {
+				remediation = "Column name suggests UUID but sampled values are not UUID-shaped; will stay TEXT"
+			}
+			issues = append(issues, Issue{
+				Code:        "TEXT_UUID",
+				Severity:    severity,
+				Table:       table.Name,
+				Column:      col.Name,
+				Remediation: remediation,
+			})
+		} else if isUUIDColumn(col, table, all, ctx) {
 			issues = append(issues, Issue{
 				Code:        "TEXT_UUID",
 				Severity:    SeverityInfo,
 				Table:       table.Name,
 				Column:      col.Name,
-				Remediation: "TEXT/UUID-style keys will map to UUID in Postgres",
+				Remediation: "Foreign key references a UUID column; will map to UUID in Postgres",
 			})
 		}
 	}
@@ -100,10 +129,19 @@ func lintTable(table TableSchema, all []TableSchema) []Issue {
 func isBooleanColumn(col ColumnSchema) bool {
 	name := strings.ToLower(col.Name)
 	if strings.Contains(name, "is_") || strings.HasSuffix(name, "_flag") ||
-		name == "active" || name == "enabled" || name == "published" {
+		name == "active" || name == "enabled" || name == "published" ||
+		name == "archived" || name == "disabled" {
 		return col.Type == "INTEGER" || col.Type == "INT"
 	}
 	return false
+}
+
+func isBooleanLikeColumn(col ColumnSchema, table TableSchema, ctx *TypeCoercionContext) bool {
+	if isBooleanColumn(col) {
+		return true
+	}
+	upper := strings.ToUpper(col.Type)
+	return (upper == "INTEGER" || upper == "INT") && ctx != nil && samplesLookBoolean(table.Name, col.Name, ctx)
 }
 
 func isTimestampText(col ColumnSchema) bool {

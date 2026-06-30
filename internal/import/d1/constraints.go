@@ -56,9 +56,17 @@ func convertTableConstraint(clause string) string {
 		return convertPrimaryKeyConstraint(clause)
 	case strings.HasPrefix(upper, "UNIQUE"):
 		return convertUniqueConstraint(clause)
+	case strings.HasPrefix(upper, "CHECK"):
+		return convertCheckConstraint(clause)
 	default:
 		return clause
 	}
+}
+
+func convertCheckConstraint(clause string) string {
+	clause = strings.TrimSpace(clause)
+	clause = strings.TrimSuffix(clause, ",")
+	return clause
 }
 
 func convertForeignKeyConstraint(clause string) string {
@@ -176,8 +184,14 @@ func convertIndexDDL(raw string) string {
 	return prefix + name + " ON " + table + " (" + cols + ");"
 }
 
-func isUUIDColumn(col ColumnSchema, table TableSchema, all []TableSchema) bool {
-	return isExplicitUUIDColumn(col) || columnReferencesUUIDKey(col, table, all)
+func isUUIDColumn(col ColumnSchema, table TableSchema, all []TableSchema, ctx *TypeCoercionContext) bool {
+	if isExplicitUUIDColumn(col) {
+		if ctx == nil {
+			return false
+		}
+		return samplesAllowUUID(table.Name, col.Name, ctx)
+	}
+	return columnReferencesUUIDKey(col, table, all, ctx)
 }
 
 func isExplicitUUIDColumn(col ColumnSchema) bool {
@@ -197,7 +211,7 @@ func isExplicitUUIDColumn(col ColumnSchema) bool {
 	return false
 }
 
-func columnReferencesUUIDKey(col ColumnSchema, table TableSchema, all []TableSchema) bool {
+func columnReferencesUUIDKey(col ColumnSchema, table TableSchema, all []TableSchema, ctx *TypeCoercionContext) bool {
 	refTable, refCol := columnFKTarget(col, table)
 	if refTable == "" {
 		return false
@@ -207,7 +221,7 @@ func columnReferencesUUIDKey(col ColumnSchema, table TableSchema, all []TableSch
 		return false
 	}
 	refColSchema := columnByName(*ref, refCol)
-	return isExplicitUUIDColumn(refColSchema)
+	return isUUIDColumn(refColSchema, *ref, all, ctx)
 }
 
 func columnFKTarget(col ColumnSchema, table TableSchema) (string, string) {

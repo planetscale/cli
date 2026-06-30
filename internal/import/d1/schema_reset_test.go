@@ -42,7 +42,10 @@ func TestBuildImportTablesSQLCreatesAllImportTables(t *testing.T) {
 		},
 	}
 
-	sql := buildImportTablesSQL(tables)
+	sql, err := buildImportTablesSQL("", tables)
+	if err != nil {
+		t.Fatalf("buildImportTablesSQL: %v", err)
+	}
 	if !strings.Contains(sql, `CREATE TABLE IF NOT EXISTS "organizations"`) {
 		t.Fatalf("expected organizations table DDL:\n%s", sql)
 	}

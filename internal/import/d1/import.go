@@ -126,7 +126,7 @@ func Import(ctx context.Context, psClient *ps.Client, client ImportClient, opts 
 		}
 	}
 
-	if importResumeEnabled(opts) {
+	if shouldPreserveImportProgress(ctx, opts, "") {
 		if err := saveImportMigrationState(opts, PhaseImporting, ""); err != nil {
 			return result, err
 		}
@@ -211,7 +211,7 @@ func Import(ctx context.Context, psClient *ps.Client, client ImportClient, opts 
 }
 
 func importWithPgloader(ctx context.Context, opts ImportOptions, destURI, sqlitePath string, timings *ImportTimings) error {
-	resume := importResumeEnabled(opts)
+	resume := importResumeEnabled(ctx, opts, destURI)
 	if !resume {
 		opts.reportProgress(ImportProgress{Stage: ImportStageSchema})
 		schemaStart := time.Now()
@@ -225,7 +225,7 @@ func importWithPgloader(ctx context.Context, opts ImportOptions, destURI, sqlite
 
 // importSmall loads dumps under 1GB: schema via psql, data via pgloader.
 func importSmall(ctx context.Context, opts ImportOptions, destURI, sqlitePath string) error {
-	resume := importResumeEnabled(opts)
+	resume := importResumeEnabled(ctx, opts, destURI)
 	if !resume {
 		opts.reportProgress(ImportProgress{Stage: ImportStageSchema})
 		if err := applyPostgresSchema(ctx, opts, destURI); err != nil {
@@ -235,7 +235,28 @@ func importSmall(ctx context.Context, opts ImportOptions, destURI, sqlitePath st
 	return loadTablesAndFinalize(ctx, opts, destURI, sqlitePath, nil, resume)
 }
 
-func importResumeEnabled(opts ImportOptions) bool {
+func importResumeEnabled(ctx context.Context, opts ImportOptions, destURI string) bool {
+	state, err := LoadState(opts.Org, opts.Database, opts.Branch, opts.MigrationID)
+	if err != nil {
+		return false
+	}
+	if state.Phase != PhaseFailed && state.Phase != PhaseImporting {
+		return false
+	}
+	if len(state.LoadedTables) > 0 || state.SchemaApplied {
+		if destURI == "" {
+			return false
+		}
+		has, err := destHasImportTables(ctx, opts, destURI)
+		if err != nil {
+			return false
+		}
+		return has
+	}
+	return false
+}
+
+func shouldPreserveImportProgress(ctx context.Context, opts ImportOptions, destURI string) bool {
 	state, err := LoadState(opts.Org, opts.Database, opts.Branch, opts.MigrationID)
 	if err != nil {
 		return false
@@ -244,9 +265,38 @@ func importResumeEnabled(opts ImportOptions) bool {
 		return false
 	}
 	if len(state.LoadedTables) > 0 {
-		return true
+		if destURI == "" {
+			return true
+		}
+		has, err := destHasImportTables(ctx, opts, destURI)
+		if err != nil {
+			return false
+		}
+		return has
 	}
-	return state.SchemaApplied
+	if state.SchemaApplied {
+		if destURI == "" {
+			return true
+		}
+		has, err := destHasImportTables(ctx, opts, destURI)
+		if err != nil {
+			return false
+		}
+		return has
+	}
+	return false
+}
+
+func destHasImportTables(ctx context.Context, opts ImportOptions, destURI string) (bool, error) {
+	tables, err := ParseDump(opts.InputPath)
+	if err != nil {
+		return false, err
+	}
+	existing, err := existingPublicTables(ctx, destURI, importTableNames(tables))
+	if err != nil {
+		return false, err
+	}
+	return len(existing) > 0, nil
 }
 
 func loadTablesAndFinalize(ctx context.Context, opts ImportOptions, destURI, sqlitePath string, timings *ImportTimings, resume bool) error {
@@ -441,7 +491,11 @@ func applyPostgresSchema(ctx context.Context, opts ImportOptions, destURI string
 	b.WriteString("-- Source: ")
 	b.WriteString(opts.InputPath)
 	b.WriteString("\n\n")
-	b.WriteString(buildImportTablesSQL(tables))
+	importSQL, err := buildImportTablesSQL(opts.InputPath, tables)
+	if err != nil {
+		return err
+	}
+	b.WriteString(importSQL)
 
 	combinedPath := filepath.Join(workDir, fmt.Sprintf("postgres-tables-%s.sql", opts.MigrationID))
 	if err := os.WriteFile(combinedPath, []byte(b.String()), 0o600); err != nil {
@@ -482,17 +536,65 @@ func applyPostgresIndexes(ctx context.Context, opts ImportOptions, destURI strin
 	return runPsqlFile(ctx, destURI, indexPath)
 }
 
+const (
+	connectionRetryAttempts = 4
+	connectionRetryBase     = 2 * time.Second
+)
+
+func isRetryableConnectionError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "bad connection") ||
+		strings.Contains(msg, "connection reset") ||
+		strings.Contains(msg, "couldn't read") ||
+		strings.Contains(msg, "could not read") ||
+		strings.Contains(msg, "broken pipe") ||
+		strings.Contains(msg, "connection refused") ||
+		strings.Contains(msg, "no connection") ||
+		strings.Contains(msg, "server closed the connection") ||
+		strings.Contains(msg, "connection timed out") ||
+		strings.Contains(msg, "i/o timeout")
+}
+
+func withConnectionRetry(ctx context.Context, fn func() error) error {
+	var lastErr error
+	for attempt := 0; attempt < connectionRetryAttempts; attempt++ {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		lastErr = fn()
+		if lastErr == nil || !isRetryableConnectionError(lastErr) {
+			return lastErr
+		}
+		if attempt == connectionRetryAttempts-1 {
+			break
+		}
+		delay := connectionRetryBase * time.Duration(1<<attempt)
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(delay):
+		}
+	}
+	return lastErr
+}
+
 func runPsqlFile(ctx context.Context, destURI, path string) error {
 	psqlPath, err := postgres.FindPsqlPath()
 	if err != nil {
 		return err
 	}
 
-	cmd := execabs.CommandContext(ctx, psqlPath, destURI, "-v", "ON_ERROR_STOP=1", "-f", path)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("psql %s: %w: %s", filepath.Base(path), err, string(out))
-	}
-	return nil
+	return withConnectionRetry(ctx, func() error {
+		cmd := execabs.CommandContext(ctx, psqlPath, destURI, "-v", "ON_ERROR_STOP=1", "-f", path)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			return fmt.Errorf("psql %s: %w: %s", filepath.Base(path), err, string(out))
+		}
+		return nil
+	})
 }
 
 // Status returns migration state for status polling.

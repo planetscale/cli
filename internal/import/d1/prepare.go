@@ -25,6 +25,8 @@ func PrepareImport(opts ImportOptions) (*ImportPrepareResult, error) {
 		if _, err := LoadState(opts.Org, opts.Database, opts.Branch, opts.MigrationID); err != nil {
 			return nil, err
 		}
+	} else if id, err := FindResumableMigration(opts.Org, opts.Database, opts.Branch, opts.InputPath); err == nil && id != "" {
+		opts.MigrationID = id
 	}
 
 	lintResult, err := Lint(opts.InputPath)
