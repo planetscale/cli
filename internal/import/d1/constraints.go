@@ -194,6 +194,41 @@ func isUUIDColumn(col ColumnSchema, table TableSchema, all []TableSchema, ctx *T
 	return columnReferencesUUIDKey(col, table, all, ctx)
 }
 
+const maxUUIDFKDepth = 32
+
+func columnReferencesUUIDKey(col ColumnSchema, table TableSchema, all []TableSchema, ctx *TypeCoercionContext) bool {
+	visited := make(map[string]struct{})
+	return columnReferencesUUIDKeyVisited(col, table, all, ctx, visited, 0)
+}
+
+func columnReferencesUUIDKeyVisited(col ColumnSchema, table TableSchema, all []TableSchema, ctx *TypeCoercionContext, visited map[string]struct{}, depth int) bool {
+	if depth >= maxUUIDFKDepth {
+		return false
+	}
+	key := table.Name + "." + col.Name
+	if _, seen := visited[key]; seen {
+		return false
+	}
+	visited[key] = struct{}{}
+
+	refTable, refCol := columnFKTarget(col, table)
+	if refTable == "" {
+		return false
+	}
+	ref := tableByName(all, refTable)
+	if ref == nil {
+		return false
+	}
+	refColSchema := columnByName(*ref, refCol)
+	if isExplicitUUIDColumn(refColSchema) {
+		if ctx == nil {
+			return false
+		}
+		return samplesAllowUUID(ref.Name, refColSchema.Name, ctx)
+	}
+	return columnReferencesUUIDKeyVisited(refColSchema, *ref, all, ctx, visited, depth+1)
+}
+
 func isExplicitUUIDColumn(col ColumnSchema) bool {
 	name := strings.ToLower(col.Name)
 	t := strings.ToUpper(col.Type)
@@ -209,19 +244,6 @@ func isExplicitUUIDColumn(col ColumnSchema) bool {
 		return true
 	}
 	return false
-}
-
-func columnReferencesUUIDKey(col ColumnSchema, table TableSchema, all []TableSchema, ctx *TypeCoercionContext) bool {
-	refTable, refCol := columnFKTarget(col, table)
-	if refTable == "" {
-		return false
-	}
-	ref := tableByName(all, refTable)
-	if ref == nil {
-		return false
-	}
-	refColSchema := columnByName(*ref, refCol)
-	return isUUIDColumn(refColSchema, *ref, all, ctx)
 }
 
 func columnFKTarget(col ColumnSchema, table TableSchema) (string, string) {

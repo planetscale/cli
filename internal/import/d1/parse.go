@@ -161,34 +161,36 @@ func parseColumn(def string) ColumnSchema {
 	}
 
 	colType := firstToken(rest)
-	restUpper := strings.ToUpper(rest)
-
 	col := ColumnSchema{
 		Name: name,
 		Type: colType,
 	}
 
-	if strings.Contains(restUpper, "NOT NULL") {
+	constraints := restAfterFirstToken(rest)
+	if idx := indexSQLKeyword(constraints, "DEFAULT"); idx >= 0 {
+		afterDefault := strings.TrimSpace(constraints[idx+len("DEFAULT"):])
+		col.DefaultValue = trimDefaultClause(afterDefault)
+		trailing := strings.TrimSpace(afterDefault[len(col.DefaultValue):])
+		constraints = strings.TrimSpace(constraints[:idx])
+		if trailing != "" {
+			constraints = strings.TrimSpace(constraints + " " + trailing)
+		}
+	}
+	constraints = stripCheckClauses(constraints)
+
+	if indexSQLKeyword(constraints, "NOT NULL") >= 0 {
 		col.NotNull = true
 	}
-	if strings.Contains(restUpper, "PRIMARY KEY") {
+	if indexSQLKeyword(constraints, "PRIMARY KEY") >= 0 {
 		col.PrimaryKey = true
 	}
-	if columnUniqueRe.MatchString(rest) {
+	if columnUniqueRe.MatchString(constraints) {
 		col.Unique = true
 	}
 	if autoincrementRe.MatchString(rest) {
 		col.AutoIncrement = true
 	}
-	if idx := strings.Index(strings.ToUpper(rest), "DEFAULT"); idx >= 0 {
-		col.DefaultValue = strings.TrimSpace(rest[idx+7:])
-		col.DefaultValue = strings.TrimSuffix(col.DefaultValue, ",")
-		if refIdx := indexOfIgnoreCase(col.DefaultValue, "REFERENCES"); refIdx >= 0 {
-			col.DefaultValue = strings.TrimSpace(col.DefaultValue[:refIdx])
-			col.DefaultValue = strings.TrimSuffix(col.DefaultValue, ",")
-		}
-	}
-	if strings.Contains(restUpper, "REFERENCES") {
+	if indexSQLKeyword(rest, "REFERENCES") >= 0 {
 		col.ForeignKey = referencesClause(rest)
 	}
 
@@ -504,6 +506,141 @@ func parseColumnNameAndRest(def string) (name, rest string) {
 		}
 		return def[:i], strings.TrimSpace(def[i:])
 	}
+}
+
+func trimDefaultClause(s string) string {
+	s = strings.TrimSpace(s)
+	s = strings.TrimSuffix(s, ",")
+	stopPatterns := []string{
+		" NOT NULL",
+		" NULL",
+		" UNIQUE",
+		" PRIMARY KEY",
+		" REFERENCES",
+		" CHECK",
+		" COLLATE",
+		" GENERATED",
+	}
+	best := len(s)
+	upper := strings.ToUpper(s)
+	for _, pat := range stopPatterns {
+		if i := indexOutsideQuotes(upper, pat); i >= 0 && i < best {
+			best = i
+		}
+	}
+	if best < len(s) {
+		s = strings.TrimSpace(s[:best])
+	}
+	return strings.TrimSuffix(strings.TrimSpace(s), ",")
+}
+
+func restAfterFirstToken(s string) string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return ""
+	}
+	i := 0
+	for i < len(s) && !isIdentBreak(s[i]) {
+		i++
+	}
+	return strings.TrimSpace(s[i:])
+}
+
+func indexOutsideQuotes(s, pattern string) int {
+	if pattern == "" {
+		return -1
+	}
+	inQuote := byte(0)
+	for i := 0; i+len(pattern) <= len(s); i++ {
+		switch {
+		case inQuote != 0:
+			if s[i] == inQuote {
+				inQuote = 0
+			}
+		case s[i] == '\'' || s[i] == '"':
+			inQuote = s[i]
+		case strings.EqualFold(s[i:i+len(pattern)], pattern):
+			return i
+		}
+	}
+	return -1
+}
+
+func indexSQLKeyword(s, keyword string) int {
+	if s == "" || keyword == "" {
+		return -1
+	}
+	upper := strings.ToUpper(s)
+	kw := strings.ToUpper(keyword)
+	for i := 0; i+len(kw) <= len(upper); i++ {
+		if upper[i:i+len(kw)] != kw {
+			continue
+		}
+		if i > 0 && isSQLIdentChar(upper[i-1]) {
+			continue
+		}
+		end := i + len(kw)
+		if end < len(upper) && isSQLIdentChar(upper[end]) {
+			continue
+		}
+		return i
+	}
+	return -1
+}
+
+func isSQLIdentChar(c byte) bool {
+	return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_'
+}
+
+func stripCheckClauses(s string) string {
+	upper := strings.ToUpper(s)
+	var out strings.Builder
+	for i := 0; i < len(s); {
+		if strings.HasPrefix(upper[i:], "CHECK") && (i+5 == len(s) || !isSQLIdentChar(upper[i+5])) {
+			j := i + 5
+			for j < len(s) && (s[j] == ' ' || s[j] == '\t') {
+				j++
+			}
+			if j < len(s) && s[j] == '(' {
+				if end, ok := matchingParenEnd(s, j); ok {
+					i = end + 1
+					continue
+				}
+			}
+		}
+		out.WriteByte(s[i])
+		i++
+	}
+	return out.String()
+}
+
+func matchingParenEnd(s string, open int) (int, bool) {
+	if open >= len(s) || s[open] != '(' {
+		return 0, false
+	}
+	depth := 0
+	inQuote := byte(0)
+	for i := open; i < len(s); i++ {
+		c := s[i]
+		if inQuote != 0 {
+			if c == inQuote && (i == 0 || s[i-1] != '\\') {
+				inQuote = 0
+			}
+			continue
+		}
+		switch c {
+		case '\'', '"', '`':
+			inQuote = c
+		case '(':
+			depth++
+		case ')':
+			depth--
+			if depth == 0 {
+				return i, true
+			}
+		}
+	}
+	return 0, false
 }
 
 func isIdentBreak(c byte) bool {

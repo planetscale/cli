@@ -32,7 +32,6 @@ func TestBuildPgloaderScriptDataOnlyPerTable(t *testing.T) {
 		"batch size = 20 MB,",
 		"prefetch rows = 25000",
 		"INCLUDING ONLY TABLE NAMES LIKE 'organizations'",
-		"column organizations.is_active to boolean using sqlite-int-to-boolean",
 		"SET work_mem to '256MB'",
 		"synchronous_commit to 'off'",
 	}
@@ -43,6 +42,7 @@ func TestBuildPgloaderScriptDataOnlyPerTable(t *testing.T) {
 	}
 	for _, bad := range []string{
 		"column organizations.id to boolean",
+		"column organizations.is_active to boolean",
 		"column organizations.slug to timestamptz",
 		"type integer to boolean",
 		"type text to timestamptz",
@@ -110,22 +110,41 @@ CREATE TABLE users (id INTEGER PRIMARY KEY, org_id INTEGER);
 }
 
 func TestPgloaderTableNameFilterExactMatch(t *testing.T) {
-	got := pgloaderTableNameFilter("entity_links")
+	got := pgloaderTableNameFilter("entity_links", nil)
 	want := ` LIKE 'entity_links'`
 	if got != want {
 		t.Fatalf("pgloaderTableNameFilter() = %q, want %q", got, want)
 	}
-	got = pgloaderTableNameFilter("100%done")
+	got = pgloaderTableNameFilter("100%done", nil)
 	if got != ` LIKE '100%done'` {
 		t.Fatalf("pgloaderTableNameFilter() = %q", got)
 	}
-	got = pgloaderTableNameFilter("tbl_a")
-	if got != ` LIKE 'tbl_a'` {
+	all := []string{"tbl_a", "tbl1a", "users"}
+	got = pgloaderTableNameFilter("tbl_a", all)
+	if !strings.Contains(got, ` LIKE 'tbl_a'`) {
 		t.Fatalf("pgloaderTableNameFilter() = %q", got)
 	}
-	got = pgloaderTableNameFilter("O'Brien")
+	if !strings.Contains(got, `EXCLUDING TABLE NAMES LIKE 'tbl1a'`) {
+		t.Fatalf("expected false-positive exclusion, got %q", got)
+	}
+	if strings.Contains(got, `EXCLUDING TABLE NAMES LIKE 'users'`) {
+		t.Fatalf("did not expect users excluded, got %q", got)
+	}
+	got = pgloaderTableNameFilter("O'Brien", nil)
 	if got != ` LIKE 'O''Brien'` {
 		t.Fatalf("pgloaderTableNameFilter() = %q", got)
+	}
+}
+
+func TestSQLLikeMatch(t *testing.T) {
+	if !sqlLikeMatch("tbl_a", "tbl1a") {
+		t.Fatal("expected tbl_a pattern to match tbl1a")
+	}
+	if sqlLikeMatch("tbl_a", "users") {
+		t.Fatal("expected tbl_a pattern not to match users")
+	}
+	if sqlLikeMatch("user_data", "users_data") {
+		t.Fatal("expected user_data pattern not to match users_data")
 	}
 }
 

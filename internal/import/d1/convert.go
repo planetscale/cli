@@ -170,7 +170,7 @@ func sqliteTypeToPostgres(col ColumnSchema, table TableSchema, all []TableSchema
 	case t == "" || t == "NUMERIC":
 		return "TEXT"
 	case strings.Contains(t, "INT"):
-		if isBooleanColumn(col) {
+		if isBooleanLikeColumn(col, table, ctx) {
 			return "BOOLEAN"
 		}
 		return "BIGINT"

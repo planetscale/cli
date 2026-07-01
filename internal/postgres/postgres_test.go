@@ -150,6 +150,16 @@ func TestRedactPassword(t *testing.T) {
 			want:    "host=localhost port=5432 user=user password=**** dbname=mydb",
 		},
 		{
+			name:    "quoted password with spaces",
+			connStr: "host=localhost user=user password='my secret' dbname=mydb",
+			want:    "host=localhost user=user password=**** dbname=mydb",
+		},
+		{
+			name:    "unquoted password with spaces",
+			connStr: "host=localhost user=user password=my secret dbname=mydb",
+			want:    "host=localhost user=user password=**** dbname=mydb",
+		},
+		{
 			name:    "without password",
 			connStr: "host=localhost port=5432 user=user dbname=mydb",
 			want:    "host=localhost port=5432 user=user dbname=mydb",

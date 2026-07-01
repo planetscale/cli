@@ -219,13 +219,118 @@ func RedactPassword(connStr string) string {
 		return connStr
 	}
 
-	var result []string
-	for _, pair := range strings.Fields(connStr) {
-		if strings.HasPrefix(pair, "password=") {
-			result = append(result, "password=****")
-		} else {
-			result = append(result, pair)
+	return redactKeywordPassword(connStr)
+}
+
+func redactKeywordPassword(connStr string) string {
+	var parts []string
+	i := 0
+	for i < len(connStr) {
+		for i < len(connStr) && (connStr[i] == ' ' || connStr[i] == '\t') {
+			i++
+		}
+		if i >= len(connStr) {
+			break
+		}
+		keyStart := i
+		for i < len(connStr) && connStr[i] != '=' && connStr[i] != ' ' && connStr[i] != '\t' {
+			i++
+		}
+		key := connStr[keyStart:i]
+		if i >= len(connStr) || connStr[i] != '=' {
+			parts = append(parts, strings.TrimSpace(connStr[keyStart:]))
+			break
+		}
+		i++
+		if strings.EqualFold(key, "password") {
+			_, next := readPasswordConnValue(connStr, i)
+			i = next
+			parts = append(parts, key+"=****")
+			continue
+		}
+		val, next := readKeywordConnValue(connStr, i)
+		i = next
+		parts = append(parts, key+"="+val)
+	}
+	return strings.Join(parts, " ")
+}
+
+var connParamKeywords = []string{
+	"host", "hostaddr", "port", "user", "password", "dbname", "database",
+	"sslmode", "application_name", "connect_timeout", "options",
+	"fallback_application_name", "client_encoding", "target_session_attrs",
+	"replication", "gssencmode", "sslcert", "sslkey", "sslrootcert",
+	"requirepeer", "krbsrvname", "gsslib", "service",
+}
+
+func readPasswordConnValue(connStr string, start int) (value string, next int) {
+	if start >= len(connStr) {
+		return "", start
+	}
+	if connStr[start] == '\'' || connStr[start] == '"' {
+		return readKeywordConnValue(connStr, start)
+	}
+	end := start + nextConnKeywordAssignIndex(connStr[start:])
+	return strings.TrimSpace(connStr[start:end]), end
+}
+
+func nextConnKeywordAssignIndex(s string) int {
+	if s == "" {
+		return 0
+	}
+	lower := strings.ToLower(s)
+	best := len(s)
+	for _, kw := range connParamKeywords {
+		token := " " + kw + "="
+		if idx := strings.Index(lower, token); idx >= 0 && idx < best {
+			best = idx
 		}
 	}
-	return strings.Join(result, " ")
+	return best
+}
+
+func readKeywordConnValue(connStr string, start int) (value string, next int) {
+	if start >= len(connStr) {
+		return "", start
+	}
+	switch connStr[start] {
+	case '\'':
+		var b strings.Builder
+		i := start + 1
+		for i < len(connStr) {
+			if connStr[i] == '\'' {
+				if i+1 < len(connStr) && connStr[i+1] == '\'' {
+					b.WriteByte('\'')
+					i += 2
+					continue
+				}
+				return b.String(), i + 1
+			}
+			b.WriteByte(connStr[i])
+			i++
+		}
+		return b.String(), len(connStr)
+	case '"':
+		var b strings.Builder
+		i := start + 1
+		for i < len(connStr) {
+			if connStr[i] == '"' {
+				if i+1 < len(connStr) && connStr[i+1] == '"' {
+					b.WriteByte('"')
+					i += 2
+					continue
+				}
+				return b.String(), i + 1
+			}
+			b.WriteByte(connStr[i])
+			i++
+		}
+		return b.String(), len(connStr)
+	default:
+		i := start
+		for i < len(connStr) && connStr[i] != ' ' && connStr[i] != '\t' {
+			i++
+		}
+		return connStr[start:i], i
+	}
 }

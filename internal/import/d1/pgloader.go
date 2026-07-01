@@ -308,7 +308,8 @@ func buildPgloaderScript(sqlitePath, destURI string, cfg pgloaderScriptConfig, c
 
 	if cfg.tableName != "" {
 		b.WriteString("\n")
-		fmt.Fprintf(&b, " INCLUDING ONLY TABLE NAMES%s\n", pgloaderTableNameFilter(cfg.tableName))
+		tableNames := tableNamesFromSchemas(allTables)
+		fmt.Fprintf(&b, " INCLUDING ONLY TABLE NAMES%s\n", pgloaderTableNameFilter(cfg.tableName, tableNames))
 	}
 
 	appendPgloaderCasts(&b, castTables, allTables, coerceCtx)
@@ -350,9 +351,58 @@ func appendPgloaderCasts(b *strings.Builder, castTables, allTables []TableSchema
 }
 
 // pgloaderTableNameFilter returns a pgloader INCLUDING ONLY ... LIKE filter for one table.
-// pgloader 3.6.x accepts LIKE 'name' but does not parse ESCAPE clauses.
-func pgloaderTableNameFilter(name string) string {
-	return fmt.Sprintf(" LIKE '%s'", escapePgloaderQuote(name))
+// pgloader 3.6.x accepts LIKE 'name' but does not parse ESCAPE clauses, so names with
+// LIKE metacharacters add EXCLUDING filters for other tables that would false-match.
+func pgloaderTableNameFilter(name string, allTableNames []string) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, " LIKE '%s'", escapePgloaderQuote(name))
+	if !strings.ContainsAny(name, "_%") {
+		return b.String()
+	}
+	for _, other := range allTableNames {
+		if other == name {
+			continue
+		}
+		if sqlLikeMatch(name, other) {
+			fmt.Fprintf(&b, "\n EXCLUDING TABLE NAMES LIKE '%s'", escapePgloaderQuote(other))
+		}
+	}
+	return b.String()
+}
+
+func tableNamesFromSchemas(tables []TableSchema) []string {
+	names := make([]string, 0, len(tables))
+	for _, table := range tables {
+		names = append(names, table.Name)
+	}
+	return names
+}
+
+func sqlLikeMatch(pattern, s string) bool {
+	m, n := len(pattern), len(s)
+	dp := make([][]bool, m+1)
+	for i := range dp {
+		dp[i] = make([]bool, n+1)
+	}
+	dp[0][0] = true
+	for i := 1; i <= m; i++ {
+		if pattern[i-1] == '%' {
+			dp[i][0] = dp[i-1][0]
+		}
+	}
+	for i := 1; i <= m; i++ {
+		for j := 1; j <= n; j++ {
+			switch pattern[i-1] {
+			case '%':
+				dp[i][j] = dp[i-1][j] || dp[i][j-1]
+			case '_':
+				dp[i][j] = dp[i-1][j-1]
+			default:
+				dp[i][j] = dp[i-1][j-1] && pattern[i-1] == s[j-1]
+			}
+		}
+	}
+	return dp[m][n]
 }
 
 func escapePgloaderQuote(name string) string {

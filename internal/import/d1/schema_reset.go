@@ -154,6 +154,52 @@ func existingPublicTables(ctx context.Context, destURI string, names []string) (
 	return existing, nil
 }
 
+func populatedLoadedTables(ctx context.Context, destURI string, loaded []string) ([]string, error) {
+	if len(loaded) == 0 {
+		return nil, nil
+	}
+	withRows, err := destTablesWithRows(ctx, destURI, loaded)
+	if err != nil {
+		return nil, err
+	}
+	return skipLoadedTablesForResume(loaded, withRows), nil
+}
+
+func skipLoadedTablesForResume(loaded []string, withRows map[string]struct{}) []string {
+	populated := make([]string, 0, len(loaded))
+	for _, table := range loaded {
+		if _, ok := withRows[table]; ok {
+			populated = append(populated, table)
+		}
+	}
+	return populated
+}
+
+func destTablesWithRows(ctx context.Context, destURI string, tables []string) (map[string]struct{}, error) {
+	out := make(map[string]struct{})
+	if len(tables) == 0 {
+		return out, nil
+	}
+
+	db, err := OpenPostgres(destURI)
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+
+	for _, table := range tables {
+		var hasRows bool
+		query := fmt.Sprintf(`SELECT EXISTS (SELECT 1 FROM %s LIMIT 1)`, quoteIdent(table))
+		if err := db.QueryRowContext(ctx, query).Scan(&hasRows); err != nil {
+			return nil, fmt.Errorf("check rows in %s: %w", table, err)
+		}
+		if hasRows {
+			out[table] = struct{}{}
+		}
+	}
+	return out, nil
+}
+
 func conflictingImportTables(importNames []string, existing map[string]struct{}) []string {
 	if len(existing) == 0 {
 		return nil

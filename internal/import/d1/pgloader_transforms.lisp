@@ -5,11 +5,20 @@
   (cond
     ((null val) :null)
     ((and (integerp val) (zerop val)) "false")
+    ((and (integerp val) (= val 1)) "true")
     ((and (stringp val) (string= val "0")) "false")
-    (t "true")))
+    ((and (stringp val) (string= val "1")) "true")
+    (t :null)))
 
 (defun sqlite-text-to-jsonb (val)
   "SQLite JSON lives in TEXT; pass valid JSON through to PostgreSQL JSONB."
+  (cond
+    ((null val) :null)
+    ((stringp val) val)
+    (t (format nil "~a" val))))
+
+(defun sqlite-timestamp-to-timestamp (val)
+  "SQLite timestamps in TEXT/DATETIME columns; pass through for PostgreSQL TIMESTAMPTZ."
   (cond
     ((null val) :null)
     ((stringp val) val)

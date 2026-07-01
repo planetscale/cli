@@ -211,8 +211,11 @@ func Import(ctx context.Context, psClient *ps.Client, client ImportClient, opts 
 }
 
 func importWithPgloader(ctx context.Context, opts ImportOptions, destURI, sqlitePath string, timings *ImportTimings) error {
-	resume := importResumeEnabled(ctx, opts, destURI)
-	if !resume {
+	schemaResume, err := importSchemaResumeEnabled(ctx, opts, destURI)
+	if err != nil {
+		return err
+	}
+	if !schemaResume {
 		opts.reportProgress(ImportProgress{Stage: ImportStageSchema})
 		schemaStart := time.Now()
 		if err := applyPostgresSchema(ctx, opts, destURI); err != nil {
@@ -220,40 +223,72 @@ func importWithPgloader(ctx context.Context, opts ImportOptions, destURI, sqlite
 		}
 		timings.SchemaMs = time.Since(schemaStart).Milliseconds()
 	}
-	return loadTablesAndFinalize(ctx, opts, destURI, sqlitePath, timings, resume)
+	dataResume, err := importDataResumeEnabled(ctx, opts, destURI)
+	if err != nil {
+		return err
+	}
+	return loadTablesAndFinalize(ctx, opts, destURI, sqlitePath, timings, dataResume)
 }
 
 // importSmall loads dumps under 1GB: schema via psql, data via pgloader.
 func importSmall(ctx context.Context, opts ImportOptions, destURI, sqlitePath string) error {
-	resume := importResumeEnabled(ctx, opts, destURI)
-	if !resume {
+	schemaResume, err := importSchemaResumeEnabled(ctx, opts, destURI)
+	if err != nil {
+		return err
+	}
+	if !schemaResume {
 		opts.reportProgress(ImportProgress{Stage: ImportStageSchema})
 		if err := applyPostgresSchema(ctx, opts, destURI); err != nil {
 			return err
 		}
 	}
-	return loadTablesAndFinalize(ctx, opts, destURI, sqlitePath, nil, resume)
+	dataResume, err := importDataResumeEnabled(ctx, opts, destURI)
+	if err != nil {
+		return err
+	}
+	return loadTablesAndFinalize(ctx, opts, destURI, sqlitePath, nil, dataResume)
 }
 
-func importResumeEnabled(ctx context.Context, opts ImportOptions, destURI string) bool {
+func importSchemaResumeEnabled(ctx context.Context, opts ImportOptions, destURI string) (bool, error) {
 	state, err := LoadState(opts.Org, opts.Database, opts.Branch, opts.MigrationID)
 	if err != nil {
-		return false
+		return false, nil
 	}
 	if state.Phase != PhaseFailed && state.Phase != PhaseImporting {
-		return false
+		return false, nil
 	}
-	if len(state.LoadedTables) > 0 || state.SchemaApplied {
-		if destURI == "" {
-			return false
-		}
-		has, err := destHasImportTables(ctx, opts, destURI)
-		if err != nil {
-			return false
-		}
-		return has
+	if !state.SchemaApplied {
+		return false, nil
 	}
-	return false
+	if destURI == "" {
+		return false, nil
+	}
+	has, err := destHasImportTables(ctx, opts, destURI)
+	if err != nil {
+		return false, fmt.Errorf("check import tables for schema resume: %w", err)
+	}
+	return has, nil
+}
+
+func importDataResumeEnabled(ctx context.Context, opts ImportOptions, destURI string) (bool, error) {
+	state, err := LoadState(opts.Org, opts.Database, opts.Branch, opts.MigrationID)
+	if err != nil {
+		return false, nil
+	}
+	if state.Phase != PhaseFailed && state.Phase != PhaseImporting {
+		return false, nil
+	}
+	if len(state.LoadedTables) == 0 {
+		return false, nil
+	}
+	if destURI == "" {
+		return false, nil
+	}
+	populated, err := populatedLoadedTables(ctx, destURI, state.LoadedTables)
+	if err != nil {
+		return false, fmt.Errorf("check populated tables for resume: %w", err)
+	}
+	return len(populated) > 0, nil
 }
 
 func shouldPreserveImportProgress(ctx context.Context, opts ImportOptions, destURI string) bool {
@@ -307,8 +342,12 @@ func loadTablesAndFinalize(ctx context.Context, opts ImportOptions, destURI, sql
 
 	var skipTables []string
 	if resume {
-		if state, err := LoadState(opts.Org, opts.Database, opts.Branch, opts.MigrationID); err == nil {
-			skipTables = state.LoadedTables
+		if state, err := LoadState(opts.Org, opts.Database, opts.Branch, opts.MigrationID); err == nil && len(state.LoadedTables) > 0 {
+			populated, err := populatedLoadedTables(ctx, destURI, state.LoadedTables)
+			if err != nil {
+				return err
+			}
+			skipTables = populated
 		}
 	}
 

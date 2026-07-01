@@ -66,6 +66,14 @@ func lintTable(table TableSchema, all []TableSchema, ctx *TypeCoercionContext) [
 				Column:      col.Name,
 				Remediation: "0/1 integer values will cast to boolean on import",
 			})
+		} else if isBooleanNameHint(col) {
+			issues = append(issues, Issue{
+				Code:        "BOOLEAN_NAME_MISMATCH",
+				Severity:    SeverityInfo,
+				Table:       table.Name,
+				Column:      col.Name,
+				Remediation: "Column name suggests boolean but sampled values are not 0/1; will stay integer",
+			})
 		}
 
 		if isTimestampText(col) {
@@ -126,22 +134,30 @@ func lintTable(table TableSchema, all []TableSchema, ctx *TypeCoercionContext) [
 	return issues
 }
 
-func isBooleanColumn(col ColumnSchema) bool {
+func isBooleanNameHint(col ColumnSchema) bool {
 	name := strings.ToLower(col.Name)
-	if strings.Contains(name, "is_") || strings.HasSuffix(name, "_flag") ||
-		name == "active" || name == "enabled" || name == "published" ||
-		name == "archived" || name == "disabled" {
-		return col.Type == "INTEGER" || col.Type == "INT"
+	if !strings.HasPrefix(name, "is_") && !strings.HasSuffix(name, "_flag") &&
+		name != "active" && name != "enabled" && name != "published" &&
+		name != "archived" && name != "disabled" {
+		return false
 	}
-	return false
+	upper := strings.ToUpper(col.Type)
+	return upper == "INTEGER" || upper == "INT"
+}
+
+func isBooleanColumn(col ColumnSchema) bool {
+	return isBooleanNameHint(col)
 }
 
 func isBooleanLikeColumn(col ColumnSchema, table TableSchema, ctx *TypeCoercionContext) bool {
-	if isBooleanColumn(col) {
-		return true
-	}
 	upper := strings.ToUpper(col.Type)
-	return (upper == "INTEGER" || upper == "INT") && ctx != nil && samplesLookBoolean(table.Name, col.Name, ctx)
+	if upper != "INTEGER" && upper != "INT" {
+		return false
+	}
+	if ctx == nil {
+		return false
+	}
+	return samplesLookBoolean(table.Name, col.Name, ctx)
 }
 
 func isTimestampText(col ColumnSchema) bool {

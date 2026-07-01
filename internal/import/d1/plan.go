@@ -118,12 +118,14 @@ func defaultCastRules() []CastRule {
 
 func topologicalLoadOrder(tables []TableSchema) []string {
 	names := make([]string, 0, len(tables))
-	deps := make(map[string][]string)
 	nameSet := make(map[string]bool)
-
 	for _, t := range tables {
 		names = append(names, t.Name)
 		nameSet[t.Name] = true
+	}
+
+	deps := make(map[string][]string)
+	for _, t := range tables {
 		for _, col := range t.Columns {
 			if ref := parseFKReference(col.ForeignKey); ref != "" && nameSet[ref] {
 				deps[t.Name] = append(deps[t.Name], ref)
@@ -175,7 +177,11 @@ func parseFKReference(fk string) string {
 	if len(parts) == 0 {
 		return ""
 	}
-	return strings.Trim(parts[0], "`\"'")
+	ref := strings.Trim(parts[0], "`\"'")
+	if paren := strings.Index(ref, "("); paren >= 0 {
+		ref = ref[:paren]
+	}
+	return ref
 }
 
 var tableFKRe = regexp.MustCompile(`(?i)FOREIGN\s+KEY[^)]*\)\s*REFERENCES\s+(?:` + "`" + `([^` + "`" + `]+)` + "`" + `|"([^"]+)"|'([^']+)'|([a-zA-Z_][\w]*))`)

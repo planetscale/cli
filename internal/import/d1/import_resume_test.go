@@ -27,8 +27,11 @@ func TestImportResumeEnabled(t *testing.T) {
 		MigrationID: migrationID,
 	}
 
-	if importResumeEnabled(context.Background(), opts, "") {
-		t.Fatal("expected no resume before any tables loaded")
+	if enabled, err := importSchemaResumeEnabled(context.Background(), opts, ""); err != nil || enabled {
+		t.Fatalf("expected no schema resume before schema is applied (enabled=%v err=%v)", enabled, err)
+	}
+	if enabled, err := importDataResumeEnabled(context.Background(), opts, ""); err != nil || enabled {
+		t.Fatalf("expected no data resume before any tables loaded (enabled=%v err=%v)", enabled, err)
 	}
 
 	if err := updateMigrationState(org, database, branch, migrationID, func(state *MigrationState) {
@@ -37,8 +40,8 @@ func TestImportResumeEnabled(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("update state schema applied: %v", err)
 	}
-	if importResumeEnabled(context.Background(), opts, "") {
-		t.Fatal("expected resume deferred until destination is known when only schema_applied")
+	if enabled, err := importSchemaResumeEnabled(context.Background(), opts, ""); err != nil || enabled {
+		t.Fatalf("expected schema resume deferred until destination is known (enabled=%v err=%v)", enabled, err)
 	}
 	if !shouldPreserveImportProgress(context.Background(), opts, "") {
 		t.Fatal("expected import progress preserved when failed after schema applied")
@@ -50,8 +53,8 @@ func TestImportResumeEnabled(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("update state: %v", err)
 	}
-	if importResumeEnabled(context.Background(), opts, "") {
-		t.Fatal("expected resume deferred until destination is known when tables loaded")
+	if enabled, err := importDataResumeEnabled(context.Background(), opts, ""); err != nil || enabled {
+		t.Fatalf("expected data resume deferred until destination is known (enabled=%v err=%v)", enabled, err)
 	}
 	if !shouldPreserveImportProgress(context.Background(), opts, "") {
 		t.Fatal("expected import progress preserved when failed with loaded tables")
@@ -60,8 +63,26 @@ func TestImportResumeEnabled(t *testing.T) {
 	if err := SetMigrationPhase(org, database, branch, migrationID, PhasePlanned); err != nil {
 		t.Fatalf("SetMigrationPhase: %v", err)
 	}
-	if importResumeEnabled(context.Background(), opts, "") {
-		t.Fatal("expected no resume from planned phase even with loaded_tables")
+	if enabled, err := importDataResumeEnabled(context.Background(), opts, ""); err != nil || enabled {
+		t.Fatalf("expected no data resume from planned phase even with loaded_tables (enabled=%v err=%v)", enabled, err)
+	}
+}
+
+func TestSkipLoadedTablesForResume(t *testing.T) {
+	loaded := []string{"users", "posts", "comments"}
+	withRows := map[string]struct{}{
+		"users": {},
+		"posts": {},
+	}
+	got := skipLoadedTablesForResume(loaded, withRows)
+	want := []string{"users", "posts"}
+	if len(got) != len(want) {
+		t.Fatalf("skip tables = %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("skip tables = %v, want %v", got, want)
+		}
 	}
 }
 

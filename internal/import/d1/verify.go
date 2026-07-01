@@ -36,6 +36,16 @@ func Verify(ctx context.Context, opts VerifyOptions) (result *VerifyResult, err 
 		return nil, err
 	}
 
+	if opts.InputPath != "" && opts.SQLitePath == "" {
+		if err := EnsureSQLiteFromDump(ctx, opts.InputPath, sqlitePath); err != nil {
+			return nil, newMigrationError(
+				ErrCodeVerifyFailed,
+				fmt.Sprintf("build sqlite staging: %v", err),
+				"Ensure the dump is valid and sqlite3 is installed; pass --sqlite for a custom staging path",
+			)
+		}
+	}
+
 	dbName := opts.DBName
 	if dbName == "" && opts.MigrationID != "" {
 		if state, err := LoadState(opts.Org, opts.Database, opts.Branch, opts.MigrationID); err == nil && state.DBName != "" {
@@ -85,6 +95,10 @@ func Verify(ctx context.Context, opts VerifyOptions) (result *VerifyResult, err 
 	if err != nil {
 		return nil, err
 	}
+	destCounts, extraTables, err := mergeImportScopedDestRowCounts(ctx, opts, tableNames, destCounts)
+	if err != nil {
+		return nil, err
+	}
 
 	result = &VerifyResult{
 		MigrationID: opts.MigrationID,
@@ -92,8 +106,9 @@ func Verify(ctx context.Context, opts VerifyOptions) (result *VerifyResult, err 
 		Checks:      []VerifyCheckResult{},
 	}
 
+	verifyTables := append(append([]string{}, tableNames...), extraTables...)
 	var rowCountsOK bool
-	result.Tables, rowCountsOK = verifyRowCounts(tableNames, sourceCounts, destCounts)
+	result.Tables, rowCountsOK = verifyRowCounts(verifyTables, sourceCounts, destCounts)
 	if !rowCountsOK {
 		result.Matched = false
 	}
@@ -230,6 +245,54 @@ func countPostgresRowsWithProgress(ctx context.Context, opts VerifyOptions, tabl
 		counts[table] = count
 	}
 	return counts, nil
+}
+
+func mergeImportScopedDestRowCounts(ctx context.Context, opts VerifyOptions, sourceTables []string, destCounts map[string]int64) (map[string]int64, []string, error) {
+	if opts.MigrationID == "" {
+		return destCounts, nil, nil
+	}
+	state, err := LoadState(opts.Org, opts.Database, opts.Branch, opts.MigrationID)
+	if err != nil {
+		return destCounts, nil, nil
+	}
+	if len(state.LoadedTables) == 0 {
+		return destCounts, nil, nil
+	}
+
+	sourceSet := make(map[string]struct{}, len(sourceTables))
+	for _, name := range sourceTables {
+		sourceSet[name] = struct{}{}
+	}
+
+	var extra []string
+	for _, name := range state.LoadedTables {
+		if _, ok := sourceSet[name]; ok {
+			continue
+		}
+		extra = append(extra, name)
+	}
+	if len(extra) == 0 {
+		return destCounts, nil, nil
+	}
+
+	db, err := OpenPostgres(opts.DestURI)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer db.Close()
+
+	if destCounts == nil {
+		destCounts = make(map[string]int64)
+	}
+	for _, name := range extra {
+		var count int64
+		query := fmt.Sprintf(`SELECT COUNT(*) FROM %s`, quoteIdent(name))
+		if err := db.QueryRowContext(ctx, query).Scan(&count); err != nil {
+			return nil, nil, fmt.Errorf("count import-scoped table %s: %w", name, err)
+		}
+		destCounts[name] = count
+	}
+	return destCounts, extra, nil
 }
 
 func resolveVerifySQLitePath(opts VerifyOptions) (VerifyOptions, string, error) {

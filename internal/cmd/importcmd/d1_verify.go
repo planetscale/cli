@@ -54,10 +54,10 @@ func d1VerifyCmd(ch *cmdutil.Helper) *cobra.Command {
 			verifyOpts.DestURI = destURI
 
 			progress := newVerifyProgressReporter(ch, verifyTableCount(org, database, branch, flags.migrationID, flags.input))
-			defer progress.Close()
 			verifyOpts.OnProgress = progress.Report
 
 			result, err := d1.Verify(cmd.Context(), verifyOpts)
+			progress.Close()
 			if err != nil {
 				resp := d1.ErrorResponse("verify", err)
 				if result != nil {

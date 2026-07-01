@@ -69,15 +69,18 @@ Use --dry-run to lint and save migration state without touching Postgres.`,
 			}
 			importOpts.NotifyAPI = d1NotifyAPI(client, flags.noNotify)
 
+			var progress *progressReporter
 			if !flags.dryRun {
 				tableCount := importTableCount(prepared)
-				progress := newImportProgressReporter(ch, tableCount, prepared.Plan.EstimatedSizeBytes)
-				defer progress.Close()
+				progress = newImportProgressReporter(ch, tableCount, prepared.Plan.EstimatedSizeBytes)
 				importOpts.OnProgress = progress.Report
 				importOpts.PgloaderVerbose = ch.Debug()
 			}
 
 			result, err := d1.Import(cmd.Context(), client, &d1.DefaultImportClient{Client: client}, importOpts, prepared)
+			if progress != nil {
+				progress.Close()
+			}
 			if err != nil {
 				resp := d1.ErrorResponse("start", err)
 				if result != nil {

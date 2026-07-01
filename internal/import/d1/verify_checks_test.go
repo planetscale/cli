@@ -22,6 +22,24 @@ func TestVerifyRowCounts(t *testing.T) {
 	}
 }
 
+func TestVerifyRowCountsIncludesImportScopedDestTables(t *testing.T) {
+	source := map[string]int64{"users": 1}
+	dest := map[string]int64{"users": 1, "legacy_import_table": 5}
+	results, ok := verifyRowCounts([]string{"users", "legacy_import_table"}, source, dest)
+	if ok {
+		t.Fatal("expected mismatch when import-scoped dest table has rows but source does not")
+	}
+	found := false
+	for _, r := range results {
+		if r.Table == "legacy_import_table" && !r.Match && r.DestRows == 5 && r.SourceRows == 0 {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("expected import-scoped dest table mismatch, got %+v", results)
+	}
+}
+
 func TestColumnReferencesUUIDKey(t *testing.T) {
 	tables, err := ParseDump(testFixture(t))
 	if err != nil {
@@ -58,6 +76,30 @@ func TestColumnReferencesUUIDKey(t *testing.T) {
 	}
 	if isExplicitUUIDColumn(entityID) {
 		t.Fatal("entity_id should not be treated as explicit UUID column")
+	}
+}
+
+func TestColumnReferencesUUIDKeyCycle(t *testing.T) {
+	tables := []TableSchema{
+		{
+			Name: "nodes_a",
+			Columns: []ColumnSchema{{
+				Name:       "next_id",
+				Type:       "TEXT",
+				ForeignKey: `REFERENCES nodes_b(id)`,
+			}},
+		},
+		{
+			Name: "nodes_b",
+			Columns: []ColumnSchema{{
+				Name:       "next_id",
+				Type:       "TEXT",
+				ForeignKey: `REFERENCES nodes_a(id)`,
+			}},
+		},
+	}
+	if columnReferencesUUIDKey(tables[0].Columns[0], tables[0], tables, nil) {
+		t.Fatal("expected cyclic FK chain to resolve as non-UUID without stack overflow")
 	}
 }
 

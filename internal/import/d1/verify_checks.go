@@ -347,14 +347,7 @@ func primaryKeyColumns(table TableSchema) []string {
 }
 
 func shouldVerifyBooleanColumn(col ColumnSchema, table TableSchema, coerceCtx *TypeCoercionContext) bool {
-	if isBooleanColumn(col) {
-		return true
-	}
-	upper := strings.ToUpper(col.Type)
-	if (upper == "INTEGER" || upper == "INT") && coerceCtx != nil && samplesLookBoolean(table.Name, col.Name, coerceCtx) {
-		return true
-	}
-	return false
+	return isBooleanLikeColumn(col, table, coerceCtx)
 }
 
 func shouldFingerprintPKSum(table TableSchema, pkCol string, all []TableSchema, coerceCtx *TypeCoercionContext) bool {
@@ -430,7 +423,6 @@ func verifySampleRows(ctx context.Context, db *sql.DB, sqlitePath string, tables
 			checks = append(checks, VerifyCheckResult{
 				Name:    "sample_rows",
 				Table:   table.Name,
-				Matched: true,
 				Message: "skipped (requires single-column primary key for row sampling)",
 			})
 			continue
@@ -500,7 +492,7 @@ func samplePrimaryKeys(ctx context.Context, sqlitePath, table, pkCol string, lim
 }
 
 func sqliteSignatureColumnExpr(col ColumnSchema, table TableSchema, coerceCtx *TypeCoercionContext) string {
-	if isBooleanColumn(col) {
+	if shouldVerifyBooleanColumn(col, table, coerceCtx) {
 		return fmt.Sprintf(`CASE WHEN %q IN (1, '1') THEN '1' WHEN %q IN (0, '0') THEN '0' ELSE '' END`, col.Name, col.Name)
 	}
 	if isJSONText(col) && coerceCtx != nil && samplesAllowJSON(table.Name, col.Name, coerceCtx) {
@@ -705,11 +697,25 @@ func postgresRowSignature(ctx context.Context, db *sql.DB, table TableSchema, pk
 }
 
 func sqliteLiteral(val string) string {
-	var n int64
-	if _, err := fmt.Sscanf(val, "%d", &n); err == nil {
+	if val != "" && isSQLiteIntegerLiteral(val) {
 		return val
 	}
 	return "'" + strings.ReplaceAll(val, "'", "''") + "'"
+}
+
+func isSQLiteIntegerLiteral(val string) bool {
+	if val == "" || val[0] == '-' {
+		if len(val) <= 1 {
+			return false
+		}
+		val = val[1:]
+	}
+	for i := 0; i < len(val); i++ {
+		if val[i] < '0' || val[i] > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 func runSQLiteQuery(ctx context.Context, sqlite3, sqlitePath, query string) ([]byte, error) {
