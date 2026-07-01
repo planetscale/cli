@@ -23,3 +23,10 @@
     ((null val) :null)
     ((stringp val) val)
     (t (format nil "~a" val))))
+
+(defun sqlite-text-to-uuid (val)
+  "SQLite UUID keys live in TEXT; pass through for PostgreSQL UUID."
+  (cond
+    ((null val) :null)
+    ((stringp val) val)
+    (t (format nil "~a" val))))

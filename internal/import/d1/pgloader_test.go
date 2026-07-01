@@ -92,6 +92,61 @@ func TestBuildPgloaderScriptLargeTableProfile(t *testing.T) {
 	}
 }
 
+func TestBuildPgloaderScriptUUIDCast(t *testing.T) {
+	tables, err := ParseDump(testFixture(t))
+	if err != nil {
+		t.Fatalf("ParseDump: %v", err)
+	}
+	ctx, err := BuildTypeCoercionContext(testFixture(t), tables)
+	if err != nil {
+		t.Fatalf("BuildTypeCoercionContext: %v", err)
+	}
+	var entityLinks *TableSchema
+	for i := range tables {
+		if tables[i].Name == "entity_links" {
+			entityLinks = &tables[i]
+			break
+		}
+	}
+	if entityLinks == nil {
+		t.Fatal("expected entity_links table")
+	}
+
+	script := buildPgloaderScript("/tmp/test.sqlite", "postgresql://u:p@host/db", pgloaderScriptConfig{
+		dataOnly:  true,
+		tableName: "entity_links",
+		profile:   pgloaderProfileForTable(0),
+	}, []TableSchema{*entityLinks}, tables, ctx)
+
+	for _, want := range []string{
+		"column entity_links.entity_id to uuid using sqlite-text-to-uuid",
+		"column entity_links.linked_at to timestamptz using sqlite-timestamp-to-timestamp",
+	} {
+		if !strings.Contains(script, want) {
+			t.Fatalf("script missing %q\n%s", want, script)
+		}
+	}
+
+	var externalEntities *TableSchema
+	for i := range tables {
+		if tables[i].Name == "external_entities" {
+			externalEntities = &tables[i]
+			break
+		}
+	}
+	if externalEntities == nil {
+		t.Fatal("expected external_entities table")
+	}
+	script = buildPgloaderScript("/tmp/test.sqlite", "postgresql://u:p@host/db", pgloaderScriptConfig{
+		dataOnly:  true,
+		tableName: "external_entities",
+		profile:   pgloaderProfileForTable(0),
+	}, []TableSchema{*externalEntities}, tables, ctx)
+	if !strings.Contains(script, "column external_entities.id to uuid using sqlite-text-to-uuid") {
+		t.Fatalf("script missing external_entities UUID cast\n%s", script)
+	}
+}
+
 func TestBuildPgloaderScriptFullLoadResetsSequences(t *testing.T) {
 	script := buildPgloaderScript("/tmp/test.sqlite", "postgresql://u:p@host/db", pgloaderScriptConfig{
 		dataOnly:       true,

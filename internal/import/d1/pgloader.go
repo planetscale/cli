@@ -421,6 +421,8 @@ func appendPgloaderCasts(b *strings.Builder, castTables, allTables []TableSchema
 				rules = append(rules, ref+" to timestamptz using sqlite-timestamp-to-timestamp")
 			case "JSONB":
 				rules = append(rules, ref+" to jsonb using sqlite-text-to-jsonb")
+			case "UUID":
+				rules = append(rules, ref+" to uuid using sqlite-text-to-uuid")
 			}
 		}
 	}
