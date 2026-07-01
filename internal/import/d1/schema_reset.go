@@ -74,18 +74,19 @@ func isDefaultPostgresRole(username string) bool {
 	return username == postgresRoleName || strings.HasPrefix(username, postgresRoleName+".")
 }
 
-func isEphemeralImportRole(username string) bool {
-	return strings.HasPrefix(username, "pscale_api_")
+const importRoleNamePrefix = "d1-import-"
+
+func isImportRoleName(name string) bool {
+	return strings.HasPrefix(name, importRoleNamePrefix)
 }
 
 func isStaleImportRole(role *ps.PostgresRole, currentUsername string) bool {
 	if role == nil || role.Username == currentUsername {
 		return false
 	}
-	if isEphemeralImportRole(role.Username) {
-		return true
-	}
-	return strings.HasPrefix(role.Name, "d1-import-")
+	// Only delete roles created by this import flow (d1-import-*). Do not touch
+	// other ephemeral API roles (shell, manual admin roles, concurrent work).
+	return isImportRoleName(role.Name)
 }
 
 func usernameFromDestURI(destURI string) (string, error) {

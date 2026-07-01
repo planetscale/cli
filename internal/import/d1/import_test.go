@@ -197,12 +197,40 @@ func TestAppendLoadedTableAndReset(t *testing.T) {
 	}
 }
 
-func TestIsEphemeralImportRole(t *testing.T) {
-	if !isEphemeralImportRole("pscale_api_abc123") {
-		t.Fatal("expected pscale_api role to match")
+func TestIsStaleImportRole(t *testing.T) {
+	current := "pscale_api_current.m82qolzonhmz"
+	tests := []struct {
+		name string
+		role *ps.PostgresRole
+		want bool
+	}{
+		{
+			name: "current import role",
+			role: &ps.PostgresRole{Name: "d1-import-1710000000", Username: current},
+			want: false,
+		},
+		{
+			name: "stale prior import role",
+			role: &ps.PostgresRole{Name: "d1-import-1709999999", Username: "pscale_api_old.m82qolzonhmz"},
+			want: true,
+		},
+		{
+			name: "shell role",
+			role: &ps.PostgresRole{Name: "pscale-cli-shell-abc", Username: "pscale_api_shell.m82qolzonhmz"},
+			want: false,
+		},
+		{
+			name: "manual admin role",
+			role: &ps.PostgresRole{Name: "schema-reset", Username: "pscale_api_admin.m82qolzonhmz"},
+			want: false,
+		},
 	}
-	if isEphemeralImportRole("postgres") {
-		t.Fatal("postgres should not match")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := isStaleImportRole(tt.role, current); got != tt.want {
+				t.Fatalf("isStaleImportRole() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
 
