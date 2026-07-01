@@ -28,6 +28,92 @@ func testNotifyClient(t *testing.T, baseURL string) *ps.Client {
 	return client
 }
 
+func TestShouldNotifyProgressMajorStages(t *testing.T) {
+	for _, stage := range []string{
+		ImportStageConnecting,
+		ImportStageSQLiteStaging,
+		ImportStageSchema,
+		ImportStageIndexes,
+		ImportStageSequences,
+	} {
+		if !shouldNotifyProgress(ImportProgress{Stage: stage}) {
+			t.Fatalf("expected stage %q to notify", stage)
+		}
+	}
+}
+
+func TestShouldNotifyProgressPgloaderTables(t *testing.T) {
+	for _, current := range []int{1, 2, 19} {
+		if !shouldNotifyProgress(ImportProgress{Stage: ImportStagePgloader, Current: current, Total: 19, Detail: "users"}) {
+			t.Fatalf("expected pgloader table %d to notify", current)
+		}
+	}
+}
+
+func TestShouldNotifyProgressRowCounts(t *testing.T) {
+	for _, current := range []int{1, 2, 19} {
+		if !shouldNotifyProgress(ImportProgress{Stage: VerifyStageRowCounts, Current: current, Total: 19, Detail: "users"}) {
+			t.Fatalf("expected row count %d to notify", current)
+		}
+	}
+}
+
+func TestFormatProgressMessageSQLiteStaging(t *testing.T) {
+	got := FormatProgressMessage(ImportProgress{Stage: ImportStageSQLiteStaging})
+	want := "Staging SQLite database from export..."
+	if got != want {
+		t.Fatalf("message = %q, want %q", got, want)
+	}
+}
+
+func TestShouldNotifyProgressUnknownStage(t *testing.T) {
+	if shouldNotifyProgress(ImportProgress{Stage: "custom_stage", Current: 1, Detail: "working"}) {
+		t.Fatal("expected unknown stage to skip slack notification")
+	}
+}
+
+func TestImportProgressPgloaderUsesReportProgress(t *testing.T) {
+	var calls atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		w.WriteHeader(http.StatusAccepted)
+	}))
+	defer srv.Close()
+
+	opts := ImportOptions{
+		Org:         "org",
+		Database:    "db",
+		Branch:      "main",
+		MigrationID: "abc123",
+		Method:      MethodPgloader,
+		NotifyAPI: NotifyAPIConfig{
+			Client: testNotifyClient(t, srv.URL),
+		},
+		OnProgress: func(p ImportProgress) {
+			if p.Stage != ImportStagePgloader {
+				t.Fatalf("OnProgress stage = %q, want %q", p.Stage, ImportStagePgloader)
+			}
+		},
+	}
+
+	opts.reportProgress(ImportProgress{
+		Stage:   ImportStagePgloader,
+		Current: 1,
+		Total:   3,
+		Detail:  "users",
+	})
+
+	deadline := time.After(2 * time.Second)
+	for calls.Load() == 0 {
+		select {
+		case <-deadline:
+			t.Fatal("expected pgloader progress Slack notification")
+		default:
+			time.Sleep(10 * time.Millisecond)
+		}
+	}
+}
+
 func TestNotifyImportEventSync_CompletesBeforeReturn(t *testing.T) {
 	var calls atomic.Int32
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

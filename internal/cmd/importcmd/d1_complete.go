@@ -31,7 +31,7 @@ func d1CompleteCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 			client, err := ch.Client()
 			if err != nil {
-				return err
+				return writeD1(ch, d1.ErrorResponse("complete", err))
 			}
 			resp, err := d1.CompleteResponse(d1Org(ch), database, branch, flags.migrationID)
 			if err != nil {

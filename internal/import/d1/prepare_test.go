@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -73,6 +74,47 @@ func TestPrepareImportRejectsMissingMigrationState(t *testing.T) {
 		MigrationID: "missing-migration-id",
 	})
 	requireMigrationErr(t, err, ErrCodeNotFound)
+}
+
+func TestPrepareImportAcceptsEquivalentInputPath(t *testing.T) {
+	t.Setenv("PSCALE_TEST_MODE", "1")
+
+	org, database, branch := "acme", "mydb", "main"
+	absFixture := testFixture(t)
+
+	prepared, err := PrepareImport(ImportOptions{
+		InputPath: absFixture,
+		Org:       org,
+		Database:  database,
+		Branch:    branch,
+	})
+	if err != nil {
+		t.Fatalf("initial PrepareImport: %v", err)
+	}
+
+	dir := filepath.Dir(absFixture)
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd: %v", err)
+	}
+	if err := os.Chdir(dir); err != nil {
+		t.Fatalf("Chdir: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(origDir) })
+
+	again, err := PrepareImport(ImportOptions{
+		InputPath:   "./" + filepath.Base(absFixture),
+		Org:         org,
+		Database:    database,
+		Branch:      branch,
+		MigrationID: prepared.MigrationID,
+	})
+	if err != nil {
+		t.Fatalf("PrepareImport with relative path: %v", err)
+	}
+	if again.MigrationID != prepared.MigrationID {
+		t.Fatalf("migration = %q, want %q", again.MigrationID, prepared.MigrationID)
+	}
 }
 
 func TestPrepareImportRejectsCorruptMigrationState(t *testing.T) {

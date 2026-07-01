@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -63,6 +64,15 @@ func Import(ctx context.Context, psClient *ps.Client, client ImportClient, opts 
 
 	opts.MigrationID = prepared.MigrationID
 	opts.Method = prepared.Method
+	if opts.InputPath == "" && prepared.Plan != nil {
+		opts.InputPath = prepared.Plan.InputPath
+	} else if opts.InputPath != "" {
+		if normalized, err := NormalizeInputPath(opts.InputPath); err != nil {
+			return nil, err
+		} else {
+			opts.InputPath = normalized
+		}
+	}
 
 	result = importResultFromPrepare(prepared, opts.DryRun)
 
@@ -114,12 +124,8 @@ func Import(ctx context.Context, psClient *ps.Client, client ImportClient, opts 
 
 	sqlitePath := DefaultSQLitePath(opts.InputPath)
 	if state, stateErr := LoadState(opts.Org, opts.Database, opts.Branch, opts.MigrationID); stateErr == nil {
-		if state.InputPath != "" && state.InputPath != opts.InputPath {
-			return result, newMigrationError(
-				ErrCodeInvalidInput,
-				fmt.Sprintf("input path %q does not match migration state %q", opts.InputPath, state.InputPath),
-				"Use the same --input as the original import or omit --migration-id to start fresh",
-			)
+		if err := validateInputPathAgainstState(opts.InputPath, state.InputPath); err != nil {
+			return result, err
 		}
 		if state.SQLitePath != "" {
 			sqlitePath = state.SQLitePath
@@ -456,8 +462,8 @@ func ResetImportedSequences(ctx context.Context, destURI, inputPath string) erro
 			}
 			query := fmt.Sprintf(
 				`SELECT setval(pg_get_serial_sequence($1, $2), GREATEST(COALESCE((SELECT MAX(%s) FROM %s), 1), 1), true)`,
-				quoteIdent(col.Name),
-				quoteIdent(table.Name),
+				postgres.QuoteIdentifier(col.Name),
+				postgres.QuoteIdentifier(table.Name),
 			)
 			if _, err := db.ExecContext(ctx, query, "public."+table.Name, col.Name); err != nil {
 				return fmt.Errorf("reset sequence %s.%s: %w", table.Name, col.Name, err)
@@ -469,10 +475,8 @@ func ResetImportedSequences(ctx context.Context, destURI, inputPath string) erro
 
 func appendLoadedTable(opts ImportOptions, table string) error {
 	return updateMigrationState(opts.Org, opts.Database, opts.Branch, opts.MigrationID, func(state *MigrationState) {
-		for _, existing := range state.LoadedTables {
-			if existing == table {
-				return
-			}
+		if slices.Contains(state.LoadedTables, table) {
+			return
 		}
 		state.LoadedTables = append(state.LoadedTables, table)
 	})

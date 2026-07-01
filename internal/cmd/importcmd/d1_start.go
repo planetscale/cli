@@ -65,7 +65,7 @@ Use --dry-run to lint and save migration state without touching Postgres.`,
 
 			client, err := ch.Client()
 			if err != nil {
-				return err
+				return writeD1(ch, d1.ErrorResponse("start", err))
 			}
 			importOpts.NotifyAPI = d1NotifyAPI(client, flags.noNotify)
 

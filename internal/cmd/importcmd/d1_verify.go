@@ -38,7 +38,7 @@ func d1VerifyCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			client, err := ch.Client()
 			if err != nil {
-				return err
+				return writeD1(ch, d1.ErrorResponse("verify", err))
 			}
 			verifyOpts.NotifyAPI = d1NotifyAPI(client, flags.noNotify)
 			destURI, cleanup, err := d1.ResolveDestURI(cmd.Context(), client, d1.ImportOptions{
@@ -48,7 +48,7 @@ func d1VerifyCmd(ch *cmdutil.Helper) *cobra.Command {
 				DBName:   flags.dbName,
 			})
 			if err != nil {
-				return err
+				return writeD1(ch, d1.ErrorResponse("verify", err))
 			}
 			defer func() { _ = cleanup() }()
 			verifyOpts.DestURI = destURI

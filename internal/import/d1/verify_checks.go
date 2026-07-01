@@ -9,6 +9,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/planetscale/cli/internal/postgres"
 	execabs "golang.org/x/sys/execabs"
 )
 
@@ -134,7 +135,7 @@ func verifyTableSequence(ctx context.Context, db *sql.DB, table, column string) 
 	}
 
 	var maxID sql.NullInt64
-	maxQuery := fmt.Sprintf(`SELECT MAX(%s) FROM %s`, quoteIdent(column), quoteIdent(table))
+	maxQuery := fmt.Sprintf(`SELECT MAX(%s) FROM %s`, postgres.QuoteIdentifier(column), postgres.QuoteIdentifier(table))
 	if err := db.QueryRowContext(ctx, maxQuery).Scan(&maxID); err != nil {
 		return check, false, fmt.Errorf("max %s.%s: %w", table, column, err)
 	}
@@ -190,7 +191,7 @@ func verifyBooleanColumns(ctx context.Context, db *sql.DB, sqlitePath string, ta
 			continue
 		}
 		for _, col := range table.Columns {
-			if !shouldVerifyBooleanColumn(col, table, coerceCtx) {
+			if !isBooleanLikeColumn(col, table, coerceCtx) {
 				continue
 			}
 			src, err := sqliteBooleanDistribution(ctx, sqlitePath, table.Name, col.Name)
@@ -233,7 +234,7 @@ func sqliteBooleanDistribution(ctx context.Context, sqlitePath, table, column st
 func postgresBooleanDistribution(ctx context.Context, db *sql.DB, table, column string) (booleanDistribution, error) {
 	query := fmt.Sprintf(
 		`SELECT COUNT(*) FILTER (WHERE %s = TRUE), COUNT(*) FILTER (WHERE %s = FALSE), COUNT(*) FILTER (WHERE %s IS NULL) FROM %s`,
-		quoteIdent(column), quoteIdent(column), quoteIdent(column), quoteIdent(table),
+		postgres.QuoteIdentifier(column), postgres.QuoteIdentifier(column), postgres.QuoteIdentifier(column), postgres.QuoteIdentifier(table),
 	)
 	var dist booleanDistribution
 	if err := db.QueryRowContext(ctx, query).Scan(&dist.TrueCount, &dist.FalseCount, &dist.NullCount); err != nil {
@@ -346,10 +347,6 @@ func primaryKeyColumns(table TableSchema) []string {
 	return nil
 }
 
-func shouldVerifyBooleanColumn(col ColumnSchema, table TableSchema, coerceCtx *TypeCoercionContext) bool {
-	return isBooleanLikeColumn(col, table, coerceCtx)
-}
-
 func shouldFingerprintPKSum(table TableSchema, pkCol string, all []TableSchema, coerceCtx *TypeCoercionContext) bool {
 	if pkCol == "" {
 		return false
@@ -396,9 +393,9 @@ func tableFingerprintFromPostgres(ctx context.Context, db *sql.DB, table TableSc
 	var fp tableFingerprint
 	var query string
 	if pkCol != "" && shouldFingerprintPKSum(table, pkCol, all, coerceCtx) {
-		query = fmt.Sprintf(`SELECT COUNT(*), COALESCE(SUM(%s::numeric)::text, '0') FROM %s`, quoteIdent(pkCol), quoteIdent(table.Name))
+		query = fmt.Sprintf(`SELECT COUNT(*), COALESCE(SUM(%s::numeric)::text, '0') FROM %s`, postgres.QuoteIdentifier(pkCol), postgres.QuoteIdentifier(table.Name))
 	} else {
-		query = fmt.Sprintf(`SELECT COUNT(*), '0' FROM %s`, quoteIdent(table.Name))
+		query = fmt.Sprintf(`SELECT COUNT(*), '0' FROM %s`, postgres.QuoteIdentifier(table.Name))
 	}
 	if err := db.QueryRowContext(ctx, query).Scan(&fp.RowCount, &fp.IDSum); err != nil {
 		return fp, fmt.Errorf("postgres fingerprint %s: %w", table.Name, err)
@@ -492,7 +489,7 @@ func samplePrimaryKeys(ctx context.Context, sqlitePath, table, pkCol string, lim
 }
 
 func sqliteSignatureColumnExpr(col ColumnSchema, table TableSchema, coerceCtx *TypeCoercionContext) string {
-	if shouldVerifyBooleanColumn(col, table, coerceCtx) {
+	if isBooleanLikeColumn(col, table, coerceCtx) {
 		return fmt.Sprintf(`CASE WHEN %q IN (1, '1') THEN '1' WHEN %q IN (0, '0') THEN '0' ELSE '' END`, col.Name, col.Name)
 	}
 	if isJSONText(col) && coerceCtx != nil && samplesAllowJSON(table.Name, col.Name, coerceCtx) {
@@ -511,19 +508,19 @@ func postgresSignatureColumnExpr(col ColumnSchema, table TableSchema, all []Tabl
 	pgType := sqliteTypeToPostgres(col, table, all, coerceCtx)
 	switch pgType {
 	case "BOOLEAN":
-		name := quoteIdent(col.Name)
+		name := postgres.QuoteIdentifier(col.Name)
 		return fmt.Sprintf(`CASE WHEN %s IS TRUE THEN '1' WHEN %s IS FALSE THEN '0' ELSE '' END`, name, name)
 	case "TIMESTAMPTZ":
-		name := quoteIdent(col.Name)
+		name := postgres.QuoteIdentifier(col.Name)
 		return fmt.Sprintf(`COALESCE(to_char(%s AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), '')`, name)
 	case "JSONB":
-		name := quoteIdent(col.Name)
+		name := postgres.QuoteIdentifier(col.Name)
 		return fmt.Sprintf(`COALESCE(%s::jsonb::text, '')`, name)
 	case "BYTEA":
-		name := quoteIdent(col.Name)
+		name := postgres.QuoteIdentifier(col.Name)
 		return fmt.Sprintf(`COALESCE(encode(%s, 'hex'), '')`, name)
 	default:
-		return fmt.Sprintf(`COALESCE(%s::text, '')`, quoteIdent(col.Name))
+		return fmt.Sprintf(`COALESCE(%s::text, '')`, postgres.QuoteIdentifier(col.Name))
 	}
 }
 
@@ -683,8 +680,8 @@ func postgresRowSignature(ctx context.Context, db *sql.DB, table TableSchema, pk
 	query := fmt.Sprintf(
 		`SELECT %s FROM %s WHERE %s = $1 LIMIT 1`,
 		strings.Join(cols, " || '|' || "),
-		quoteIdent(table.Name),
-		quoteIdent(pkCol),
+		postgres.QuoteIdentifier(table.Name),
+		postgres.QuoteIdentifier(pkCol),
 	)
 	var sig sql.NullString
 	if err := db.QueryRowContext(ctx, query, pkVal).Scan(&sig); err != nil {

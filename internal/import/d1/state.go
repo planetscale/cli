@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/adrg/xdg"
@@ -88,63 +87,6 @@ func (s *StateStore) Delete(org, database, branch, migrationID string) error {
 		return nil
 	}
 	return err
-}
-
-// FindResumableMigration returns the most recent failed/importing migration for the same input.
-func FindResumableMigration(org, database, branch, inputPath string) (string, error) {
-	store, err := NewStateStore()
-	if err != nil {
-		return "", err
-	}
-	entries, err := os.ReadDir(store.dir)
-	if err != nil {
-		return "", err
-	}
-
-	cleanInput, err := filepath.Abs(inputPath)
-	if err != nil {
-		cleanInput = inputPath
-	}
-
-	prefix := fmt.Sprintf("%s_%s_%s_", sanitize(org), sanitize(database), sanitize(branch))
-	var bestID string
-	var bestTime time.Time
-
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
-			continue
-		}
-		if !strings.HasPrefix(entry.Name(), prefix) {
-			continue
-		}
-		migrationID := strings.TrimSuffix(strings.TrimPrefix(entry.Name(), prefix), ".json")
-		state, err := store.Load(org, database, branch, migrationID)
-		if err != nil {
-			continue
-		}
-		if state.Phase != PhaseFailed && state.Phase != PhaseImporting {
-			continue
-		}
-		stateInput := state.InputPath
-		if stateInput != "" {
-			if abs, err := filepath.Abs(stateInput); err == nil {
-				stateInput = abs
-			}
-		}
-		if stateInput != cleanInput {
-			continue
-		}
-		updated := state.UpdatedAt
-		if updated.IsZero() {
-			updated = state.CreatedAt
-		}
-		if bestID == "" || updated.After(bestTime) {
-			bestID = migrationID
-			bestTime = updated
-		}
-	}
-
-	return bestID, nil
 }
 
 // SaveState is a package-level helper using the default store.

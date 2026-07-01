@@ -189,7 +189,7 @@ func destTablesWithRows(ctx context.Context, destURI string, tables []string) (m
 
 	for _, table := range tables {
 		var hasRows bool
-		query := fmt.Sprintf(`SELECT EXISTS (SELECT 1 FROM %s LIMIT 1)`, quoteIdent(table))
+		query := fmt.Sprintf(`SELECT EXISTS (SELECT 1 FROM %s LIMIT 1)`, postgres.QuoteIdentifier(table))
 		if err := db.QueryRowContext(ctx, query).Scan(&hasRows); err != nil {
 			return nil, fmt.Errorf("check rows in %s: %w", table, err)
 		}

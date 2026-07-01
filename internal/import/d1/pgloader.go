@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
+	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -37,6 +40,13 @@ const (
 	pgloaderLoadWorkMem             = "256MB"
 	pgloaderLoadMaintenanceWorkMem  = "512MB"
 	pgloaderIndexMaintenanceWorkMem = "2GB"
+
+	pgloaderNoRowsRemediation = "Check pgloader stderr for table filter or cast errors; re-run import d1 start after fixing the dump or CLI"
+)
+
+var (
+	pgloaderSummaryErrorRe  = regexp.MustCompile(`(?m)^\|\s+(\d+)\s+\|`)
+	pgloaderFetchMetaDataRe = regexp.MustCompile(`(?m)^\s*fetch meta data\s+\d+\s+(\d+)`)
 )
 
 // PgloaderOptions configures pgloader execution.
@@ -126,7 +136,10 @@ func RunPgloader(ctx context.Context, opts PgloaderOptions) (ImportTimings, erro
 		tableByName[t.Name] = t
 	}
 
-	rowCounts, _ := CountInsertRows(opts.InputPath)
+	rowCounts, err := sqliteStagingRowCounts(ctx, opts.SQLitePath, tables)
+	if err != nil {
+		return timings, fmt.Errorf("count sqlite staging rows: %w", err)
+	}
 	coerceCtx, err := BuildTypeCoercionContext(opts.InputPath, tableSchemas)
 	if err != nil {
 		return timings, err
@@ -146,14 +159,15 @@ func RunPgloader(ctx context.Context, opts PgloaderOptions) (ImportTimings, erro
 	}
 
 	pgStart := time.Now()
-	skip := make(map[string]struct{}, len(opts.SkipTables))
-	for _, name := range opts.SkipTables {
-		skip[name] = struct{}{}
+	totalTables := 0
+	for _, name := range tables {
+		if !slices.Contains(opts.SkipTables, name) {
+			totalTables++
+		}
 	}
-	totalTables := len(tables) - len(skip)
 	loaded := 0
 	for _, name := range tables {
-		if _, ok := skip[name]; ok {
+		if slices.Contains(opts.SkipTables, name) {
 			continue
 		}
 		table, ok := tableByName[name]
@@ -168,7 +182,7 @@ func RunPgloader(ctx context.Context, opts PgloaderOptions) (ImportTimings, erro
 				Detail:  name,
 			})
 		}
-		profile := pgloaderProfileForTable(rowCounts[name])
+		profile := pgloaderProfileForTable(int(rowCounts[name]))
 		tableStart := time.Now()
 		if err := runPgloaderScript(ctx, pgloader, opts, pgloaderScriptConfig{
 			dataOnly:       opts.DataOnly,
@@ -200,7 +214,7 @@ type pgloaderScriptConfig struct {
 	profile        pgloaderMemoryProfile
 }
 
-func runPgloaderScript(ctx context.Context, pgloader string, opts PgloaderOptions, cfg pgloaderScriptConfig, table TableSchema, allTables []TableSchema, expectedRows int, coerceCtx *TypeCoercionContext) error {
+func runPgloaderScript(ctx context.Context, pgloader string, opts PgloaderOptions, cfg pgloaderScriptConfig, table TableSchema, allTables []TableSchema, expectedRows int64, coerceCtx *TypeCoercionContext) error {
 	loadFile := filepath.Join(opts.WorkDir, "load.load")
 	if cfg.tableName != "" {
 		loadFile = filepath.Join(opts.WorkDir, "load-"+cfg.tableName+".load")
@@ -268,6 +282,80 @@ func emitPgloaderOutput(opts PgloaderOptions, output string, force bool) {
 	}
 }
 
+// pgloaderHadErrors inspects pgloader output for failures that do not set exit code.
+func pgloaderHadErrors(output string) bool {
+	if strings.Contains(output, "Database error") ||
+		strings.Contains(output, "INSUFFICIENT-PRIVILEGE") ||
+		strings.Contains(output, "must be owner of table") {
+		return true
+	}
+	for _, match := range pgloaderSummaryErrorRe.FindAllStringSubmatch(output, -1) {
+		if len(match) < 2 {
+			continue
+		}
+		if match[1] != "0" {
+			return true
+		}
+	}
+	return false
+}
+
+// pgloaderFetchMetaDataTableCount returns how many source tables pgloader matched, or -1 if absent.
+func pgloaderFetchMetaDataTableCount(output string) int {
+	matches := pgloaderFetchMetaDataRe.FindAllStringSubmatch(output, -1)
+	if len(matches) == 0 {
+		return -1
+	}
+	n, err := strconv.Atoi(matches[len(matches)-1][1])
+	if err != nil {
+		return -1
+	}
+	return n
+}
+
+// pgloaderRowsCopied parses the pgloader report summary row count for table, if present.
+func pgloaderRowsCopied(output, table string) (int64, bool) {
+	re := regexp.MustCompile(`(?m)^\s*` + regexp.QuoteMeta(table) + `\s+\d+\s+(\d+)\s+`)
+	m := re.FindStringSubmatch(output)
+	if len(m) < 2 {
+		return 0, false
+	}
+	n, err := strconv.ParseInt(m[1], 10, 64)
+	if err != nil {
+		return 0, false
+	}
+	return n, true
+}
+
+func validatePgloaderTableLoad(output, table string, expectedRows int64) error {
+	metaCount := pgloaderFetchMetaDataTableCount(output)
+	if metaCount == 0 {
+		msg := fmt.Sprintf("pgloader matched 0 source tables for %q", table)
+		if expectedRows > 0 {
+			msg = fmt.Sprintf("pgloader matched 0 source tables for %q (expected %d rows from staged SQLite)", table, expectedRows)
+		}
+		return newMigrationError(ErrCodeImportFailed, msg, pgloaderNoRowsRemediation)
+	}
+
+	rows, found := pgloaderRowsCopied(output, table)
+	if !found {
+		return newMigrationError(
+			ErrCodeImportFailed,
+			fmt.Sprintf("pgloader summary missing row count for %q", table),
+			pgloaderNoRowsRemediation,
+		)
+	}
+	if rows != expectedRows {
+		return newMigrationError(
+			ErrCodeImportFailed,
+			fmt.Sprintf("pgloader copied %d rows into %q (expected %d from staged SQLite)", rows, table, expectedRows),
+			pgloaderNoRowsRemediation,
+		)
+	}
+
+	return nil
+}
+
 func buildPgloaderScript(sqlitePath, destURI string, cfg pgloaderScriptConfig, castTables, allTables []TableSchema, coerceCtx *TypeCoercionContext) string {
 	absSQLite, _ := filepath.Abs(sqlitePath)
 	src := "sqlite:///" + strings.ReplaceAll(absSQLite, " ", "%20")
@@ -308,7 +396,7 @@ func buildPgloaderScript(sqlitePath, destURI string, cfg pgloaderScriptConfig, c
 
 	if cfg.tableName != "" {
 		b.WriteString("\n")
-		tableNames := tableNamesFromSchemas(allTables)
+		tableNames := tableNames(allTables)
 		fmt.Fprintf(&b, " INCLUDING ONLY TABLE NAMES%s\n", pgloaderTableNameFilter(cfg.tableName, tableNames))
 	}
 
@@ -370,7 +458,20 @@ func pgloaderTableNameFilter(name string, allTableNames []string) string {
 	return b.String()
 }
 
-func tableNamesFromSchemas(tables []TableSchema) []string {
+func sqliteStagingRowCounts(ctx context.Context, sqlitePath string, tables []string) (map[string]int64, error) {
+	if sqlitePath == "" {
+		if len(tables) == 0 {
+			return map[string]int64{}, nil
+		}
+		return nil, fmt.Errorf("sqlite staging path required for per-table pgloader validation")
+	}
+	if len(tables) == 0 {
+		return map[string]int64{}, nil
+	}
+	return CountSQLiteRows(ctx, sqlitePath, tables)
+}
+
+func tableNames(tables []TableSchema) []string {
 	names := make([]string, 0, len(tables))
 	for _, table := range tables {
 		names = append(names, table.Name)

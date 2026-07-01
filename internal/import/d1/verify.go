@@ -3,9 +3,9 @@ package d1
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"time"
 
+	"github.com/planetscale/cli/internal/postgres"
 	execabs "golang.org/x/sys/execabs"
 )
 
@@ -238,7 +238,7 @@ func countPostgresRowsWithProgress(ctx context.Context, opts VerifyOptions, tabl
 			Detail:  table + " (postgres)",
 		})
 		var count int64
-		query := fmt.Sprintf(`SELECT COUNT(*) FROM %s`, quoteIdent(table))
+		query := fmt.Sprintf(`SELECT COUNT(*) FROM %s`, postgres.QuoteIdentifier(table))
 		if err := db.QueryRowContext(ctx, query).Scan(&count); err != nil {
 			return nil, fmt.Errorf("count %s: %w", table, err)
 		}
@@ -286,7 +286,7 @@ func mergeImportScopedDestRowCounts(ctx context.Context, opts VerifyOptions, sou
 	}
 	for _, name := range extra {
 		var count int64
-		query := fmt.Sprintf(`SELECT COUNT(*) FROM %s`, quoteIdent(name))
+		query := fmt.Sprintf(`SELECT COUNT(*) FROM %s`, postgres.QuoteIdentifier(name))
 		if err := db.QueryRowContext(ctx, query).Scan(&count); err != nil {
 			return nil, nil, fmt.Errorf("count import-scoped table %s: %w", name, err)
 		}
@@ -333,26 +333,4 @@ func resolveVerifySQLitePath(opts VerifyOptions) (VerifyOptions, string, error) 
 	}
 
 	return opts, DefaultSQLitePath(opts.InputPath), nil
-}
-
-func validateInputPathAgainstState(provided, saved string) error {
-	if provided == "" || saved == "" {
-		return nil
-	}
-	a, errA := filepath.Abs(provided)
-	b, errB := filepath.Abs(saved)
-	if errA != nil {
-		a = provided
-	}
-	if errB != nil {
-		b = saved
-	}
-	if a != b {
-		return newMigrationError(
-			ErrCodeInvalidInput,
-			fmt.Sprintf("input path %q does not match migration state %q", provided, saved),
-			"Use the same --input as the original import or omit --input to use saved state",
-		)
-	}
-	return nil
 }

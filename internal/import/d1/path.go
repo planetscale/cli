@@ -30,6 +30,48 @@ func ValidateInputPath(path string) (string, error) {
 	return clean, nil
 }
 
+// NormalizeInputPath validates path and returns an absolute path for stable state comparisons.
+func NormalizeInputPath(path string) (string, error) {
+	clean, err := ValidateInputPath(path)
+	if err != nil {
+		return "", err
+	}
+	abs, err := filepath.Abs(clean)
+	if err != nil {
+		return clean, nil
+	}
+	return abs, nil
+}
+
+func normalizePathForCompare(path string) string {
+	if path == "" {
+		return ""
+	}
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		abs = path
+	}
+	eval, err := filepath.EvalSymlinks(abs)
+	if err != nil {
+		return filepath.Clean(abs)
+	}
+	return eval
+}
+
+func validateInputPathAgainstState(provided, saved string) error {
+	if provided == "" || saved == "" {
+		return nil
+	}
+	if normalizePathForCompare(provided) != normalizePathForCompare(saved) {
+		return newMigrationError(
+			ErrCodeInvalidInput,
+			fmt.Sprintf("input path %q does not match migration state %q", provided, saved),
+			"Use the same --input as the original import or omit --input to use saved state",
+		)
+	}
+	return nil
+}
+
 // DefaultSQLitePath returns a sqlite path adjacent to the dump.
 func DefaultSQLitePath(dumpPath string) string {
 	base := filepath.Base(dumpPath)

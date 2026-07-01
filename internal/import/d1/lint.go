@@ -2,6 +2,7 @@ package d1
 
 import (
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
@@ -134,19 +135,15 @@ func lintTable(table TableSchema, all []TableSchema, ctx *TypeCoercionContext) [
 	return issues
 }
 
+var booleanNameHints = []string{"active", "enabled", "published", "archived", "disabled"}
+
 func isBooleanNameHint(col ColumnSchema) bool {
 	name := strings.ToLower(col.Name)
-	if !strings.HasPrefix(name, "is_") && !strings.HasSuffix(name, "_flag") &&
-		name != "active" && name != "enabled" && name != "published" &&
-		name != "archived" && name != "disabled" {
+	if !strings.HasPrefix(name, "is_") && !strings.HasSuffix(name, "_flag") && !slices.Contains(booleanNameHints, name) {
 		return false
 	}
 	upper := strings.ToUpper(col.Type)
 	return upper == "INTEGER" || upper == "INT"
-}
-
-func isBooleanColumn(col ColumnSchema) bool {
-	return isBooleanNameHint(col)
 }
 
 func isBooleanLikeColumn(col ColumnSchema, table TableSchema, ctx *TypeCoercionContext) bool {

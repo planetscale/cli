@@ -1,8 +1,6 @@
 package d1
 
 import (
-	"fmt"
-
 	"github.com/planetscale/cli/internal/printer"
 )
 
@@ -18,9 +16,12 @@ type ImportPrepareResult struct {
 
 // PrepareImport runs lint and resolves or creates a migration plan without touching Postgres.
 func PrepareImport(opts ImportOptions) (*ImportPrepareResult, error) {
-	if _, err := ValidateInputPath(opts.InputPath); err != nil {
+	inputPath, err := NormalizeInputPath(opts.InputPath)
+	if err != nil {
 		return nil, err
 	}
+	opts.InputPath = inputPath
+
 	if opts.MigrationID != "" {
 		if _, err := LoadState(opts.Org, opts.Database, opts.Branch, opts.MigrationID); err != nil {
 			return nil, err
@@ -81,12 +82,10 @@ func resolvePlan(opts ImportOptions, method string, lint *LintResult) (*PlanResu
 		return nil, err
 	}
 
-	if opts.InputPath != "" && state.InputPath != "" && state.InputPath != opts.InputPath {
-		return nil, newMigrationError(
-			ErrCodeInvalidInput,
-			fmt.Sprintf("input path %q does not match planned import %q", opts.InputPath, state.InputPath),
-			"Use the same --input as a prior start preview or omit --migration-id to start fresh",
-		)
+	if opts.InputPath != "" && state.InputPath != "" {
+		if err := validateInputPathAgainstState(opts.InputPath, state.InputPath); err != nil {
+			return nil, err
+		}
 	}
 
 	inputPath := opts.InputPath

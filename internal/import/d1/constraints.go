@@ -3,6 +3,8 @@ package d1
 import (
 	"regexp"
 	"strings"
+
+	"github.com/planetscale/cli/internal/postgres"
 )
 
 var (
@@ -100,7 +102,7 @@ func convertReferencesClause(refs string) string {
 	if m == nil {
 		return refs
 	}
-	table := quoteIdent(firstNonEmpty(m[1], m[2], m[3], m[4]))
+	table := postgres.QuoteIdentifier(firstNonEmpty(m[1], m[2], m[3], m[4]))
 	refCols := quoteColumnList(m[5])
 	tail := strings.TrimSpace(m[6])
 	if tail != "" {
@@ -117,7 +119,7 @@ func quoteColumnList(list string) string {
 		if part == "" {
 			continue
 		}
-		quoted = append(quoted, quoteIdent(strings.Trim(part, "`\"'")))
+		quoted = append(quoted, postgres.QuoteIdentifier(strings.Trim(part, "`\"'")))
 	}
 	return strings.Join(quoted, ", ")
 }
@@ -174,8 +176,8 @@ func convertIndexDDL(raw string) string {
 		return raw
 	}
 	unique := strings.TrimSpace(m[1]) != ""
-	name := quoteIdent(firstNonEmpty(m[2], m[3], m[4], m[5]))
-	table := quoteIdent(firstNonEmpty(m[6], m[7], m[8], m[9]))
+	name := postgres.QuoteIdentifier(firstNonEmpty(m[2], m[3], m[4], m[5]))
+	table := postgres.QuoteIdentifier(firstNonEmpty(m[6], m[7], m[8], m[9]))
 	cols := quoteColumnList(m[10])
 	prefix := "CREATE INDEX IF NOT EXISTS "
 	if unique {

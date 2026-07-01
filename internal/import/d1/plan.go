@@ -3,6 +3,7 @@ package d1
 import (
 	"fmt"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 
@@ -127,12 +128,12 @@ func topologicalLoadOrder(tables []TableSchema) []string {
 	deps := make(map[string][]string)
 	for _, t := range tables {
 		for _, col := range t.Columns {
-			if ref := parseFKReference(col.ForeignKey); ref != "" && nameSet[ref] {
+			if ref := parseFKReference(col.ForeignKey); ref != "" && nameSet[ref] && !slices.Contains(deps[t.Name], ref) {
 				deps[t.Name] = append(deps[t.Name], ref)
 			}
 		}
 		for _, ref := range parseTableFKReferences(t.RawDDL) {
-			if nameSet[ref] {
+			if nameSet[ref] && !slices.Contains(deps[t.Name], ref) {
 				deps[t.Name] = append(deps[t.Name], ref)
 			}
 		}

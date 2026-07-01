@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"regexp"
+	"slices"
 	"strings"
 )
 
@@ -140,10 +141,8 @@ func SampleColumnValues(path string, tables []TableSchema) (ColumnSamples, error
 }
 
 func appendUniqueSample(existing []string, val string, max int) []string {
-	for _, v := range existing {
-		if v == val {
-			return existing
-		}
+	if slices.Contains(existing, val) {
+		return existing
 	}
 	if len(existing) >= max {
 		return existing
@@ -362,41 +361,27 @@ func samplesLookBoolean(table, column string, ctx *TypeCoercionContext) bool {
 	return true
 }
 
-func samplesAllowUUID(table, column string, ctx *TypeCoercionContext) bool {
+func samplesAllow(table, column string, ctx *TypeCoercionContext, allow func(string) bool) bool {
 	vals := ctx.samplesFor(table, column)
 	if len(vals) == 0 {
 		return false
 	}
 	for _, v := range vals {
-		if v != "" && !looksLikeUUID(v) {
+		if v != "" && !allow(v) {
 			return false
 		}
 	}
 	return true
+}
+
+func samplesAllowUUID(table, column string, ctx *TypeCoercionContext) bool {
+	return samplesAllow(table, column, ctx, looksLikeUUID)
 }
 
 func samplesAllowJSON(table, column string, ctx *TypeCoercionContext) bool {
-	vals := ctx.samplesFor(table, column)
-	if len(vals) == 0 {
-		return false
-	}
-	for _, v := range vals {
-		if v != "" && !looksLikeJSON(v) {
-			return false
-		}
-	}
-	return true
+	return samplesAllow(table, column, ctx, looksLikeJSON)
 }
 
 func samplesAllowTimestamp(table, column string, ctx *TypeCoercionContext) bool {
-	vals := ctx.samplesFor(table, column)
-	if len(vals) == 0 {
-		return false
-	}
-	for _, v := range vals {
-		if v != "" && !looksLikeTimestamp(v) {
-			return false
-		}
-	}
-	return true
+	return samplesAllow(table, column, ctx, looksLikeTimestamp)
 }
