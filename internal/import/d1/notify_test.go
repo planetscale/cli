@@ -43,18 +43,37 @@ func TestShouldNotifyProgressMajorStages(t *testing.T) {
 }
 
 func TestShouldNotifyProgressPgloaderTables(t *testing.T) {
-	for _, current := range []int{1, 2, 19} {
-		if !shouldNotifyProgress(ImportProgress{Stage: ImportStagePgloader, Current: current, Total: 19, Detail: "users"}) {
-			t.Fatalf("expected pgloader table %d to notify", current)
+	if !shouldNotifyProgress(ImportProgress{Stage: ImportStagePgloader, Current: 1, Total: 19, Detail: "users"}) {
+		t.Fatal("expected first pgloader table to notify")
+	}
+	for _, current := range []int{0, 2, 19} {
+		if shouldNotifyProgress(ImportProgress{Stage: ImportStagePgloader, Current: current, Total: 19, Detail: "users"}) {
+			t.Fatalf("expected pgloader table %d to skip slack notification", current)
 		}
 	}
 }
 
 func TestShouldNotifyProgressRowCounts(t *testing.T) {
+	if !shouldNotifyProgress(ImportProgress{Stage: VerifyStageRowCounts, Total: 19}) {
+		t.Fatal("expected row count stage start to notify")
+	}
 	for _, current := range []int{1, 2, 19} {
-		if !shouldNotifyProgress(ImportProgress{Stage: VerifyStageRowCounts, Current: current, Total: 19, Detail: "users"}) {
-			t.Fatalf("expected row count %d to notify", current)
+		if shouldNotifyProgress(ImportProgress{Stage: VerifyStageRowCounts, Current: current, Total: 19, Detail: "users (sqlite)"}) {
+			t.Fatalf("expected row count progress %d to skip slack notification", current)
 		}
+	}
+}
+
+func TestFormatNotifyProgressMessageAggregates(t *testing.T) {
+	got := formatNotifyProgressMessage(ImportProgress{Stage: ImportStagePgloader, Current: 1, Total: 19, Detail: "users"})
+	want := "Loading tables... (19 tables)"
+	if got != want {
+		t.Fatalf("pgloader message = %q, want %q", got, want)
+	}
+	got = formatNotifyProgressMessage(ImportProgress{Stage: VerifyStageRowCounts, Total: 19})
+	want = "Comparing row counts... (19 tables)"
+	if got != want {
+		t.Fatalf("row counts message = %q, want %q", got, want)
 	}
 }
 

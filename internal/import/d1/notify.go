@@ -170,16 +170,39 @@ func notifyImportProgress(api NotifyAPIConfig, org, database, branch, migrationI
 	}
 	payload := base
 	payload.Stage = p.Stage
-	payload.Message = FormatProgressMessage(p)
+	payload.Message = formatNotifyProgressMessage(p)
 	NotifyImportEvent(api, org, database, branch, migrationID, NotifyEventProgress, payload)
+}
+
+func formatNotifyProgressMessage(p ImportProgress) string {
+	switch p.Stage {
+	case ImportStagePgloader:
+		if p.Total > 0 {
+			return fmt.Sprintf("Loading tables... (%d tables)", p.Total)
+		}
+		return "Loading tables..."
+	case VerifyStageRowCounts:
+		if p.Total > 0 {
+			return fmt.Sprintf("Comparing row counts... (%d tables)", p.Total)
+		}
+		return "Comparing row counts..."
+	default:
+		return FormatProgressMessage(p)
+	}
 }
 
 func shouldNotifyProgress(p ImportProgress) bool {
 	switch p.Stage {
 	case ImportStageConnecting, ImportStageSQLiteStaging, ImportStageSchema,
-		ImportStagePgloader, ImportStageIndexes, ImportStageSequences,
-		VerifyStageRowCounts, VerifyStageSequences, VerifyStageBoolean, VerifyStageFingerprints, VerifyStageSampleRows:
+		ImportStageIndexes, ImportStageSequences,
+		VerifyStageSequences, VerifyStageBoolean, VerifyStageFingerprints, VerifyStageSampleRows:
 		return true
+	case ImportStagePgloader:
+		// One Slack update when table loading begins, not per table.
+		return p.Current == 1 && p.Total > 0
+	case VerifyStageRowCounts:
+		// One Slack update when row-count verify begins, not per table/source.
+		return p.Current == 0 && p.Total > 0
 	default:
 		return false
 	}
