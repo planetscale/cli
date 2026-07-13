@@ -256,3 +256,24 @@ build entry point is `./cmd/pscale` (`main.version`/`main.commit`/`main.date` ca
 set via `-ldflags` if you want an accurate version string). `pscale auth check
 --format json` reports `NO_AUTH` until a user runs `pscale auth login` — installing
 the CLI does not authenticate it.
+
+### `pscale auth login` hangs on the desktop keyring prompt
+
+`pscale` stores its access token via `99designs/keyring`, preferring the
+SecretService (gnome-keyring) backend. In the Cursor Cloud VM the desktop D-Bus
+secret service is present but locked, so after you approve the device flow the CLI
+**blocks on a "Choose password for new keyring" dialog on the desktop** and never
+finishes writing the token (`auth check` keeps reporting `NO_AUTH`).
+
+Work around it by disabling D-Bus so `pscale` falls back to its plaintext file store
+at `~/.config/planetscale/access-token`. Prefix the login (and every subsequent
+`pscale` command, since reads also open the keyring) with:
+
+```bash
+DBUS_SESSION_BUS_ADDRESS=unix:path=/dev/null pscale auth login --format json
+DBUS_SESSION_BUS_ADDRESS=unix:path=/dev/null pscale auth check --format json
+```
+
+Run `login` non-interactively (e.g. in tmux) and hand the user the `verification_url`
++ `user_code` printed as pending JSON on **stderr**; the final result JSON lands on
+**stdout** once approved.
