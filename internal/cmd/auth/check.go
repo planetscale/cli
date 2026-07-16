@@ -11,7 +11,6 @@ import (
 func CheckCmd(ch *cmdutil.Helper) *cobra.Command {
 	var clientID string
 	var clientSecret string
-	var apiURL string
 
 	cmd := &cobra.Command{
 		Use:   "check",
@@ -52,6 +51,5 @@ func CheckCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	cmd.Flags().StringVar(&clientID, "client-id", psauth.OAuthClientID, "The client ID for the PlanetScale CLI application.")
 	cmd.Flags().StringVar(&clientSecret, "client-secret", psauth.OAuthClientSecret, "The client ID for the PlanetScale CLI application")
-	cmd.Flags().StringVar(&apiURL, "api-url", psauth.DefaultBaseURL, "The PlanetScale base API URL.")
 	return cmd
 }
