@@ -191,12 +191,15 @@ func allCmd(ch *cmdutil.Helper, flags *inspectFlags) *cobra.Command {
 			for _, c := range checks {
 				result, err := runCheck(ctx, sess, c, ch.Config.Organization, database, branch)
 				if err != nil {
-					// One failing check shouldn't abort the report.
+					// One failing check shouldn't abort the report. Keep the
+					// catalog next steps so consumers still get the
+					// cross-reference for checks that timed out or failed.
 					result = &CheckResult{
-						Check:    c.Name,
-						Database: database,
-						Branch:   branch,
-						Skipped:  err.Error(),
+						Check:     c.Name,
+						Database:  database,
+						Branch:    branch,
+						Skipped:   err.Error(),
+						NextSteps: formatNextSteps(c.NextSteps, ch.Config.Organization, database, branch),
 					}
 				}
 				results = append(results, result)
