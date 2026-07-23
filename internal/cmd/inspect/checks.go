@@ -220,6 +220,7 @@ var checks = []check{
 					relname AS name,
 					seq_scan AS count
 				FROM pg_stat_user_tables
+				WHERE seq_scan > 0
 				ORDER BY seq_scan DESC
 				LIMIT 25;`,
 		},
