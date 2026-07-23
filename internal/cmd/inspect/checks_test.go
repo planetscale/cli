@@ -45,9 +45,12 @@ func TestCheckCatalog(t *testing.T) {
 				qt.Commentf("%s/%s: diagnostic SQL must bound its result set with LIMIT", chk.Name, engine))
 			c.Assert(strings.Count(impl.SQL, ";"), qt.Equals, 1,
 				qt.Commentf("%s/%s: diagnostic SQL must be a single statement", chk.Name, engine))
+			// table-sizes must exclude index storage (pg_table_size, not
+			// pg_total_relation_size): indexes are itemized by index-sizes,
+			// so counting them here would double-count across checks.
 			if chk.Name == "table-sizes" && engine == "postgres" {
-				c.Assert(strings.Contains(impl.SQL, "pg_total_relation_size"), qt.IsTrue)
-				c.Assert(strings.Contains(impl.SQL, "pg_table_size"), qt.IsFalse)
+				c.Assert(strings.Contains(impl.SQL, "pg_table_size"), qt.IsTrue)
+				c.Assert(strings.Contains(impl.SQL, "pg_total_relation_size"), qt.IsFalse)
 			}
 		}
 

@@ -54,15 +54,17 @@ var checks = []check{
 				LIMIT 25;`,
 		},
 		Postgres: &engineSQL{
-			// Partitions roll up into their root so a partitioned table shows
-			// as one row; materialized views are included since they also
-			// consume storage.
+			// pg_table_size (heap + TOAST + FSM + VM, no indexes) — index
+			// storage is itemized by the index-sizes check, so including it
+			// here would double-count. Partitions roll up into their root so
+			// a partitioned table shows as one row; materialized views are
+			// included since they also consume storage.
 			SQL: `
 				SELECT
 					schema,
 					name,
 					type,
-					pg_size_pretty(total_bytes) AS size
+					pg_size_pretty(table_bytes) AS size
 				FROM (
 					SELECT
 						n.nspname AS schema,
@@ -72,7 +74,7 @@ var checks = []check{
 							WHEN 'p' THEN 'partitioned table'
 							ELSE 'table'
 						END AS type,
-						SUM(pg_total_relation_size(c.oid)) AS total_bytes
+						SUM(pg_table_size(c.oid)) AS table_bytes
 					FROM pg_class c
 					JOIN pg_class root ON root.oid = COALESCE(pg_partition_root(c.oid), c.oid)
 					JOIN pg_namespace n ON n.oid = root.relnamespace
@@ -81,7 +83,7 @@ var checks = []check{
 						AND n.nspname !~ '^pg_toast'
 					GROUP BY n.nspname, root.relname, root.relkind
 				) sizes
-				ORDER BY total_bytes DESC
+				ORDER BY table_bytes DESC
 				LIMIT 25;`,
 		},
 	},
