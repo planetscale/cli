@@ -46,7 +46,7 @@ func TestCheckCatalog(t *testing.T) {
 			c.Assert(strings.Count(impl.SQL, ";"), qt.Equals, 1,
 				qt.Commentf("%s/%s: diagnostic SQL must be a single statement", chk.Name, engine))
 			if chk.Name == "table-sizes" && engine == "postgres" {
-				c.Assert(strings.Count(impl.SQL, "pg_total_relation_size"), qt.Equals, 2)
+				c.Assert(strings.Contains(impl.SQL, "pg_total_relation_size"), qt.IsTrue)
 				c.Assert(strings.Contains(impl.SQL, "pg_table_size"), qt.IsFalse)
 			}
 		}

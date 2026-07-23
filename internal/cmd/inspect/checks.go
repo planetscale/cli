@@ -54,17 +54,34 @@ var checks = []check{
 				LIMIT 25;`,
 		},
 		Postgres: &engineSQL{
+			// Partitions roll up into their root so a partitioned table shows
+			// as one row; materialized views are included since they also
+			// consume storage.
 			SQL: `
 				SELECT
-					n.nspname AS schema,
-					c.relname AS name,
-					pg_size_pretty(pg_total_relation_size(c.oid)) AS size
-				FROM pg_class c
-				LEFT JOIN pg_namespace n ON n.oid = c.relnamespace
-				WHERE n.nspname NOT IN ('pg_catalog', 'information_schema')
-					AND n.nspname !~ '^pg_toast'
-					AND c.relkind = 'r'
-				ORDER BY pg_total_relation_size(c.oid) DESC
+					schema,
+					name,
+					type,
+					pg_size_pretty(total_bytes) AS size
+				FROM (
+					SELECT
+						n.nspname AS schema,
+						root.relname AS name,
+						CASE root.relkind
+							WHEN 'm' THEN 'matview'
+							WHEN 'p' THEN 'partitioned table'
+							ELSE 'table'
+						END AS type,
+						SUM(pg_total_relation_size(c.oid)) AS total_bytes
+					FROM pg_class c
+					JOIN pg_class root ON root.oid = COALESCE(pg_partition_root(c.oid), c.oid)
+					JOIN pg_namespace n ON n.oid = root.relnamespace
+					WHERE c.relkind IN ('r', 'm', 'p')
+						AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+						AND n.nspname !~ '^pg_toast'
+					GROUP BY n.nspname, root.relname, root.relkind
+				) sizes
+				ORDER BY total_bytes DESC
 				LIMIT 25;`,
 		},
 	},
@@ -89,9 +106,11 @@ var checks = []check{
 			SQL: `
 				SELECT
 					n.nspname AS schema,
-					c.relname AS name,
+					t.relname || '.' || c.relname AS name,
 					pg_size_pretty(pg_relation_size(c.oid)) AS size
 				FROM pg_class c
+				JOIN pg_index i ON i.indexrelid = c.oid
+				JOIN pg_class t ON t.oid = i.indrelid
 				LEFT JOIN pg_namespace n ON n.oid = c.relnamespace
 				WHERE n.nspname NOT IN ('pg_catalog', 'information_schema')
 					AND n.nspname !~ '^pg_toast'
@@ -153,6 +172,29 @@ var checks = []check{
 		PostgresHint: "Redundant-index detection for PostgreSQL is served by schema recommendations: pscale insights recommendations <database>",
 	},
 	{
+		Name:         "invalid-indexes",
+		Short:        "Invalid indexes left over from failed concurrent index builds",
+		EmptyMessage: "No invalid indexes found.",
+		MySQLHint:    "Invalid indexes are a PostgreSQL concept (left over from a failed CREATE INDEX CONCURRENTLY).",
+		Postgres: &engineSQL{
+			SQL: `
+				SELECT
+					n.nspname AS schema,
+					t.relname || '.' || c.relname AS name,
+					pg_size_pretty(pg_relation_size(c.oid)) AS size,
+					i.indisready AS ready
+				FROM pg_class c
+				JOIN pg_index i ON i.indexrelid = c.oid
+				JOIN pg_class t ON t.oid = i.indrelid
+				JOIN pg_namespace n ON n.oid = c.relnamespace
+				WHERE NOT i.indisvalid
+					AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+					AND n.nspname !~ '^pg_toast'
+				ORDER BY pg_relation_size(c.oid) DESC
+				LIMIT 50;`,
+		},
+	},
+	{
 		Name:         "seq-scans",
 		NextSteps:    []string{"pscale insights queries <database> <branch> --sort rowsReadPerReturned"},
 		Short:        "Tables receiving full-table scans",
@@ -203,14 +245,17 @@ var checks = []check{
 				LIMIT 100;`,
 		},
 		Postgres: &engineSQL{
+			// walsenders are excluded: replication connections stay "active"
+			// forever and would always appear here.
 			SQL: `
 				SELECT
 					pid,
 					(now() - query_start)::text AS duration,
 					state,
-					query
+					left(query, 200) AS query
 				FROM pg_stat_activity
 				WHERE state <> 'idle'
+					AND backend_type <> 'walsender'
 					AND query NOT ILIKE '%pg_stat_activity%'
 					AND now() - query_start > interval '5 minutes'
 				ORDER BY now() - query_start DESC
@@ -219,8 +264,8 @@ var checks = []check{
 	},
 	{
 		Name:         "locks",
-		Short:        "Held locks and lock waits with the responsible queries",
-		EmptyMessage: "No locks held.",
+		Short:        "Blocking locks and the sessions stuck behind them",
+		EmptyMessage: "No blocking locks.",
 		MySQL: &engineSQL{
 			SQL: `
 				SELECT
@@ -234,21 +279,54 @@ var checks = []check{
 				LIMIT 100;`,
 		},
 		Postgres: &engineSQL{
+			// Reports only the roots of blocking trees (via pg_blocking_pids)
+			// with a count of sessions stuck behind each, instead of every
+			// granted lock — most locks are routine and non-blocking.
 			SQL: `
+				WITH RECURSIVE waiters AS (
+					SELECT a.pid AS blocked_pid, b.pid AS blocking_pid
+					FROM pg_stat_activity a
+					CROSS JOIN LATERAL unnest(pg_blocking_pids(a.pid)) AS b(pid)
+					WHERE a.wait_event_type = 'Lock'
+				),
+				locks AS MATERIALIZED (
+					SELECT * FROM pg_locks
+				),
+				chain AS (
+					SELECT blocked_pid, blocking_pid AS root_pid
+					FROM waiters
+					WHERE blocking_pid NOT IN (SELECT blocked_pid FROM waiters)
+					UNION
+					SELECT w.blocked_pid, c.root_pid
+					FROM waiters w
+					JOIN chain c ON c.blocked_pid = w.blocking_pid
+				)
 				SELECT
 					a.pid,
-					c.relname,
-					l.mode,
-					l.locktype,
-					l.granted,
-					(now() - a.query_start)::text AS age,
-					a.query
-				FROM pg_locks l
-				JOIN pg_stat_activity a ON a.pid = l.pid
-				LEFT JOIN pg_class c ON c.oid = l.relation
-				WHERE a.query <> '<insufficient privilege>'
-					AND l.pid <> pg_backend_pid()
-				ORDER BY a.query_start
+					a.state,
+					string_agg(DISTINCT wc.relname, ', ')  AS relation,
+					string_agg(DISTINCT hl.mode, ', ')     AS lock_mode,
+					string_agg(DISTINCT hl.locktype, ', ') AS lock_type,
+					(now() - a.query_start)::text          AS age,
+					count(DISTINCT ch.blocked_pid)         AS blocked_count,
+					left(a.query, 200)                     AS query
+				FROM chain ch
+				JOIN pg_stat_activity a ON a.pid = ch.root_pid
+				LEFT JOIN locks wl ON wl.pid = ch.blocked_pid AND NOT wl.granted
+				LEFT JOIN pg_class wc ON wc.oid = wl.relation
+				LEFT JOIN locks hl ON hl.pid = a.pid AND hl.granted
+					AND hl.locktype = wl.locktype
+					AND hl.database      IS NOT DISTINCT FROM wl.database
+					AND hl.relation      IS NOT DISTINCT FROM wl.relation
+					AND hl.page          IS NOT DISTINCT FROM wl.page
+					AND hl.tuple         IS NOT DISTINCT FROM wl.tuple
+					AND hl.virtualxid    IS NOT DISTINCT FROM wl.virtualxid
+					AND hl.transactionid IS NOT DISTINCT FROM wl.transactionid
+					AND hl.classid       IS NOT DISTINCT FROM wl.classid
+					AND hl.objid         IS NOT DISTINCT FROM wl.objid
+					AND hl.objsubid      IS NOT DISTINCT FROM wl.objsubid
+				GROUP BY a.pid, a.state, a.query_start, a.query
+				ORDER BY blocked_count DESC, a.query_start
 				LIMIT 100;`,
 		},
 	},
@@ -320,6 +398,9 @@ var checks = []check{
 				LIMIT 25;`,
 		},
 		Postgres: &engineSQL{
+			// Statistical estimate covering both tables and indexes. The
+			// index estimate is rough: it assumes the index holds all table
+			// columns.
 			SQL: `
 				WITH constants AS (
 					SELECT current_setting('block_size')::numeric AS bs, 23 AS hdr, 8 AS ma
@@ -334,15 +415,9 @@ var checks = []check{
 							schemaname, tablename, hdr, ma, bs,
 							SUM((1 - null_frac) * avg_width) AS datawidth,
 							MAX(null_frac) AS maxfracsum,
-							hdr + (
-								SELECT 1 + count(*) / 8
-								FROM pg_stats s2
-								WHERE null_frac <> 0
-									AND s2.schemaname = s.schemaname
-									AND s2.tablename = s.tablename
-							) AS nullhdr
+							hdr + 1 + count(*) FILTER (WHERE null_frac <> 0) / 8 AS nullhdr
 						FROM pg_stats s, constants
-						GROUP BY 1, 2, 3, 4, 5
+						GROUP BY schemaname, tablename, hdr, ma, bs
 					) AS foo
 				),
 				table_bloat AS (
@@ -357,79 +432,164 @@ var checks = []check{
 						AND nn.nspname = bloat_info.schemaname
 						AND nn.nspname NOT IN ('information_schema', 'pg_catalog')
 					WHERE cc.relkind = 'r'
+				),
+				index_bloat AS (
+					SELECT
+						bloat_info.schemaname, bloat_info.tablename, bs,
+						c2.relname AS iname,
+						c2.relpages AS ipages,
+						COALESCE(CEIL((c2.reltuples * (datahdr - 12)) / (bs - 20::float)), 0) AS iotta
+					FROM bloat_info
+					JOIN pg_class cc ON cc.relname = bloat_info.tablename
+					JOIN pg_namespace nn ON cc.relnamespace = nn.oid
+						AND nn.nspname = bloat_info.schemaname
+						AND nn.nspname NOT IN ('information_schema', 'pg_catalog')
+					JOIN pg_index i ON i.indrelid = cc.oid
+					JOIN pg_class c2 ON c2.oid = i.indexrelid
+					WHERE cc.relkind = 'r'
 				)
 				SELECT
-					'table' AS type,
-					schemaname AS schema,
-					tablename AS object_name,
-					round(CASE WHEN otta = 0 THEN 0.0 ELSE relpages::numeric / otta::numeric END, 1) AS bloat,
-					pg_size_pretty(
-						(CASE WHEN relpages < otta THEN 0 ELSE (bs * (relpages - otta))::bigint END)
-					) AS waste
-				FROM table_bloat
-				ORDER BY (CASE WHEN relpages < otta THEN 0 ELSE bs * (relpages - otta) END) DESC
+					type, schema, object_name,
+					pg_size_pretty(size) AS size,
+					bloat_pct,
+					pg_size_pretty(raw_waste) AS waste
+				FROM (
+					SELECT
+						'table' AS type,
+						schemaname AS schema,
+						tablename AS object_name,
+						(bs * relpages)::bigint AS size,
+						round(CASE WHEN relpages = 0 OR relpages < otta THEN 0.0
+									ELSE 100 * (relpages - otta)::numeric / relpages
+								END, 1) AS bloat_pct,
+						(CASE WHEN relpages < otta THEN 0 ELSE bs * (relpages - otta) END)::bigint AS raw_waste
+					FROM table_bloat
+					UNION ALL
+					SELECT
+						'index' AS type,
+						schemaname AS schema,
+						tablename || '::' || iname AS object_name,
+						(bs * ipages)::bigint AS size,
+						round(CASE WHEN ipages = 0 OR ipages < iotta THEN 0.0
+									ELSE 100 * (ipages - iotta)::numeric / ipages
+								END, 1) AS bloat_pct,
+						(CASE WHEN ipages < iotta THEN 0 ELSE bs * (ipages - iotta) END)::bigint AS raw_waste
+					FROM index_bloat
+				) summary
+				ORDER BY raw_waste DESC, bloat_pct DESC
 				LIMIT 25;`,
 		},
 	},
 	{
 		Name:         "vacuum-stats",
-		Short:        "Autovacuum health: last (auto)vacuum, dead tuples, threshold",
+		Short:        "Autovacuum and autoanalyze health: last runs, dead tuples, thresholds",
 		EmptyMessage: "No user tables found.",
 		MySQLHint:    "Vacuum is a PostgreSQL concept; for MySQL fragmentation see: pscale inspect bloat",
 		Postgres: &engineSQL{
+			// Thresholds honor per-table reloptions (including
+			// autovacuum_enabled=false, reported as "disabled"), not just the
+			// global settings.
 			SQL: `
 				SELECT
-					n.nspname AS schema,
-					c.relname AS "table",
-					to_char(psut.last_vacuum, 'YYYY-MM-DD HH24:MI') AS last_vacuum,
-					to_char(psut.last_autovacuum, 'YYYY-MM-DD HH24:MI') AS last_autovacuum,
+					psut.schemaname AS schema,
+					psut.relname AS "table",
+					to_char(psut.last_vacuum, 'YYYY-MM-DD HH24:MI')      AS last_vacuum,
+					to_char(psut.last_autovacuum, 'YYYY-MM-DD HH24:MI')  AS last_autovacuum,
+					to_char(psut.last_analyze, 'YYYY-MM-DD HH24:MI')     AS last_analyze,
+					to_char(psut.last_autoanalyze, 'YYYY-MM-DD HH24:MI') AS last_autoanalyze,
 					c.reltuples::bigint AS rowcount,
 					psut.n_dead_tup AS dead_rowcount,
+					psut.n_mod_since_analyze AS mods_since_analyze,
 					CASE
-						WHEN current_setting('autovacuum_vacuum_threshold')::bigint
-							+ current_setting('autovacuum_vacuum_scale_factor')::numeric
-								* c.reltuples
-							< psut.n_dead_tup
-						THEN 'yes'
+						WHEN opts.enabled = 'false' THEN 'disabled'
+						WHEN opts.vac_threshold + opts.vac_scale * GREATEST(c.reltuples, 0)
+							< psut.n_dead_tup THEN 'yes'
 						ELSE 'no'
-					END AS expect_autovacuum
+					END AS expect_autovacuum,
+					CASE
+						WHEN opts.enabled = 'false' THEN 'disabled'
+						WHEN opts.an_threshold + opts.an_scale * GREATEST(c.reltuples, 0)
+							< psut.n_mod_since_analyze THEN 'yes'
+						ELSE 'no'
+					END AS expect_autoanalyze
 				FROM pg_stat_user_tables psut
-				JOIN pg_class c ON psut.relid = c.oid
-				JOIN pg_namespace n ON c.relnamespace = n.oid
+				JOIN pg_class c ON c.oid = psut.relid
+				CROSS JOIN LATERAL (
+					SELECT
+						COALESCE((SELECT split_part(o, '=', 2)::bigint
+									FROM unnest(c.reloptions) AS o
+									WHERE o LIKE 'autovacuum_vacuum_threshold=%'),
+								current_setting('autovacuum_vacuum_threshold')::bigint)     AS vac_threshold,
+						COALESCE((SELECT split_part(o, '=', 2)::numeric
+									FROM unnest(c.reloptions) AS o
+									WHERE o LIKE 'autovacuum_vacuum_scale_factor=%'),
+								current_setting('autovacuum_vacuum_scale_factor')::numeric) AS vac_scale,
+						COALESCE((SELECT split_part(o, '=', 2)::bigint
+									FROM unnest(c.reloptions) AS o
+									WHERE o LIKE 'autovacuum_analyze_threshold=%'),
+								current_setting('autovacuum_analyze_threshold')::bigint)    AS an_threshold,
+						COALESCE((SELECT split_part(o, '=', 2)::numeric
+									FROM unnest(c.reloptions) AS o
+									WHERE o LIKE 'autovacuum_analyze_scale_factor=%'),
+								current_setting('autovacuum_analyze_scale_factor')::numeric) AS an_scale,
+						COALESCE((SELECT split_part(o, '=', 2)
+									FROM unnest(c.reloptions) AS o
+									WHERE o LIKE 'autovacuum_enabled=%'),
+								'true') AS enabled
+				) opts
 				ORDER BY psut.n_dead_tup DESC
 				LIMIT 25;`,
 		},
 	},
 	{
 		Name:         "replication-slots",
-		Short:        "Replication slots: status, client, and lag",
+		Short:        "Replication slots: status, WAL retention, and lag",
 		EmptyMessage: "No replication slots found.",
 		MySQLHint:    "Replication slots are a PostgreSQL concept; for Vitess workflows see: pscale workflow list",
 		Postgres: &engineSQL{
+			// retained_wal_size (since restart_lsn) and unconfirmed_wal_size
+			// (since confirmed_flush_lsn) measure different failure modes;
+			// safe_wal_size shows headroom before the slot is invalidated by
+			// max_slot_wal_keep_size.
 			SQL: `
 				SELECT
 					s.slot_name,
 					s.slot_type,
+					s.database,
 					CASE
 						WHEN r.state IS NOT NULL THEN r.state
 						WHEN s.active THEN 'active (no walsender)'
 						ELSE 'inactive'
 					END AS status,
-					r.client_addr,
-					s.restart_lsn,
-					s.confirmed_flush_lsn,
+					s.temporary,
+					s.wal_status,
+					pg_size_pretty(s.safe_wal_size) AS safe_wal_size,
 					pg_size_pretty(
 						pg_wal_lsn_diff(
-							CASE
-								WHEN pg_is_in_recovery() THEN pg_last_wal_receive_lsn()
-								ELSE pg_current_wal_lsn()
-							END,
-							COALESCE(s.confirmed_flush_lsn, s.restart_lsn)
+							CASE WHEN pg_is_in_recovery() THEN pg_last_wal_receive_lsn()
+								ELSE pg_current_wal_lsn() END,
+							s.restart_lsn
 						)
-					) AS replication_lag
+					) AS retained_wal_size,
+					CASE
+						WHEN s.slot_type = 'logical' THEN
+							pg_size_pretty(
+								pg_wal_lsn_diff(
+									CASE WHEN pg_is_in_recovery() THEN pg_last_wal_receive_lsn()
+										ELSE pg_current_wal_lsn() END,
+									s.confirmed_flush_lsn
+								)
+							)
+						ELSE NULL
+					END AS unconfirmed_wal_size,
+					r.replay_lag AS lag_time
 				FROM pg_replication_slots s
 				LEFT JOIN pg_stat_replication r ON r.pid = s.active_pid
-				ORDER BY s.slot_name
+				ORDER BY pg_wal_lsn_diff(
+					CASE WHEN pg_is_in_recovery() THEN pg_last_wal_receive_lsn()
+						ELSE pg_current_wal_lsn() END,
+					s.restart_lsn
+				) DESC NULLS LAST
 				LIMIT 100;`,
 		},
 	},
