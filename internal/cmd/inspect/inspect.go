@@ -152,17 +152,15 @@ func checkCmd(ch *cmdutil.Helper, c check, flags *inspectFlags) *cobra.Command {
 
 			if result.Skipped != "" && ch.Printer.Format() == printer.Human {
 				ch.Printer.Printf("%s\n", result.Skipped)
+				printNextSteps(ch, result.NextSteps)
 				return nil
 			}
 
 			if err := printCheck(ch, c, result); err != nil {
 				return err
 			}
-			if ch.Printer.Format() == printer.Human && len(result.NextSteps) > 0 {
-				ch.Printer.Printf("\nFor server-side analysis of production traffic, also see:\n")
-				for _, step := range result.NextSteps {
-					ch.Printer.Printf("  %s\n", printer.BoldBlue(step))
-				}
+			if ch.Printer.Format() == printer.Human {
+				printNextSteps(ch, result.NextSteps)
 			}
 			return nil
 		},
@@ -207,9 +205,16 @@ func allCmd(ch *cmdutil.Helper, flags *inspectFlags) *cobra.Command {
 					ch.Printer.Printf("\n%s — %s\n", printer.Bold(c.Name), c.Short)
 					if result.Skipped != "" {
 						ch.Printer.Printf("  %s\n", result.Skipped)
+						printCompactNextSteps(ch, result.NextSteps)
 						continue
 					}
 					printHumanTable(ch, c, result)
+					// Only surface the targeted follow-up when the check
+					// actually found something; the combined report already
+					// ends with the full insights pointer.
+					if result.RowCount > 0 {
+						printCompactNextSteps(ch, result.NextSteps)
+					}
 				}
 			}
 
@@ -233,6 +238,27 @@ func allCmd(ch *cmdutil.Helper, flags *inspectFlags) *cobra.Command {
 				return fmt.Errorf("csv output is not supported for inspect all; use a single check or --format json")
 			}
 		},
+	}
+}
+
+// printNextSteps renders a check's follow-up commands in human output. The
+// steps come from formatNextSteps, so they are copy-pasteable (including
+// --org and --format json).
+func printNextSteps(ch *cmdutil.Helper, steps []string) {
+	if len(steps) == 0 {
+		return
+	}
+	ch.Printer.Printf("\nFor server-side analysis of production traffic, also see:\n")
+	for _, step := range steps {
+		ch.Printer.Printf("  %s\n", printer.BoldBlue(step))
+	}
+}
+
+// printCompactNextSteps is the one-line-per-step variant used between
+// sections of the combined report.
+func printCompactNextSteps(ch *cmdutil.Helper, steps []string) {
+	for _, step := range steps {
+		ch.Printer.Printf("  also see: %s\n", printer.BoldBlue(step))
 	}
 }
 
