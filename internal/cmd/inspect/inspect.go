@@ -42,8 +42,11 @@ information_schema, mysql, and sys; PostgreSQL checks read pg_catalog and
 pg_stat views. Checks that don't apply to an engine explain what to use
 instead.
 
-On sharded Vitess databases, statistics reflect a single shard's MySQL
-instance. Pass --keyspace to target a specific keyspace.
+On sharded Vitess databases, statistics reflect one shard's MySQL instance
+per run. Pass --keyspace to pick the keyspace, or target an exact shard with
+--keyspace 'mykeyspace/-80' (enumerate shards with SHOW VITESS_SHARDS via
+pscale sql). Databases can have hundreds of shards, so no check fans out
+across shards automatically.
 
 On PostgreSQL, statistics are scoped to one database. Pass --dbname to target
 the database your application uses (defaults to postgres).
@@ -57,7 +60,7 @@ anomalies), see pscale insights.`,
 		"The organization for the current user")
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
 	cmd.PersistentFlags().StringVar(&flags.keyspace, "keyspace", "",
-		"Vitess keyspace to inspect (optional; defaults to @primary, same as pscale shell)")
+		"Vitess keyspace to inspect, optionally with a shard and tablet type (e.g. mykeyspace, mykeyspace/-80, mykeyspace/-80@replica). List shards with: pscale sql <database> <branch> --query \"SHOW VITESS_SHARDS\". Defaults to @primary.")
 	cmd.PersistentFlags().StringVar(&flags.postgresDB, "dbname", "postgres",
 		"PostgreSQL database name to inspect")
 	cmd.PersistentFlags().StringVar(&flags.role, "role", "",

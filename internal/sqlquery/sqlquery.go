@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql"
+	gomysql "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
 
 	"github.com/planetscale/cli/internal/cmdutil"
@@ -197,7 +197,16 @@ func openMySQL(ctx context.Context, ch *cmdutil.Helper, opts Options, role cmdut
 		errCh <- proxy.Serve(l, mysql.CachingSha2Password)
 	}()
 
-	db, err := sql.Open("mysql", fmt.Sprintf("root@tcp(%s)/%s", l.Addr().String(), mysqlDSNDatabase(opts)))
+	// Build the DSN via Config so the database name is properly escaped:
+	// shard-targeted names like "keyspace/-80@replica" contain characters
+	// that are invalid in a hand-assembled DSN.
+	dsnCfg := gomysql.NewConfig()
+	dsnCfg.User = "root"
+	dsnCfg.Net = "tcp"
+	dsnCfg.Addr = l.Addr().String()
+	dsnCfg.DBName = mysqlDSNDatabase(opts)
+
+	db, err := sql.Open("mysql", dsnCfg.FormatDSN())
 	if err != nil {
 		proxy.Close()
 		l.Close()

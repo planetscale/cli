@@ -25,6 +25,7 @@ import (
 	"strings"
 	"time"
 
+	clicontent "github.com/planetscale/cli"
 	"github.com/planetscale/cli/internal/cmd/agentguide"
 	"github.com/planetscale/cli/internal/cmd/mcp"
 	"github.com/planetscale/cli/internal/cmd/role"
@@ -234,6 +235,20 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 	rootCmd.PersistentFlags().Lookup("api-token").DefValue = ""
 
 	// Add command groups for better organization
+	// Every command's help/usage output ends with a pointer to the embedded
+	// agent guide, so agents that discover pscale via --help (rather than a
+	// repo AGENTS.md) find the machine-readable guidance.
+	rootCmd.SetUsageTemplate(rootCmd.UsageTemplate() +
+		"\nAgents: run \"pscale agent-guide --format json\" for machine-readable guidance, or \"pscale help agents\" to read the full guide.\n")
+
+	// Additional help topic (no Run function): `pscale help agents` prints
+	// the embedded agent guide.
+	rootCmd.AddCommand(&cobra.Command{
+		Use:   "agents",
+		Short: "How AI agents and automation should use pscale",
+		Long:  clicontent.AgentGuide,
+	})
+
 	rootCmd.AddGroup(&cobra.Group{ID: "database", Title: printer.Bold("MySQL & PostgreSQL database commands:")})
 	rootCmd.AddGroup(&cobra.Group{ID: "vitess", Title: printer.Bold("Vitess/MySQL-specific commands:")})
 	rootCmd.AddGroup(&cobra.Group{ID: "postgres", Title: printer.Bold("PostgreSQL-specific commands:")})

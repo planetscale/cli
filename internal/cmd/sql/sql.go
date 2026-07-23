@@ -34,7 +34,9 @@ Destructive SQL containing DELETE, DROP, or TRUNCATE is blocked unless --force i
 Agents must ask the user for approval before using --force.
 
 MySQL (Vitess) databases use the primary keyspace by default (same as pscale shell -D @primary).
-Pass --keyspace when targeting a specific keyspace in a multi-keyspace database.
+Pass --keyspace when targeting a specific keyspace in a multi-keyspace database. A keyspace may
+include a shard and tablet type (mykeyspace/-80, mykeyspace/-80@replica) to pin the connection to
+one shard; enumerate shards with SHOW VITESS_SHARDS.
 
 PostgreSQL databases use --dbname (default postgres).
 
@@ -89,7 +91,7 @@ Place flags after positional arguments (see Usage). --org is required:
 	cmd.PersistentFlags().StringVar(&ch.Config.Organization, "org", ch.Config.Organization,
 		"The organization for the current user")
 	cmd.Flags().StringVar(&flags.query, "query", "", "SQL query to execute")
-	cmd.Flags().StringVar(&flags.keyspace, "keyspace", "", "Vitess keyspace (optional; defaults to @primary, same as pscale shell)")
+	cmd.Flags().StringVar(&flags.keyspace, "keyspace", "", "Vitess keyspace, optionally with a shard and tablet type (e.g. mykeyspace, mykeyspace/-80, mykeyspace/-80@replica). List shards with --query \"SHOW VITESS_SHARDS\". Defaults to @primary, same as pscale shell.")
 	cmd.Flags().StringVar(&flags.postgresDB, "dbname", "postgres", "PostgreSQL database name")
 	cmd.Flags().StringVar(&flags.role, "role",
 		"", "Role defines the access level, allowed values are: reader, writer, readwriter, admin. Defaults to reader (use --role admin for writes).")

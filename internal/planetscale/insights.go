@@ -21,30 +21,30 @@ type QueryInsightsService interface {
 // QueryInsight is an aggregated statistics record for a normalized query
 // pattern on a branch.
 type QueryInsight struct {
-	ID                     string    `json:"id"`
-	Fingerprint            string    `json:"fingerprint"`
-	NormalizedSQL          string    `json:"normalized_sql"`
-	StatementType          string    `json:"statement_type"`
+	ID                     string       `json:"id"`
+	Fingerprint            string       `json:"fingerprint"`
+	NormalizedSQL          string       `json:"normalized_sql"`
+	StatementType          string       `json:"statement_type"`
 	Keyspace               string       `json:"keyspace"`
 	Tables                 []string     `json:"tables"`
 	IndexUsages            []IndexUsage `json:"index_usages"`
-	QueryCount             int64     `json:"query_count"`
-	ErrorCount             int64     `json:"error_count"`
-	LastRunAt              time.Time `json:"last_run_at"`
-	TimePerQuery           float64   `json:"time_per_query"`
-	P50Latency             float64   `json:"p50_latency"`
-	P99Latency             float64   `json:"p99_latency"`
-	MaxLatency             float64   `json:"max_latency"`
-	SumRowsRead            int64     `json:"sum_rows_read"`
-	SumRowsReturned        int64     `json:"sum_rows_returned"`
-	SumRowsAffected        int64     `json:"sum_rows_affected"`
-	RowsReadPerReturned    float64   `json:"rows_read_per_returned"`
-	SumTotalDurationMillis float64   `json:"sum_total_duration_millis"`
-	SumTotalDurationPct    float64   `json:"sum_total_duration_percent"`
-	SumCPUDurationMillis   float64   `json:"sum_cpu_duration_millis"`
-	SumIODurationMillis    float64   `json:"sum_io_duration_millis"`
-	BlockCacheHitRatio     float64   `json:"block_cache_hit_ratio"`
-	Multishard             bool      `json:"multishard"`
+	QueryCount             int64        `json:"query_count"`
+	ErrorCount             int64        `json:"error_count"`
+	LastRunAt              time.Time    `json:"last_run_at"`
+	TimePerQuery           float64      `json:"time_per_query"`
+	P50Latency             float64      `json:"p50_latency"`
+	P99Latency             float64      `json:"p99_latency"`
+	MaxLatency             float64      `json:"max_latency"`
+	SumRowsRead            int64        `json:"sum_rows_read"`
+	SumRowsReturned        int64        `json:"sum_rows_returned"`
+	SumRowsAffected        int64        `json:"sum_rows_affected"`
+	RowsReadPerReturned    float64      `json:"rows_read_per_returned"`
+	SumTotalDurationMillis float64      `json:"sum_total_duration_millis"`
+	SumTotalDurationPct    float64      `json:"sum_total_duration_percent"`
+	SumCPUDurationMillis   float64      `json:"sum_cpu_duration_millis"`
+	SumIODurationMillis    float64      `json:"sum_io_duration_millis"`
+	BlockCacheHitRatio     float64      `json:"block_cache_hit_ratio"`
+	Multishard             bool         `json:"multishard"`
 }
 
 // IndexUsage records how often an index served a query pattern.

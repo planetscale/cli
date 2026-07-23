@@ -162,7 +162,7 @@ pscale sql <database> <branch> --org <org> --format json --keyspace <keyspace> -
 | `--role` | `reader` (default), `writer`, `readwriter`, `admin` — same names as `pscale shell` |
 | `--replica` | Route reads to replicas |
 | `--dbname` | PostgreSQL database name (default `postgres`) |
-| `--keyspace` | MySQL keyspace (default `@primary`) |
+| `--keyspace` | MySQL keyspace (default `@primary`); may include a shard and tablet type: `mykeyspace/-80`, `mykeyspace/-80@replica` |
 | `--force` | Allow destructive SQL after explicit user approval |
 
 **`--role` by engine** (same as `pscale shell`):
@@ -220,7 +220,7 @@ pscale inspect <check> <database> <branch> --org <org> --format json
 Checks: `table-sizes`, `index-sizes`, `unused-indexes`, `redundant-indexes`, `seq-scans`, `long-running-queries`, `locks`, `outliers`, `calls`, `bloat`, `vacuum-stats`, `replication-slots`, `subscriptions`. Checks adapt per engine; ones that don't apply explain the alternative. JSON results include `next_steps` pointing at the matching `insights` command — follow them.
 
 Caveats:
-- Statistics are since last server restart and per-connection-target: on sharded Vitess databases they reflect a single shard (use `--keyspace` to pick a keyspace); on PostgreSQL they're scoped to one database (use `--dbname`; if CONNECT is denied, retry with `--role admin`).
+- Statistics are since last server restart and per-connection-target: on sharded Vitess databases they reflect a single shard's MySQL instance. Use `--keyspace` to pick a keyspace, or pin an exact shard with `--keyspace 'mykeyspace/-80'` (enumerate with `pscale sql <database> <branch> --org <org> --format json --query "SHOW VITESS_SHARDS"`; rows are `keyspace/shard`). Databases can have hundreds of shards — inspect one shard at a time rather than fanning out. On PostgreSQL, stats are scoped to one database (use `--dbname`; if CONNECT is denied, retry with `--role admin`).
 - `outliers`/`calls` need `pg_stat_statements` on PostgreSQL; if missing, use `pscale insights queries` instead (no extension needed).
 - Rule of thumb: start with `insights` (traffic-aware, historical), use `inspect` for live state (locks, in-flight queries) and physical layout (sizes, bloat, index usage).
 
