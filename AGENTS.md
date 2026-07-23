@@ -197,6 +197,33 @@ Error: one JSON object on stdout with `status: "error"`, `error`, `issues`, and 
 
 Destructive SQL without `--force`: `status: "action_required"`, `query_kind: "destructive"`, `issues`, and `next_steps` (includes `--force` retry command).
 
+## Diagnostics: insights + inspect
+
+Two complementary read-only surfaces. When diagnosing database health or performance, **check both** — they see different things.
+
+**`pscale insights`** — server-side analysis computed from production traffic (works even when you can't or don't want to connect to the database):
+
+```bash
+pscale insights queries <database> <branch> --org <org> --format json --sort totalTime   # top queries; sorts: totalTime, count, p99Latency, rowsRead, rowsReadPerReturned, errorCount, ...
+pscale insights errors <database> <branch> --org <org> --format json                     # failing queries with error messages
+pscale insights anomalies <database> <branch> --org <org> --format json                  # detected resource anomalies (CPU, memory, IOPS, rows)
+pscale insights recommendations <database> --org <org> --format json                     # schema recommendations with ready-to-apply DDL
+```
+
+**`pscale inspect`** — live, point-in-time checks run over a direct connection (same credentials model as `pscale sql`, always read-only):
+
+```bash
+pscale inspect all <database> <branch> --org <org> --format json    # every applicable check, one report
+pscale inspect <check> <database> <branch> --org <org> --format json
+```
+
+Checks: `table-sizes`, `index-sizes`, `unused-indexes`, `redundant-indexes`, `seq-scans`, `long-running-queries`, `locks`, `outliers`, `calls`, `bloat`, `vacuum-stats`, `replication-slots`, `subscriptions`. Checks adapt per engine; ones that don't apply explain the alternative. JSON results include `next_steps` pointing at the matching `insights` command — follow them.
+
+Caveats:
+- Statistics are since last server restart and per-connection-target: on sharded Vitess databases they reflect a single shard (use `--keyspace` to pick a keyspace); on PostgreSQL they're scoped to one database (use `--dbname`; if CONNECT is denied, retry with `--role admin`).
+- `outliers`/`calls` need `pg_stat_statements` on PostgreSQL; if missing, use `pscale insights queries` instead (no extension needed).
+- Rule of thumb: start with `insights` (traffic-aware, historical), use `inspect` for live state (locks, in-flight queries) and physical layout (sizes, bloat, index usage).
+
 ## Postgres branch changes (size, replicas, parameters)
 
 `pscale branch resize` queues a single asynchronous **change request** for a Postgres branch covering cluster size, replica count, and configuration parameters in any combination. Track it with `resize status`; cancel it with `resize cancel` while queued.

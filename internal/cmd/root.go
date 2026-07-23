@@ -43,6 +43,8 @@ import (
 	"github.com/planetscale/cli/internal/cmd/dataimports"
 	"github.com/planetscale/cli/internal/cmd/deployrequest"
 	"github.com/planetscale/cli/internal/cmd/importcmd"
+	"github.com/planetscale/cli/internal/cmd/insights"
+	"github.com/planetscale/cli/internal/cmd/inspect"
 	"github.com/planetscale/cli/internal/cmd/keyspace"
 	"github.com/planetscale/cli/internal/cmd/org"
 	"github.com/planetscale/cli/internal/cmd/password"
@@ -310,6 +312,14 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 	databaseCmd := database.DatabaseCmd(ch)
 	databaseCmd.GroupID = "database"
 	rootCmd.AddCommand(databaseCmd)
+
+	insightsCmd := insights.InsightsCmd(ch)
+	insightsCmd.GroupID = "database"
+	rootCmd.AddCommand(insightsCmd)
+
+	inspectCmd := inspect.InspectCmd(ch)
+	inspectCmd.GroupID = "database"
+	rootCmd.AddCommand(inspectCmd)
 
 	webhookCmd := webhook.WebhookCmd(ch)
 	webhookCmd.GroupID = "database"
