@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/csv"
 	"fmt"
+	"io"
 	"strings"
 	"text/tabwriter"
 	"time"
@@ -100,25 +101,28 @@ type Report struct {
 	NextSteps []string `json:"next_steps"`
 }
 
-// insightsNextSteps recommends the full pscale insights surface, for the
-// combined report.
-func insightsNextSteps(database, branch string) []string {
-	return []string{
-		fmt.Sprintf("pscale insights queries %s %s", database, branch),
-		fmt.Sprintf("pscale insights errors %s %s", database, branch),
-		fmt.Sprintf("pscale insights anomalies %s %s", database, branch),
-		fmt.Sprintf("pscale insights recommendations %s", database),
-	}
+func insightsNextSteps(organization, database, branch string) []string {
+	return formatNextSteps([]string{
+		"pscale insights queries <database> <branch>",
+		"pscale insights errors <database> <branch>",
+		"pscale insights anomalies <database> <branch>",
+		"pscale insights recommendations <database>",
+	}, organization, database, branch)
 }
 
-func substituteNextSteps(steps []string, database, branch string) []string {
+func formatNextSteps(steps []string, organization, database, branch string) []string {
 	out := make([]string, 0, len(steps))
-	for _, s := range steps {
-		s = strings.ReplaceAll(s, "<database>", database)
-		s = strings.ReplaceAll(s, "<branch>", branch)
-		out = append(out, s)
+	for _, step := range steps {
+		step = strings.ReplaceAll(step, "<database>", database)
+		step = strings.ReplaceAll(step, "<branch>", branch)
+		out = append(out, fmt.Sprintf("%s --org %s --format json", step, organization))
 	}
 	return out
+}
+
+func substituteResourceNames(s, database, branch string) string {
+	s = strings.ReplaceAll(s, "<database>", database)
+	return strings.ReplaceAll(s, "<branch>", branch)
 }
 
 func checkCmd(ch *cmdutil.Helper, c check, flags *inspectFlags) *cobra.Command {
@@ -140,7 +144,7 @@ func checkCmd(ch *cmdutil.Helper, c check, flags *inspectFlags) *cobra.Command {
 			}
 			defer sess.Close()
 
-			result, err := runCheck(ctx, sess, c, database, branch)
+			result, err := runCheck(ctx, sess, c, ch.Config.Organization, database, branch)
 			if err != nil {
 				return cmdutil.HandleError(err)
 			}
@@ -187,7 +191,7 @@ func allCmd(ch *cmdutil.Helper, flags *inspectFlags) *cobra.Command {
 
 			var results []*CheckResult
 			for _, c := range checks {
-				result, err := runCheck(ctx, sess, c, database, branch)
+				result, err := runCheck(ctx, sess, c, ch.Config.Organization, database, branch)
 				if err != nil {
 					// One failing check shouldn't abort the report.
 					result = &CheckResult{
@@ -213,7 +217,7 @@ func allCmd(ch *cmdutil.Helper, flags *inspectFlags) *cobra.Command {
 				Database:  database,
 				Branch:    branch,
 				Results:   results,
-				NextSteps: insightsNextSteps(database, branch),
+				NextSteps: insightsNextSteps(ch.Config.Organization, database, branch),
 			}
 
 			switch ch.Printer.Format() {
@@ -234,13 +238,14 @@ func allCmd(ch *cmdutil.Helper, flags *inspectFlags) *cobra.Command {
 
 func newSession(ctx context.Context, ch *cmdutil.Helper, database, branch string, flags *inspectFlags) (*sqlquery.Session, error) {
 	sess, err := sqlquery.NewSession(ctx, ch, sqlquery.Options{
-		Organization: ch.Config.Organization,
-		Database:     database,
-		Branch:       branch,
-		Keyspace:     flags.keyspace,
-		PostgresDB:   flags.postgresDB,
-		Role:         flags.role,
-		Replica:      flags.replica,
+		Organization:            ch.Config.Organization,
+		Database:                database,
+		Branch:                  branch,
+		Keyspace:                flags.keyspace,
+		PostgresDB:              flags.postgresDB,
+		PostgresAdditionalRoles: []string{"pg_read_all_stats"},
+		Role:                    flags.role,
+		Replica:                 flags.replica,
 	})
 	if err != nil && strings.Contains(err.Error(), "permission denied for database") {
 		return nil, fmt.Errorf("%w (the reader role may not have CONNECT on database %q; retry with --role admin)", err, flags.postgresDB)
@@ -248,7 +253,7 @@ func newSession(ctx context.Context, ch *cmdutil.Helper, database, branch string
 	return sess, err
 }
 
-func runCheck(ctx context.Context, sess *sqlquery.Session, c check, database, branch string) (*CheckResult, error) {
+func runCheck(ctx context.Context, sess *sqlquery.Session, c check, organization, database, branch string) (*CheckResult, error) {
 	result := &CheckResult{Check: c.Name, Database: database, Branch: branch}
 
 	var impl *engineSQL
@@ -263,8 +268,8 @@ func runCheck(ctx context.Context, sess *sqlquery.Session, c check, database, br
 		if hint == "" {
 			hint = fmt.Sprintf("The %s check is not available for %s databases.", c.Name, sess.Engine())
 		}
-		result.Skipped = substituteNextSteps([]string{hint}, database, branch)[0]
-		result.NextSteps = substituteNextSteps(c.NextSteps, database, branch)
+		result.Skipped = substituteResourceNames(hint, database, branch)
+		result.NextSteps = formatNextSteps(c.NextSteps, organization, database, branch)
 		return result, nil
 	}
 
@@ -280,12 +285,13 @@ func runCheck(ctx context.Context, sess *sqlquery.Session, c check, database, br
 		}
 		if len(rows) == 0 {
 			msg := fmt.Sprintf("The %s check needs the %q extension, which is not installed.", c.Name, impl.RequiresExtension)
-			if steps := substituteNextSteps(c.NextSteps, database, branch); len(steps) > 0 {
+			steps := formatNextSteps(c.NextSteps, organization, database, branch)
+			if len(steps) > 0 {
 				msg += fmt.Sprintf(" PlanetScale Insights provides this analysis server-side, no extension needed: %s.", strings.Join(steps, "; "))
 			}
 			msg += fmt.Sprintf(" To run this check anyway, enable the extension with: CREATE EXTENSION %s;", impl.RequiresExtension)
 			result.Skipped = msg
-			result.NextSteps = substituteNextSteps(c.NextSteps, database, branch)
+			result.NextSteps = steps
 			return result, nil
 		}
 	}
@@ -298,7 +304,7 @@ func runCheck(ctx context.Context, sess *sqlquery.Session, c check, database, br
 	result.Columns = columns
 	result.Rows = rows
 	result.RowCount = len(rows)
-	result.NextSteps = substituteNextSteps(c.NextSteps, database, branch)
+	result.NextSteps = formatNextSteps(c.NextSteps, organization, database, branch)
 	return result, nil
 }
 
@@ -307,7 +313,7 @@ func printCheck(ch *cmdutil.Helper, c check, result *CheckResult) error {
 	case printer.JSON:
 		return ch.Printer.PrintJSON(result)
 	case printer.CSV:
-		return printCSV(ch, result)
+		return printCSV(ch.Printer.ResourceOutput(), result)
 	default:
 		printHumanTable(ch, c, result)
 		return nil
@@ -334,38 +340,45 @@ func printHumanTable(ch *cmdutil.Helper, c check, result *CheckResult) {
 	ch.Printer.Printf("%s", sb.String())
 }
 
-func printCSV(ch *cmdutil.Helper, result *CheckResult) error {
-	var sb strings.Builder
-	w := csv.NewWriter(&sb)
-	if err := w.Write(result.Columns); err != nil {
-		return err
-	}
-	for _, row := range result.Rows {
-		values := make([]string, 0, len(result.Columns))
-		for _, col := range result.Columns {
-			values = append(values, formatValue(row[col]))
-		}
-		if err := w.Write(values); err != nil {
+func printCSV(out io.Writer, result *CheckResult) error {
+	w := csv.NewWriter(out)
+	if result.Skipped != "" {
+		if err := w.Write([]string{"check", "database", "branch", "skipped", "next_steps"}); err != nil {
 			return err
+		}
+		if err := w.Write([]string{
+			result.Check,
+			result.Database,
+			result.Branch,
+			formatValue(result.Skipped),
+			strings.Join(result.NextSteps, "; "),
+		}); err != nil {
+			return err
+		}
+	} else {
+		if err := w.Write(result.Columns); err != nil {
+			return err
+		}
+		for _, row := range result.Rows {
+			values := make([]string, 0, len(result.Columns))
+			for _, col := range result.Columns {
+				values = append(values, formatValue(row[col]))
+			}
+			if err := w.Write(values); err != nil {
+				return err
+			}
 		}
 	}
 	w.Flush()
-	if err := w.Error(); err != nil {
-		return err
-	}
-	_, err := fmt.Fprint(ch.Printer.ResourceOutput(), sb.String())
-	return err
+	return w.Error()
 }
 
 func formatValue(v any) string {
 	if v == nil {
 		return ""
 	}
-	switch val := v.(type) {
-	case string:
-		// Keep multi-line SQL on one row.
-		return strings.Join(strings.Fields(val), " ")
-	default:
-		return fmt.Sprintf("%v", val)
+	if s, ok := v.(string); ok {
+		return strings.Join(strings.Fields(s), " ")
 	}
+	return fmt.Sprintf("%v", v)
 }

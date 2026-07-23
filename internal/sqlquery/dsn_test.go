@@ -19,13 +19,8 @@ func TestMySQLDSNEscapesShardTargets(t *testing.T) {
 		"mykeyspace/80-c0@replica",
 		"mykeyspace/-80@primary",
 	} {
-		cfg := gomysql.NewConfig()
-		cfg.User = "root"
-		cfg.Net = "tcp"
-		cfg.Addr = "127.0.0.1:3306"
-		cfg.DBName = dbName
-
-		parsed, err := gomysql.ParseDSN(cfg.FormatDSN())
+		dsn := mysqlDSN("127.0.0.1:3306", Options{Keyspace: dbName})
+		parsed, err := gomysql.ParseDSN(dsn)
 		c.Assert(err, qt.IsNil, qt.Commentf("dbname %q", dbName))
 		c.Assert(parsed.DBName, qt.Equals, dbName)
 	}

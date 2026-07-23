@@ -45,6 +45,10 @@ func TestCheckCatalog(t *testing.T) {
 				qt.Commentf("%s/%s: diagnostic SQL must bound its result set with LIMIT", chk.Name, engine))
 			c.Assert(strings.Count(impl.SQL, ";"), qt.Equals, 1,
 				qt.Commentf("%s/%s: diagnostic SQL must be a single statement", chk.Name, engine))
+			if chk.Name == "table-sizes" && engine == "postgres" {
+				c.Assert(strings.Count(impl.SQL, "pg_total_relation_size"), qt.Equals, 2)
+				c.Assert(strings.Contains(impl.SQL, "pg_table_size"), qt.IsFalse)
+			}
 		}
 
 		for _, step := range chk.NextSteps {
@@ -54,17 +58,17 @@ func TestCheckCatalog(t *testing.T) {
 	}
 }
 
-func TestSubstituteNextSteps(t *testing.T) {
+func TestFormatNextSteps(t *testing.T) {
 	c := qt.New(t)
 
-	steps := substituteNextSteps([]string{
+	steps := formatNextSteps([]string{
 		"pscale insights queries <database> <branch> --sort totalTime",
 		"pscale insights recommendations <database>",
-	}, "mydb", "main")
+	}, "myorg", "mydb", "main")
 
 	c.Assert(steps, qt.DeepEquals, []string{
-		"pscale insights queries mydb main --sort totalTime",
-		"pscale insights recommendations mydb",
+		"pscale insights queries mydb main --sort totalTime --org myorg --format json",
+		"pscale insights recommendations mydb --org myorg --format json",
 	})
 }
 

@@ -30,6 +30,8 @@ type Options struct {
 	Keyspace string
 	// PostgresDB is the PostgreSQL database name. Defaults to postgres.
 	PostgresDB string
+	// PostgresAdditionalRoles adds built-in roles to the ephemeral credential.
+	PostgresAdditionalRoles []string
 	// Role is reader, writer, readwriter, or admin (same as pscale shell --role).
 	Role string
 	// Replica routes reads to replicas when true (same as pscale shell --replica).
@@ -197,16 +199,10 @@ func openMySQL(ctx context.Context, ch *cmdutil.Helper, opts Options, role cmdut
 		errCh <- proxy.Serve(l, mysql.CachingSha2Password)
 	}()
 
-	// Build the DSN via Config so the database name is properly escaped:
-	// shard-targeted names like "keyspace/-80@replica" contain characters
-	// that are invalid in a hand-assembled DSN.
-	dsnCfg := gomysql.NewConfig()
-	dsnCfg.User = "root"
-	dsnCfg.Net = "tcp"
-	dsnCfg.Addr = l.Addr().String()
-	dsnCfg.DBName = mysqlDSNDatabase(opts)
+	// Config.FormatDSN escapes shard targets such as keyspace/-80@replica.
+	dsn := mysqlDSN(l.Addr().String(), opts)
 
-	db, err := sql.Open("mysql", dsnCfg.FormatDSN())
+	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		proxy.Close()
 		l.Close()
@@ -224,6 +220,15 @@ func openMySQL(ctx context.Context, ch *cmdutil.Helper, opts Options, role cmdut
 		cleanupPassword()
 	}
 	return db, cleanup, nil
+}
+
+func mysqlDSN(addr string, opts Options) string {
+	dsnCfg := gomysql.NewConfig()
+	dsnCfg.User = "root"
+	dsnCfg.Net = "tcp"
+	dsnCfg.Addr = addr
+	dsnCfg.DBName = mysqlDSNDatabase(opts)
+	return dsnCfg.FormatDSN()
 }
 
 // mysqlDSNDatabase picks the MySQL database name in the DSN, matching pscale shell:
@@ -257,6 +262,7 @@ func openPostgres(ctx context.Context, ch *cmdutil.Helper, opts Options, pgDB st
 	}
 
 	inheritedRoles, successor := cmdutil.PostgresInheritedRoles(role)
+	inheritedRoles = append(inheritedRoles, opts.PostgresAdditionalRoles...)
 
 	pgRole, err := roleutil.New(ctx, client, roleutil.Options{
 		Organization:   opts.Organization,

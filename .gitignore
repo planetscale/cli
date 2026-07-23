@@ -20,4 +20,3 @@ vendor/
 
 # Output of running go build cmd/pscale/main.go
 main
-.DS_Store
