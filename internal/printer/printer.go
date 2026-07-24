@@ -192,6 +192,16 @@ func (p *Printer) SetResourceOutput(out io.Writer) {
 	p.resourceOut = out
 }
 
+// ResourceOutput returns the writer PrintResource writes to, for commands that
+// render resources themselves (e.g. dynamic column sets that can't use struct
+// tags).
+func (p *Printer) ResourceOutput() io.Writer {
+	if p.resourceOut != nil {
+		return p.resourceOut
+	}
+	return os.Stdout
+}
+
 // PrintResource prints the given resource in the format it was specified.
 func (p *Printer) PrintResource(v interface{}) error {
 	if p.format == nil {

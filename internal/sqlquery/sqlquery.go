@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql"
+	gomysql "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
 
 	"github.com/planetscale/cli/internal/cmdutil"
@@ -30,6 +30,8 @@ type Options struct {
 	Keyspace string
 	// PostgresDB is the PostgreSQL database name. Defaults to postgres.
 	PostgresDB string
+	// PostgresAdditionalRoles adds built-in roles to the ephemeral credential.
+	PostgresAdditionalRoles []string
 	// Role is reader, writer, readwriter, or admin (same as pscale shell --role).
 	Role string
 	// Replica routes reads to replicas when true (same as pscale shell --replica).
@@ -142,9 +144,22 @@ func Execute(ctx context.Context, ch *cmdutil.Helper, opts Options) (*Result, er
 }
 
 func queryMySQL(ctx context.Context, ch *cmdutil.Helper, opts Options, role cmdutil.PasswordRole) (*queryOutcome, error) {
-	client, err := ch.Client()
+	db, cleanup, err := openMySQL(ctx, ch, opts, role)
 	if err != nil {
 		return nil, err
+	}
+	defer cleanup()
+
+	return runQuery(ctx, db, opts.Query)
+}
+
+// openMySQL mints an ephemeral branch password, starts an in-process proxy,
+// and opens a connection through it. The returned cleanup closes the
+// connection and proxy and deletes the password.
+func openMySQL(ctx context.Context, ch *cmdutil.Helper, opts Options, role cmdutil.PasswordRole) (*sql.DB, func(), error) {
+	client, err := ch.Client()
+	if err != nil {
+		return nil, nil, err
 	}
 
 	pw, err := passwordutil.New(ctx, client, passwordutil.Options{
@@ -157,13 +172,13 @@ func queryMySQL(ctx context.Context, ch *cmdutil.Helper, opts Options, role cmdu
 		Replica:      opts.Replica,
 	})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	defer func() {
+	cleanupPassword := func() {
 		cleanupCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		_ = pw.Cleanup(cleanupCtx)
-	}()
+	}
 
 	proxy := proxyutil.New(proxyutil.Config{
 		Logger:       cmdutil.NewZapLogger(ch.Debug()),
@@ -171,36 +186,49 @@ func queryMySQL(ctx context.Context, ch *cmdutil.Helper, opts Options, role cmdu
 		Username:     pw.Password.Username,
 		Password:     pw.Password.PlainText,
 	})
-	defer proxy.Close()
 
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
-		return nil, err
+		proxy.Close()
+		cleanupPassword()
+		return nil, nil, err
 	}
-	defer l.Close()
 
 	errCh := make(chan error, 1)
 	go func() {
 		errCh <- proxy.Serve(l, mysql.CachingSha2Password)
 	}()
 
-	db, err := sql.Open("mysql", fmt.Sprintf("root@tcp(%s)/%s", l.Addr().String(), mysqlDSNDatabase(opts)))
+	// Config.FormatDSN escapes shard targets such as keyspace/-80@replica.
+	dsn := mysqlDSN(l.Addr().String(), opts)
+
+	db, err := sql.Open("mysql", dsn)
 	if err != nil {
-		return nil, err
+		proxy.Close()
+		l.Close()
+		<-errCh
+		cleanupPassword()
+		return nil, nil, err
 	}
-	defer db.Close()
 	db.SetConnMaxLifetime(30 * time.Second)
 
-	outcome, err := runQuery(ctx, db, opts.Query)
-	if err != nil {
-		return nil, err
+	cleanup := func() {
+		db.Close()
+		proxy.Close()
+		l.Close()
+		<-errCh
+		cleanupPassword()
 	}
+	return db, cleanup, nil
+}
 
-	proxy.Close()
-	l.Close()
-	<-errCh
-
-	return outcome, nil
+func mysqlDSN(addr string, opts Options) string {
+	dsnCfg := gomysql.NewConfig()
+	dsnCfg.User = "root"
+	dsnCfg.Net = "tcp"
+	dsnCfg.Addr = addr
+	dsnCfg.DBName = mysqlDSNDatabase(opts)
+	return dsnCfg.FormatDSN()
 }
 
 // mysqlDSNDatabase picks the MySQL database name in the DSN, matching pscale shell:
@@ -216,12 +244,25 @@ func mysqlDSNDatabase(opts Options) string {
 }
 
 func queryPostgres(ctx context.Context, ch *cmdutil.Helper, opts Options, pgDB string, role cmdutil.PasswordRole) (*queryOutcome, error) {
-	client, err := ch.Client()
+	db, cleanup, err := openPostgres(ctx, ch, opts, pgDB, role)
 	if err != nil {
 		return nil, err
 	}
+	defer cleanup()
+
+	return runQuery(ctx, db, opts.Query)
+}
+
+// openPostgres mints an ephemeral role and opens a direct connection to the
+// branch. The returned cleanup closes the connection and deletes the role.
+func openPostgres(ctx context.Context, ch *cmdutil.Helper, opts Options, pgDB string, role cmdutil.PasswordRole) (*sql.DB, func(), error) {
+	client, err := ch.Client()
+	if err != nil {
+		return nil, nil, err
+	}
 
 	inheritedRoles, successor := cmdutil.PostgresInheritedRoles(role)
+	inheritedRoles = append(inheritedRoles, opts.PostgresAdditionalRoles...)
 
 	pgRole, err := roleutil.New(ctx, client, roleutil.Options{
 		Organization:   opts.Organization,
@@ -232,13 +273,13 @@ func queryPostgres(ctx context.Context, ch *cmdutil.Helper, opts Options, pgDB s
 		InheritedRoles: inheritedRoles,
 	})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	defer func() {
+	cleanupRole := func() {
 		cleanupCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		_ = pgRole.Cleanup(cleanupCtx, successor)
-	}()
+	}
 
 	username := pgRole.Role.Username
 	if opts.Replica {
@@ -256,16 +297,22 @@ func queryPostgres(ctx context.Context, ch *cmdutil.Helper, opts Options, pgDB s
 
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
-		return nil, err
+		cleanupRole()
+		return nil, nil, err
 	}
-	defer db.Close()
 	db.SetConnMaxLifetime(30 * time.Second)
 
 	if err := db.PingContext(ctx); err != nil {
-		return nil, err
+		db.Close()
+		cleanupRole()
+		return nil, nil, err
 	}
 
-	return runQuery(ctx, db, opts.Query)
+	cleanup := func() {
+		db.Close()
+		cleanupRole()
+	}
+	return db, cleanup, nil
 }
 
 var readQueryPrefixes = []string{"SELECT", "SHOW", "DESCRIBE", "DESC", "EXPLAIN", "TABLE"}

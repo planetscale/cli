@@ -162,7 +162,7 @@ pscale sql <database> <branch> --org <org> --format json --keyspace <keyspace> -
 | `--role` | `reader` (default), `writer`, `readwriter`, `admin` — same names as `pscale shell` |
 | `--replica` | Route reads to replicas |
 | `--dbname` | PostgreSQL database name (default `postgres`) |
-| `--keyspace` | MySQL keyspace (default `@primary`) |
+| `--keyspace` | MySQL keyspace (default `@primary`); may include a shard and tablet type: `mykeyspace/-80`, `mykeyspace/-80@replica` |
 | `--force` | Allow destructive SQL after explicit user approval |
 
 **`--role` by engine** (same as `pscale shell`):
@@ -196,6 +196,33 @@ MySQL may return synthetic column names (e.g. `:vtg1 /* INT64 */`). PostgreSQL m
 Error: one JSON object on stdout with `status: "error"`, `error`, `issues`, and `next_steps` (see JSON errors above).
 
 Destructive SQL without `--force`: `status: "action_required"`, `query_kind: "destructive"`, `issues`, and `next_steps` (includes `--force` retry command).
+
+## Diagnostics: insights + inspect
+
+Two complementary read-only surfaces. When diagnosing database health or performance, **check both** — they see different things.
+
+**`pscale insights`** — server-side analysis computed from production traffic (works even when you can't or don't want to connect to the database):
+
+```bash
+pscale insights queries <database> <branch> --org <org> --format json --sort totalTime   # top queries; sorts: totalTime, count, p99Latency, rowsRead, rowsReadPerReturned, errorCount, ...
+pscale insights errors <database> <branch> --org <org> --format json                     # failing queries with error messages
+pscale insights anomalies <database> <branch> --org <org> --format json                  # detected resource anomalies (CPU, memory, IOPS, rows)
+pscale insights recommendations <database> --org <org> --format json                     # schema recommendations with ready-to-apply DDL
+```
+
+**`pscale inspect`** — live, point-in-time checks run over a direct connection (same credentials model as `pscale sql`, always read-only):
+
+```bash
+pscale inspect all <database> <branch> --org <org> --format json    # every applicable check, one report
+pscale inspect <check> <database> <branch> --org <org> --format json
+```
+
+Checks: `table-sizes`, `index-sizes`, `unused-indexes`, `redundant-indexes`, `seq-scans`, `long-running-queries`, `locks`, `outliers`, `calls`, `bloat`, `vacuum-stats`, `replication-slots`, `subscriptions`. Checks adapt per engine; ones that don't apply explain the alternative. JSON results include `next_steps` pointing at the matching `insights` command — follow them.
+
+Caveats:
+- Statistics are since last server restart and per-connection-target: on sharded Vitess databases they reflect a single shard's MySQL instance. Use `--keyspace` to pick a keyspace, or pin an exact shard with `--keyspace 'mykeyspace/-80'` (enumerate with `pscale sql <database> <branch> --org <org> --format json --query "SHOW VITESS_SHARDS"`; rows are `keyspace/shard`). Databases can have hundreds of shards — inspect one shard at a time rather than fanning out. On PostgreSQL, stats are scoped to one database (use `--dbname`; if CONNECT is denied, retry with `--role admin`).
+- `outliers`/`calls` need `pg_stat_statements` on PostgreSQL; if missing, use `pscale insights queries` instead (no extension needed).
+- Rule of thumb: start with `insights` (traffic-aware, historical), use `inspect` for live state (locks, in-flight queries) and physical layout (sizes, bloat, index usage).
 
 ## Postgres branch changes (size, replicas, parameters)
 
