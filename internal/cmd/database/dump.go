@@ -39,6 +39,7 @@ type dumpFlags struct {
 	threads      int
 	schemaOnly   bool
 	outputFormat string
+	hexBlob      bool
 }
 
 // DumpCmd encapsulates the commands for dumping a database
@@ -73,7 +74,7 @@ func DumpCmd(ch *cmdutil.Helper) *cobra.Command {
 		"Output format for data: sql (for MySQL, default), json, or csv.")
 	cmd.PersistentFlags().StringArrayVar(&f.columns, "columns", nil,
 		"Columns to include for specific tables (format: 'table:col1,col2'). Can be specified multiple times for different tables.")
-
+	cmd.PersistentFlags().BoolVar(&f.hexBlob, "hex-blob", false, "Hex-encodes binary columns in SQL dumps")
 	return cmd
 }
 
@@ -251,6 +252,7 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 	cfg.Outdir = dir
 	cfg.SchemaOnly = flags.schemaOnly
 	cfg.OutputFormat = flags.outputFormat
+	cfg.HexBlob = flags.hexBlob
 
 	if flags.shard != "" {
 		if flags.replica {
