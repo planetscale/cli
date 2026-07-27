@@ -23,18 +23,18 @@ type StorageConfig struct {
 
 // CreateDatabaseRequest encapsulates the request for creating a new database.
 type CreateDatabaseRequest struct {
-	Organization          string
-	Name                  string         `json:"name"`
-	Notes                 string         `json:"notes,omitempty"`
-	Region                string         `json:"region,omitempty"`
-	ClusterSize           string         `json:"cluster_size,omitempty"`
-	Kind                  DatabaseEngine `json:"kind,omitempty"`
-	Replicas              *int           `json:"replicas,omitempty"`
-	MajorVersion          string         `json:"major_version,omitempty"`
-	Storage               *StorageConfig `json:"storage,omitempty"`
-	CloudflareAccountID   string         `json:"cloudflare_account_id,omitempty"`
-	CloudflareTimestamp   string         `json:"cloudflare_timestamp,omitempty"`
-	CloudflareSignature   string         `json:"cloudflare_signature,omitempty"`
+	Organization        string
+	Name                string         `json:"name"`
+	Notes               string         `json:"notes,omitempty"`
+	Region              string         `json:"region,omitempty"`
+	ClusterSize         string         `json:"cluster_size,omitempty"`
+	Kind                DatabaseEngine `json:"kind,omitempty"`
+	Replicas            *int           `json:"replicas,omitempty"`
+	MajorVersion        string         `json:"major_version,omitempty"`
+	Storage             *StorageConfig `json:"storage,omitempty"`
+	CloudflareAccountID string         `json:"cloudflare_account_id,omitempty"`
+	CloudflareTimestamp string         `json:"cloudflare_timestamp,omitempty"`
+	CloudflareSignature string         `json:"cloudflare_signature,omitempty"`
 }
 
 // DatabaseRequest encapsulates the request for getting a single database.

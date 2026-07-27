@@ -19,16 +19,16 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	createReq := &ps.CreateDatabaseRequest{}
 
 	var flags struct {
-		clusterSize           string
-		engine                string
-		wait                  bool
-		replicas              *int
-		majorVersion          string
-		minStorage            int64
-		maxStorage            int64
-		cloudflareAccountID   string
-		cloudflareTimestamp   string
-		cloudflareSignature   string
+		clusterSize         string
+		engine              string
+		wait                bool
+		replicas            *int
+		majorVersion        string
+		minStorage          int64
+		maxStorage          int64
+		cloudflareAccountID string
+		cloudflareTimestamp string
+		cloudflareSignature string
 	}
 
 	cmd := &cobra.Command{
