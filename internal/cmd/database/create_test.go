@@ -378,3 +378,101 @@ func TestDatabase_CreateCmdPostgresWithMajorVersion(t *testing.T) {
 	c.Assert(svc.CreateFnInvoked, qt.IsTrue)
 	c.Assert(buf.String(), qt.JSONEquals, res)
 }
+
+func TestDatabase_CreateCmdCloudflareBilling(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	db := "planetscale"
+
+	res := &ps.Database{Name: "foo"}
+
+	svc := &mock.DatabaseService{
+		CreateFn: func(ctx context.Context, req *ps.CreateDatabaseRequest) (*ps.Database, error) {
+			c.Assert(req.Organization, qt.Equals, org)
+			c.Assert(req.Name, qt.Equals, db)
+			c.Assert(req.CloudflareAccountID, qt.Equals, "cf_account_123")
+			c.Assert(req.CloudflareTimestamp, qt.Equals, "1710000000")
+			c.Assert(req.CloudflareSignature, qt.Equals, "abc123sig")
+
+			return res, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: org,
+		},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{
+				Databases: svc,
+				Organizations: &mock.OrganizationsService{
+					GetFn: func(ctx context.Context, request *ps.GetOrganizationRequest) (*ps.Organization, error) {
+						return &ps.Organization{
+							RemainingFreeDatabases: 1,
+							Name:                   request.Organization,
+						}, nil
+					},
+				},
+			}, nil
+		},
+	}
+
+	cmd := CreateCmd(ch)
+	cmd.SetArgs([]string{
+		db,
+		"--region", "us-east",
+		"--cloudflare-account-id", "cf_account_123",
+		"--cloudflare-timestamp", "1710000000",
+		"--cloudflare-signature", "abc123sig",
+	})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.CreateFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.JSONEquals, res)
+}
+
+func TestDatabase_CreateCmdCloudflareBillingIncomplete(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	db := "planetscale"
+
+	svc := &mock.DatabaseService{
+		CreateFn: func(ctx context.Context, req *ps.CreateDatabaseRequest) (*ps.Database, error) {
+			c.Fatalf("Create should not be called with incomplete Cloudflare flags")
+			return nil, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: org,
+		},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{
+				Databases: svc,
+			}, nil
+		},
+	}
+
+	cmd := CreateCmd(ch)
+	cmd.SetArgs([]string{db, "--cloudflare-account-id", "cf_account_123"})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.ErrorMatches, ".*cloudflare-account-id, --cloudflare-timestamp, and --cloudflare-signature are all required.*")
+	c.Assert(svc.CreateFnInvoked, qt.IsFalse)
+}
