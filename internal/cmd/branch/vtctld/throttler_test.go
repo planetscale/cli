@@ -171,17 +171,27 @@ func TestThrottlerUpdateConfig_DisableOmitsThreshold(t *testing.T) {
 	c.Assert(svc.UpdateThrottlerConfigFnInvoked, qt.IsTrue)
 }
 
-func TestThrottlerUpdateConfig_RequiresMutation(t *testing.T) {
+func TestThrottlerUpdateConfig_KeyspaceOnlyAllowed(t *testing.T) {
 	c := qt.New(t)
 
-	svc := &mock.VtctldService{}
+	svc := &mock.VtctldService{
+		UpdateThrottlerConfigFn: func(ctx context.Context, req *ps.VtctldUpdateThrottlerConfigRequest) (json.RawMessage, error) {
+			c.Assert(req.Keyspace, qt.Equals, "commerce")
+			c.Assert(req.Enabled, qt.IsNil)
+			c.Assert(req.Threshold, qt.IsNil)
+			c.Assert(req.Apps, qt.HasLen, 0)
+			c.Assert(req.UnthrottleApps, qt.HasLen, 0)
+			c.Assert(req.AppCheckedMetrics, qt.IsNil)
+			return json.RawMessage(`{}`), nil
+		},
+	}
 	ch, _ := newThrottlerTestHelper("my-org", svc)
 
 	cmd := ThrottlerUpdateConfigCmd(ch)
 	cmd.SetArgs([]string{"my-db", "my-branch", "--keyspace", "commerce"})
 	err := cmd.Execute()
-	c.Assert(err, qt.IsNotNil)
-	c.Assert(svc.UpdateThrottlerConfigFnInvoked, qt.IsFalse)
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.UpdateThrottlerConfigFnInvoked, qt.IsTrue)
 }
 
 func TestThrottlerUpdateConfig_ThrottleAppWithMetrics(t *testing.T) {

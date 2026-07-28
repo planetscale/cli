@@ -142,46 +142,30 @@ func ThrottlerCheckCmd(ch *cmdutil.Helper) *cobra.Command {
 // keyspace.
 func ThrottlerUpdateConfigCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
-		keyspace             string
-		enabled              bool
-		threshold            float64
-		throttleApp          string
-		throttleAppRatio     float64
-		throttleAppDuration  time.Duration
-		unthrottleApp        string
-		appName              string
-		appMetrics           []string
+		keyspace            string
+		enabled             bool
+		threshold           float64
+		throttleApp         string
+		throttleAppRatio    float64
+		throttleAppDuration time.Duration
+		unthrottleApp       string
+		appName             string
+		appMetrics          []string
 	}
 
 	cmd := &cobra.Command{
 		Use:   "update-config <database> <branch>",
 		Short: "Update the throttler configuration for a keyspace",
 		Long: "Update the tablet throttler configuration for a keyspace. " +
-			"Omit --enabled to leave the keyspace enable state unchanged (for " +
-			"example when only throttling or unthrottling an app). " +
-			"--throttle-app and --unthrottle-app are mutually exclusive. " +
+			"Omit --enabled to leave the keyspace enable state unchanged. " +
+			"Flag behavior mirrors vtctldclient UpdateThrottlerConfig: " +
+			"--throttle-app and --unthrottle-app are mutually exclusive; " +
 			"--app-name and --app-metrics are required together.",
 		Args: cmdutil.RequiredArgs("database", "branch"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			if flags.throttleApp != "" && flags.unthrottleApp != "" {
-				return fmt.Errorf("--throttle-app and --unthrottle-app are mutually exclusive")
-			}
-			appNameSet := cmd.Flags().Changed("app-name")
-			appMetricsSet := cmd.Flags().Changed("app-metrics")
-			if appNameSet != appMetricsSet {
-				return fmt.Errorf("--app-name and --app-metrics are required together")
-			}
-			if appNameSet && flags.appName == "" {
+			// Mirrors vtctldclient validateUpdateThrottlerConfig.
+			if cmd.Flags().Changed("app-name") && flags.appName == "" {
 				return fmt.Errorf("--app-name must not be empty")
-			}
-
-			hasMutation := cmd.Flags().Changed("enabled") ||
-				cmd.Flags().Changed("threshold") ||
-				flags.throttleApp != "" ||
-				flags.unthrottleApp != "" ||
-				appNameSet
-			if !hasMutation {
-				return fmt.Errorf("at least one of --enabled, --threshold, --throttle-app, --unthrottle-app, or --app-name/--app-metrics is required")
 			}
 			return nil
 		},
@@ -244,12 +228,14 @@ func ThrottlerUpdateConfigCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().BoolVar(&flags.enabled, "enabled", false, "Enable (true) or disable (false) the throttler for the keyspace. Omit to leave unchanged.")
 	cmd.Flags().Float64Var(&flags.threshold, "threshold", 0, "Replication lag threshold in seconds for the default check")
 	cmd.Flags().StringVar(&flags.throttleApp, "throttle-app", "", "App name to throttle (e.g. \"rowstreamer\")")
-	cmd.Flags().Float64Var(&flags.throttleAppRatio, "throttle-app-ratio", 0.5, "Ratio to throttle the app specified by --throttle-app (0.00-1.00)")
-	cmd.Flags().DurationVar(&flags.throttleAppDuration, "throttle-app-duration", 96*time.Hour, "Duration after which the --throttle-app rule expires")
+	cmd.Flags().Float64Var(&flags.throttleAppRatio, "throttle-app-ratio", 1.0, "Ratio to throttle the app specified by --throttle-app (0.00-1.00)")
+	cmd.Flags().DurationVar(&flags.throttleAppDuration, "throttle-app-duration", time.Hour, "Duration after which the --throttle-app rule expires")
 	cmd.Flags().StringVar(&flags.unthrottleApp, "unthrottle-app", "", "App name whose throttled-app rule should be removed")
 	cmd.Flags().StringVar(&flags.appName, "app-name", "", "App name for which to assign checked metrics (requires --app-metrics)")
 	cmd.Flags().StringSliceVar(&flags.appMetrics, "app-metrics", nil, "Metrics to check for --app-name (e.g. lag,loadavg)")
 	cmd.MarkFlagRequired("keyspace") // nolint:errcheck
+	cmd.MarkFlagsMutuallyExclusive("unthrottle-app", "throttle-app")
+	cmd.MarkFlagsRequiredTogether("app-name", "app-metrics")
 
 	return cmd
 }
