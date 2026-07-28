@@ -1,5 +1,7 @@
 # PlanetScale CLI [![Build status](https://github.com/planetscale/cli/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/planetscale/cli/actions/workflows/ci.yml)
 
+[![MCP Toplist](https://mcptoplist.com/badge/mcp.so%2Fplanetscale-mcp-server%2FPlanetScale.svg)](https://mcptoplist.com/server/mcp.so%2Fplanetscale-mcp-server%2FPlanetScale)
+
 PlanetScale is more than a database and our CLI is more than a jumble of commands. The `pscale` command line tool brings branches, deploy requests, and other PlanetScale concepts to your fingertips.
 
 ![PlanetScale CLI](https://user-images.githubusercontent.com/6104/191803574-be63da54-d255-4f5a-ab2d-2b49cdf7eb12.png)
