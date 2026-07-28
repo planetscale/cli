@@ -164,14 +164,19 @@ type VtctldUpdateThrottlerConfigRequest struct {
 
 	Keyspace string `json:"keyspace"`
 	// Enabled controls whether the tablet throttler is enabled for the keyspace.
-	// It is required: the API has no tri-state, so omitting it would disable the
-	// throttler.
-	Enabled bool `json:"enabled"`
-	// Threshold is the threshold for the default throttler check (replication lag
-	// in seconds). It must be >= 0; the server defaults to 5.0 when omitted.
+	// Omit to leave the enable state unchanged.
+	Enabled *bool `json:"enabled,omitempty"`
+	// Threshold is the threshold for the default throttler check (replication
+	// lag in seconds). It must be >= 0. Omit to leave the existing threshold
+	// unchanged.
 	Threshold *float64 `json:"threshold,omitempty"`
 	// Apps configures zero or more per-app throttling rules.
 	Apps []VtctldThrottledAppConfig `json:"apps,omitempty"`
+	// UnthrottleApps names apps whose throttled-app rules should be removed.
+	UnthrottleApps []string `json:"unthrottle_apps,omitempty"`
+	// AppCheckedMetrics assigns metrics to check per app name
+	// (e.g. {"rowstreamer": ["lag", "loadavg"]}).
+	AppCheckedMetrics map[string][]string `json:"app_checked_metrics,omitempty"`
 }
 
 type vtctldService struct {

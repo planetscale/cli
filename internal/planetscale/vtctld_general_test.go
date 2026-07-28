@@ -520,7 +520,7 @@ func TestVtctld_UpdateThrottlerConfig(t *testing.T) {
 		Database:     "my-db",
 		Branch:       "my-branch",
 		Keyspace:     "commerce",
-		Enabled:      true,
+		Enabled:      boolPtr(true),
 		Threshold:    float64Ptr(2.5),
 		Apps: []VtctldThrottledAppConfig{
 			{Name: "online-ddl", Ratio: float64Ptr(0.5)},
@@ -562,7 +562,7 @@ func TestVtctld_UpdateThrottlerConfig_DisableSendsEnabledFalse(t *testing.T) {
 		Database:     "my-db",
 		Branch:       "my-branch",
 		Keyspace:     "commerce",
-		Enabled:      false,
+		Enabled:      boolPtr(false),
 	})
 	c.Assert(err, qt.IsNil)
 }

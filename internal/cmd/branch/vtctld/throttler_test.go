@@ -129,7 +129,8 @@ func TestThrottlerUpdateConfig(t *testing.T) {
 		UpdateThrottlerConfigFn: func(ctx context.Context, req *ps.VtctldUpdateThrottlerConfigRequest) (json.RawMessage, error) {
 			c.Assert(req.Organization, qt.Equals, org)
 			c.Assert(req.Keyspace, qt.Equals, "commerce")
-			c.Assert(req.Enabled, qt.IsTrue)
+			c.Assert(req.Enabled, qt.IsNotNil)
+			c.Assert(*req.Enabled, qt.IsTrue)
 			c.Assert(req.Threshold, qt.IsNotNil)
 			c.Assert(*req.Threshold, qt.Equals, 2.5)
 			return json.RawMessage(`{}`), nil
@@ -154,8 +155,8 @@ func TestThrottlerUpdateConfig_DisableOmitsThreshold(t *testing.T) {
 
 	svc := &mock.VtctldService{
 		UpdateThrottlerConfigFn: func(ctx context.Context, req *ps.VtctldUpdateThrottlerConfigRequest) (json.RawMessage, error) {
-			c.Assert(req.Enabled, qt.IsFalse)
-			// Threshold stays nil when not provided so the server keeps its default.
+			c.Assert(req.Enabled, qt.IsNotNil)
+			c.Assert(*req.Enabled, qt.IsFalse)
 			c.Assert(req.Threshold, qt.IsNil)
 			return json.RawMessage(`{}`), nil
 		},
@@ -170,7 +171,7 @@ func TestThrottlerUpdateConfig_DisableOmitsThreshold(t *testing.T) {
 	c.Assert(svc.UpdateThrottlerConfigFnInvoked, qt.IsTrue)
 }
 
-func TestThrottlerUpdateConfig_RequiresEnabled(t *testing.T) {
+func TestThrottlerUpdateConfig_RequiresMutation(t *testing.T) {
 	c := qt.New(t)
 
 	svc := &mock.VtctldService{}
@@ -181,4 +182,61 @@ func TestThrottlerUpdateConfig_RequiresEnabled(t *testing.T) {
 	err := cmd.Execute()
 	c.Assert(err, qt.IsNotNil)
 	c.Assert(svc.UpdateThrottlerConfigFnInvoked, qt.IsFalse)
+}
+
+func TestThrottlerUpdateConfig_ThrottleAppWithMetrics(t *testing.T) {
+	c := qt.New(t)
+
+	svc := &mock.VtctldService{
+		UpdateThrottlerConfigFn: func(ctx context.Context, req *ps.VtctldUpdateThrottlerConfigRequest) (json.RawMessage, error) {
+			c.Assert(req.Enabled, qt.IsNil)
+			c.Assert(len(req.Apps), qt.Equals, 1)
+			c.Assert(req.Apps[0].Name, qt.Equals, "rowstreamer")
+			c.Assert(req.Apps[0].Ratio, qt.IsNotNil)
+			c.Assert(*req.Apps[0].Ratio, qt.Equals, 0.5)
+			c.Assert(req.Apps[0].ExpireAt, qt.Not(qt.Equals), "")
+			c.Assert(req.AppCheckedMetrics, qt.DeepEquals, map[string][]string{
+				"rowstreamer": {"lag", "loadavg"},
+			})
+			return json.RawMessage(`{}`), nil
+		},
+	}
+
+	ch, _ := newThrottlerTestHelper("my-org", svc)
+
+	cmd := ThrottlerUpdateConfigCmd(ch)
+	cmd.SetArgs([]string{"my-db", "my-branch",
+		"--keyspace", "commerce",
+		"--throttle-app", "rowstreamer",
+		"--throttle-app-ratio", "0.5",
+		"--throttle-app-duration", "96h",
+		"--app-name", "rowstreamer",
+		"--app-metrics", "lag,loadavg",
+	})
+	err := cmd.Execute()
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.UpdateThrottlerConfigFnInvoked, qt.IsTrue)
+}
+
+func TestThrottlerUpdateConfig_UnthrottleApp(t *testing.T) {
+	c := qt.New(t)
+
+	svc := &mock.VtctldService{
+		UpdateThrottlerConfigFn: func(ctx context.Context, req *ps.VtctldUpdateThrottlerConfigRequest) (json.RawMessage, error) {
+			c.Assert(req.Enabled, qt.IsNil)
+			c.Assert(req.UnthrottleApps, qt.DeepEquals, []string{"rowstreamer"})
+			return json.RawMessage(`{}`), nil
+		},
+	}
+
+	ch, _ := newThrottlerTestHelper("my-org", svc)
+
+	cmd := ThrottlerUpdateConfigCmd(ch)
+	cmd.SetArgs([]string{"my-db", "my-branch",
+		"--keyspace", "commerce",
+		"--unthrottle-app", "rowstreamer",
+	})
+	err := cmd.Execute()
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.UpdateThrottlerConfigFnInvoked, qt.IsTrue)
 }
