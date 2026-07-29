@@ -493,11 +493,10 @@ func actionIDName(op string) string {
 
 func (s *Client) formatHTTPError(op string, status int, body []byte) error {
 	if status == http.StatusNotFound {
-		hint := fmt.Sprintf(
-			"verify --org=%q database=%q branch=%q exists and live connections are enabled",
-			s.cfg.Organization, s.cfg.Database, s.cfg.Branch,
+		return fmt.Errorf(
+			"branch %s does not exist in database %s (organization: %s), or live connections are not enabled for it",
+			s.cfg.Branch, s.cfg.Database, s.cfg.Organization,
 		)
-		return fmt.Errorf("%s: not found (%s)", op, hint)
 	}
 	if status == http.StatusTooManyRequests {
 		return fmt.Errorf("%s: rate limited, please retry in a moment", op)
