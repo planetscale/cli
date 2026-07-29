@@ -50,6 +50,7 @@ type Client struct {
 	baseURL *url.URL
 
 	AuditLogs             AuditLogsService
+	AuthAttemptExports    AuthAttemptExportsService
 	Backups               BackupsService
 	BranchInfrastructure  BranchInfrastructureService
 	D1ImportNotifications D1ImportNotificationsService
@@ -318,6 +319,7 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 	c.client.CheckRedirect = makeSameHostCheckRedirect(c.baseURL.Hostname())
 
 	c.AuditLogs = &auditlogsService{client: c}
+	c.AuthAttemptExports = &authAttemptExportsService{client: c}
 	c.Backups = &backupsService{client: c}
 	c.BranchInfrastructure = &branchInfrastructureService{client: c}
 	c.D1ImportNotifications = &d1ImportNotificationsService{client: c}
@@ -352,14 +354,18 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 
 // do makes an HTTP request and populates the given struct v from the response.
 func (c *Client) do(ctx context.Context, req *http.Request, v interface{}) error {
-	req = req.WithContext(ctx)
-	res, err := c.client.Do(req)
+	_, err := c.doWithHeaders(ctx, req, v)
+	return err
+}
+
+func (c *Client) doWithHeaders(ctx context.Context, req *http.Request, v interface{}) (http.Header, error) {
+	res, err := c.client.Do(req.WithContext(ctx))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer res.Body.Close()
 
-	return c.handleResponse(ctx, res, v)
+	return res.Header, c.handleResponse(ctx, res, v)
 }
 
 // handleResponse makes an HTTP request and populates the given struct v from
