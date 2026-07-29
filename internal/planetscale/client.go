@@ -462,8 +462,9 @@ func (c *Client) handleResponse(ctx context.Context, res *http.Response, v inter
 		}
 
 		return &Error{
-			msg:  errorRes.Message,
-			Code: errCode,
+			msg:     errorRes.Message,
+			Code:    errCode,
+			APICode: errorRes.Code,
 		}
 	}
 
@@ -660,6 +661,10 @@ type Error struct {
 
 	// Code specifies the error code. i.e; NotFound, RateLimited, etc...
 	Code ErrorCode
+
+	// APICode is the raw code from the API error JSON body (e.g.
+	// "schema_mutation_blocked"). Empty when the response had no code field.
+	APICode string
 
 	// Meta contains additional information depending on the error code. As an
 	// example, if the Code is "ErrResponseMalformed", the map will be: ["body"]

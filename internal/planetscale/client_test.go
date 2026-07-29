@@ -71,6 +71,19 @@ func TestDo(t *testing.T) {
 			},
 		},
 		{
+			desc:       "preserves raw API code for schema_mutation_blocked",
+			statusCode: http.StatusUnprocessableEntity,
+			method:     http.MethodPost,
+			response: `{
+				"code": "schema_mutation_blocked",
+				"message": "MoveTables create in progress"
+			}`,
+			expectedError: &Error{
+				msg:     "MoveTables create in progress",
+				APICode: "schema_mutation_blocked",
+			},
+		},
+		{
 			desc:       "returns ErrorResponse for 5xx errors",
 			statusCode: http.StatusInternalServerError,
 			method:     http.MethodGet,
@@ -165,6 +178,11 @@ func TestDo(t *testing.T) {
 			if err != nil {
 				if tt.expectedError != nil {
 					c.Assert(tt.expectedError.Error(), qt.Equals, err.Error())
+					if want, ok := tt.expectedError.(*Error); ok && want.APICode != "" {
+						got, ok := err.(*Error)
+						c.Assert(ok, qt.IsTrue)
+						c.Assert(got.APICode, qt.Equals, want.APICode)
+					}
 				}
 			}
 
