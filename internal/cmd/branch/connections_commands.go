@@ -130,22 +130,7 @@ the matching Postgres connection.`,
 }
 
 func databaseEngine(ctx context.Context, ch *cmdutil.Helper, database string) (ps.DatabaseEngine, error) {
-	client, err := ch.Client()
-	if err != nil {
-		return "", err
-	}
-
-	db, err := client.Databases.Get(ctx, &ps.GetDatabaseRequest{
-		Organization: ch.Config.Organization,
-		Database:     database,
-	})
-	if err != nil {
-		return "", err
-	}
-	if db == nil {
-		return "", errors.New("database not found")
-	}
-	return db.Kind, nil
+	return connections.DatabaseEngine(ctx, ch, database)
 }
 
 func vitessConnectionID(raw string) (int64, error) {

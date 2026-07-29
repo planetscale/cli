@@ -638,6 +638,22 @@ func TestConnectionsShowRejectsInvalidRoleBeforeLookup(t *testing.T) {
 	c.Assert(databases.GetFnInvoked, qt.IsFalse)
 }
 
+func TestConnectionsShowReportsMissingDatabase(t *testing.T) {
+	c := qt.New(t)
+
+	databases := &mock.DatabaseService{
+		GetFn: func(context.Context, *ps.GetDatabaseRequest) (*ps.Database, error) {
+			return nil, &ps.Error{Code: ps.ErrNotFound}
+		},
+	}
+	cmd := connectionsCmdForTest(connectionsTestHelperWithDatabaseService("acme", databases, nil, "http://127.0.0.1:1", printer.JSON, &bytes.Buffer{}))
+	cmd.SetArgs([]string{"show", "nope", "main"})
+
+	err := cmd.Execute()
+
+	c.Assert(err, qt.ErrorMatches, "database nope does not exist in organization acme")
+}
+
 func connectionsTestHelper(org string, engine ps.DatabaseEngine, processlist ps.ProcesslistService, baseURL string, format printer.Format, out *bytes.Buffer) *cmdutil.Helper {
 	return connectionsTestHelperWithDatabaseService(org, databaseServiceForEngine(org, engine), processlist, baseURL, format, out)
 }
