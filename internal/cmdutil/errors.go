@@ -39,8 +39,8 @@ func ErrCode(err error) planetscale.ErrorCode {
 		return ""
 	}
 
-	perr, ok := err.(*planetscale.Error)
-	if !ok {
+	var perr *planetscale.Error
+	if !errors.As(err, &perr) {
 		return ""
 	}
 

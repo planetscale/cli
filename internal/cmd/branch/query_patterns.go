@@ -159,7 +159,8 @@ func DownloadQueryPatternsCmd(ch *cmdutil.Helper) *cobra.Command {
 // queryPatternsError maps a not-found API error to a message explaining both
 // causes: a missing branch, or query insights being disabled for the database.
 func queryPatternsError(ch *cmdutil.Helper, err error, database, branch string) error {
-	switch cmdutil.ErrCode(err) {
+	code := cmdutil.ErrCode(err)
+	switch code {
 	case ps.ErrNotFound:
 		return fmt.Errorf("branch %s does not exist in database %s (organization: %s) or query insights is not enabled for the database",
 			printer.BoldBlue(branch), printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
