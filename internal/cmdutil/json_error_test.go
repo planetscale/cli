@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"testing"
+
+	"github.com/planetscale/cli/internal/planetscale"
 )
 
 func TestGlobalJSONErrorAuthRequired(t *testing.T) {
@@ -137,6 +139,32 @@ func TestGlobalJSONErrorGenericFallback(t *testing.T) {
 	}
 	if len(resp.NextSteps) != 2 || resp.NextSteps[0] != AgentAuthCheckCmd() {
 		t.Fatalf("next_steps = %#v", resp.NextSteps)
+	}
+}
+
+func TestGlobalJSONErrorSchemaMutationBlocked(t *testing.T) {
+	resp := GlobalJSONError(&planetscale.Error{
+		APICode: "schema_mutation_blocked",
+	})
+	if resp.Code() != "schema_mutation_blocked" {
+		t.Fatalf("code = %q", resp.Code())
+	}
+	if len(resp.NextSteps) != 1 || resp.NextSteps[0] != "Wait for the active vtctld mutation or deploy to finish, then retry" {
+		t.Fatalf("next_steps = %#v", resp.NextSteps)
+	}
+	for _, step := range resp.NextSteps {
+		if step == AgentAuthCheckCmd() || step == AgentAuthLoginCmd() {
+			t.Fatalf("schema_mutation_blocked should not suggest auth, got %#v", resp.NextSteps)
+		}
+	}
+}
+
+func TestGlobalJSONErrorPreservesOtherAPICodes(t *testing.T) {
+	resp := GlobalJSONError(&planetscale.Error{
+		APICode: "unprocessable",
+	})
+	if resp.Code() != "unprocessable" {
+		t.Fatalf("code = %q", resp.Code())
 	}
 }
 

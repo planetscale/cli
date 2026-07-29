@@ -7,6 +7,8 @@ import (
 	"io"
 	"regexp"
 	"strings"
+
+	"github.com/planetscale/cli/internal/planetscale"
 )
 
 // JSONErrorIssue mirrors the issue shape used by auth check, sql, and import
@@ -49,6 +51,7 @@ func GlobalJSONError(err error) JSONErrorResponse {
 	msg := err.Error()
 	status := "error"
 	code := "COMMAND_FAILED"
+	apiCode := ""
 
 	if cmdErr, ok := errors.AsType[*Error](err); ok {
 		if cmdErr.Msg != "" {
@@ -57,6 +60,9 @@ func GlobalJSONError(err error) JSONErrorResponse {
 		if cmdErr.ExitCode == ActionRequestedExitCode {
 			status = "action_required"
 		}
+	}
+	if perr, ok := err.(*planetscale.Error); ok {
+		apiCode = perr.APICode
 	}
 
 	msg = ansiEscape.ReplaceAllString(msg, "")
@@ -166,6 +172,15 @@ func GlobalJSONError(err error) JSONErrorResponse {
 		nextSteps = []string{
 			AgentAuthCheckCmd(),
 			AgentGuideCmd(),
+		}
+	}
+
+	if apiCode != "" {
+		code = apiCode
+		if apiCode == "schema_mutation_blocked" {
+			nextSteps = []string{
+				"Wait for the active vtctld mutation or deploy to finish, then retry",
+			}
 		}
 	}
 
