@@ -15,6 +15,8 @@ type QueryInsightsService struct {
 
 	ListAnomaliesFn        func(context.Context, *ps.ListAnomaliesRequest, ...ps.ListOption) ([]*ps.Anomaly, error)
 	ListAnomaliesFnInvoked bool
+	GetAnomalyFn           func(context.Context, *ps.GetAnomalyRequest) (*ps.Anomaly, error)
+	GetAnomalyFnInvoked    bool
 }
 
 func (s *QueryInsightsService) ListQueries(ctx context.Context, req *ps.ListQueryInsightsRequest, opts ...ps.ListOption) ([]*ps.QueryInsight, error) {
@@ -30,6 +32,11 @@ func (s *QueryInsightsService) ListErrors(ctx context.Context, req *ps.ListQuery
 func (s *QueryInsightsService) ListAnomalies(ctx context.Context, req *ps.ListAnomaliesRequest, opts ...ps.ListOption) ([]*ps.Anomaly, error) {
 	s.ListAnomaliesFnInvoked = true
 	return s.ListAnomaliesFn(ctx, req, opts...)
+}
+
+func (s *QueryInsightsService) GetAnomaly(ctx context.Context, req *ps.GetAnomalyRequest) (*ps.Anomaly, error) {
+	s.GetAnomalyFnInvoked = true
+	return s.GetAnomalyFn(ctx, req)
 }
 
 type SchemaRecommendationService struct {

@@ -206,7 +206,11 @@ Two complementary read-only surfaces. When diagnosing database health or perform
 ```bash
 pscale insights queries <database> <branch> --org <org> --format json --sort totalTime   # top queries; sorts: totalTime, count, p99Latency, rowsRead, rowsReadPerReturned, errorCount, ...
 pscale insights errors <database> <branch> --org <org> --format json                     # failing queries with error messages
-pscale insights anomalies <database> <branch> --org <org> --format json                  # detected resource anomalies (CPU, memory, IOPS, rows)
+pscale insights anomalies <database> <branch> --org <org> --format json                  # detected resource anomalies (default: last day)
+pscale insights anomalies <database> <branch> --org <org> --format json --period 1d      # named range: 15m, 1h, 3h, 6h, 12h, 1d, 2d, 7d, 8d
+pscale insights anomalies <database> <branch> --org <org> --format json --from 07/23 --to 07/25 # local dates; current year inferred and the full end date included
+pscale insights anomalies <database> <branch> --org <org> --format json --from <RFC3339> --to <RFC3339> # exact timestamps; --to defaults to now
+pscale insights anomalies <database> <branch> <anomaly-id> --org <org> --format json       # one anomaly with correlated query fingerprints and SQL
 pscale insights recommendations <database> --org <org> --format json                     # schema recommendations with ready-to-apply DDL
 ```
 
