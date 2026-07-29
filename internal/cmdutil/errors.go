@@ -56,8 +56,8 @@ func HandleError(err error) error {
 		return err
 	}
 
-	perr, ok := err.(*planetscale.Error)
-	if !ok {
+	var perr *planetscale.Error
+	if !errors.As(err, &perr) {
 		return err
 	}
 
