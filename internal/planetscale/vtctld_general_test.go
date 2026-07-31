@@ -520,7 +520,7 @@ func TestVtctld_UpdateThrottlerConfig(t *testing.T) {
 		Database:     "my-db",
 		Branch:       "my-branch",
 		Keyspace:     "commerce",
-		Enabled:      true,
+		Enabled:      boolPtr(true),
 		Threshold:    float64Ptr(2.5),
 		Apps: []VtctldThrottledAppConfig{
 			{Name: "online-ddl", Ratio: float64Ptr(0.5)},
@@ -537,13 +537,10 @@ func TestVtctld_UpdateThrottlerConfig_DisableSendsEnabledFalse(t *testing.T) {
 		err := json.NewDecoder(r.Body).Decode(&body)
 		c.Assert(err, qt.IsNil)
 
-		// enabled is a plain bool, so it is always present in the body, even
-		// when false. The server has no tri-state, so this must be explicit.
 		_, hasEnabled := body["enabled"]
 		c.Assert(hasEnabled, qt.IsTrue)
 		c.Assert(body["enabled"], qt.Equals, false)
 
-		// Optional threshold/apps are omitted when unset.
 		_, hasThreshold := body["threshold"]
 		c.Assert(hasThreshold, qt.IsFalse)
 
@@ -562,7 +559,39 @@ func TestVtctld_UpdateThrottlerConfig_DisableSendsEnabledFalse(t *testing.T) {
 		Database:     "my-db",
 		Branch:       "my-branch",
 		Keyspace:     "commerce",
-		Enabled:      false,
+		Enabled:      boolPtr(false),
+	})
+	c.Assert(err, qt.IsNil)
+}
+
+func TestVtctld_UpdateThrottlerConfig_OmitsEnabledWhenNil(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]interface{}
+		err := json.NewDecoder(r.Body).Decode(&body)
+		c.Assert(err, qt.IsNil)
+
+		_, hasEnabled := body["enabled"]
+		c.Assert(hasEnabled, qt.IsFalse)
+		c.Assert(body["unthrottle_apps"], qt.DeepEquals, []interface{}{"rowstreamer"})
+
+		w.WriteHeader(200)
+		_, err = w.Write([]byte(`{"data":{}}`))
+		c.Assert(err, qt.IsNil)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	ctx := context.Background()
+	_, err = client.Vtctld.UpdateThrottlerConfig(ctx, &VtctldUpdateThrottlerConfigRequest{
+		Organization:   "my-org",
+		Database:       "my-db",
+		Branch:         "my-branch",
+		Keyspace:       "commerce",
+		UnthrottleApps: []string{"rowstreamer"},
 	})
 	c.Assert(err, qt.IsNil)
 }
