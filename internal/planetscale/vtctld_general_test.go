@@ -283,6 +283,34 @@ func TestVtctld_ListKeyspaces(t *testing.T) {
 	c.Assert(string(data), qt.Equals, `{"result":"ok"}`)
 }
 
+func TestVtctld_GetVSchema(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodGet)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/my-db/branches/my-branch/vtctld/vschema")
+		c.Assert(r.URL.Query().Get("keyspace"), qt.Equals, "commerce")
+
+		w.WriteHeader(200)
+		_, err := w.Write([]byte(`{"data":{"multi_tenant_spec":{"tenant_id_column_name":"source_shard_id","tenant_id_column_type":"INT64"}}}`))
+		c.Assert(err, qt.IsNil)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	ctx := context.Background()
+	data, err := client.Vtctld.GetVSchema(ctx, &VtctldGetVSchemaRequest{
+		Organization: "my-org",
+		Database:     "my-db",
+		Branch:       "my-branch",
+		Keyspace:     "commerce",
+	})
+	c.Assert(err, qt.IsNil)
+	c.Assert(string(data), qt.Equals, `{"multi_tenant_spec":{"tenant_id_column_name":"source_shard_id","tenant_id_column_type":"INT64"}}`)
+}
+
 func TestVtctld_StartWorkflow(t *testing.T) {
 	c := qt.New(t)
 

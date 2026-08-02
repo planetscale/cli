@@ -14,6 +14,9 @@ type VtctldService struct {
 	ListKeyspacesFn        func(context.Context, *ps.VtctldListKeyspacesRequest) (json.RawMessage, error)
 	ListKeyspacesFnInvoked bool
 
+	GetVSchemaFn        func(context.Context, *ps.VtctldGetVSchemaRequest) (json.RawMessage, error)
+	GetVSchemaFnInvoked bool
+
 	GetRoutingRulesFn        func(context.Context, *ps.VtctldGetRoutingRulesRequest) (json.RawMessage, error)
 	GetRoutingRulesFnInvoked bool
 
@@ -56,6 +59,11 @@ func (s *VtctldService) ListWorkflows(ctx context.Context, req *ps.VtctldListWor
 func (s *VtctldService) ListKeyspaces(ctx context.Context, req *ps.VtctldListKeyspacesRequest) (json.RawMessage, error) {
 	s.ListKeyspacesFnInvoked = true
 	return s.ListKeyspacesFn(ctx, req)
+}
+
+func (s *VtctldService) GetVSchema(ctx context.Context, req *ps.VtctldGetVSchemaRequest) (json.RawMessage, error) {
+	s.GetVSchemaFnInvoked = true
+	return s.GetVSchemaFn(ctx, req)
 }
 
 func (s *VtctldService) GetRoutingRules(ctx context.Context, req *ps.VtctldGetRoutingRulesRequest) (json.RawMessage, error) {

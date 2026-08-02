@@ -15,6 +15,7 @@ import (
 type VtctldService interface {
 	ListWorkflows(context.Context, *VtctldListWorkflowsRequest) (json.RawMessage, error)
 	ListKeyspaces(context.Context, *VtctldListKeyspacesRequest) (json.RawMessage, error)
+	GetVSchema(context.Context, *VtctldGetVSchemaRequest) (json.RawMessage, error)
 	GetRoutingRules(context.Context, *VtctldGetRoutingRulesRequest) (json.RawMessage, error)
 	GetShard(context.Context, *VtctldGetShardRequest) (json.RawMessage, error)
 	SetShardTabletControl(context.Context, *VtctldSetShardTabletControlRequest) (json.RawMessage, error)
@@ -42,6 +43,15 @@ type VtctldListKeyspacesRequest struct {
 	Database     string `json:"-"`
 	Branch       string `json:"-"`
 	Name         string `json:"-"`
+}
+
+// VtctldGetVSchemaRequest is a request for reading the live VSchema for a
+// keyspace from the cluster via vtctld.
+type VtctldGetVSchemaRequest struct {
+	Organization string `json:"-"`
+	Database     string `json:"-"`
+	Branch       string `json:"-"`
+	Keyspace     string `json:"-"`
 }
 
 // VtctldGetRoutingRulesRequest is a request for reading live routing rules
@@ -188,6 +198,10 @@ func vtctldKeyspacesAPIPath(org, db, branch string) string {
 	return path.Join(databaseBranchAPIPath(org, db, branch), "vtctld", "keyspaces")
 }
 
+func vtctldVSchemaAPIPath(org, db, branch string) string {
+	return path.Join(databaseBranchAPIPath(org, db, branch), "vtctld", "vschema")
+}
+
 func vtctldRoutingRulesAPIPath(org, db, branch string) string {
 	return path.Join(databaseBranchAPIPath(org, db, branch), "vtctld", "routing-rules")
 }
@@ -231,6 +245,22 @@ func (s *vtctldService) ListKeyspaces(ctx context.Context, req *VtctldListKeyspa
 	if req.Name != "" {
 		v.Set("name", req.Name)
 	}
+	httpReq, err := s.client.newRequest(http.MethodGet, p, nil, WithQueryParams(v))
+	if err != nil {
+		return nil, fmt.Errorf("error creating http request: %w", err)
+	}
+	resp := &vtctldDataResponse{}
+	if err := s.client.do(ctx, httpReq, resp); err != nil {
+		return nil, err
+	}
+	return resp.Data, nil
+}
+
+// GetVSchema reads the live VSchema for a keyspace from the cluster via vtctld.
+func (s *vtctldService) GetVSchema(ctx context.Context, req *VtctldGetVSchemaRequest) (json.RawMessage, error) {
+	p := vtctldVSchemaAPIPath(req.Organization, req.Database, req.Branch)
+	v := url.Values{}
+	v.Set("keyspace", req.Keyspace)
 	httpReq, err := s.client.newRequest(http.MethodGet, p, nil, WithQueryParams(v))
 	if err != nil {
 		return nil, fmt.Errorf("error creating http request: %w", err)
