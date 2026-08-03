@@ -2,6 +2,8 @@ package planetscale
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -42,6 +44,7 @@ type DownloadAuthAttemptExportRequest struct {
 type AuthAttemptExport struct {
 	PublicID                string                   `json:"id"`
 	State                   string                   `json:"state"`
+	Expired                 bool                     `json:"expired"`
 	StartAt                 time.Time                `json:"start_at"`
 	EndAt                   time.Time                `json:"end_at"`
 	Filters                 AuthAttemptExportFilters `json:"filters"`
@@ -94,6 +97,9 @@ func (s *authAttemptExportsService) GetExport(ctx context.Context, getReq *GetAu
 	export := &AuthAttemptExport{}
 	headers, err := s.client.doWithHeaders(ctx, req, export)
 	if err != nil {
+		if expiredErr := authAttemptExportExpiredError(err); expiredErr != nil {
+			return nil, expiredErr
+		}
 		return nil, err
 	}
 	export.RetryAfter = parseRetryAfter(headers.Get("Retry-After"))
@@ -108,9 +114,25 @@ func (s *authAttemptExportsService) DownloadExport(ctx context.Context, download
 	}
 	body, err := s.client.downloadSignedURL(ctx, req)
 	if err != nil {
+		if expiredErr := authAttemptExportExpiredError(err); expiredErr != nil {
+			return nil, expiredErr
+		}
 		return nil, fmt.Errorf("downloading auth attempt export: %w", err)
 	}
 	return body, nil
+}
+
+func authAttemptExportExpiredError(err error) error {
+	var apiErr *Error
+	if !errors.As(err, &apiErr) || apiErr.Meta["http_status"] != http.StatusText(http.StatusGone) {
+		return nil
+	}
+
+	export := &AuthAttemptExport{}
+	if json.Unmarshal([]byte(apiErr.Meta["body"]), export) != nil || !export.Expired || export.PublicID == "" || export.RecoveryHint == "" {
+		return nil
+	}
+	return fmt.Errorf("auth attempt export %s expired: %s", export.PublicID, export.RecoveryHint)
 }
 
 func authAttemptExportsAPIPath(org string) string {

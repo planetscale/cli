@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -123,6 +124,53 @@ func TestAuthAttemptsDownloadCreatesPollsAndWritesFile(t *testing.T) {
 		ID: "export1", State: "ready", Format: "jsonl",
 		StartAt: "2026-07-29T00:00:00Z", EndAt: "2026-07-29T01:00:00Z", File: output,
 	})
+}
+
+func TestAuthAttemptsDownloadReportsExpiredExport(t *testing.T) {
+	c := qt.New(t)
+
+	previousInterval := authAttemptExportPollInterval
+	authAttemptExportPollInterval = time.Millisecond
+	t.Cleanup(func() { authAttemptExportPollInterval = previousInterval })
+
+	for _, test := range []struct {
+		name         string
+		createdState string
+		expectedPath string
+	}{
+		{name: "while polling", createdState: "pending", expectedPath: "/v1/organizations/my-org/auth-attempt-exports/export1"},
+		{name: "while downloading", createdState: "ready", expectedPath: "/v1/organizations/my-org/auth-attempt-exports/export1/download"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				switch {
+				case r.Method == http.MethodPost:
+					w.Header().Set("Content-Type", "application/json")
+					_, _ = io.WriteString(w, fmt.Sprintf(`{"id":"export1","state":"%s","format":"jsonl"}`, test.createdState))
+				case r.Method == http.MethodGet && r.URL.Path == test.expectedPath:
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(http.StatusGone)
+					_, _ = io.WriteString(w, `{"id":"export1","state":"ready","expired":true,"recovery_hint":"Create a new export with the original time range."}`)
+				default:
+					http.NotFound(w, r)
+				}
+			}))
+			t.Cleanup(server.Close)
+
+			var printed bytes.Buffer
+			cmd := AuthAttemptsCmd(authAttemptTestHelper("my-org", server.URL, printer.JSON, &printed))
+			cmd.SetErr(io.Discard)
+			cmd.SetArgs([]string{
+				"download",
+				"--start-at", "2026-07-29T00:00:00Z",
+				"--end-at", "2026-07-29T01:00:00Z",
+				"--output", filepath.Join(t.TempDir(), "auth-attempts.zip"),
+			})
+
+			err := cmd.Execute()
+			c.Assert(err, qt.ErrorMatches, `^auth attempt export export1 expired: Create a new export with the original time range\.$`)
+		})
+	}
 }
 
 func TestAuthAttemptsDownloadHonorsContextCancellation(t *testing.T) {
