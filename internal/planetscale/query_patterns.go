@@ -130,7 +130,6 @@ func decompressedReadCloser(body io.ReadCloser) (io.ReadCloser, error) {
 			return nil, err
 		}
 		content = gz
-		return &bodyReadCloser{Reader: content, body: body}, nil
 	}
 
 	return &bodyReadCloser{Reader: content, body: body}, nil
@@ -141,9 +140,7 @@ type bodyReadCloser struct {
 	body io.ReadCloser
 }
 
-func (r *bodyReadCloser) Close() error {
-	return r.body.Close()
-}
+func (r *bodyReadCloser) Close() error { return r.body.Close() }
 
 func queryPatternsAPIPath(org, db, branch string) string {
 	return path.Join(databaseBranchAPIPath(org, db, branch), "query-patterns")

@@ -122,15 +122,7 @@ func runDownloadAuthAttempts(cmd *cobra.Command, ch *cmdutil.Helper, flags downl
 		return err
 	}
 
-	filters, err := authAttemptExportFilters(flags.sourceIPs, flags.branches, flags.outcomes,
-		flags.usernames, flags.startupDatabases, flags.failureReasons, flags.backendRoutes, map[string]bool{
-			"source-ip":      cmd.Flags().Changed("source-ip"),
-			"branch":         cmd.Flags().Changed("branch"),
-			"outcome":        cmd.Flags().Changed("outcome"),
-			"username":       cmd.Flags().Changed("username"),
-			"failure-reason": cmd.Flags().Changed("failure-reason"),
-			"backend-route":  cmd.Flags().Changed("backend-route"),
-		})
+	filters, err := authAttemptExportFilters(cmd, flags)
 	if err != nil {
 		return err
 	}
@@ -152,27 +144,27 @@ func runDownloadAuthAttempts(cmd *cobra.Command, ch *cmdutil.Helper, flags downl
 	}
 	defer endProgress()
 
-	report, exportID, err := createAndPollAuthAttemptExport(cmd.Context(), client, ch.Config.Organization,
+	report, err := createAndPollAuthAttemptExport(cmd.Context(), client, ch.Config.Organization,
 		startAt, endAt, format, filters)
 	if err != nil {
 		return err
 	}
 	if report.State == "failed" {
-		return authAttemptExportFailureError(report, exportID)
+		return authAttemptExportFailureError(report)
 	}
 	if report.State != "ready" {
-		return fmt.Errorf("auth attempt export %s reached unexpected state %q", printer.BoldBlue(exportID), report.State)
+		return fmt.Errorf("auth attempt export %s reached unexpected state %q", printer.BoldBlue(report.PublicID), report.State)
 	}
 
 	path := authAttemptExportOutputPath(flags.output, ch.Config.Organization, format)
-	if err := downloadAndPrintAuthAttemptExport(cmd, ch, client, exportID, format, path,
-		startAt, endAt, toStdout, report.State, endProgress); err != nil {
+	if err := downloadAndPrintAuthAttemptExport(cmd, ch, client, report.PublicID, format, path,
+		startAt, endAt, toStdout, endProgress); err != nil {
 		return err
 	}
 	return nil
 }
 
-func createAndPollAuthAttemptExport(ctx context.Context, client *ps.Client, organization string, startAt, endAt time.Time, format string, filters ps.AuthAttemptExportFilters) (*ps.AuthAttemptExport, string, error) {
+func createAndPollAuthAttemptExport(ctx context.Context, client *ps.Client, organization string, startAt, endAt time.Time, format string, filters ps.AuthAttemptExportFilters) (*ps.AuthAttemptExport, error) {
 	report, err := client.AuthAttemptExports.CreateExport(ctx, &ps.CreateAuthAttemptExportRequest{
 		Organization: organization,
 		StartAt:      startAt,
@@ -182,9 +174,9 @@ func createAndPollAuthAttemptExport(ctx context.Context, client *ps.Client, orga
 	})
 	if err != nil {
 		if cmdutil.ErrCode(err) == ps.ErrNotFound {
-			return nil, "", authAttemptExportNotFoundError(organization, "")
+			return nil, authAttemptExportNotFoundError(organization, "")
 		}
-		return nil, "", cmdutil.HandleError(err)
+		return nil, cmdutil.HandleError(err)
 	}
 	exportID := report.PublicID
 	for report.State == "pending" || report.State == "running" {
@@ -192,26 +184,28 @@ func createAndPollAuthAttemptExport(ctx context.Context, client *ps.Client, orga
 		if interval <= 0 {
 			interval = authAttemptExportPollInterval
 		}
-		if err := waitForAuthAttemptExport(ctx, interval); err != nil {
-			return nil, exportID, authAttemptExportInterrupted(organization, exportID, err)
+		select {
+		case <-ctx.Done():
+			return nil, authAttemptExportInterrupted(organization, exportID, ctx.Err())
+		case <-time.After(interval):
 		}
 		report, err = client.AuthAttemptExports.GetExport(ctx, &ps.GetAuthAttemptExportRequest{
 			Organization: organization, Export: exportID,
 		})
 		if err != nil {
 			if ctx.Err() != nil {
-				return nil, exportID, authAttemptExportInterrupted(organization, exportID, ctx.Err())
+				return nil, authAttemptExportInterrupted(organization, exportID, ctx.Err())
 			}
 			if cmdutil.ErrCode(err) == ps.ErrNotFound {
-				return nil, exportID, authAttemptExportNotFoundError(organization, exportID)
+				return nil, authAttemptExportNotFoundError(organization, exportID)
 			}
-			return nil, exportID, cmdutil.HandleError(err)
+			return nil, cmdutil.HandleError(err)
 		}
 	}
-	return report, exportID, nil
+	return report, nil
 }
 
-func downloadAndPrintAuthAttemptExport(cmd *cobra.Command, ch *cmdutil.Helper, client *ps.Client, exportID, format, path string, startAt, endAt time.Time, toStdout bool, state string, endProgress func()) error {
+func downloadAndPrintAuthAttemptExport(cmd *cobra.Command, ch *cmdutil.Helper, client *ps.Client, exportID, format, path string, startAt, endAt time.Time, toStdout bool, endProgress func()) error {
 	body, err := client.AuthAttemptExports.DownloadExport(cmd.Context(), &ps.DownloadAuthAttemptExportRequest{
 		Organization: ch.Config.Organization,
 		Export:       exportID,
@@ -249,27 +243,9 @@ func downloadAndPrintAuthAttemptExport(cmd *cobra.Command, ch *cmdutil.Helper, c
 		return nil
 	}
 	return ch.Printer.PrintResource(&AuthAttemptExportDownload{
-		ID: exportID, State: state, Format: format,
+		ID: exportID, State: "ready", Format: format,
 		StartAt: startAt.Format(time.RFC3339), EndAt: endAt.Format(time.RFC3339), File: path,
 	})
-}
-
-func waitForAuthAttemptExport(ctx context.Context, interval time.Duration) error {
-	timer := time.NewTimer(interval)
-	defer func() {
-		if !timer.Stop() {
-			select {
-			case <-timer.C:
-			default:
-			}
-		}
-	}()
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case <-timer.C:
-		return nil
-	}
 }
 
 func authAttemptExportOutputPath(output, organization, format string) string {
@@ -315,8 +291,8 @@ func authAttemptExportInterrupted(organization, exportID string, err error) erro
 		printer.BoldBlue(exportID), err, organization, exportID)
 }
 
-func authAttemptExportFailureError(report *ps.AuthAttemptExport, exportID string) error {
-	message := fmt.Sprintf("auth attempt export %s failed (%s)", printer.BoldBlue(exportID), report.FailureReason)
+func authAttemptExportFailureError(report *ps.AuthAttemptExport) error {
+	message := fmt.Sprintf("auth attempt export %s failed (%s)", printer.BoldBlue(report.PublicID), report.FailureReason)
 	if report.FailureDetail != "" {
 		message += ": " + report.FailureDetail
 	}

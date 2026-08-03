@@ -38,14 +38,10 @@ func authAttemptExportFormat(cmd *cobra.Command, requested string, output printe
 		if cmd.Flags().Changed("export-format") {
 			return "", fmt.Errorf("--export-format cannot be empty")
 		}
-		switch output {
-		case printer.JSON:
+		if output == printer.JSON {
 			return "jsonl", nil
-		case printer.Human, printer.CSV:
-			return "csv", nil
-		default:
-			return "csv", nil
 		}
+		return "csv", nil
 	}
 	if !slices.Contains(authAttemptExportFormats, requested) {
 		return "", fmt.Errorf("invalid --export-format %q, must be one of: %s", requested, strings.Join(authAttemptExportFormats, ", "))
@@ -143,34 +139,32 @@ func parseAuthAttemptExportTime(flag, value string, now time.Time, location *tim
 	return time.Time{}, fmt.Errorf("invalid --%s %q: use now, today, yesterday, YYYY-MM-DD, local ISO, or RFC3339", flag, value)
 }
 
-func authAttemptExportFilters(sourceIPs, branches, outcomes, usernames, startupDatabases, failureReasons, backendRoutes []string, present map[string]bool) (ps.AuthAttemptExportFilters, error) {
-	if err := validateAuthAttemptFilter("source-ip", sourceIPs, nil, present["source-ip"]); err != nil {
-		return ps.AuthAttemptExportFilters{}, err
-	}
-	if err := validateAuthAttemptFilter("branch", branches, nil, present["branch"]); err != nil {
-		return ps.AuthAttemptExportFilters{}, err
-	}
-	if err := validateAuthAttemptFilter("outcome", outcomes, authAttemptExportOutcomes, present["outcome"]); err != nil {
-		return ps.AuthAttemptExportFilters{}, err
-	}
-	if err := validateAuthAttemptFilter("username", usernames, nil, present["username"]); err != nil {
-		return ps.AuthAttemptExportFilters{}, err
-	}
-	if err := validateAuthAttemptFilter("failure-reason", failureReasons, authAttemptExportFailureReasons, present["failure-reason"]); err != nil {
-		return ps.AuthAttemptExportFilters{}, err
-	}
-	if err := validateAuthAttemptFilter("backend-route", backendRoutes, authAttemptExportBackendRoutes, present["backend-route"]); err != nil {
-		return ps.AuthAttemptExportFilters{}, err
+func authAttemptExportFilters(cmd *cobra.Command, flags downloadAuthAttemptsOptions) (ps.AuthAttemptExportFilters, error) {
+	for _, filter := range []struct {
+		name    string
+		values  []string
+		allowed []string
+	}{
+		{"source-ip", flags.sourceIPs, nil},
+		{"branch", flags.branches, nil},
+		{"outcome", flags.outcomes, authAttemptExportOutcomes},
+		{"username", flags.usernames, nil},
+		{"failure-reason", flags.failureReasons, authAttemptExportFailureReasons},
+		{"backend-route", flags.backendRoutes, authAttemptExportBackendRoutes},
+	} {
+		if err := validateAuthAttemptFilter(filter.name, filter.values, filter.allowed, cmd.Flags().Changed(filter.name)); err != nil {
+			return ps.AuthAttemptExportFilters{}, err
+		}
 	}
 
 	return ps.AuthAttemptExportFilters{
-		SourceIPs:        sourceIPs,
-		Branches:         branches,
-		Outcomes:         outcomes,
-		Usernames:        usernames,
-		StartupDatabases: startupDatabases,
-		FailureReasons:   failureReasons,
-		BackendRoutes:    backendRoutes,
+		SourceIPs:        flags.sourceIPs,
+		Branches:         flags.branches,
+		Outcomes:         flags.outcomes,
+		Usernames:        flags.usernames,
+		StartupDatabases: flags.startupDatabases,
+		FailureReasons:   flags.failureReasons,
+		BackendRoutes:    flags.backendRoutes,
 	}, nil
 }
 
@@ -182,10 +176,8 @@ func validateAuthAttemptFilter(flag string, values, allowed []string, changed bo
 		if value == "" {
 			return fmt.Errorf("--%s cannot be empty", flag)
 		}
-		if len(allowed) > 0 {
-			if !slices.Contains(allowed, value) {
-				return fmt.Errorf("invalid --%s %q, must be one of: %s", flag, value, strings.Join(allowed, ", "))
-			}
+		if len(allowed) > 0 && !slices.Contains(allowed, value) {
+			return fmt.Errorf("invalid --%s %q, must be one of: %s", flag, value, strings.Join(allowed, ", "))
 		}
 	}
 	return nil

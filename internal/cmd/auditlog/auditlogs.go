@@ -20,7 +20,6 @@ func AuditLogCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "audit-log <command>",
 		Short:             "List audit logs and download authentication-attempt exports",
-		Long:              "List audit logs and download authentication-attempt export reports.",
 		PersistentPreRunE: cmdutil.CheckAuthentication(ch.Config),
 	}
 
