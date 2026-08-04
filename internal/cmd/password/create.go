@@ -103,6 +103,9 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			end()
+			if readOnlyRegionID != "" {
+				pass.ReadOnlyRegion = true
+			}
 			if ch.Printer.Format() == printer.Human {
 				saveWarning := printer.BoldRed("Please save the values below as they will not be shown again")
 				ch.Printer.Printf("Password %s was successfully created in %s/%s.\n%s\n\n",

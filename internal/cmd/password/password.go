@@ -110,7 +110,7 @@ func toPassword(password *ps.DatabaseBranchPassword) *Password {
 		Username:       password.Username,
 		Role:           password.Role,
 		RoleDesc:       toRoleDesc(password.Role),
-		ConnectionType: toConnectionTypeDesc(password.Replica),
+		ConnectionType: toConnectionTypeDesc(password),
 		TTL:            password.TTL,
 		Remaining:      ttlRemaining,
 		CreatedAt:      toTimestamp(password.CreatedAt),
@@ -127,7 +127,7 @@ func toPasswordWithoutTTL(password *ps.DatabaseBranchPassword) *passwordWithoutT
 		Username:       password.Username,
 		Role:           password.Role,
 		RoleDesc:       toRoleDesc(password.Role),
-		ConnectionType: toConnectionTypeDesc(password.Replica),
+		ConnectionType: toConnectionTypeDesc(password),
 		CreatedAt:      toTimestamp(password.CreatedAt),
 		orig:           password,
 	}
@@ -170,7 +170,7 @@ func toPasswordWithPlainText(password *ps.DatabaseBranchPassword) *PasswordWithP
 		AccessHostUrl:  password.Hostname,
 		Role:           password.Role,
 		RoleDesc:       toRoleDesc(password.Role),
-		ConnectionType: toConnectionTypeDesc(password.Replica),
+		ConnectionType: toConnectionTypeDesc(password),
 		TTL:            password.TTL,
 		orig:           password,
 	}
@@ -190,12 +190,17 @@ func toRoleDesc(role string) string {
 	return "Can Read"
 }
 
-func toConnectionTypeDesc(replica bool) string {
-	if replica {
+func toConnectionTypeDesc(password *ps.DatabaseBranchPassword) string {
+	if password.Replica {
 		return "Replica"
-	} else {
-		return "Primary"
 	}
+	if password.ReadOnlyRegion {
+		if password.Region.Slug != "" {
+			return "Read-only region (" + password.Region.Slug + ")"
+		}
+		return "Read-only region"
+	}
+	return "Primary"
 }
 
 func toTimestamp(t time.Time) int64 {

@@ -387,15 +387,19 @@ func TestPassword_CreateCmd_ReadOnlyRegion(t *testing.T) {
 	c := qt.New(t)
 
 	var buf bytes.Buffer
-	format := printer.JSON
+	format := printer.Human
 	p := printer.NewPrinter(&format)
+	p.SetHumanOutput(&buf)
 	p.SetResourceOutput(&buf)
 
 	org := "planetscale"
 	db := "analytics"
 	branch := "main"
 	name := "eu-dump-password"
-	res := &ps.DatabaseBranchPassword{Name: name}
+	res := &ps.DatabaseBranchPassword{
+		Name:   name,
+		Region: ps.Region{Slug: "eu-west"},
+	}
 
 	rorSvc := &mock.ReadOnlyRegionsService{
 		ListFn: func(ctx context.Context, req *ps.ListReadOnlyRegionsRequest, opts ...ps.ListOption) ([]*ps.ReadOnlyRegion, error) {
@@ -445,6 +449,7 @@ func TestPassword_CreateCmd_ReadOnlyRegion(t *testing.T) {
 	c.Assert(err, qt.IsNil)
 	c.Assert(rorSvc.ListFnInvoked, qt.IsTrue)
 	c.Assert(pwSvc.CreateFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.Contains, "Read-only region (eu-west)")
 }
 
 func TestPassword_CreateCmd_ReadOnlyRegionWithReplica(t *testing.T) {

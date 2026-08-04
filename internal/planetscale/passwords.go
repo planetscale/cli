@@ -16,6 +16,7 @@ type DatabaseBranchPassword struct {
 	Role      string         `json:"role"`
 	Actor     *Actor         `json:"actor"`
 	Branch    DatabaseBranch `json:"database_branch"`
+	Region    Region         `json:"region"`
 	CreatedAt time.Time      `json:"created_at"`
 	DeletedAt time.Time      `json:"deleted_at"`
 	ExpiresAt time.Time      `json:"expires_at"`
@@ -23,6 +24,10 @@ type DatabaseBranchPassword struct {
 	TTL       int            `json:"ttl_seconds"`
 	Renewable bool           `json:"renewable"`
 	Replica   bool           `json:"replica"`
+
+	// ReadOnlyRegion is set client-side when the password is known to be scoped to a
+	// Vitess read-only region (the API does not currently return a dedicated flag).
+	ReadOnlyRegion bool `json:"-"`
 }
 
 // DatabaseBranchPasswordRequest encapsulates the request for creating/getting/deleting a
