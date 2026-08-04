@@ -157,6 +157,9 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().StringVar(&flags.cloudflareAccountID, "cloudflare-account-id", "", "Cloudflare account ID to bill this database to. Requires --cloudflare-timestamp and --cloudflare-signature.")
 	cmd.Flags().StringVar(&flags.cloudflareTimestamp, "cloudflare-timestamp", "", "Unix timestamp for the Cloudflare billing signature. Requires --cloudflare-account-id and --cloudflare-signature.")
 	cmd.Flags().StringVar(&flags.cloudflareSignature, "cloudflare-signature", "", "HMAC signature proving Cloudflare billing intent. Requires --cloudflare-account-id and --cloudflare-timestamp.")
+	_ = cmd.Flags().MarkHidden("cloudflare-account-id")
+	_ = cmd.Flags().MarkHidden("cloudflare-timestamp")
+	_ = cmd.Flags().MarkHidden("cloudflare-signature")
 
 	cmd.Flags().BoolVar(&flags.wait, "wait", false, "Wait until the database is ready")
 
