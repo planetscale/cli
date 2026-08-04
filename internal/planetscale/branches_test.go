@@ -674,3 +674,141 @@ func TestDatabaseBranches_ListClusterSKUsWithRates(t *testing.T) {
 
 	c.Assert(orgs, qt.DeepEquals, want)
 }
+
+func TestDatabaseBranches_Resize(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		out := `{"id":"resize-id","type":"BranchResizeRequest","state":"pending","vtgate_size":"vg.c1.xlarge","previous_vtgate_size":"vg.c1.nano","vtgate_name":"VTG_320","previous_vtgate_name":"VTG_5","vtgate_display_name":"VTG-320","previous_vtgate_display_name":"VTG-5","vtgate_count":2,"previous_vtgate_count":1,"vtgate_autoscaling":false,"previous_vtgate_autoscaling":false,"created_at":"2024-06-25T18:03:09.439Z","updated_at":"2024-06-25T18:03:09.439Z","started_at":"2024-06-25T18:03:09.459Z","completed_at":null}`
+		_, err := w.Write([]byte(out))
+		c.Assert(err, qt.IsNil)
+		c.Assert(r.Method, qt.Equals, http.MethodPut)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/foo/databases/bar/branches/baz/resizes")
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	ctx := context.Background()
+	count := 2
+	resize, err := client.DatabaseBranches.Resize(ctx, &ResizeBranchRequest{
+		Organization: "foo",
+		Database:     "bar",
+		Branch:       "baz",
+		VTGateSize:   "VTG_320",
+		VTGateCount:  &count,
+	})
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(resize.ID, qt.Equals, "resize-id")
+	c.Assert(resize.State, qt.Equals, "pending")
+	c.Assert(resize.VTGateName, qt.Equals, "VTG_320")
+	c.Assert(resize.PreviousVTGateName, qt.Equals, "VTG_5")
+	c.Assert(resize.VTGateCount, qt.Equals, 2)
+	c.Assert(resize.PreviousVTGateCount, qt.Equals, 1)
+}
+
+func TestDatabaseBranches_ListResizes(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		out := `{"data":[{"id":"resize-id","type":"BranchResizeRequest","state":"completed","vtgate_size":"vg.c1.xlarge","previous_vtgate_size":"vg.c1.nano","vtgate_name":"VTG_320","previous_vtgate_name":"VTG_5","vtgate_display_name":"VTG-320","previous_vtgate_display_name":"VTG-5","vtgate_count":1,"previous_vtgate_count":1,"vtgate_autoscaling":false,"previous_vtgate_autoscaling":false,"created_at":"2024-06-25T18:03:09.439Z","updated_at":"2024-06-25T18:04:06.238Z","started_at":"2024-06-25T18:03:09.459Z","completed_at":"2024-06-25T18:04:06.228Z"}]}`
+		_, err := w.Write([]byte(out))
+		c.Assert(err, qt.IsNil)
+		c.Assert(r.Method, qt.Equals, http.MethodGet)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/foo/databases/bar/branches/baz/resizes")
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	ctx := context.Background()
+	resizes, err := client.DatabaseBranches.ListResizes(ctx, &ListBranchResizesRequest{
+		Organization: "foo",
+		Database:     "bar",
+		Branch:       "baz",
+	})
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(resizes, qt.HasLen, 1)
+	c.Assert(resizes[0].ID, qt.Equals, "resize-id")
+	c.Assert(resizes[0].State, qt.Equals, "completed")
+}
+
+func TestDatabaseBranches_CancelResize(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(204)
+		c.Assert(r.Method, qt.Equals, http.MethodDelete)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/foo/databases/bar/branches/baz/resizes")
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	ctx := context.Background()
+	err = client.DatabaseBranches.CancelResize(ctx, &CancelBranchResizeRequest{
+		Organization: "foo",
+		Database:     "bar",
+		Branch:       "baz",
+	})
+
+	c.Assert(err, qt.IsNil)
+}
+
+func TestDatabaseBranches_ResizeStatus(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		out := `{"data":[{"id":"latest","type":"BranchResizeRequest","state":"queued","vtgate_size":"vg.c1.2xlarge","previous_vtgate_size":"vg.c1.xlarge","vtgate_name":"VTG_640","previous_vtgate_name":"VTG_320","vtgate_display_name":"VTG-640","previous_vtgate_display_name":"VTG-320","vtgate_count":1,"previous_vtgate_count":1,"vtgate_autoscaling":false,"previous_vtgate_autoscaling":false,"created_at":"2024-06-25T18:03:09.439Z","updated_at":"2024-06-25T18:03:09.439Z","started_at":null,"completed_at":null}]}`
+		_, err := w.Write([]byte(out))
+		c.Assert(err, qt.IsNil)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	ctx := context.Background()
+	resize, err := client.DatabaseBranches.ResizeStatus(ctx, &BranchResizeStatusRequest{
+		Organization: "foo",
+		Database:     "bar",
+		Branch:       "baz",
+	})
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(resize.ID, qt.Equals, "latest")
+	c.Assert(resize.State, qt.Equals, "queued")
+	c.Assert(resize.VTGateName, qt.Equals, "VTG_640")
+}
+
+func TestDatabaseBranches_ResizeStatus_NotFound(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		_, err := w.Write([]byte(`{"data":[]}`))
+		c.Assert(err, qt.IsNil)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	ctx := context.Background()
+	resize, err := client.DatabaseBranches.ResizeStatus(ctx, &BranchResizeStatusRequest{
+		Organization: "foo",
+		Database:     "bar",
+		Branch:       "baz",
+	})
+
+	wantError := &Error{
+		msg:  "Not Found",
+		Code: ErrNotFound,
+	}
+
+	c.Assert(resize, qt.IsNil)
+	c.Assert(err.Error(), qt.Equals, wantError.Error())
+}

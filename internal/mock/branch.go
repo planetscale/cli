@@ -51,6 +51,18 @@ type DatabaseBranchesService struct {
 
 	ListClusterSKUsFn        func(context.Context, *ps.ListBranchClusterSKUsRequest, ...ps.ListOption) ([]*ps.ClusterSKU, error)
 	ListClusterSKUsFnInvoked bool
+
+	ResizeFn        func(context.Context, *ps.ResizeBranchRequest) (*ps.BranchResizeRequest, error)
+	ResizeFnInvoked bool
+
+	ListResizesFn        func(context.Context, *ps.ListBranchResizesRequest) ([]*ps.BranchResizeRequest, error)
+	ListResizesFnInvoked bool
+
+	CancelResizeFn        func(context.Context, *ps.CancelBranchResizeRequest) error
+	CancelResizeFnInvoked bool
+
+	ResizeStatusFn        func(context.Context, *ps.BranchResizeStatusRequest) (*ps.BranchResizeRequest, error)
+	ResizeStatusFnInvoked bool
 }
 
 func (d *DatabaseBranchesService) Create(ctx context.Context, req *ps.CreateDatabaseBranchRequest) (*ps.DatabaseBranch, error) {
@@ -126,6 +138,26 @@ func (d *DatabaseBranchesService) LintSchema(ctx context.Context, req *ps.LintSc
 func (d *DatabaseBranchesService) ListClusterSKUs(ctx context.Context, req *ps.ListBranchClusterSKUsRequest, opts ...ps.ListOption) ([]*ps.ClusterSKU, error) {
 	d.ListClusterSKUsFnInvoked = true
 	return d.ListClusterSKUsFn(ctx, req, opts...)
+}
+
+func (d *DatabaseBranchesService) Resize(ctx context.Context, req *ps.ResizeBranchRequest) (*ps.BranchResizeRequest, error) {
+	d.ResizeFnInvoked = true
+	return d.ResizeFn(ctx, req)
+}
+
+func (d *DatabaseBranchesService) ListResizes(ctx context.Context, req *ps.ListBranchResizesRequest) ([]*ps.BranchResizeRequest, error) {
+	d.ListResizesFnInvoked = true
+	return d.ListResizesFn(ctx, req)
+}
+
+func (d *DatabaseBranchesService) CancelResize(ctx context.Context, req *ps.CancelBranchResizeRequest) error {
+	d.CancelResizeFnInvoked = true
+	return d.CancelResizeFn(ctx, req)
+}
+
+func (d *DatabaseBranchesService) ResizeStatus(ctx context.Context, req *ps.BranchResizeStatusRequest) (*ps.BranchResizeRequest, error) {
+	d.ResizeStatusFnInvoked = true
+	return d.ResizeStatusFn(ctx, req)
 }
 
 type PostgresBranchesService struct {
