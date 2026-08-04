@@ -91,7 +91,7 @@ pscale --org <org> database list --format json
 
 ## Cloudflare-billed databases
 
-To create a database billed to a Cloudflare account, Cloudflare must mint an HMAC billing proof. Pass all three flags together:
+These flags are hidden from `--help` and intended only for Cloudflare-minted HMAC flows (not human CLI use). To create a database billed to a Cloudflare account, Cloudflare must mint an HMAC billing proof. Pass all three flags together:
 
 ```bash
 pscale database create <database> --org <org> --format json \

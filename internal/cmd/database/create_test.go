@@ -476,3 +476,14 @@ func TestDatabase_CreateCmdCloudflareBillingIncomplete(t *testing.T) {
 	c.Assert(err, qt.ErrorMatches, ".*cloudflare-account-id, --cloudflare-timestamp, and --cloudflare-signature are all required.*")
 	c.Assert(svc.CreateFnInvoked, qt.IsFalse)
 }
+
+func TestDatabase_CreateCmdCloudflareFlagsHidden(t *testing.T) {
+	c := qt.New(t)
+
+	cmd := CreateCmd(&cmdutil.Helper{})
+	for _, name := range []string{"cloudflare-account-id", "cloudflare-timestamp", "cloudflare-signature"} {
+		flag := cmd.Flags().Lookup(name)
+		c.Assert(flag, qt.IsNotNil, qt.Commentf("flag %q", name))
+		c.Assert(flag.Hidden, qt.IsTrue, qt.Commentf("flag %q", name))
+	}
+}
