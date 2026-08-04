@@ -28,13 +28,14 @@ type DatabaseBranchPassword struct {
 // DatabaseBranchPasswordRequest encapsulates the request for creating/getting/deleting a
 // database branch password.
 type DatabaseBranchPasswordRequest struct {
-	Organization string `json:"-"`
-	Database     string `json:"-"`
-	Branch       string `json:"-"`
-	Role         string `json:"role,omitempty"`
-	Name         string `json:"name"`
-	TTL          int    `json:"ttl,omitempty"`
-	Replica      bool   `json:"replica,omitempty"`
+	Organization     string `json:"-"`
+	Database         string `json:"-"`
+	Branch           string `json:"-"`
+	Role             string `json:"role,omitempty"`
+	Name             string `json:"name"`
+	TTL              int    `json:"ttl,omitempty"`
+	Replica          bool   `json:"replica,omitempty"`
+	ReadOnlyRegionID string `json:"read_only_region_id,omitempty"`
 }
 
 // ListDatabaseBranchPasswordRequest encapsulates the request for listing all passwords

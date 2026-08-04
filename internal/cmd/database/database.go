@@ -29,6 +29,7 @@ func DatabaseCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.AddCommand(ShowCmd(ch))
 	cmd.AddCommand(DumpCmd(ch))
 	cmd.AddCommand(RestoreCmd(ch))
+	cmd.AddCommand(ReadOnlyRegionsCmd(ch))
 
 	return cmd
 }
