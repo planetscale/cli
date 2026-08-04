@@ -118,9 +118,10 @@ func ApplyKeyspaceRoutingRulesCmd(ch *cmdutil.Helper) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&flags.rules, "rules", "r", "", "Keyspace routing rules as JSON")
-	cmd.Flags().StringVarP(&flags.rulesFile, "rules-file", "f", "", "Path to keyspace routing rules JSON")
-	cmd.Flags().StringSliceVarP(&flags.cells, "cells", "c", nil, "Limit SrvVSchema rebuilding to these cells")
+	// No short flags: root already owns -f for --format; siblings avoid shorts too.
+	cmd.Flags().StringVar(&flags.rules, "rules", "", "Keyspace routing rules as JSON")
+	cmd.Flags().StringVar(&flags.rulesFile, "rules-file", "", "Path to keyspace routing rules JSON")
+	cmd.Flags().StringSliceVar(&flags.cells, "cells", nil, "Limit SrvVSchema rebuilding to these cells")
 	cmd.Flags().BoolVar(&flags.skipRebuild, "skip-rebuild", false, "Skip rebuilding SrvVSchema objects")
 
 	return cmd
