@@ -19,13 +19,16 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	createReq := &ps.CreateDatabaseRequest{}
 
 	var flags struct {
-		clusterSize  string
-		engine       string
-		wait         bool
-		replicas     *int
-		majorVersion string
-		minStorage   int64
-		maxStorage   int64
+		clusterSize         string
+		engine              string
+		wait                bool
+		replicas            *int
+		majorVersion        string
+		minStorage          int64
+		maxStorage          int64
+		cloudflareAccountID string
+		cloudflareTimestamp string
+		cloudflareSignature string
 	}
 
 	cmd := &cobra.Command{
@@ -65,6 +68,18 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 				if cmd.Flags().Changed("max-storage") {
 					createReq.Storage.MaximumStorageBytes = &flags.maxStorage
 				}
+			}
+
+			cloudflareAccountID := flags.cloudflareAccountID
+			cloudflareTimestamp := flags.cloudflareTimestamp
+			cloudflareSignature := flags.cloudflareSignature
+			if cloudflareAccountID != "" || cloudflareTimestamp != "" || cloudflareSignature != "" {
+				if cloudflareAccountID == "" || cloudflareTimestamp == "" || cloudflareSignature == "" {
+					return fmt.Errorf("--cloudflare-account-id, --cloudflare-timestamp, and --cloudflare-signature are all required when billing to Cloudflare")
+				}
+				createReq.CloudflareAccountID = cloudflareAccountID
+				createReq.CloudflareTimestamp = cloudflareTimestamp
+				createReq.CloudflareSignature = cloudflareSignature
 			}
 
 			client, err := ch.Client()
@@ -138,6 +153,13 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	})
 	cmd.Flags().Int64Var(&flags.minStorage, "min-storage", 0, "Minimum storage size in bytes")
 	cmd.Flags().Int64Var(&flags.maxStorage, "max-storage", 0, "Maximum storage size in bytes for autoscaling")
+
+	cmd.Flags().StringVar(&flags.cloudflareAccountID, "cloudflare-account-id", "", "Cloudflare account ID to bill this database to. Requires --cloudflare-timestamp and --cloudflare-signature.")
+	cmd.Flags().StringVar(&flags.cloudflareTimestamp, "cloudflare-timestamp", "", "Unix timestamp for the Cloudflare billing signature. Requires --cloudflare-account-id and --cloudflare-signature.")
+	cmd.Flags().StringVar(&flags.cloudflareSignature, "cloudflare-signature", "", "HMAC signature proving Cloudflare billing intent. Requires --cloudflare-account-id and --cloudflare-timestamp.")
+	_ = cmd.Flags().MarkHidden("cloudflare-account-id")
+	_ = cmd.Flags().MarkHidden("cloudflare-timestamp")
+	_ = cmd.Flags().MarkHidden("cloudflare-signature")
 
 	cmd.Flags().BoolVar(&flags.wait, "wait", false, "Wait until the database is ready")
 
