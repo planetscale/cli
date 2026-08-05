@@ -2,6 +2,7 @@ package planetscale
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -101,6 +102,58 @@ func TestKeyspaces_GetFull(t *testing.T) {
 
 	c.Assert(err, qt.IsNil)
 	c.Assert(keyspace.ReadOnlyRegions, qt.DeepEquals, []*ReadOnlyRegionKeyspace{{
+		Region:             "us-west",
+		ClusterName:        "PS_20",
+		ClusterDisplayName: "PS-20",
+		Replicas:           2,
+	}})
+}
+
+func TestKeyspaces_UpdateReadOnlyRegions(t *testing.T) {
+	c := qt.New(t)
+	clusterSize := "PS_20"
+	replicas := 2
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodPut)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/foo/databases/bar/branches/baz/keyspaces/main/read-only-regions")
+
+		var body struct {
+			ReadOnlyRegions []*ReadOnlyRegionKeyspaceConfig `json:"read_only_regions"`
+		}
+		c.Assert(json.NewDecoder(r.Body).Decode(&body), qt.IsNil)
+		c.Assert(body.ReadOnlyRegions, qt.DeepEquals, []*ReadOnlyRegionKeyspaceConfig{
+			{Region: "us-west", ClusterSize: &clusterSize, Replicas: &replicas},
+			{Region: "eu-west"},
+		})
+
+		w.WriteHeader(http.StatusOK)
+		_, err := w.Write([]byte(`[{
+			"region": "us-west",
+			"cluster_name": "PS_20",
+			"cluster_display_name": "PS-20",
+			"replicas": 2
+		}]`))
+		c.Assert(err, qt.IsNil)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	regions, err := client.Keyspaces.UpdateReadOnlyRegions(context.Background(), &UpdateReadOnlyRegionsRequest{
+		Organization: "foo",
+		Database:     "bar",
+		Branch:       "baz",
+		Keyspace:     "main",
+		ReadOnlyRegions: []*ReadOnlyRegionKeyspaceConfig{
+			{Region: "us-west", ClusterSize: &clusterSize, Replicas: &replicas},
+			{Region: "eu-west"},
+		},
+	})
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(regions, qt.DeepEquals, []*ReadOnlyRegionKeyspace{{
 		Region:             "us-west",
 		ClusterName:        "PS_20",
 		ClusterDisplayName: "PS-20",

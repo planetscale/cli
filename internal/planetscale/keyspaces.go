@@ -34,6 +34,12 @@ type ReadOnlyRegionKeyspace struct {
 	Replicas           int    `json:"replicas"`
 }
 
+type ReadOnlyRegionKeyspaceConfig struct {
+	Region      string  `json:"region"`
+	ClusterSize *string `json:"cluster_size,omitempty"`
+	Replicas    *int    `json:"replicas,omitempty"`
+}
+
 // VSchema represnts the VSchema for a branch keyspace
 type VSchema struct {
 	Raw  string `json:"raw"`
@@ -62,6 +68,14 @@ type GetKeyspaceRequest struct {
 	Branch       string `json:"-"`
 	Keyspace     string `json:"-"`
 	Full         bool   `json:"-"`
+}
+
+type UpdateReadOnlyRegionsRequest struct {
+	Organization    string                          `json:"-"`
+	Database        string                          `json:"-"`
+	Branch          string                          `json:"-"`
+	Keyspace        string                          `json:"-"`
+	ReadOnlyRegions []*ReadOnlyRegionKeyspaceConfig `json:"read_only_regions"`
 }
 
 type GetKeyspaceVSchemaRequest struct {
@@ -170,6 +184,7 @@ type KeyspacesService interface {
 	Create(context.Context, *CreateKeyspaceRequest) (*Keyspace, error)
 	List(context.Context, *ListKeyspacesRequest) ([]*Keyspace, error)
 	Get(context.Context, *GetKeyspaceRequest) (*Keyspace, error)
+	UpdateReadOnlyRegions(context.Context, *UpdateReadOnlyRegionsRequest) ([]*ReadOnlyRegionKeyspace, error)
 	VSchema(context.Context, *GetKeyspaceVSchemaRequest) (*VSchema, error)
 	UpdateVSchema(context.Context, *UpdateKeyspaceVSchemaRequest) (*VSchema, error)
 	Resize(context.Context, *ResizeKeyspaceRequest) (*KeyspaceResizeRequest, error)
@@ -222,6 +237,22 @@ func (s *keyspacesService) Get(ctx context.Context, getReq *GetKeyspaceRequest) 
 	}
 
 	return keyspace, nil
+}
+
+// UpdateReadOnlyRegions configures a keyspace's read-only regions.
+func (s *keyspacesService) UpdateReadOnlyRegions(ctx context.Context, updateReq *UpdateReadOnlyRegionsRequest) ([]*ReadOnlyRegionKeyspace, error) {
+	pathStr := path.Join(keyspaceAPIPath(updateReq.Organization, updateReq.Database, updateReq.Branch, updateReq.Keyspace), "read-only-regions")
+	req, err := s.client.newRequest(http.MethodPut, pathStr, updateReq)
+	if err != nil {
+		return nil, fmt.Errorf("error creating http request: %w", err)
+	}
+
+	regions := []*ReadOnlyRegionKeyspace{}
+	if err := s.client.do(ctx, req, &regions); err != nil {
+		return nil, err
+	}
+
+	return regions, nil
 }
 
 // Create creates a keyspace for a branch
