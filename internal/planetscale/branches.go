@@ -29,6 +29,8 @@ type DatabaseBranch struct {
 	CreatedAt      time.Time `json:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at"`
 	SafeMigrations bool      `json:"safe_migrations"`
+	VTGateSize     string    `json:"vtgate_size"`
+	VTGateCount    int       `json:"vtgate_count"`
 }
 
 type databaseBranchesResponse struct {

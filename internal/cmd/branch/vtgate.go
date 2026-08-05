@@ -18,6 +18,32 @@ var knownVTGateSizes = []string{
 	"VTG_80", "VTG_320", "VTG_640", "VTG_1280", "VTG_2560",
 }
 
+// vtgateInternalToName maps API-internal VTGate sizes to public SKU names.
+var vtgateInternalToName = map[string]string{
+	"vg.g1.pico":    "VTG_DEV",
+	"vg.c1.nano":    "VTG_5",
+	"vg.c1.micro":   "VTG_10",
+	"vg.c1.small":   "VTG_20",
+	"vg.c1.medium":  "VTG_40",
+	"vg.c1.large":   "VTG_80",
+	"vg.c1.xlarge":  "VTG_320",
+	"vg.c1.2xlarge": "VTG_640",
+	"vg.c1.4xlarge": "VTG_1280",
+	"vg.c1.8xlarge": "VTG_2560",
+}
+
+type branchVTGateConfig struct {
+	VTGateSize                 string `header:"vtgate_size" json:"vtgate_size"`
+	VTGateCount                int    `header:"vtgate_count" json:"vtgate_count"`
+	VTGateMaxCount             *int   `header:"vtgate_max_count,n/a" json:"vtgate_max_count"`
+	VTGateAutoscaling          bool   `header:"vtgate_autoscaling" json:"vtgate_autoscaling"`
+	VTGateTargetCPUUtilization *int   `header:"vtgate_target_cpu,n/a" json:"vtgate_target_cpu_utilization"`
+}
+
+func (c *branchVTGateConfig) MarshalCSVValue() interface{} {
+	return []*branchVTGateConfig{c}
+}
+
 type branchVTGateResize struct {
 	ID                         string `header:"id" json:"id"`
 	State                      string `header:"state" json:"state"`
@@ -42,7 +68,59 @@ func VtgateCmd(ch *cmdutil.Helper) *cobra.Command {
 		Short: "Manage VTGate size for a Vitess branch",
 	}
 
+	cmd.AddCommand(VtgateShowCmd(ch))
 	cmd.AddCommand(VtgateResizeCmd(ch))
+	return cmd
+}
+
+// VtgateShowCmd shows the current VTGate configuration for a Vitess branch.
+func VtgateShowCmd(ch *cmdutil.Helper) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "show <database> <branch>",
+		Short: "Show the current VTGate configuration for a Vitess branch",
+		Example: `  pscale branch vtgate show mydb main
+  pscale branch vtgate show mydb main --format json`,
+		Args: cmdutil.RequiredArgs("database", "branch"),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			database, branch := args[0], args[1]
+
+			client, err := ch.Client()
+			if err != nil {
+				return err
+			}
+
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Fetching VTGate config for branch %s in %s", printer.BoldBlue(branch), printer.BoldBlue(database)))
+			defer end()
+
+			b, err := client.DatabaseBranches.Get(ctx, &ps.GetDatabaseBranchRequest{
+				Organization: ch.Config.Organization,
+				Database:     database,
+				Branch:       branch,
+			})
+			if err != nil {
+				switch cmdutil.ErrCode(err) {
+				case ps.ErrNotFound:
+					return fmt.Errorf("database %s or branch %s does not exist in organization %s", printer.BoldBlue(database), printer.BoldBlue(branch), printer.BoldBlue(ch.Config.Organization))
+				default:
+					return cmdutil.HandleError(err)
+				}
+			}
+
+			resizes, err := client.DatabaseBranches.ListResizes(ctx, &ps.ListBranchResizesRequest{
+				Organization: ch.Config.Organization,
+				Database:     database,
+				Branch:       branch,
+			})
+			if err != nil {
+				return cmdutil.HandleError(err)
+			}
+			end()
+
+			return ch.Printer.PrintResource(toBranchVTGateConfig(b, resizes))
+		},
+	}
+
 	return cmd
 }
 
@@ -268,4 +346,42 @@ func (r *branchVTGateResize) MarshalJSON() ([]byte, error) {
 
 func (r *branchVTGateResize) MarshalCSVValue() interface{} {
 	return []*branchVTGateResize{r}
+}
+
+func toBranchVTGateConfig(b *ps.DatabaseBranch, resizes []*ps.BranchResizeRequest) *branchVTGateConfig {
+	cfg := &branchVTGateConfig{
+		VTGateSize:  publicVTGateName(b.VTGateSize),
+		VTGateCount: b.VTGateCount,
+	}
+
+	if len(resizes) == 0 {
+		return cfg
+	}
+
+	// Autoscaling settings aren't on the branch resource. Read them from the
+	// latest resize: completed requests carry the applied values on the
+	// forward fields; anything else keeps the applied values on previous_*.
+	r := resizes[0]
+	if r.State == "completed" {
+		cfg.VTGateMaxCount = r.VTGateMaxCount
+		cfg.VTGateAutoscaling = r.VTGateAutoscaling
+		cfg.VTGateTargetCPUUtilization = r.VTGateTargetCPUUtilization
+		return cfg
+	}
+
+	cfg.VTGateMaxCount = r.PreviousVTGateMaxCount
+	cfg.VTGateAutoscaling = r.PreviousVTGateAutoscaling
+	cfg.VTGateTargetCPUUtilization = r.PreviousVTGateTargetCPUUtilization
+	return cfg
+}
+
+func publicVTGateName(size string) string {
+	if size == "" {
+		return size
+	}
+	if name, ok := vtgateInternalToName[size]; ok {
+		return name
+	}
+	// Already a public SKU, or an unknown internal size — pass through.
+	return strings.ReplaceAll(size, "-", "_")
 }

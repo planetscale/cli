@@ -69,6 +69,186 @@ func TestBranch_VtgateResizeCmd(t *testing.T) {
 	c.Assert(buf.String(), qt.JSONEquals, resize)
 }
 
+func TestBranch_VtgateShowCmd(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	db := "mydb"
+	branchName := "main"
+	maxCount := 8
+	targetCPU := 50
+
+	svc := &mock.DatabaseBranchesService{
+		GetFn: func(ctx context.Context, req *ps.GetDatabaseBranchRequest) (*ps.DatabaseBranch, error) {
+			c.Assert(req.Organization, qt.Equals, org)
+			c.Assert(req.Database, qt.Equals, db)
+			c.Assert(req.Branch, qt.Equals, branchName)
+			return &ps.DatabaseBranch{
+				Name:        branchName,
+				VTGateSize:  "vg.c1.xlarge",
+				VTGateCount: 2,
+			}, nil
+		},
+		ListResizesFn: func(ctx context.Context, req *ps.ListBranchResizesRequest) ([]*ps.BranchResizeRequest, error) {
+			c.Assert(req.Organization, qt.Equals, org)
+			c.Assert(req.Database, qt.Equals, db)
+			c.Assert(req.Branch, qt.Equals, branchName)
+			return []*ps.BranchResizeRequest{{
+				State:                      "completed",
+				VTGateName:                 "VTG_320",
+				VTGateCount:                2,
+				VTGateMaxCount:             &maxCount,
+				VTGateAutoscaling:          true,
+				VTGateTargetCPUUtilization: &targetCPU,
+			}}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: org,
+		},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{
+				DatabaseBranches: svc,
+			}, nil
+		},
+	}
+
+	cmd := VtgateShowCmd(ch)
+	cmd.SetArgs([]string{db, branchName})
+	err := cmd.Execute()
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.GetFnInvoked, qt.IsTrue)
+	c.Assert(svc.ListResizesFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.JSONEquals, map[string]interface{}{
+		"vtgate_size":                   "VTG_320",
+		"vtgate_count":                  2,
+		"vtgate_max_count":              8,
+		"vtgate_autoscaling":            true,
+		"vtgate_target_cpu_utilization": 50,
+	})
+}
+
+func TestBranch_VtgateShowCmd_NoResizes(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	svc := &mock.DatabaseBranchesService{
+		GetFn: func(ctx context.Context, req *ps.GetDatabaseBranchRequest) (*ps.DatabaseBranch, error) {
+			return &ps.DatabaseBranch{
+				Name:        "main",
+				VTGateSize:  "vg.c1.micro",
+				VTGateCount: 1,
+			}, nil
+		},
+		ListResizesFn: func(ctx context.Context, req *ps.ListBranchResizesRequest) ([]*ps.BranchResizeRequest, error) {
+			return []*ps.BranchResizeRequest{}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: "planetscale",
+		},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{
+				DatabaseBranches: svc,
+			}, nil
+		},
+	}
+
+	cmd := VtgateShowCmd(ch)
+	cmd.SetArgs([]string{"mydb", "main"})
+	err := cmd.Execute()
+	c.Assert(err, qt.IsNil)
+	c.Assert(buf.String(), qt.JSONEquals, map[string]interface{}{
+		"vtgate_size":                   "VTG_10",
+		"vtgate_count":                  1,
+		"vtgate_max_count":              nil,
+		"vtgate_autoscaling":            false,
+		"vtgate_target_cpu_utilization": nil,
+	})
+}
+
+func TestBranch_VtgateShowCmd_PendingUsesPreviousAutoscaling(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	prevMax := 4
+	prevCPU := 60
+
+	svc := &mock.DatabaseBranchesService{
+		GetFn: func(ctx context.Context, req *ps.GetDatabaseBranchRequest) (*ps.DatabaseBranch, error) {
+			return &ps.DatabaseBranch{
+				Name:        "main",
+				VTGateSize:  "vg.c1.xlarge",
+				VTGateCount: 2,
+			}, nil
+		},
+		ListResizesFn: func(ctx context.Context, req *ps.ListBranchResizesRequest) ([]*ps.BranchResizeRequest, error) {
+			return []*ps.BranchResizeRequest{{
+				State:                              "queued",
+				VTGateName:                         "VTG_640",
+				PreviousVTGateName:                 "VTG_320",
+				VTGateCount:                        4,
+				PreviousVTGateCount:                2,
+				VTGateAutoscaling:                  false,
+				PreviousVTGateAutoscaling:          true,
+				PreviousVTGateMaxCount:             &prevMax,
+				PreviousVTGateTargetCPUUtilization: &prevCPU,
+			}}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: "planetscale",
+		},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{
+				DatabaseBranches: svc,
+			}, nil
+		},
+	}
+
+	cmd := VtgateShowCmd(ch)
+	cmd.SetArgs([]string{"mydb", "main"})
+	err := cmd.Execute()
+	c.Assert(err, qt.IsNil)
+	c.Assert(buf.String(), qt.JSONEquals, map[string]interface{}{
+		"vtgate_size":                   "VTG_320",
+		"vtgate_count":                  2,
+		"vtgate_max_count":              4,
+		"vtgate_autoscaling":            true,
+		"vtgate_target_cpu_utilization": 60,
+	})
+}
+
+func TestPublicVTGateName(t *testing.T) {
+	c := qt.New(t)
+	c.Assert(publicVTGateName("vg.c1.micro"), qt.Equals, "VTG_10")
+	c.Assert(publicVTGateName("VTG_320"), qt.Equals, "VTG_320")
+	c.Assert(publicVTGateName("VTG-320"), qt.Equals, "VTG_320")
+	c.Assert(publicVTGateName(""), qt.Equals, "")
+}
+
 func TestBranch_VtgateResizeCmd_SizeOnly(t *testing.T) {
 	c := qt.New(t)
 
