@@ -12,12 +12,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// ReadOnlyRegionsCmd lists read-only regions for a database's default branch.
+// ReadOnlyRegionsCmd lists Vitess read-only regions for a database's default branch.
 func ReadOnlyRegionsCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "read-only-regions <database>",
-		Short:   "List read-only regions for a database",
-		Long:    "List Vitess read-only regions configured on the database's default branch.",
+		Use:   "read-only-regions <database>",
+		Short: "List Vitess read-only regions for a database",
+		Long: "List Vitess read-only regions configured on the database's default branch.\n\n" +
+			"This command is only supported for Vitess databases.",
 		Args:    cmdutil.RequiredArgs("database"),
 		Aliases: []string{"ror"},
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
