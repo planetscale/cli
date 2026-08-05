@@ -119,7 +119,6 @@ func DeployCmd(ch *cmdutil.Helper) *cobra.Command {
 	// cmd.Flags().MarkHidden("instant")
 
 	cmd.Flags().StringVar(&flags.strategy, "strategy", "", "Deployment strategy: \"serial\" (default) or \"parallel\". Parallel deployments must be enabled for the database.")
-	_ = cmd.Flags().MarkHidden("strategy")
 
 	return cmd
 }
