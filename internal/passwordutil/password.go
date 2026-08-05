@@ -17,13 +17,14 @@ const (
 )
 
 type Options struct {
-	Organization string
-	Database     string
-	Branch       string
-	Role         cmdutil.PasswordRole
-	Name         string
-	TTL          time.Duration
-	Replica      bool
+	Organization     string
+	Database         string
+	Branch           string
+	Role             cmdutil.PasswordRole
+	Name             string
+	TTL              time.Duration
+	Replica          bool
+	ReadOnlyRegionID string
 }
 
 type Password struct {
@@ -73,13 +74,14 @@ func (p *Password) Renew(ctx context.Context) error {
 
 func New(ctx context.Context, client *ps.Client, opt Options) (*Password, error) {
 	pw, err := client.Passwords.Create(ctx, &ps.DatabaseBranchPasswordRequest{
-		Organization: opt.Organization,
-		Database:     opt.Database,
-		Branch:       opt.Branch,
-		Role:         opt.Role.ToString(),
-		Name:         opt.Name,
-		TTL:          int(opt.TTL.Seconds()),
-		Replica:      opt.Replica,
+		Organization:     opt.Organization,
+		Database:         opt.Database,
+		Branch:           opt.Branch,
+		Role:             opt.Role.ToString(),
+		Name:             opt.Name,
+		TTL:              int(opt.TTL.Seconds()),
+		Replica:          opt.Replica,
+		ReadOnlyRegionID: opt.ReadOnlyRegionID,
 	})
 	if err != nil {
 		return nil, err

@@ -69,6 +69,7 @@ type Client struct {
 	Processlist           ProcesslistService
 	QueryInsights         QueryInsightsService
 	QueryPatterns         QueryPatternsService
+	ReadOnlyRegions       ReadOnlyRegionsService
 	Regions               RegionsService
 	SchemaRecommendations SchemaRecommendationService
 	ServiceTokens         ServiceTokenService
@@ -337,6 +338,7 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 	c.PostgresRoles = &postgresRolesService{client: c}
 	c.QueryInsights = &queryInsightsService{client: c}
 	c.QueryPatterns = &queryPatternsService{client: c}
+	c.ReadOnlyRegions = &readOnlyRegionsService{client: c}
 	c.Regions = &regionsService{client: c}
 	c.SchemaRecommendations = &schemaRecommendationService{client: c}
 	c.ServiceTokens = &serviceTokenService{client: c}

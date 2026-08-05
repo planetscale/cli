@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 	"path"
 	"time"
 )
@@ -23,6 +24,14 @@ type Keyspace struct {
 	UpdatedAt                        time.Time                         `json:"updated_at"`
 	VReplicationFlags                *VReplicationFlags                `json:"vreplication_flags"`
 	ReplicationDurabilityConstraints *ReplicationDurabilityConstraints `json:"replication_durability_constraints"`
+	ReadOnlyRegions                  []*ReadOnlyRegionKeyspace         `json:"read_only_regions"`
+}
+
+type ReadOnlyRegionKeyspace struct {
+	Region             string `json:"region"`
+	ClusterName        string `json:"cluster_name"`
+	ClusterDisplayName string `json:"cluster_display_name"`
+	Replicas           int    `json:"replicas"`
 }
 
 // VSchema represnts the VSchema for a branch keyspace
@@ -52,6 +61,7 @@ type GetKeyspaceRequest struct {
 	Database     string `json:"-"`
 	Branch       string `json:"-"`
 	Keyspace     string `json:"-"`
+	Full         bool   `json:"-"`
 }
 
 type GetKeyspaceVSchemaRequest struct {
@@ -196,7 +206,12 @@ func (s *keyspacesService) List(ctx context.Context, listReq *ListKeyspacesReque
 
 // Get returns a keyspace for a branch
 func (s *keyspacesService) Get(ctx context.Context, getReq *GetKeyspaceRequest) (*Keyspace, error) {
-	req, err := s.client.newRequest(http.MethodGet, keyspaceAPIPath(getReq.Organization, getReq.Database, getReq.Branch, getReq.Keyspace), nil)
+	query := url.Values{}
+	if getReq.Full {
+		query.Set("full", "true")
+	}
+
+	req, err := s.client.newRequest(http.MethodGet, keyspaceAPIPath(getReq.Organization, getReq.Database, getReq.Branch, getReq.Keyspace), nil, WithQueryParams(query))
 	if err != nil {
 		return nil, fmt.Errorf("error creating http request: %w", err)
 	}

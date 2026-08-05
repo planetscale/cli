@@ -26,19 +26,20 @@ import (
 )
 
 type dumpFlags struct {
-	localAddr    string
-	remoteAddr   string
-	keyspace     string
-	shard        string
-	replica      bool
-	rdonly       bool
-	tables       string
-	wheres       string
-	columns      []string
-	output       string
-	threads      int
-	schemaOnly   bool
-	outputFormat string
+	localAddr      string
+	remoteAddr     string
+	keyspace       string
+	shard          string
+	replica        bool
+	rdonly         bool
+	readOnlyRegion string
+	tables         string
+	wheres         string
+	columns        []string
+	output         string
+	threads        int
+	schemaOnly     bool
+	outputFormat   string
 }
 
 // DumpCmd encapsulates the commands for dumping a database
@@ -59,8 +60,10 @@ func DumpCmd(ch *cmdutil.Helper) *cobra.Command {
 		"", "Local address to bind and listen for connections. By default the proxy binds to 127.0.0.1 with a random port.")
 	cmd.PersistentFlags().StringVar(&f.remoteAddr, "remote-addr", "",
 		"PlanetScale Database remote network address. By default the remote address is populated automatically from the PlanetScale API. (format: `hostname:port`)")
-	cmd.PersistentFlags().BoolVar(&f.replica, "replica", false, "Dump from a replica (if available; will fail if not).")
-	cmd.PersistentFlags().BoolVar(&f.rdonly, "rdonly", false, "Dump from a rdonly tablet (if available; will fail if not).")
+	cmd.PersistentFlags().BoolVar(&f.replica, "replica", false, "Dump from a replica tablet in the primary region (if available; will fail if not).")
+	cmd.PersistentFlags().BoolVar(&f.rdonly, "rdonly", false, "Dump from a rdonly tablet in the primary region (if available; will fail if not). Not for separate read-only regions — use --read-only-region instead.")
+	cmd.PersistentFlags().StringVar(&f.readOnlyRegion, "read-only-region", "",
+		"Dump from a Vitess read-only region (region slug, display name, or id). List regions with: pscale keyspace read-only-regions <database> <branch> <keyspace>.")
 	cmd.PersistentFlags().StringVar(&f.tables, "tables", "",
 		"Comma separated string of tables to dump. By default all tables are dumped.")
 	cmd.PersistentFlags().StringVar(&f.wheres, "wheres", "",
@@ -91,6 +94,10 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 
 	if flags.shard != "" && flags.keyspace == "" {
 		return fmt.Errorf("to target a single shard, please pass the --keyspace flag")
+	}
+
+	if flags.readOnlyRegion != "" && (flags.rdonly || flags.replica) {
+		return fmt.Errorf("--read-only-region cannot be combined with --rdonly or --replica")
 	}
 
 	validFormats := map[string]bool{"sql": true, "json": true, "csv": true}
@@ -144,13 +151,37 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 		return errors.New("database branch is not ready yet, please try again in a few minutes")
 	}
 
+	role := cmdutil.AdministratorRole
+	var readOnlyRegionID string
+	if flags.readOnlyRegion != "" {
+		regions, err := client.ReadOnlyRegions.List(ctx, &ps.ListReadOnlyRegionsRequest{
+			Organization: ch.Config.Organization,
+			Database:     database,
+		})
+		if err != nil {
+			return cmdutil.HandleError(err)
+		}
+
+		ror, err := ps.FindReadOnlyRegion(regions, flags.readOnlyRegion)
+		if err != nil {
+			return err
+		}
+		if !ror.Ready {
+			return fmt.Errorf("read-only region %s is not ready yet", printer.BoldBlue(flags.readOnlyRegion))
+		}
+
+		readOnlyRegionID = ror.ID
+		role = cmdutil.ReaderRole
+	}
+
 	pw, err := passwordutil.New(ctx, client, passwordutil.Options{
-		Organization: ch.Config.Organization,
-		Database:     database,
-		Branch:       branch,
-		Role:         cmdutil.AdministratorRole,
-		Name:         passwordutil.GenerateName("pscale-cli-dump"),
-		TTL:          5 * time.Minute,
+		Organization:     ch.Config.Organization,
+		Database:         database,
+		Branch:           branch,
+		Role:             role,
+		Name:             passwordutil.GenerateName("pscale-cli-dump"),
+		TTL:              5 * time.Minute,
+		ReadOnlyRegionID: readOnlyRegionID,
 	})
 	if err != nil {
 		return cmdutil.HandleError(err)
@@ -253,16 +284,8 @@ func dump(ch *cmdutil.Helper, cmd *cobra.Command, flags *dumpFlags, args []strin
 	cfg.OutputFormat = flags.outputFormat
 
 	if flags.shard != "" {
-		if flags.replica {
-			useCmd := shardUseCommand(dbName, flags.shard, flags.replica, flags.rdonly)
-			cfg.SessionVars = append([]string{useCmd}, cfg.SessionVars...)
-		} else if flags.rdonly {
-			useCmd := shardUseCommand(dbName, flags.shard, flags.replica, flags.rdonly)
-			cfg.SessionVars = append([]string{useCmd}, cfg.SessionVars...)
-		} else {
-			useCmd := shardUseCommand(dbName, flags.shard, flags.replica, flags.rdonly)
-			cfg.SessionVars = append([]string{useCmd}, cfg.SessionVars...)
-		}
+		useCmd := shardUseCommand(dbName, flags.shard, flags.replica, flags.rdonly)
+		cfg.SessionVars = append([]string{useCmd}, cfg.SessionVars...)
 	}
 
 	if flags.replica && flags.shard == "" {

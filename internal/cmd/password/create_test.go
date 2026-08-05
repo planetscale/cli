@@ -382,3 +382,94 @@ func TestPassword_CreateCmd_ReplicaWithoutRole(t *testing.T) {
 	c.Assert(err, qt.IsNil)
 	c.Assert(svc.CreateFnInvoked, qt.IsTrue)
 }
+
+func TestPassword_CreateCmd_ReadOnlyRegion(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.Human
+	p := printer.NewPrinter(&format)
+	p.SetHumanOutput(&buf)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	db := "analytics"
+	branch := "main"
+	name := "eu-dump-password"
+	res := &ps.DatabaseBranchPassword{
+		Name:   name,
+		Region: ps.Region{Slug: "eu-west"},
+	}
+
+	rorSvc := &mock.ReadOnlyRegionsService{
+		ListFn: func(ctx context.Context, req *ps.ListReadOnlyRegionsRequest, opts ...ps.ListOption) ([]*ps.ReadOnlyRegion, error) {
+			c.Assert(req.Organization, qt.Equals, org)
+			c.Assert(req.Database, qt.Equals, db)
+			return []*ps.ReadOnlyRegion{
+				{
+					ID:          "ror123",
+					DisplayName: "Europe West",
+					Ready:       true,
+					Region:      ps.Region{Slug: "eu-west"},
+				},
+			}, nil
+		},
+	}
+
+	pwSvc := &mock.PasswordsService{
+		CreateFn: func(ctx context.Context, req *ps.DatabaseBranchPasswordRequest) (*ps.DatabaseBranchPassword, error) {
+			c.Assert(req.Organization, qt.Equals, org)
+			c.Assert(req.Database, qt.Equals, db)
+			c.Assert(req.Branch, qt.Equals, branch)
+			c.Assert(req.Name, qt.Equals, name)
+			c.Assert(req.Role, qt.Equals, "reader")
+			c.Assert(req.Replica, qt.Equals, false)
+			c.Assert(req.ReadOnlyRegionID, qt.Equals, "ror123")
+			return res, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: org,
+		},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{
+				Passwords:       pwSvc,
+				ReadOnlyRegions: rorSvc,
+			}, nil
+		},
+	}
+
+	cmd := CreateCmd(ch)
+	cmd.SetArgs([]string{db, branch, name, "--read-only-region", "eu-west"})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(rorSvc.ListFnInvoked, qt.IsTrue)
+	c.Assert(pwSvc.CreateFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.Contains, "Read-only region (eu-west)")
+}
+
+func TestPassword_CreateCmd_ReadOnlyRegionWithReplica(t *testing.T) {
+	c := qt.New(t)
+
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: "planetscale",
+		},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{}, nil
+		},
+	}
+
+	cmd := CreateCmd(ch)
+	cmd.SetArgs([]string{"db", "main", "name", "--read-only-region", "eu-west", "--replica"})
+	err := cmd.Execute()
+	c.Assert(err, qt.IsNotNil)
+	c.Assert(err.Error(), qt.Contains, "cannot be combined")
+}
