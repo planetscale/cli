@@ -12,7 +12,9 @@ func ReadOnlyRegionsRemoveCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "remove <database> <branch> <keyspace> <region>",
 		Short: "Remove a read-only region from a keyspace",
-		Args:  cmdutil.RequiredArgs("database", "branch", "keyspace", "region"),
+		Long: "Remove a read-only region from a Vitess keyspace.\n\n" +
+			"<region> is a PlanetScale region slug already configured on the keyspace. List configured regions with: pscale keyspace read-only-regions <database> <branch> <keyspace>.",
+		Args: cmdutil.RequiredArgs("database", "branch", "keyspace", "region"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			database, branch, keyspace, region := args[0], args[1], args[2], args[3]
 

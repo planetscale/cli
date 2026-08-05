@@ -16,7 +16,9 @@ func ReadOnlyRegionsAddCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "add <database> <branch> <keyspace> <region>",
 		Short: "Add a read-only region to a keyspace",
-		Args:  cmdutil.RequiredArgs("database", "branch", "keyspace", "region"),
+		Long: "Add a read-only region to a Vitess keyspace.\n\n" +
+			"<region> is a PlanetScale region slug. List available slugs with: pscale region list.",
+		Args: cmdutil.RequiredArgs("database", "branch", "keyspace", "region"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			database, branch, keyspace, region := args[0], args[1], args[2], args[3]
 

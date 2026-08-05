@@ -15,7 +15,9 @@ func ReadOnlyRegionsUpdateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update <database> <branch> <keyspace> <region>",
 		Short: "Update a keyspace's read-only region",
-		Args:  cmdutil.RequiredArgs("database", "branch", "keyspace", "region"),
+		Long: "Update cluster size or replicas for a keyspace's read-only region.\n\n" +
+			"<region> is a PlanetScale region slug already configured on the keyspace. List configured regions with: pscale keyspace read-only-regions <database> <branch> <keyspace>.",
+		Args: cmdutil.RequiredArgs("database", "branch", "keyspace", "region"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			database, branch, keyspace, region := args[0], args[1], args[2], args[3]
 
