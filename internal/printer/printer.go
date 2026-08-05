@@ -319,7 +319,7 @@ func tableValue(v interface{}) interface{} {
 	rv := reflect.ValueOf(v)
 
 	switch rv.Kind() {
-	case reflect.Ptr:
+	case reflect.Pointer:
 		if rv.IsNil() || rv.Elem().Kind() != reflect.Struct {
 			return v
 		}
@@ -328,7 +328,7 @@ func tableValue(v interface{}) interface{} {
 		return flattenStruct(rv).Interface()
 	case reflect.Slice, reflect.Array:
 		elem := rv.Type().Elem()
-		if elem.Kind() == reflect.Ptr {
+		if elem.Kind() == reflect.Pointer {
 			elem = elem.Elem()
 		}
 		if elem.Kind() != reflect.Struct {
@@ -343,7 +343,7 @@ func tableValue(v interface{}) interface{} {
 		out := reflect.MakeSlice(reflect.SliceOf(flat), 0, rv.Len())
 		for i := 0; i < rv.Len(); i++ {
 			row := rv.Index(i)
-			if row.Kind() == reflect.Ptr {
+			if row.Kind() == reflect.Pointer {
 				if row.IsNil() {
 					out = reflect.Append(out, reflect.New(flat).Elem())
 					continue
@@ -413,7 +413,7 @@ func flatStructType(typ reflect.Type) reflect.Type {
 			break
 		}
 
-		if field.Type.Kind() == reflect.Ptr && isScalarKind(field.Type.Elem().Kind()) {
+		if field.Type.Kind() == reflect.Pointer && isScalarKind(field.Type.Elem().Kind()) {
 			field.Type = field.Type.Elem()
 			hasPointer = true
 		}
