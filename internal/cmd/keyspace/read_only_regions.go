@@ -54,6 +54,12 @@ func ReadOnlyRegionsCmd(ch *cmdutil.Helper) *cobra.Command {
 		},
 	}
 
+	cmd.AddCommand(
+		ReadOnlyRegionsAddCmd(ch),
+		ReadOnlyRegionsUpdateCmd(ch),
+		ReadOnlyRegionsRemoveCmd(ch),
+	)
+
 	return cmd
 }
 
@@ -84,4 +90,74 @@ func (r *ReadOnlyRegion) MarshalJSON() ([]byte, error) {
 
 func (r *ReadOnlyRegion) MarshalCSVValue() interface{} {
 	return []*ReadOnlyRegion{r}
+}
+
+func readOnlyRegionConfigs(regions []*ps.ReadOnlyRegionKeyspace) []*ps.ReadOnlyRegionKeyspaceConfig {
+	configs := make([]*ps.ReadOnlyRegionKeyspaceConfig, 0, len(regions))
+	for _, region := range regions {
+		clusterSize := region.ClusterName
+		replicas := region.Replicas
+		configs = append(configs, &ps.ReadOnlyRegionKeyspaceConfig{
+			Region:      region.Region,
+			ClusterSize: &clusterSize,
+			Replicas:    &replicas,
+		})
+	}
+	return configs
+}
+
+func readOnlyRegionIndex(regions []*ps.ReadOnlyRegionKeyspace, name string) int {
+	for i, region := range regions {
+		if region.Region == name {
+			return i
+		}
+	}
+	return -1
+}
+
+func getReadOnlyRegions(cmd *cobra.Command, ch *cmdutil.Helper, database, branch, keyspace string) (*ps.Client, []*ps.ReadOnlyRegionKeyspace, error) {
+	client, err := ch.Client()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	k, err := client.Keyspaces.Get(cmd.Context(), &ps.GetKeyspaceRequest{
+		Organization: ch.Config.Organization,
+		Database:     database,
+		Branch:       branch,
+		Keyspace:     keyspace,
+		Full:         true,
+	})
+	if err != nil {
+		switch cmdutil.ErrCode(err) {
+		case ps.ErrNotFound:
+			return nil, nil, fmt.Errorf("keyspace %s does not exist in branch %s (database: %s, organization: %s)", printer.BoldBlue(keyspace), printer.BoldBlue(branch), printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
+		default:
+			return nil, nil, cmdutil.HandleError(err)
+		}
+	}
+
+	return client, k.ReadOnlyRegions, nil
+}
+
+func updateReadOnlyRegions(cmd *cobra.Command, ch *cmdutil.Helper, client *ps.Client, database, branch, keyspace string, configs []*ps.ReadOnlyRegionKeyspaceConfig) ([]*ps.ReadOnlyRegionKeyspace, error) {
+	regions, err := client.Keyspaces.UpdateReadOnlyRegions(cmd.Context(), &ps.UpdateReadOnlyRegionsRequest{
+		Organization:    ch.Config.Organization,
+		Database:        database,
+		Branch:          branch,
+		Keyspace:        keyspace,
+		ReadOnlyRegions: configs,
+	})
+	if err != nil {
+		return nil, cmdutil.HandleError(err)
+	}
+	return regions, nil
+}
+
+func printReadOnlyRegionMutation(ch *cmdutil.Helper, message string, regions []*ps.ReadOnlyRegionKeyspace) error {
+	if ch.Printer.Format() == printer.Human {
+		ch.Printer.Println(message)
+		return nil
+	}
+	return ch.Printer.PrintResource(toReadOnlyRegions(regions))
 }

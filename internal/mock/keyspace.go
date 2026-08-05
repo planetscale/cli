@@ -13,6 +13,9 @@ type KeyspacesService struct {
 	GetFn        func(context.Context, *ps.GetKeyspaceRequest) (*ps.Keyspace, error)
 	GetFnInvoked bool
 
+	UpdateReadOnlyRegionsFn        func(context.Context, *ps.UpdateReadOnlyRegionsRequest) ([]*ps.ReadOnlyRegionKeyspace, error)
+	UpdateReadOnlyRegionsFnInvoked bool
+
 	VSchemaFn        func(context.Context, *ps.GetKeyspaceVSchemaRequest) (*ps.VSchema, error)
 	VSchemaFnInvoked bool
 
@@ -47,6 +50,11 @@ func (s *KeyspacesService) Get(ctx context.Context, req *ps.GetKeyspaceRequest) 
 	s.GetFnInvoked = true
 	s.GetFnInvoked = true
 	return s.GetFn(ctx, req)
+}
+
+func (s *KeyspacesService) UpdateReadOnlyRegions(ctx context.Context, req *ps.UpdateReadOnlyRegionsRequest) ([]*ps.ReadOnlyRegionKeyspace, error) {
+	s.UpdateReadOnlyRegionsFnInvoked = true
+	return s.UpdateReadOnlyRegionsFn(ctx, req)
 }
 
 func (s *KeyspacesService) VSchema(ctx context.Context, req *ps.GetKeyspaceVSchemaRequest) (*ps.VSchema, error) {
