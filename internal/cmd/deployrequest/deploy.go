@@ -118,7 +118,7 @@ func DeployCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().BoolVar(&flags.instant_ddl, "instant", false, "If enabled, the schema migrations from this deploy request will be applied using MySQL’s built-in ALGORITHM=INSTANT option. Deployment will be faster, but cannot be reverted.")
 	// cmd.Flags().MarkHidden("instant")
 
-	cmd.Flags().StringVar(&flags.strategy, "strategy", "", "Deployment strategy: \"serial\" (default) or \"parallel\". Parallel deployments must be enabled for the database.")
+	cmd.Flags().StringVar(&flags.strategy, "strategy", "", "Deployment strategy: \"serial\" (default) or \"parallel\".")
 
 	return cmd
 }
