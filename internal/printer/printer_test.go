@@ -12,8 +12,6 @@ type nilCellRow struct {
 	Enabled   bool   `header:"enabled" json:"enabled"`
 	Target    *int   `header:"target,n/a" json:"target"`
 	CreatedAt int64  `header:"created_at" json:"created_at"`
-
-	orig *struct{}
 }
 
 // A nil pointer field used to render no cell at all, so every value after it
