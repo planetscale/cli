@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"reflect"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/AlecAivazis/survey/v2"
@@ -216,7 +218,7 @@ func (p *Printer) PrintResource(v interface{}) error {
 	switch *p.format {
 	case Human:
 		var b strings.Builder
-		tableprinter.Print(&b, v)
+		tableprinter.Print(&b, tableValue(v))
 		fmt.Fprintln(out, b.String())
 		return nil
 	case JSON:
@@ -306,6 +308,138 @@ func (p *Printer) PrettyPrintJSON(b []byte) error {
 
 	fmt.Fprintln(out, buf.String())
 	return nil
+}
+
+// tableValue prepares a resource for tableprinter. A nil pointer field yields
+// no cell at all, which slides every following value one column to the left and
+// under the wrong header, so pointers to scalars are replaced by their element
+// type with nil becoming the zero value. Zero renders as the ",n/a" header tag
+// value (or blank for timestamps), and JSON and CSV output are unaffected.
+func tableValue(v interface{}) interface{} {
+	rv := reflect.ValueOf(v)
+
+	switch rv.Kind() {
+	case reflect.Pointer:
+		if rv.IsNil() || rv.Elem().Kind() != reflect.Struct {
+			return v
+		}
+		return flattenStruct(rv.Elem()).Interface()
+	case reflect.Struct:
+		return flattenStruct(rv).Interface()
+	case reflect.Slice, reflect.Array:
+		elem := rv.Type().Elem()
+		if elem.Kind() == reflect.Pointer {
+			elem = elem.Elem()
+		}
+		if elem.Kind() != reflect.Struct {
+			return v
+		}
+
+		flat := flatStructType(elem)
+		if flat == elem {
+			return v
+		}
+
+		out := reflect.MakeSlice(reflect.SliceOf(flat), 0, rv.Len())
+		for i := 0; i < rv.Len(); i++ {
+			row := rv.Index(i)
+			if row.Kind() == reflect.Pointer {
+				if row.IsNil() {
+					out = reflect.Append(out, reflect.New(flat).Elem())
+					continue
+				}
+				row = row.Elem()
+			}
+			out = reflect.Append(out, flattenStruct(row))
+		}
+		return out.Interface()
+	}
+
+	return v
+}
+
+func flattenStruct(rv reflect.Value) reflect.Value {
+	flat := flatStructType(rv.Type())
+	if flat == rv.Type() {
+		return rv
+	}
+
+	out := reflect.New(flat).Elem()
+	for i := 0; i < flat.NumField(); i++ {
+		field := flat.Field(i)
+		from := rv.FieldByName(field.Name)
+
+		if from.Type() == field.Type {
+			out.Field(i).Set(from)
+			continue
+		}
+		if !from.IsNil() {
+			out.Field(i).Set(from.Elem())
+		}
+	}
+
+	return out
+}
+
+var (
+	flatStructTypesMu sync.RWMutex
+	flatStructTypes   = map[reflect.Type]reflect.Type{}
+)
+
+// flatStructType returns typ with every pointer-to-scalar field replaced by the
+// type it points to, or typ itself when there is nothing to replace.
+func flatStructType(typ reflect.Type) reflect.Type {
+	flatStructTypesMu.RLock()
+	cached, ok := flatStructTypes[typ]
+	flatStructTypesMu.RUnlock()
+	if ok {
+		return cached
+	}
+
+	flat := typ
+	fields := make([]reflect.StructField, 0, typ.NumField())
+	hasPointer := false
+
+	for i := 0; i < typ.NumField(); i++ {
+		field := typ.Field(i)
+
+		// reflect.StructOf cannot rebuild these, and tableprinter ignores
+		// unexported fields anyway.
+		if field.PkgPath != "" {
+			continue
+		}
+		if field.Anonymous {
+			hasPointer = false
+			break
+		}
+
+		if field.Type.Kind() == reflect.Pointer && isScalarKind(field.Type.Elem().Kind()) {
+			field.Type = field.Type.Elem()
+			hasPointer = true
+		}
+		fields = append(fields, field)
+	}
+
+	if hasPointer {
+		flat = reflect.StructOf(fields)
+	}
+
+	flatStructTypesMu.Lock()
+	flatStructTypes[typ] = flat
+	flatStructTypesMu.Unlock()
+
+	return flat
+}
+
+func isScalarKind(k reflect.Kind) bool {
+	switch k {
+	case reflect.Bool, reflect.String,
+		reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
+		reflect.Float32, reflect.Float64:
+		return true
+	}
+	return false
 }
 
 func GetMilliseconds(timestamp time.Time) int64 {

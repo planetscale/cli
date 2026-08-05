@@ -29,6 +29,8 @@ type DatabaseBranch struct {
 	CreatedAt      time.Time `json:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at"`
 	SafeMigrations bool      `json:"safe_migrations"`
+	VTGateSize     string    `json:"vtgate_size"`
+	VTGateCount    int       `json:"vtgate_count"`
 }
 
 type databaseBranchesResponse struct {
@@ -180,6 +182,10 @@ type DatabaseBranchesService interface {
 	DisableSafeMigrations(context.Context, *DisableSafeMigrationsRequest) (*DatabaseBranch, error)
 	LintSchema(context.Context, *LintSchemaRequest) ([]*SchemaLintError, error)
 	ListClusterSKUs(context.Context, *ListBranchClusterSKUsRequest, ...ListOption) ([]*ClusterSKU, error)
+	Resize(context.Context, *ResizeBranchRequest) (*BranchResizeRequest, error)
+	ListResizes(context.Context, *ListBranchResizesRequest) ([]*BranchResizeRequest, error)
+	CancelResize(context.Context, *CancelBranchResizeRequest) error
+	ResizeStatus(context.Context, *BranchResizeStatusRequest) (*BranchResizeRequest, error)
 }
 
 // ListBranchClusterSKUsRequest encapsulates the request for getting a list of Cluster SKUs for a branch.

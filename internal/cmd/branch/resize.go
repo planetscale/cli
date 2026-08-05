@@ -70,7 +70,7 @@ and "pscale branch resize cancel" to cancel it while queued.`,
 			}
 
 			if db.Kind == "mysql" {
-				return fmt.Errorf("branch resize is only supported for PostgreSQL databases. To resize a MySQL keyspace, use %s", printer.BoldBlue("pscale keyspace resize"))
+				return fmt.Errorf("branch resize is only supported for PostgreSQL databases. To resize a MySQL keyspace, use %s. To resize VTGates, use %s", printer.BoldBlue("pscale keyspace resize"), printer.BoldBlue("pscale branch vtgate resize"))
 			}
 
 			restartParams, err := preflightParameters(ctx, client, ch.Config.Organization, database, branch, parameters)
