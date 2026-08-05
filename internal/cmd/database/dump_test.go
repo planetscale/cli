@@ -4,6 +4,10 @@ import (
 	"testing"
 
 	qt "github.com/frankban/quicktest"
+	"github.com/planetscale/cli/internal/cmdutil"
+	"github.com/planetscale/cli/internal/config"
+	ps "github.com/planetscale/cli/internal/planetscale"
+	"github.com/planetscale/cli/internal/printer"
 )
 
 func TestParseColumnIncludes(t *testing.T) {
@@ -99,6 +103,34 @@ func TestParseColumnIncludes(t *testing.T) {
 			c.Assert(got, qt.DeepEquals, tt.want)
 		})
 	}
+}
+
+func TestDump_ReadOnlyRegionFlagConflicts(t *testing.T) {
+	c := qt.New(t)
+
+	format := printer.Human
+	p := printer.NewPrinter(&format)
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: "planetscale",
+		},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{}, nil
+		},
+	}
+
+	cmd := DumpCmd(ch)
+	cmd.SetArgs([]string{"db", "main", "--read-only-region", "eu-west", "--rdonly"})
+	err := cmd.Execute()
+	c.Assert(err, qt.IsNotNil)
+	c.Assert(err.Error(), qt.Contains, "cannot be combined")
+
+	cmd = DumpCmd(ch)
+	cmd.SetArgs([]string{"db", "main", "--read-only-region", "eu-west", "--replica"})
+	err = cmd.Execute()
+	c.Assert(err, qt.IsNotNil)
+	c.Assert(err.Error(), qt.Contains, "cannot be combined")
 }
 
 func TestShardUseCommand(t *testing.T) {

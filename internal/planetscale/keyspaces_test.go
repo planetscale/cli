@@ -69,6 +69,45 @@ func TestKeyspaces_Get(t *testing.T) {
 	c.Assert(keyspace.Shards, qt.Equals, 2)
 }
 
+func TestKeyspaces_GetFull(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.URL.Query().Get("full"), qt.Equals, "true")
+		w.WriteHeader(http.StatusOK)
+		_, err := w.Write([]byte(`{
+			"id": "thisisanid",
+			"name": "main",
+			"read_only_regions": [{
+				"region": "us-west",
+				"cluster_name": "PS_20",
+				"cluster_display_name": "PS-20",
+				"replicas": 2
+			}]
+		}`))
+		c.Assert(err, qt.IsNil)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	keyspace, err := client.Keyspaces.Get(context.Background(), &GetKeyspaceRequest{
+		Organization: "foo",
+		Database:     "bar",
+		Branch:       "baz",
+		Keyspace:     "main",
+		Full:         true,
+	})
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(keyspace.ReadOnlyRegions, qt.DeepEquals, []*ReadOnlyRegionKeyspace{{
+		Region:             "us-west",
+		ClusterName:        "PS_20",
+		ClusterDisplayName: "PS-20",
+		Replicas:           2,
+	}})
+}
+
 func TestKeyspaces_Create(t *testing.T) {
 	c := qt.New(t)
 
