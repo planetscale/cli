@@ -316,3 +316,12 @@ git clone https://github.com/planetscale/skills.git && cd skills && script/setup
 ```
 
 After installing skills, load `14-pscale-cli-automation` for CLI conventions (or re-run `pscale agent-guide --format json` from any `pscale` binary that includes agent onboarding). Use `00-safe-orchestrator` when the user asks for a full PlanetScale assessment.
+
+## Cursor Cloud specific instructions
+
+This repo is the Go source for the `pscale` CLI (the sections above document how to *use* an installed `pscale`). Go `1.26` (per `go.mod`) is installed at `/usr/local/go`; the update script runs `go mod download` to warm the module cache.
+
+- Build: `go build -o /tmp/pscale ./cmd/pscale` (or `make build` for `go build -trimpath ./...`).
+- Test: `go test ./...` (or `make test`). Vet: `go vet ./...`. `make lint` additionally `go install`s `staticcheck` from the network.
+- A self-compiled binary prints a dev-warning banner on every command; set `PSCALE_DISABLE_DEV_WARNING=true` to silence it.
+- `pscale auth check --format json` and `pscale agent-guide --format json` run without credentials and are good smoke tests; commands that hit the API need `pscale auth login` or a service token.
