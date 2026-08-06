@@ -19,7 +19,7 @@ import (
 func AuditLogCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "audit-log <command>",
-		Short:             "List audit logs",
+		Short:             "List audit logs and download authentication-attempt exports",
 		PersistentPreRunE: cmdutil.CheckAuthentication(ch.Config),
 	}
 
@@ -27,6 +27,7 @@ func AuditLogCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
 
 	cmd.AddCommand(ListCmd(ch))
+	cmd.AddCommand(AuthAttemptsCmd(ch))
 
 	return cmd
 }
