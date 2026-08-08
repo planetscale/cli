@@ -17,6 +17,12 @@ type VtctldService struct {
 	GetRoutingRulesFn        func(context.Context, *ps.VtctldGetRoutingRulesRequest) (json.RawMessage, error)
 	GetRoutingRulesFnInvoked bool
 
+	GetKeyspaceRoutingRulesFn        func(context.Context, *ps.VtctldGetKeyspaceRoutingRulesRequest) (json.RawMessage, error)
+	GetKeyspaceRoutingRulesFnInvoked bool
+
+	ApplyKeyspaceRoutingRulesFn        func(context.Context, *ps.VtctldApplyKeyspaceRoutingRulesRequest) (json.RawMessage, error)
+	ApplyKeyspaceRoutingRulesFnInvoked bool
+
 	GetShardFn        func(context.Context, *ps.VtctldGetShardRequest) (json.RawMessage, error)
 	GetShardFnInvoked bool
 
@@ -61,6 +67,16 @@ func (s *VtctldService) ListKeyspaces(ctx context.Context, req *ps.VtctldListKey
 func (s *VtctldService) GetRoutingRules(ctx context.Context, req *ps.VtctldGetRoutingRulesRequest) (json.RawMessage, error) {
 	s.GetRoutingRulesFnInvoked = true
 	return s.GetRoutingRulesFn(ctx, req)
+}
+
+func (s *VtctldService) GetKeyspaceRoutingRules(ctx context.Context, req *ps.VtctldGetKeyspaceRoutingRulesRequest) (json.RawMessage, error) {
+	s.GetKeyspaceRoutingRulesFnInvoked = true
+	return s.GetKeyspaceRoutingRulesFn(ctx, req)
+}
+
+func (s *VtctldService) ApplyKeyspaceRoutingRules(ctx context.Context, req *ps.VtctldApplyKeyspaceRoutingRulesRequest) (json.RawMessage, error) {
+	s.ApplyKeyspaceRoutingRulesFnInvoked = true
+	return s.ApplyKeyspaceRoutingRulesFn(ctx, req)
 }
 
 func (s *VtctldService) GetShard(ctx context.Context, req *ps.VtctldGetShardRequest) (json.RawMessage, error) {
