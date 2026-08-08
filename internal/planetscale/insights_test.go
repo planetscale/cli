@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	qt "github.com/frankban/quicktest"
 )
@@ -131,6 +132,9 @@ func TestQueryInsights_ListAnomalies(t *testing.T) {
 		w.WriteHeader(200)
 		c.Assert(r.Method, qt.Equals, http.MethodGet)
 		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/planetscale-go-test-db/branches/main/insights/anomalies")
+		c.Assert(r.URL.Query().Get("from"), qt.Equals, "2026-07-24T00:00:00Z")
+		c.Assert(r.URL.Query().Get("to"), qt.Equals, "2026-07-25T00:00:00Z")
+		c.Assert(r.URL.Query().Get("period"), qt.Equals, "")
 
 		out := `{
 			"type": "list",
@@ -157,7 +161,10 @@ func TestQueryInsights_ListAnomalies(t *testing.T) {
 		Organization: testOrg,
 		Database:     testDatabase,
 		Branch:       "main",
-	})
+	}, WithTimeRange(
+		time.Date(2026, 7, 24, 0, 0, 0, 0, time.UTC),
+		time.Date(2026, 7, 25, 0, 0, 0, 0, time.UTC),
+	))
 
 	c.Assert(err, qt.IsNil)
 	c.Assert(len(anomalies), qt.Equals, 1)
@@ -165,4 +172,48 @@ func TestQueryInsights_ListAnomalies(t *testing.T) {
 	c.Assert(anomalies[0].MinutesInViolation, qt.Equals, int64(12))
 	c.Assert(anomalies[0].Active, qt.Equals, false)
 	c.Assert(anomalies[0].Duration, qt.Equals, 1800.0)
+}
+
+func TestQueryInsights_GetAnomaly(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodGet)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/planetscale-go-test-db/branches/main/insights/anomalies/4888442")
+
+		out := `{
+			"id": "4888442",
+			"period_start": "2026-07-24T19:15:00Z",
+			"period_end": "2026-07-25T00:02:00Z",
+			"minutes_in_violation": 234,
+			"active": false,
+			"duration": 17220,
+			"correlations": [{
+				"id": "correlation-1",
+				"r": 0.98,
+				"keyspace": "game",
+				"fingerprint": "abc123",
+				"normalized_sql": "select * from spaceship where size > ?",
+				"tablet_type": "primary"
+			}]
+		}`
+		_, err := w.Write([]byte(out))
+		c.Assert(err, qt.IsNil)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	anomaly, err := client.QueryInsights.GetAnomaly(context.Background(), &GetAnomalyRequest{
+		Organization: testOrg,
+		Database:     testDatabase,
+		Branch:       "main",
+		AnomalyID:    "4888442",
+	})
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(anomaly.ID, qt.Equals, "4888442")
+	c.Assert(len(anomaly.Correlations), qt.Equals, 1)
+	c.Assert(anomaly.Correlations[0].Fingerprint, qt.Equals, "abc123")
+	c.Assert(anomaly.Correlations[0].CorrelationCoefficient, qt.Equals, 0.98)
 }

@@ -16,6 +16,7 @@ type QueryInsightsService interface {
 	ListQueries(context.Context, *ListQueryInsightsRequest, ...ListOption) ([]*QueryInsight, error)
 	ListErrors(context.Context, *ListQueryInsightsErrorsRequest, ...ListOption) ([]*QueryInsightError, error)
 	ListAnomalies(context.Context, *ListAnomaliesRequest, ...ListOption) ([]*Anomaly, error)
+	GetAnomaly(context.Context, *GetAnomalyRequest) (*Anomaly, error)
 }
 
 // QueryInsight is an aggregated statistics record for a normalized query
@@ -68,14 +69,26 @@ type QueryInsightError struct {
 
 // Anomaly is a detected resource-usage anomaly on a branch's primary.
 type Anomaly struct {
-	ID                 string    `json:"id"`
-	PeriodStart        time.Time `json:"period_start"`
-	PeriodEnd          time.Time `json:"period_end"`
-	MinutesInViolation int64     `json:"minutes_in_violation"`
-	Active             bool      `json:"active"`
-	Duration           float64   `json:"duration"`
-	MetricsStart       time.Time `json:"metrics_start"`
-	MetricsEnd         time.Time `json:"metrics_end"`
+	ID                 string                `json:"id"`
+	PeriodStart        time.Time             `json:"period_start"`
+	PeriodEnd          time.Time             `json:"period_end"`
+	MinutesInViolation int64                 `json:"minutes_in_violation"`
+	Active             bool                  `json:"active"`
+	Duration           float64               `json:"duration"`
+	MetricsStart       time.Time             `json:"metrics_start"`
+	MetricsEnd         time.Time             `json:"metrics_end"`
+	Correlations       []*AnomalyCorrelation `json:"correlations,omitempty"`
+}
+
+// AnomalyCorrelation identifies a query pattern correlated with an anomaly.
+type AnomalyCorrelation struct {
+	ID                     string  `json:"id"`
+	CorrelationCoefficient float64 `json:"r"`
+	Keyspace               string  `json:"keyspace"`
+	Fingerprint            string  `json:"fingerprint"`
+	NormalizedSQL          string  `json:"normalized_sql"`
+	SyntaxHighlightedSQL   string  `json:"syntax_highlighted_sql"`
+	TabletType             string  `json:"tablet_type"`
 }
 
 // ListQueryInsightsRequest is the request for listing query statistics for a branch.
@@ -99,6 +112,14 @@ type ListAnomaliesRequest struct {
 	Branch       string
 }
 
+// GetAnomalyRequest is the request for retrieving one anomaly and its correlated queries.
+type GetAnomalyRequest struct {
+	Organization string
+	Database     string
+	Branch       string
+	AnomalyID    string
+}
+
 // WithSort returns a ListOption that sets the "sort" and "dir" URL parameters.
 func WithSort(sort, dir string) ListOption {
 	return func(opt *ListOptions) error {
@@ -118,6 +139,21 @@ func WithPeriod(period string) ListOption {
 	return func(opt *ListOptions) error {
 		if period != "" {
 			opt.URLValues.Set("period", period)
+		}
+		return nil
+	}
+}
+
+// WithTimeRange returns a ListOption that sets the "from" and "to" URL
+// parameters. A zero to time is omitted, allowing the API to use the current
+// time as the end of the range.
+func WithTimeRange(from, to time.Time) ListOption {
+	return func(opt *ListOptions) error {
+		if !from.IsZero() {
+			opt.URLValues.Set("from", from.UTC().Format(time.RFC3339Nano))
+		}
+		if !to.IsZero() {
+			opt.URLValues.Set("to", to.UTC().Format(time.RFC3339Nano))
 		}
 		return nil
 	}
@@ -185,6 +221,24 @@ func (s *queryInsightsService) ListAnomalies(ctx context.Context, request *ListA
 	}
 
 	return resp.Anomalies, nil
+}
+
+func (s *queryInsightsService) GetAnomaly(ctx context.Context, request *GetAnomalyRequest) (*Anomaly, error) {
+	req, err := s.client.newRequest(
+		http.MethodGet,
+		path.Join(insightsAPIPath(request.Organization, request.Database, request.Branch), "anomalies", request.AnomalyID),
+		nil,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	anomaly := &Anomaly{}
+	if err := s.client.do(ctx, req, &anomaly); err != nil {
+		return nil, err
+	}
+
+	return anomaly, nil
 }
 
 func insightsAPIPath(org, db, branch string) string {
