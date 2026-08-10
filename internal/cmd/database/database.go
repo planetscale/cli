@@ -14,7 +14,7 @@ import (
 func DatabaseCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "database <command>",
-		Short:             "Create, read, delete, and dump/restore databases",
+		Short:             "Create, read, delete, dump/restore, and manage database settings",
 		Aliases:           []string{"db"},
 		PersistentPreRunE: cmdutil.CheckAuthentication(ch.Config),
 	}
@@ -27,6 +27,8 @@ func DatabaseCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.AddCommand(ListCmd(ch))
 	cmd.AddCommand(DeleteCmd(ch))
 	cmd.AddCommand(ShowCmd(ch))
+	cmd.AddCommand(SettingsCmd(ch))
+	cmd.AddCommand(UpdateSettingsCmd(ch))
 	cmd.AddCommand(DumpCmd(ch))
 	cmd.AddCommand(RestoreCmd(ch))
 

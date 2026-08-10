@@ -56,6 +56,24 @@ type DeleteDatabaseRequest struct {
 	Database     string
 }
 
+// UpdateDatabaseSettingsRequest encapsulates the request for updating
+// database settings.
+type UpdateDatabaseSettingsRequest struct {
+	Organization                string  `json:"-"`
+	Database                    string  `json:"-"`
+	NewName                     *string `json:"new_name,omitempty"`
+	AutomaticMigrations         *bool   `json:"automatic_migrations,omitempty"`
+	MigrationFramework          *string `json:"migration_framework,omitempty"`
+	MigrationTableName          *string `json:"migration_table_name,omitempty"`
+	RequireApprovalForDeploy    *bool   `json:"require_approval_for_deploy,omitempty"`
+	RestrictBranchRegion        *bool   `json:"restrict_branch_region,omitempty"`
+	AllowDataBranching          *bool   `json:"allow_data_branching,omitempty"`
+	AllowForeignKeyConstraints  *bool   `json:"allow_foreign_key_constraints,omitempty"`
+	InsightsRawQueries          *bool   `json:"insights_raw_queries,omitempty"`
+	ProductionBranchWebConsole  *bool   `json:"production_branch_web_console,omitempty"`
+	DefaultBranch               *string `json:"default_branch,omitempty"`
+}
+
 // DatabaseService is an interface for communicating with the PlanetScale
 // Databases API endpoint.
 type DatabasesService interface {
@@ -63,6 +81,7 @@ type DatabasesService interface {
 	Get(context.Context, *GetDatabaseRequest) (*Database, error)
 	List(context.Context, *ListDatabasesRequest, ...ListOption) ([]*Database, error)
 	Delete(context.Context, *DeleteDatabaseRequest) (*DatabaseDeletionRequest, error)
+	UpdateSettings(context.Context, *UpdateDatabaseSettingsRequest) (*Database, error)
 }
 
 // DatabaseDeletionRequest encapsulates the request for deleting a database from
@@ -86,14 +105,25 @@ const (
 
 // Database represents a PlanetScale database
 type Database struct {
-	Name      string         `json:"name"`
-	Notes     string         `json:"notes"`
-	Region    Region         `json:"region"`
-	State     DatabaseState  `json:"state"`
-	Kind      DatabaseEngine `json:"kind"`
-	HtmlURL   string         `json:"html_url"`
-	CreatedAt time.Time      `json:"created_at"`
-	UpdatedAt time.Time      `json:"updated_at"`
+	Name                       string         `json:"name"`
+	Notes                      string         `json:"notes"`
+	Region                     Region         `json:"region"`
+	State                      DatabaseState  `json:"state"`
+	Kind                       DatabaseEngine `json:"kind"`
+	HtmlURL                    string         `json:"html_url"`
+	DefaultBranch              string         `json:"default_branch"`
+	RequireApprovalForDeploy   bool           `json:"require_approval_for_deploy"`
+	RestrictBranchRegion       bool           `json:"restrict_branch_region"`
+	AllowDataBranching         bool           `json:"allow_data_branching"`
+	ForeignKeysEnabled         bool           `json:"foreign_keys_enabled"`
+	AutomaticMigrations        *bool          `json:"automatic_migrations"`
+	InsightsRawQueries         bool           `json:"insights_raw_queries"`
+	InsightsEnabled            bool           `json:"insights_enabled"`
+	ProductionBranchWebConsole bool           `json:"production_branch_web_console"`
+	MigrationTableName         *string        `json:"migration_table_name"`
+	MigrationFramework         *string        `json:"migration_framework"`
+	CreatedAt                  time.Time      `json:"created_at"`
+	UpdatedAt                  time.Time      `json:"updated_at"`
 }
 
 // Database represents a list of PlanetScale databases
@@ -183,6 +213,22 @@ func (ds *databasesService) Delete(ctx context.Context, deleteReq *DeleteDatabas
 	}
 
 	return dbr, nil
+}
+
+func (ds *databasesService) UpdateSettings(ctx context.Context, updateReq *UpdateDatabaseSettingsRequest) (*Database, error) {
+	path := path.Join(databasesAPIPath(updateReq.Organization), updateReq.Database)
+	req, err := ds.client.newRequest(http.MethodPatch, path, updateReq)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request for update database settings: %w", err)
+	}
+
+	db := &Database{}
+	err = ds.client.do(ctx, req, &db)
+	if err != nil {
+		return nil, err
+	}
+
+	return db, nil
 }
 
 func databasesAPIPath(org string) string {
