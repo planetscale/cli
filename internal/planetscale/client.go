@@ -50,6 +50,7 @@ type Client struct {
 	baseURL *url.URL
 
 	AuditLogs             AuditLogsService
+	BackupPolicies        BackupPoliciesService
 	Backups               BackupsService
 	BranchInfrastructure  BranchInfrastructureService
 	D1ImportNotifications D1ImportNotificationsService
@@ -319,6 +320,7 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 	c.client.CheckRedirect = makeSameHostCheckRedirect(c.baseURL.Hostname())
 
 	c.AuditLogs = &auditlogsService{client: c}
+	c.BackupPolicies = &backupPoliciesService{client: c}
 	c.Backups = &backupsService{client: c}
 	c.BranchInfrastructure = &branchInfrastructureService{client: c}
 	c.D1ImportNotifications = &d1ImportNotificationsService{client: c}
