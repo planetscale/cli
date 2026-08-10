@@ -18,6 +18,15 @@ type PostgresBouncersService struct {
 
 	DeleteFn        func(context.Context, *ps.DeletePostgresBouncerRequest) error
 	DeleteFnInvoked bool
+
+	ListResizesFn        func(context.Context, *ps.ListPostgresBouncerResizesRequest, ...ps.ListOption) ([]*ps.PostgresBouncerResizeRequest, error)
+	ListResizesFnInvoked bool
+
+	ResizeFn        func(context.Context, *ps.ResizePostgresBouncerRequest) (*ps.PostgresBouncerResizeRequest, error)
+	ResizeFnInvoked bool
+
+	CancelResizesFn        func(context.Context, *ps.CancelPostgresBouncerResizesRequest) error
+	CancelResizesFnInvoked bool
 }
 
 func (s *PostgresBouncersService) List(ctx context.Context, req *ps.ListPostgresBouncersRequest, opts ...ps.ListOption) ([]*ps.PostgresBouncer, error) {
@@ -38,4 +47,19 @@ func (s *PostgresBouncersService) Create(ctx context.Context, req *ps.CreatePost
 func (s *PostgresBouncersService) Delete(ctx context.Context, req *ps.DeletePostgresBouncerRequest) error {
 	s.DeleteFnInvoked = true
 	return s.DeleteFn(ctx, req)
+}
+
+func (s *PostgresBouncersService) ListResizes(ctx context.Context, req *ps.ListPostgresBouncerResizesRequest, opts ...ps.ListOption) ([]*ps.PostgresBouncerResizeRequest, error) {
+	s.ListResizesFnInvoked = true
+	return s.ListResizesFn(ctx, req, opts...)
+}
+
+func (s *PostgresBouncersService) Resize(ctx context.Context, req *ps.ResizePostgresBouncerRequest) (*ps.PostgresBouncerResizeRequest, error) {
+	s.ResizeFnInvoked = true
+	return s.ResizeFn(ctx, req)
+}
+
+func (s *PostgresBouncersService) CancelResizes(ctx context.Context, req *ps.CancelPostgresBouncerResizesRequest) error {
+	s.CancelResizesFnInvoked = true
+	return s.CancelResizesFn(ctx, req)
 }

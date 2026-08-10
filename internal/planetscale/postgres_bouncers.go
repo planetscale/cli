@@ -105,6 +105,9 @@ type PostgresBouncersService interface {
 	Get(context.Context, *GetPostgresBouncerRequest) (*PostgresBouncer, error)
 	Create(context.Context, *CreatePostgresBouncerRequest) (*PostgresBouncer, error)
 	Delete(context.Context, *DeletePostgresBouncerRequest) error
+	ListResizes(context.Context, *ListPostgresBouncerResizesRequest, ...ListOption) ([]*PostgresBouncerResizeRequest, error)
+	Resize(context.Context, *ResizePostgresBouncerRequest) (*PostgresBouncerResizeRequest, error)
+	CancelResizes(context.Context, *CancelPostgresBouncerResizesRequest) error
 }
 
 type postgresBouncersService struct {

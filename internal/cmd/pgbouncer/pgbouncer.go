@@ -31,6 +31,7 @@ This command is only available for PostgreSQL databases.`,
 	cmd.AddCommand(ListCmd(ch))
 	cmd.AddCommand(ShowCmd(ch))
 	cmd.AddCommand(CreateCmd(ch))
+	cmd.AddCommand(ResizeCmd(ch))
 	cmd.AddCommand(DeleteCmd(ch))
 
 	return cmd

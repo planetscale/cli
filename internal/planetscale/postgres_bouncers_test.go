@@ -163,3 +163,129 @@ func TestPostgresBouncers_Delete(t *testing.T) {
 	})
 	c.Assert(err, qt.IsNil)
 }
+
+func TestPostgresBouncers_ListResizes(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodGet)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/my-db/branches/main/bouncers/read-pool/resizes")
+		w.WriteHeader(200)
+		out := `{
+			"data":[{
+				"id":"resize-1",
+				"state":"pending",
+				"replicas_per_cell":2,
+				"target":"replica",
+				"parameters":{},
+				"previous_replicas_per_cell":1,
+				"previous_target":"replica",
+				"previous_parameters":{},
+				"started_at":null,
+				"completed_at":null,
+				"created_at":"2021-01-14T10:19:23.000Z",
+				"updated_at":"2021-01-14T10:19:23.000Z",
+				"actor":{"id":"user-1","display_name":"Alice","avatar_url":"https://example.com/a.png"},
+				"bouncer":{"id":"bouncer-1","name":"read-pool","created_at":"2021-01-01T00:00:00.000Z","updated_at":"2021-01-01T00:00:00.000Z","deleted_at":null},
+				"sku":{"name":"PGB_10","display_name":"PS-10","cpu":"0.25","ram":268435456,"sort_order":1},
+				"previous_sku":{"name":"PGB_5","display_name":"PS-5","cpu":"0.125","ram":134217728,"sort_order":0}
+			}]
+		}`
+		_, err := w.Write([]byte(out))
+		c.Assert(err, qt.IsNil)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	resizes, err := client.PostgresBouncers.ListResizes(context.Background(), &ListPostgresBouncerResizesRequest{
+		Organization: testOrg,
+		Database:     "my-db",
+		Branch:       "main",
+		Bouncer:      "read-pool",
+	})
+	c.Assert(err, qt.IsNil)
+	c.Assert(resizes, qt.HasLen, 1)
+	c.Assert(resizes[0].ID, qt.Equals, "resize-1")
+	c.Assert(resizes[0].State, qt.Equals, PostgresBouncerResizeStatePending)
+	c.Assert(resizes[0].SKU.Name, qt.Equals, "PGB_10")
+	c.Assert(resizes[0].Finished(), qt.IsFalse)
+}
+
+func TestPostgresBouncers_Resize(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodPatch)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/my-db/branches/main/bouncers/read-pool/resizes")
+		var body map[string]any
+		c.Assert(json.NewDecoder(r.Body).Decode(&body), qt.IsNil)
+		c.Assert(body["bouncer_size"], qt.Equals, "PGB_10")
+		c.Assert(body["target"], qt.Equals, "replica")
+		w.WriteHeader(200)
+		out := `{
+			"id":"resize-1",
+			"state":"pending",
+			"replicas_per_cell":1,
+			"target":"replica",
+			"parameters":{},
+			"previous_replicas_per_cell":1,
+			"previous_target":"replica",
+			"previous_parameters":{},
+			"started_at":null,
+			"completed_at":null,
+			"created_at":"2021-01-14T10:19:23.000Z",
+			"updated_at":"2021-01-14T10:19:23.000Z",
+			"actor":{"id":"user-1","display_name":"Alice","avatar_url":"https://example.com/a.png"},
+			"bouncer":{"id":"bouncer-1","name":"read-pool","created_at":"2021-01-01T00:00:00.000Z","updated_at":"2021-01-01T00:00:00.000Z","deleted_at":null},
+			"sku":{"name":"PGB_10","display_name":"PS-10","cpu":"0.25","ram":268435456,"sort_order":1},
+			"previous_sku":{"name":"PGB_5","display_name":"PS-5","cpu":"0.125","ram":134217728,"sort_order":0}
+		}`
+		_, err := w.Write([]byte(out))
+		c.Assert(err, qt.IsNil)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	resize, err := client.PostgresBouncers.Resize(context.Background(), &ResizePostgresBouncerRequest{
+		Organization: testOrg,
+		Database:     "my-db",
+		Branch:       "main",
+		Bouncer:      "read-pool",
+		BouncerSize:  "PGB_10",
+		Target:       "replica",
+	})
+	c.Assert(err, qt.IsNil)
+	c.Assert(resize.ID, qt.Equals, "resize-1")
+	c.Assert(resize.State, qt.Equals, PostgresBouncerResizeStatePending)
+}
+
+func TestPostgresBouncers_CancelResizes(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodDelete)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/my-db/branches/main/bouncers/read-pool/resizes")
+		w.WriteHeader(204)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	err = client.PostgresBouncers.CancelResizes(context.Background(), &CancelPostgresBouncerResizesRequest{
+		Organization: testOrg,
+		Database:     "my-db",
+		Branch:       "main",
+		Bouncer:      "read-pool",
+	})
+	c.Assert(err, qt.IsNil)
+}
+
+func TestPostgresBouncerResizeRequest_Finished(t *testing.T) {
+	c := qt.New(t)
+	c.Assert((&PostgresBouncerResizeRequest{State: PostgresBouncerResizeStatePending}).Finished(), qt.IsFalse)
+	c.Assert((&PostgresBouncerResizeRequest{State: PostgresBouncerResizeStateResizing}).Finished(), qt.IsFalse)
+	c.Assert((&PostgresBouncerResizeRequest{State: PostgresBouncerResizeStateCompleted}).Finished(), qt.IsTrue)
+	c.Assert((&PostgresBouncerResizeRequest{State: PostgresBouncerResizeStateCanceled}).Finished(), qt.IsTrue)
+}

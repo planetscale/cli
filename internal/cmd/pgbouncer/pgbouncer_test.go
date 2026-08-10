@@ -254,3 +254,148 @@ func TestPgBouncer_ListCmd_RejectsMySQL(t *testing.T) {
 	c.Assert(dbSvc.GetFnInvoked, qt.IsTrue)
 	c.Assert(svc.ListFnInvoked, qt.IsFalse)
 }
+
+func testResize() *ps.PostgresBouncerResizeRequest {
+	return &ps.PostgresBouncerResizeRequest{
+		ID:                      "resize-1",
+		State:                   ps.PostgresBouncerResizeStatePending,
+		ReplicasPerCell:         2,
+		Target:                  "replica",
+		PreviousReplicasPerCell: 1,
+		PreviousTarget:          "replica",
+		CreatedAt:               time.Date(2021, 1, 14, 10, 19, 23, 0, time.UTC),
+		UpdatedAt:               time.Date(2021, 1, 14, 10, 19, 23, 0, time.UTC),
+		Actor:                   ps.Actor{ID: "user-1", Name: "Alice"},
+		Bouncer:                 ps.PostgresBouncerBranch{ID: "bouncer-1", Name: "read-pool"},
+		SKU: &ps.PostgresBouncerSKU{
+			Name:        "PGB_10",
+			DisplayName: "PS-10",
+		},
+		PreviousSKU: &ps.PostgresBouncerSKU{
+			Name:        "PGB_5",
+			DisplayName: "PS-5",
+		},
+	}
+}
+
+func TestPgBouncer_ResizeCmd(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	org := "planetscale"
+	db := "mydb"
+	branch := "main"
+	name := "read-pool"
+	resize := testResize()
+
+	dbSvc := &mock.DatabaseService{
+		GetFn: func(ctx context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
+			return postgresDB(db), nil
+		},
+	}
+	svc := &mock.PostgresBouncersService{
+		ResizeFn: func(ctx context.Context, req *ps.ResizePostgresBouncerRequest) (*ps.PostgresBouncerResizeRequest, error) {
+			c.Assert(req.Organization, qt.Equals, org)
+			c.Assert(req.Database, qt.Equals, db)
+			c.Assert(req.Branch, qt.Equals, branch)
+			c.Assert(req.Bouncer, qt.Equals, name)
+			c.Assert(req.BouncerSize, qt.Equals, "PGB_10")
+			c.Assert(req.ReplicasPerCell, qt.IsNotNil)
+			c.Assert(*req.ReplicasPerCell, qt.Equals, 2)
+			c.Assert(req.Parameters["pgbouncer"]["default_pool_size"], qt.Equals, "100")
+			return resize, nil
+		},
+	}
+
+	cmd := ResizeCmd(testHelper(org, dbSvc, svc, printer.JSON, &buf))
+	cmd.SetArgs([]string{
+		db, branch, name,
+		"--size", "PGB_10",
+		"--replicas-per-cell", "2",
+		"--parameters", "pgbouncer.default_pool_size=100",
+	})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.ResizeFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.JSONEquals, &PgBouncerResize{orig: resize})
+}
+
+func TestPgBouncer_ResizeCmd_RequiresChange(t *testing.T) {
+	c := qt.New(t)
+
+	cmd := ResizeCmd(testHelper("planetscale", &mock.DatabaseService{}, &mock.PostgresBouncersService{}, printer.JSON, &bytes.Buffer{}))
+	cmd.SetArgs([]string{"mydb", "main", "read-pool"})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.ErrorMatches, `(?s).*nothing to change.*`)
+}
+
+func TestPgBouncer_ResizeStatusCmd(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	org := "planetscale"
+	db := "mydb"
+	branch := "main"
+	name := "read-pool"
+	resize := testResize()
+
+	dbSvc := &mock.DatabaseService{
+		GetFn: func(ctx context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
+			return postgresDB(db), nil
+		},
+	}
+	svc := &mock.PostgresBouncersService{
+		ListResizesFn: func(ctx context.Context, req *ps.ListPostgresBouncerResizesRequest, opts ...ps.ListOption) ([]*ps.PostgresBouncerResizeRequest, error) {
+			c.Assert(req.Bouncer, qt.Equals, name)
+			return []*ps.PostgresBouncerResizeRequest{resize}, nil
+		},
+	}
+
+	cmd := ResizeStatusCmd(testHelper(org, dbSvc, svc, printer.JSON, &buf))
+	cmd.SetArgs([]string{db, branch, name})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.ListResizesFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.JSONEquals, &PgBouncerResize{orig: resize})
+}
+
+func TestPgBouncer_ResizeCancelCmd(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	org := "planetscale"
+	db := "mydb"
+	branch := "main"
+	name := "read-pool"
+
+	dbSvc := &mock.DatabaseService{
+		GetFn: func(ctx context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
+			return postgresDB(db), nil
+		},
+	}
+	svc := &mock.PostgresBouncersService{
+		CancelResizesFn: func(ctx context.Context, req *ps.CancelPostgresBouncerResizesRequest) error {
+			c.Assert(req.Organization, qt.Equals, org)
+			c.Assert(req.Database, qt.Equals, db)
+			c.Assert(req.Branch, qt.Equals, branch)
+			c.Assert(req.Bouncer, qt.Equals, name)
+			return nil
+		},
+	}
+
+	cmd := ResizeCancelCmd(testHelper(org, dbSvc, svc, printer.JSON, &buf))
+	cmd.SetArgs([]string{db, branch, name})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.CancelResizesFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.JSONEquals, map[string]string{
+		"result":   "canceled",
+		"name":     name,
+		"database": db,
+		"branch":   branch,
+	})
+}
