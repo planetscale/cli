@@ -15,7 +15,7 @@ import (
 func ShowCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "show <database>",
-		Short: "Retrieve information about a database",
+		Short: "Retrieve information about a database, including settings",
 		Args:  cmdutil.RequiredArgs("database"),
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return cmdutil.DatabaseCompletionFunc(ch, cmd, args, toComplete)
@@ -61,7 +61,7 @@ func ShowCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 			end()
 
-			return ch.Printer.PrintResource(toDatabase(database))
+			return printDatabase(ch, database)
 		},
 	}
 

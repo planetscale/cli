@@ -499,3 +499,84 @@ func TestDatabases_Empty(t *testing.T) {
 	c.Assert(err, qt.IsNil)
 	c.Assert(db, qt.HasLen, 0)
 }
+
+func TestDatabases_UpdateSettings(t *testing.T) {
+	c := qt.New(t)
+
+	newName := "renamed"
+	defaultBranch := "main"
+	requireApproval := true
+	insightsRaw := false
+	disabled := false
+	framework := "rails"
+	tableName := "schema_migrations"
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodPatch)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/planetscale-go-test-db")
+
+		var body map[string]any
+		err := json.NewDecoder(r.Body).Decode(&body)
+		c.Assert(err, qt.IsNil)
+		c.Assert(body["new_name"], qt.Equals, newName)
+		c.Assert(body["default_branch"], qt.Equals, defaultBranch)
+		c.Assert(body["require_approval_for_deploy"], qt.Equals, requireApproval)
+		c.Assert(body["insights_raw_queries"], qt.Equals, insightsRaw)
+		c.Assert(body["restrict_branch_region"], qt.Equals, disabled)
+		c.Assert(body["allow_data_branching"], qt.Equals, disabled)
+		c.Assert(body["allow_foreign_key_constraints"], qt.Equals, disabled)
+		c.Assert(body["automatic_migrations"], qt.Equals, disabled)
+		c.Assert(body["migration_framework"], qt.Equals, framework)
+		c.Assert(body["migration_table_name"], qt.Equals, tableName)
+		c.Assert(body["production_branch_web_console"], qt.Equals, disabled)
+
+		w.WriteHeader(200)
+		out := `{
+			"id":"planetscale-go-test-db",
+			"type":"database",
+			"name":"planetscale-go-test-db",
+			"notes":"",
+			"created_at":"2021-01-14T10:19:23.000Z",
+			"updated_at":"2021-01-14T10:19:23.000Z",
+			"region":{"slug":"us-west","display_name":"US West"},
+			"state":"ready",
+			"kind":"mysql",
+			"default_branch":"main",
+			"require_approval_for_deploy":true,
+			"restrict_branch_region":false,
+			"allow_data_branching":false,
+			"foreign_keys_enabled":false,
+			"insights_raw_queries":false,
+			"insights_enabled":true,
+			"production_branch_web_console":true
+		}`
+		_, err = w.Write([]byte(out))
+		c.Assert(err, qt.IsNil)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	ctx := context.Background()
+	db, err := client.Databases.UpdateSettings(ctx, &UpdateDatabaseSettingsRequest{
+		Organization:               testOrg,
+		Database:                   testDatabase,
+		NewName:                    &newName,
+		DefaultBranch:              &defaultBranch,
+		RequireApprovalForDeploy:   &requireApproval,
+		RestrictBranchRegion:       &disabled,
+		AllowDataBranching:         &disabled,
+		AllowForeignKeyConstraints: &disabled,
+		AutomaticMigrations:        &disabled,
+		MigrationFramework:         &framework,
+		MigrationTableName:         &tableName,
+		InsightsRawQueries:         &insightsRaw,
+		ProductionBranchWebConsole: &disabled,
+	})
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(db.Name, qt.Equals, testDatabase)
+	c.Assert(db.DefaultBranch, qt.Equals, defaultBranch)
+	c.Assert(db.RequireApprovalForDeploy, qt.IsTrue)
+	c.Assert(db.InsightsRawQueries, qt.IsFalse)
+}
