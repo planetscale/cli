@@ -14,7 +14,7 @@ import (
 	qt "github.com/frankban/quicktest"
 )
 
-func TestDatabase_UpdateSettingsCmd(t *testing.T) {
+func TestDatabase_UpdateCmd(t *testing.T) {
 	c := qt.New(t)
 
 	var buf bytes.Buffer
@@ -62,7 +62,7 @@ func TestDatabase_UpdateSettingsCmd(t *testing.T) {
 		},
 	}
 
-	cmd := UpdateSettingsCmd(ch)
+	cmd := UpdateCmd(ch)
 	cmd.SetArgs([]string{
 		db,
 		"--default-branch", defaultBranch,
@@ -76,7 +76,7 @@ func TestDatabase_UpdateSettingsCmd(t *testing.T) {
 	c.Assert(buf.String(), qt.JSONEquals, res)
 }
 
-func TestDatabase_UpdateSettingsCmd_NewName(t *testing.T) {
+func TestDatabase_UpdateCmd_NewName(t *testing.T) {
 	c := qt.New(t)
 
 	var buf bytes.Buffer
@@ -117,7 +117,7 @@ func TestDatabase_UpdateSettingsCmd_NewName(t *testing.T) {
 		},
 	}
 
-	cmd := UpdateSettingsCmd(ch)
+	cmd := UpdateCmd(ch)
 	cmd.SetArgs([]string{db, "--new-name", newName})
 	err := cmd.Execute()
 
@@ -126,7 +126,7 @@ func TestDatabase_UpdateSettingsCmd_NewName(t *testing.T) {
 	c.Assert(buf.String(), qt.JSONEquals, res)
 }
 
-func TestDatabase_UpdateSettingsCmd_VitessFlags(t *testing.T) {
+func TestDatabase_UpdateCmd_VitessFlags(t *testing.T) {
 	c := qt.New(t)
 
 	var buf bytes.Buffer
@@ -178,7 +178,7 @@ func TestDatabase_UpdateSettingsCmd_VitessFlags(t *testing.T) {
 		},
 	}
 
-	cmd := UpdateSettingsCmd(ch)
+	cmd := UpdateCmd(ch)
 	cmd.SetArgs([]string{
 		db,
 		"--allow-data-branching=true",
@@ -194,7 +194,7 @@ func TestDatabase_UpdateSettingsCmd_VitessFlags(t *testing.T) {
 	c.Assert(buf.String(), qt.JSONEquals, res)
 }
 
-func TestDatabase_UpdateSettingsCmd_NoFlags(t *testing.T) {
+func TestDatabase_UpdateCmd_NoFlags(t *testing.T) {
 	c := qt.New(t)
 
 	var buf bytes.Buffer
@@ -216,7 +216,7 @@ func TestDatabase_UpdateSettingsCmd_NoFlags(t *testing.T) {
 		},
 	}
 
-	cmd := UpdateSettingsCmd(ch)
+	cmd := UpdateCmd(ch)
 	cmd.SetArgs([]string{"planetscale"})
 	err := cmd.Execute()
 

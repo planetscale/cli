@@ -9,8 +9,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// UpdateSettingsCmd updates configurable database settings.
-func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
+// UpdateCmd updates configurable database settings.
+func UpdateCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
 		newName                    string
 		defaultBranch              string
@@ -26,9 +26,9 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:   "update-settings <database>",
-		Short: "Update the settings for a database",
-		Long: `Update the settings for a database.
+		Use:   "update <database>",
+		Short: "Update a database's settings",
+		Long: `Update a database's settings.
 
 Only flags you pass are sent to the API. Boolean flags must be set explicitly,
 for example --insights-raw-queries=true or --insights-raw-queries=false.
@@ -104,7 +104,7 @@ Vitess-only settings: --allow-data-branching, --allow-foreign-key-constraints,
 				return err
 			}
 
-			end := ch.Printer.PrintProgress(fmt.Sprintf("Updating settings for database %s...", printer.BoldBlue(name)))
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Updating database %s...", printer.BoldBlue(name)))
 			defer end()
 
 			database, err := client.Databases.UpdateSettings(ctx, req)
@@ -119,7 +119,7 @@ Vitess-only settings: --allow-data-branching, --allow-foreign-key-constraints,
 			}
 			end()
 
-			return ch.Printer.PrintResource(toDatabaseSettings(database))
+			return ch.Printer.PrintResource(toDatabase(database))
 		},
 	}
 
