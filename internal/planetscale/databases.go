@@ -59,19 +59,19 @@ type DeleteDatabaseRequest struct {
 // UpdateDatabaseSettingsRequest encapsulates the request for updating
 // database settings.
 type UpdateDatabaseSettingsRequest struct {
-	Organization                string  `json:"-"`
-	Database                    string  `json:"-"`
-	NewName                     *string `json:"new_name,omitempty"`
-	AutomaticMigrations         *bool   `json:"automatic_migrations,omitempty"`
-	MigrationFramework          *string `json:"migration_framework,omitempty"`
-	MigrationTableName          *string `json:"migration_table_name,omitempty"`
-	RequireApprovalForDeploy    *bool   `json:"require_approval_for_deploy,omitempty"`
-	RestrictBranchRegion        *bool   `json:"restrict_branch_region,omitempty"`
-	AllowDataBranching          *bool   `json:"allow_data_branching,omitempty"`
-	AllowForeignKeyConstraints  *bool   `json:"allow_foreign_key_constraints,omitempty"`
-	InsightsRawQueries          *bool   `json:"insights_raw_queries,omitempty"`
-	ProductionBranchWebConsole  *bool   `json:"production_branch_web_console,omitempty"`
-	DefaultBranch               *string `json:"default_branch,omitempty"`
+	Organization               string  `json:"-"`
+	Database                   string  `json:"-"`
+	NewName                    *string `json:"new_name,omitempty"`
+	AutomaticMigrations        *bool   `json:"automatic_migrations,omitempty"`
+	MigrationFramework         *string `json:"migration_framework,omitempty"`
+	MigrationTableName         *string `json:"migration_table_name,omitempty"`
+	RequireApprovalForDeploy   *bool   `json:"require_approval_for_deploy,omitempty"`
+	RestrictBranchRegion       *bool   `json:"restrict_branch_region,omitempty"`
+	AllowDataBranching         *bool   `json:"allow_data_branching,omitempty"`
+	AllowForeignKeyConstraints *bool   `json:"allow_foreign_key_constraints,omitempty"`
+	InsightsRawQueries         *bool   `json:"insights_raw_queries,omitempty"`
+	ProductionBranchWebConsole *bool   `json:"production_branch_web_console,omitempty"`
+	DefaultBranch              *string `json:"default_branch,omitempty"`
 }
 
 // DatabaseService is an interface for communicating with the PlanetScale
