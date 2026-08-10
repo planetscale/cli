@@ -67,6 +67,7 @@ type Client struct {
 	PlannedReparentShard  PlannedReparentShardService
 	PostgresBranches      PostgresBranchesService
 	PostgresBouncers      PostgresBouncersService
+	PostgresCIDRs         PostgresCIDRsService
 	PostgresRoles         PostgresRolesService
 	Processlist           ProcesslistService
 	QueryInsights         QueryInsightsService
@@ -339,6 +340,7 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 	c.Processlist = &processlistService{client: c}
 	c.PostgresBranches = &postgresBranchesService{client: c}
 	c.PostgresBouncers = &postgresBouncersService{client: c}
+	c.PostgresCIDRs = &postgresCIDRsService{client: c}
 	c.PostgresRoles = &postgresRolesService{client: c}
 	c.QueryInsights = &queryInsightsService{client: c}
 	c.QueryPatterns = &queryPatternsService{client: c}
