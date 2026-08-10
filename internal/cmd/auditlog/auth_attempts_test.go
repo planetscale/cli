@@ -126,6 +126,70 @@ func TestAuthAttemptsDownloadCreatesPollsAndWritesFile(t *testing.T) {
 	})
 }
 
+func TestAuthAttemptsDownloadRefusesStdoutToTerminalBeforeCreatingExport(t *testing.T) {
+	c := qt.New(t)
+	previousTTY := printer.IsTTY
+	printer.IsTTY = true
+	t.Cleanup(func() { printer.IsTTY = previousTTY })
+
+	var requests int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		http.NotFound(w, r)
+	}))
+	t.Cleanup(server.Close)
+
+	cmd := AuthAttemptsCmd(authAttemptTestHelper("my-org", server.URL, printer.JSON, &bytes.Buffer{}))
+	cmd.SetErr(io.Discard)
+	cmd.SetArgs([]string{
+		"download",
+		"--start-at", "2026-07-29T00:00:00Z",
+		"--end-at", "2026-07-29T01:00:00Z",
+		"--output", "-",
+	})
+
+	err := cmd.Execute()
+	c.Assert(err, qt.ErrorMatches, `^cannot write raw ZIP bytes to an interactive terminal; redirect stdout \(for example, --output - > report\.zip\) or use --output <file>$`)
+	c.Assert(requests, qt.Equals, 0)
+}
+
+func TestAuthAttemptsDownloadWritesRawZIPToRedirectedStdout(t *testing.T) {
+	c := qt.New(t)
+	previousTTY := printer.IsTTY
+	printer.IsTTY = false
+	t.Cleanup(func() { printer.IsTTY = previousTTY })
+
+	var requests int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		switch {
+		case r.Method == http.MethodPost:
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = io.WriteString(w, `{"id":"export1","state":"ready","format":"jsonl","start_at":"2026-07-29T00:00:00Z","end_at":"2026-07-29T01:00:00Z"}`)
+		case r.Method == http.MethodGet && r.URL.Path == "/v1/organizations/my-org/auth-attempt-exports/export1/download":
+			_, _ = io.WriteString(w, "PK\x03\x04zip")
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	var stdout bytes.Buffer
+	cmd := AuthAttemptsCmd(authAttemptTestHelper("my-org", server.URL, printer.Human, &bytes.Buffer{}))
+	cmd.SetOut(&stdout)
+	cmd.SetErr(io.Discard)
+	cmd.SetArgs([]string{
+		"download",
+		"--start-at", "2026-07-29T00:00:00Z",
+		"--end-at", "2026-07-29T01:00:00Z",
+		"--output", "-",
+	})
+
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(requests, qt.Equals, 2)
+	c.Assert(stdout.Bytes(), qt.DeepEquals, []byte("PK\x03\x04zip"))
+}
+
 func TestAuthAttemptsDownloadReportsExpiredExport(t *testing.T) {
 	c := qt.New(t)
 

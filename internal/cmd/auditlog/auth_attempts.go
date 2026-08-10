@@ -116,6 +116,9 @@ func runDownloadAuthAttempts(cmd *cobra.Command, ch *cmdutil.Helper, flags downl
 	if cmd.Flags().Changed("end-at") && flags.endAt == "" {
 		return fmt.Errorf("--end-at cannot be empty; use now, today, yesterday, YYYY-MM-DD, local ISO, or RFC3339")
 	}
+	if flags.output == "-" && printer.IsTTY {
+		return errors.New("cannot write raw ZIP bytes to an interactive terminal; redirect stdout (for example, --output - > report.zip) or use --output <file>")
+	}
 
 	startAt, endAt, err := resolveAuthAttemptExportWindow(flags, time.Now(), time.Local)
 	if err != nil {
