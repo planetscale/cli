@@ -49,7 +49,7 @@ Flags marked "Vitess only" are rejected for PostgreSQL databases.`,
 			}
 
 			changed := false
-			vitessFlags := make([]string, 0, 6)
+			vitessFlags := make([]string, 0, 7)
 
 			if cmd.Flags().Changed("new-name") {
 				req.NewName = &flags.newName
@@ -63,15 +63,16 @@ Flags marked "Vitess only" are rejected for PostgreSQL databases.`,
 				req.RestrictBranchRegion = &flags.restrictBranchRegion
 				changed = true
 			}
-			if cmd.Flags().Changed("insights-raw-queries") {
-				req.InsightsRawQueries = &flags.insightsRawQueries
-				changed = true
-			}
 			if cmd.Flags().Changed("production-branch-web-console") {
 				req.ProductionBranchWebConsole = &flags.productionBranchWebConsole
 				changed = true
 			}
 
+			if cmd.Flags().Changed("insights-raw-queries") {
+				req.InsightsRawQueries = &flags.insightsRawQueries
+				changed = true
+				vitessFlags = append(vitessFlags, "--insights-raw-queries")
+			}
 			if cmd.Flags().Changed("require-approval-for-deploy") {
 				req.RequireApprovalForDeploy = &flags.requireApprovalForDeploy
 				changed = true
@@ -127,11 +128,15 @@ Flags marked "Vitess only" are rejected for PostgreSQL databases.`,
 					}
 				}
 				if existing.Kind != ps.DatabaseEngineMySQL {
-					return fmt.Errorf("%s %s only valid for Vitess (MySQL) databases (database %s is %s)",
+					err := fmt.Sprintf("%s %s only valid for Vitess (MySQL) databases (database %s is %s)",
 						strings.Join(vitessFlags, ", "),
 						pluralFlags(len(vitessFlags)),
 						printer.BoldBlue(name),
 						printer.BoldBlue(string(existing.Kind)))
+					if cmd.Flags().Changed("insights-raw-queries") {
+						err += fmt.Sprintf("; for PostgreSQL, use 'pscale branch resize %s <branch> --parameters pgconf.pginsights.raw_queries=on|off'", name)
+					}
+					return fmt.Errorf("%s", err)
 				}
 			}
 
@@ -157,9 +162,9 @@ Flags marked "Vitess only" are rejected for PostgreSQL databases.`,
 	cmd.Flags().StringVar(&flags.newName, "new-name", "", "Rename the database (PostgreSQL and Vitess)")
 	cmd.Flags().StringVar(&flags.defaultBranch, "default-branch", "", "The default branch of the database (PostgreSQL and Vitess)")
 	cmd.Flags().BoolVar(&flags.restrictBranchRegion, "restrict-branch-region", false, "Limit branch creation to the database region (PostgreSQL and Vitess)")
-	cmd.Flags().BoolVar(&flags.insightsRawQueries, "insights-raw-queries", false, "Collect full SQL queries for Insights (PostgreSQL and Vitess)")
 	cmd.Flags().BoolVar(&flags.productionBranchWebConsole, "production-branch-web-console", false, "Allow the web console on the production branch (PostgreSQL and Vitess)")
 
+	cmd.Flags().BoolVar(&flags.insightsRawQueries, "insights-raw-queries", false, "Collect full SQL queries for Insights (Vitess only; PostgreSQL uses pgconf.pginsights.raw_queries)")
 	cmd.Flags().BoolVar(&flags.requireApprovalForDeploy, "require-approval-for-deploy", false, "Require admin approval for deploy requests (Vitess only)")
 	cmd.Flags().BoolVar(&flags.allowDataBranching, "allow-data-branching", false, "Allow seeding branches with data (Vitess only)")
 	cmd.Flags().BoolVar(&flags.allowForeignKeyConstraints, "allow-foreign-key-constraints", false, "Allow foreign key constraints (Vitess only)")

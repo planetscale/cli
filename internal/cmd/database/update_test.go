@@ -24,7 +24,10 @@ func TestDatabase_UpdateCmd(t *testing.T) {
 
 	org := "planetscale"
 	db := "planetscale"
+	newName := "renamed"
 	defaultBranch := "production"
+	framework := "rails"
+	tableName := "schema_migrations"
 
 	res := &ps.Database{
 		Name:                       db,
@@ -42,13 +45,28 @@ func TestDatabase_UpdateCmd(t *testing.T) {
 		UpdateSettingsFn: func(ctx context.Context, req *ps.UpdateDatabaseSettingsRequest) (*ps.Database, error) {
 			c.Assert(req.Organization, qt.Equals, org)
 			c.Assert(req.Database, qt.Equals, db)
+			c.Assert(req.NewName, qt.IsNotNil)
+			c.Assert(*req.NewName, qt.Equals, newName)
 			c.Assert(req.DefaultBranch, qt.IsNotNil)
 			c.Assert(*req.DefaultBranch, qt.Equals, defaultBranch)
 			c.Assert(req.RequireApprovalForDeploy, qt.IsNotNil)
 			c.Assert(*req.RequireApprovalForDeploy, qt.IsTrue)
+			c.Assert(req.RestrictBranchRegion, qt.IsNotNil)
+			c.Assert(*req.RestrictBranchRegion, qt.IsFalse)
+			c.Assert(req.AllowDataBranching, qt.IsNotNil)
+			c.Assert(*req.AllowDataBranching, qt.IsFalse)
+			c.Assert(req.AllowForeignKeyConstraints, qt.IsNotNil)
+			c.Assert(*req.AllowForeignKeyConstraints, qt.IsFalse)
+			c.Assert(req.AutomaticMigrations, qt.IsNotNil)
+			c.Assert(*req.AutomaticMigrations, qt.IsFalse)
+			c.Assert(req.MigrationFramework, qt.IsNotNil)
+			c.Assert(*req.MigrationFramework, qt.Equals, framework)
+			c.Assert(req.MigrationTableName, qt.IsNotNil)
+			c.Assert(*req.MigrationTableName, qt.Equals, tableName)
 			c.Assert(req.InsightsRawQueries, qt.IsNotNil)
 			c.Assert(*req.InsightsRawQueries, qt.IsFalse)
-			c.Assert(req.RestrictBranchRegion, qt.IsNil)
+			c.Assert(req.ProductionBranchWebConsole, qt.IsNotNil)
+			c.Assert(*req.ProductionBranchWebConsole, qt.IsFalse)
 			return res, nil
 		},
 	}
@@ -68,9 +86,17 @@ func TestDatabase_UpdateCmd(t *testing.T) {
 	cmd := UpdateCmd(ch)
 	cmd.SetArgs([]string{
 		db,
+		"--new-name", newName,
 		"--default-branch", defaultBranch,
 		"--require-approval-for-deploy=true",
+		"--restrict-branch-region=false",
+		"--allow-data-branching=false",
+		"--allow-foreign-key-constraints=false",
+		"--automatic-migrations=false",
+		"--migration-framework", framework,
+		"--migration-table-name", tableName,
 		"--insights-raw-queries=false",
+		"--production-branch-web-console=false",
 	})
 	err := cmd.Execute()
 
@@ -261,6 +287,35 @@ func TestDatabase_UpdateCmd_VitessFlagsRejectedOnPostgres(t *testing.T) {
 	err := cmd.Execute()
 
 	c.Assert(err, qt.ErrorMatches, `(?s).*--allow-data-branching is only valid for Vitess \(MySQL\) databases.*postgresql.*`)
+	c.Assert(svc.GetFnInvoked, qt.IsTrue)
+	c.Assert(svc.UpdateSettingsFnInvoked, qt.IsFalse)
+}
+
+func TestDatabase_UpdateCmd_InsightsRawQueriesRejectedOnPostgres(t *testing.T) {
+	c := qt.New(t)
+
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	svc := &mock.DatabaseService{
+		GetFn: func(ctx context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
+			return &ps.Database{Name: "pg-db", Kind: "postgresql"}, nil
+		},
+	}
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: "planetscale",
+		},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{Databases: svc}, nil
+		},
+	}
+
+	cmd := UpdateCmd(ch)
+	cmd.SetArgs([]string{"pg-db", "--insights-raw-queries=false"})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.ErrorMatches, `(?s).*--insights-raw-queries is only valid for Vitess \(MySQL\) databases.*pgconf\.pginsights\.raw_queries=on\|off.*`)
 	c.Assert(svc.GetFnInvoked, qt.IsTrue)
 	c.Assert(svc.UpdateSettingsFnInvoked, qt.IsFalse)
 }

@@ -503,9 +503,13 @@ func TestDatabases_Empty(t *testing.T) {
 func TestDatabases_UpdateSettings(t *testing.T) {
 	c := qt.New(t)
 
+	newName := "renamed"
 	defaultBranch := "main"
 	requireApproval := true
 	insightsRaw := false
+	disabled := false
+	framework := "rails"
+	tableName := "schema_migrations"
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c.Assert(r.Method, qt.Equals, http.MethodPatch)
@@ -514,11 +518,17 @@ func TestDatabases_UpdateSettings(t *testing.T) {
 		var body map[string]any
 		err := json.NewDecoder(r.Body).Decode(&body)
 		c.Assert(err, qt.IsNil)
+		c.Assert(body["new_name"], qt.Equals, newName)
 		c.Assert(body["default_branch"], qt.Equals, defaultBranch)
 		c.Assert(body["require_approval_for_deploy"], qt.Equals, requireApproval)
 		c.Assert(body["insights_raw_queries"], qt.Equals, insightsRaw)
-		_, ok := body["allow_data_branching"]
-		c.Assert(ok, qt.IsFalse)
+		c.Assert(body["restrict_branch_region"], qt.Equals, disabled)
+		c.Assert(body["allow_data_branching"], qt.Equals, disabled)
+		c.Assert(body["allow_foreign_key_constraints"], qt.Equals, disabled)
+		c.Assert(body["automatic_migrations"], qt.Equals, disabled)
+		c.Assert(body["migration_framework"], qt.Equals, framework)
+		c.Assert(body["migration_table_name"], qt.Equals, tableName)
+		c.Assert(body["production_branch_web_console"], qt.Equals, disabled)
 
 		w.WriteHeader(200)
 		out := `{
@@ -549,11 +559,19 @@ func TestDatabases_UpdateSettings(t *testing.T) {
 
 	ctx := context.Background()
 	db, err := client.Databases.UpdateSettings(ctx, &UpdateDatabaseSettingsRequest{
-		Organization:             testOrg,
-		Database:                 testDatabase,
-		DefaultBranch:            &defaultBranch,
-		RequireApprovalForDeploy: &requireApproval,
-		InsightsRawQueries:       &insightsRaw,
+		Organization:               testOrg,
+		Database:                   testDatabase,
+		NewName:                    &newName,
+		DefaultBranch:              &defaultBranch,
+		RequireApprovalForDeploy:   &requireApproval,
+		RestrictBranchRegion:       &disabled,
+		AllowDataBranching:         &disabled,
+		AllowForeignKeyConstraints: &disabled,
+		AutomaticMigrations:        &disabled,
+		MigrationFramework:         &framework,
+		MigrationTableName:         &tableName,
+		InsightsRawQueries:         &insightsRaw,
+		ProductionBranchWebConsole: &disabled,
 	})
 
 	c.Assert(err, qt.IsNil)

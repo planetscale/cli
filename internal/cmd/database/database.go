@@ -154,11 +154,11 @@ func printDatabaseHuman(p *printer.Printer, db *Database) {
 	p.Printf("%-32s %s\n", "Kind", db.Kind)
 	p.Printf("%-32s %s\n", "Default Branch", db.DefaultBranch)
 	p.Printf("%-32s %t\n", "Restrict Branch Region", db.RestrictBranchRegion)
-	p.Printf("%-32s %t\n", "Insights Raw Queries", db.InsightsRawQueries)
 	p.Printf("%-32s %t\n", "Insights Enabled", db.InsightsEnabled)
 	p.Printf("%-32s %t\n", "Production Branch Web Console", db.ProductionBranchWebConsole)
 
 	if vitess {
+		p.Printf("%-32s %t\n", "Insights Raw Queries", db.InsightsRawQueries)
 		p.Printf("%-32s %t\n", "Require Approval For Deploy", db.RequireApprovalForDeploy)
 		p.Printf("%-32s %t\n", "Allow Data Branching", db.AllowDataBranching)
 		p.Printf("%-32s %t\n", "Foreign Keys Enabled", db.ForeignKeysEnabled)
