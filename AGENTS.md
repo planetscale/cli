@@ -91,16 +91,21 @@ pscale --org <org> database list --format json
 
 ## Cloudflare-billed databases
 
-To create a database billed to a Cloudflare account, Cloudflare must mint an HMAC billing proof. Pass all three flags together:
+To create a database billed to a Cloudflare account, Cloudflare must mint an HMAC billing proof. Pass the JSON proof directly:
 
 ```bash
 pscale database create <database> --org <org> --format json \
-  --cloudflare-account-id <cloudflare_account_id> \
-  --cloudflare-timestamp <unix_timestamp> \
-  --cloudflare-signature <hmac_hex>
+  --cloudflare-billing '{"account_id":"<cloudflare_account_id>","timestamp":"<unix_timestamp>","signature":"<hmac_hex>"}'
 ```
 
-The CLI does not mint the signature. Incomplete Cloudflare flags fail before the API is called.
+For automation, pass `@-` to read the proof from stdin so the signature is not exposed in process arguments:
+
+```bash
+printf '%s' "$CLOUDFLARE_BILLING_JSON" | \
+  pscale database create <database> --org <org> --format json --cloudflare-billing @-
+```
+
+The CLI does not mint the signature. The JSON object must contain non-empty `account_id`, `timestamp`, and `signature` strings.
 
 ## Flags
 
@@ -109,9 +114,7 @@ The CLI does not mint the signature. Incomplete Cloudflare flags fail before the
 | `--format json` | JSON on stdout |
 | `--org <org>` | Organization (on resource subcommands only) |
 | `--api-url` | Non-production API base URL — pass on every command when not using production |
-| `--cloudflare-account-id` | With timestamp + signature on `database create`: bill the DB to Cloudflare |
-| `--cloudflare-timestamp` | Unix timestamp for the Cloudflare billing signature |
-| `--cloudflare-signature` | HMAC proof of Cloudflare billing intent |
+| `--cloudflare-billing` | Cloudflare billing proof JSON on `database create`; pass `@-` to read it from stdin |
 
 ## JSON errors
 
