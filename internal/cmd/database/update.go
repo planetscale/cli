@@ -34,20 +34,7 @@ func UpdateCmd(ch *cmdutil.Helper) *cobra.Command {
 Only flags you pass are sent to the API. Boolean flags must be set explicitly,
 for example --insights-raw-queries=true or --insights-raw-queries=false.
 
-Shared (PostgreSQL and Vitess):
-  --new-name
-  --default-branch
-  --restrict-branch-region
-  --insights-raw-queries
-  --production-branch-web-console
-
-Vitess (MySQL) only:
-  --require-approval-for-deploy
-  --allow-data-branching
-  --allow-foreign-key-constraints
-  --automatic-migrations
-  --migration-framework
-  --migration-table-name`,
+Flags marked "Vitess only" are rejected for PostgreSQL databases.`,
 		Args: cmdutil.RequiredArgs("database"),
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return cmdutil.DatabaseCompletionFunc(ch, cmd, args, toComplete)
