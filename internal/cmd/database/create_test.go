@@ -3,6 +3,7 @@ package database
 import (
 	"bytes"
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/planetscale/cli/internal/cmdutil"
@@ -380,66 +381,113 @@ func TestDatabase_CreateCmdPostgresWithMajorVersion(t *testing.T) {
 }
 
 func TestDatabase_CreateCmdCloudflareBilling(t *testing.T) {
-	c := qt.New(t)
-
-	var buf bytes.Buffer
-	format := printer.JSON
-	p := printer.NewPrinter(&format)
-	p.SetResourceOutput(&buf)
-
-	org := "planetscale"
-	db := "planetscale"
-
-	res := &ps.Database{Name: "foo"}
-
-	svc := &mock.DatabaseService{
-		CreateFn: func(ctx context.Context, req *ps.CreateDatabaseRequest) (*ps.Database, error) {
-			c.Assert(req.Organization, qt.Equals, org)
-			c.Assert(req.Name, qt.Equals, db)
-			c.Assert(req.CloudflareAccountID, qt.Equals, "cf_account_123")
-			c.Assert(req.CloudflareTimestamp, qt.Equals, "1710000000")
-			c.Assert(req.CloudflareSignature, qt.Equals, "abc123sig")
-
-			return res, nil
+	tests := []struct {
+		name  string
+		value string
+		stdin string
+	}{
+		{
+			name:  "inline JSON",
+			value: `{"account_id":"cf_account_123","timestamp":"1710000000","signature":"abc123sig"}`,
+		},
+		{
+			name:  "JSON from stdin",
+			value: "@-",
+			stdin: `{"account_id":"cf_account_123","timestamp":"1710000000","signature":"abc123sig"}`,
 		},
 	}
 
-	ch := &cmdutil.Helper{
-		Printer: p,
-		Config: &config.Config{
-			Organization: org,
-		},
-		Client: func() (*ps.Client, error) {
-			return &ps.Client{
-				Databases: svc,
-				Organizations: &mock.OrganizationsService{
-					GetFn: func(ctx context.Context, request *ps.GetOrganizationRequest) (*ps.Organization, error) {
-						return &ps.Organization{
-							RemainingFreeDatabases: 1,
-							Name:                   request.Organization,
-						}, nil
-					},
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := qt.New(t)
+			var buf bytes.Buffer
+			format := printer.JSON
+			p := printer.NewPrinter(&format)
+			p.SetResourceOutput(&buf)
+
+			const (
+				org = "planetscale"
+				db  = "planetscale"
+			)
+			res := &ps.Database{Name: "foo"}
+			svc := &mock.DatabaseService{
+				CreateFn: func(ctx context.Context, req *ps.CreateDatabaseRequest) (*ps.Database, error) {
+					c.Assert(req.Organization, qt.Equals, org)
+					c.Assert(req.Name, qt.Equals, db)
+					c.Assert(req.CloudflareAccountID, qt.Equals, "cf_account_123")
+					c.Assert(req.CloudflareTimestamp, qt.Equals, "1710000000")
+					c.Assert(req.CloudflareSignature, qt.Equals, "abc123sig")
+					return res, nil
 				},
-			}, nil
-		},
+			}
+			ch := &cmdutil.Helper{
+				Printer: p,
+				Config:  &config.Config{Organization: org},
+				Client: func() (*ps.Client, error) {
+					return &ps.Client{
+						Databases: svc,
+						Organizations: &mock.OrganizationsService{
+							GetFn: func(ctx context.Context, request *ps.GetOrganizationRequest) (*ps.Organization, error) {
+								return &ps.Organization{
+									RemainingFreeDatabases: 1,
+									Name:                   request.Organization,
+								}, nil
+							},
+						},
+					}, nil
+				},
+			}
+
+			cmd := CreateCmd(ch)
+			cmd.SetIn(strings.NewReader(tt.stdin))
+			cmd.SetArgs([]string{db, "--region", "us-east", "--cloudflare-billing", tt.value})
+			err := cmd.Execute()
+
+			c.Assert(err, qt.IsNil)
+			c.Assert(svc.CreateFnInvoked, qt.IsTrue)
+			c.Assert(buf.String(), qt.JSONEquals, res)
+		})
 	}
-
-	cmd := CreateCmd(ch)
-	cmd.SetArgs([]string{
-		db,
-		"--region", "us-east",
-		"--cloudflare-account-id", "cf_account_123",
-		"--cloudflare-timestamp", "1710000000",
-		"--cloudflare-signature", "abc123sig",
-	})
-	err := cmd.Execute()
-
-	c.Assert(err, qt.IsNil)
-	c.Assert(svc.CreateFnInvoked, qt.IsTrue)
-	c.Assert(buf.String(), qt.JSONEquals, res)
 }
 
-func TestDatabase_CreateCmdCloudflareBillingIncomplete(t *testing.T) {
+func TestParseCloudflareBillingErrors(t *testing.T) {
+	tests := []struct {
+		name  string
+		value string
+		match string
+	}{
+		{
+			name:  "invalid JSON",
+			value: `{`,
+			match: `parsing --cloudflare-billing JSON: unexpected EOF`,
+		},
+		{
+			name:  "unknown field",
+			value: `{"account_id":"account","timestamp":"123","signature":"sig","extra":"value"}`,
+			match: `parsing --cloudflare-billing JSON: json: unknown field "extra"`,
+		},
+		{
+			name:  "missing field",
+			value: `{"account_id":"account","timestamp":"123"}`,
+			match: `--cloudflare-billing requires non-empty "account_id", "timestamp", and "signature" fields`,
+		},
+		{
+			name:  "multiple values",
+			value: `{"account_id":"account","timestamp":"123","signature":"sig"} {}`,
+			match: `parsing --cloudflare-billing JSON: multiple JSON values are not allowed`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := qt.New(t)
+			_, err := parseCloudflareBilling(tt.value, strings.NewReader(""))
+			c.Assert(err, qt.ErrorMatches, tt.match)
+		})
+	}
+}
+
+func TestDatabase_CreateCmdCloudflareBillingInvalid(t *testing.T) {
 	c := qt.New(t)
 
 	var buf bytes.Buffer
@@ -447,12 +495,9 @@ func TestDatabase_CreateCmdCloudflareBillingIncomplete(t *testing.T) {
 	p := printer.NewPrinter(&format)
 	p.SetResourceOutput(&buf)
 
-	org := "planetscale"
-	db := "planetscale"
-
 	svc := &mock.DatabaseService{
 		CreateFn: func(ctx context.Context, req *ps.CreateDatabaseRequest) (*ps.Database, error) {
-			c.Fatalf("Create should not be called with incomplete Cloudflare flags")
+			c.Fatalf("Create should not be called with invalid Cloudflare billing JSON")
 			return nil, nil
 		},
 	}
@@ -460,7 +505,7 @@ func TestDatabase_CreateCmdCloudflareBillingIncomplete(t *testing.T) {
 	ch := &cmdutil.Helper{
 		Printer: p,
 		Config: &config.Config{
-			Organization: org,
+			Organization: "planetscale",
 		},
 		Client: func() (*ps.Client, error) {
 			return &ps.Client{
@@ -470,20 +515,21 @@ func TestDatabase_CreateCmdCloudflareBillingIncomplete(t *testing.T) {
 	}
 
 	cmd := CreateCmd(ch)
-	cmd.SetArgs([]string{db, "--cloudflare-account-id", "cf_account_123"})
+	cmd.SetArgs([]string{"planetscale", "--cloudflare-billing", `{"account_id":"cf_account_123"}`})
 	err := cmd.Execute()
 
-	c.Assert(err, qt.ErrorMatches, ".*cloudflare-account-id, --cloudflare-timestamp, and --cloudflare-signature are all required.*")
+	c.Assert(err, qt.ErrorMatches, `.*--cloudflare-billing requires non-empty "account_id", "timestamp", and "signature" fields.*`)
 	c.Assert(svc.CreateFnInvoked, qt.IsFalse)
 }
 
-func TestDatabase_CreateCmdCloudflareFlagsHidden(t *testing.T) {
+func TestDatabase_CreateCmdCloudflareFlagHidden(t *testing.T) {
 	c := qt.New(t)
 
 	cmd := CreateCmd(&cmdutil.Helper{})
-	for _, name := range []string{"cloudflare-account-id", "cloudflare-timestamp", "cloudflare-signature"} {
-		flag := cmd.Flags().Lookup(name)
-		c.Assert(flag, qt.IsNotNil, qt.Commentf("flag %q", name))
-		c.Assert(flag.Hidden, qt.IsTrue, qt.Commentf("flag %q", name))
+	flag := cmd.Flags().Lookup("cloudflare-billing")
+	c.Assert(flag, qt.IsNotNil)
+	c.Assert(flag.Hidden, qt.IsTrue)
+	for _, removed := range []string{"cloudflare-account-id", "cloudflare-timestamp", "cloudflare-signature"} {
+		c.Assert(cmd.Flags().Lookup(removed), qt.IsNil)
 	}
 }

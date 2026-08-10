@@ -1,9 +1,12 @@
 package database
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/planetscale/cli/internal/cmdutil"
@@ -19,16 +22,14 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	createReq := &ps.CreateDatabaseRequest{}
 
 	var flags struct {
-		clusterSize         string
-		engine              string
-		wait                bool
-		replicas            *int
-		majorVersion        string
-		minStorage          int64
-		maxStorage          int64
-		cloudflareAccountID string
-		cloudflareTimestamp string
-		cloudflareSignature string
+		clusterSize       string
+		engine            string
+		wait              bool
+		replicas          *int
+		majorVersion      string
+		minStorage        int64
+		maxStorage        int64
+		cloudflareBilling string
 	}
 
 	cmd := &cobra.Command{
@@ -70,16 +71,14 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 				}
 			}
 
-			cloudflareAccountID := flags.cloudflareAccountID
-			cloudflareTimestamp := flags.cloudflareTimestamp
-			cloudflareSignature := flags.cloudflareSignature
-			if cloudflareAccountID != "" || cloudflareTimestamp != "" || cloudflareSignature != "" {
-				if cloudflareAccountID == "" || cloudflareTimestamp == "" || cloudflareSignature == "" {
-					return fmt.Errorf("--cloudflare-account-id, --cloudflare-timestamp, and --cloudflare-signature are all required when billing to Cloudflare")
+			if flags.cloudflareBilling != "" {
+				billing, err := parseCloudflareBilling(flags.cloudflareBilling, cmd.InOrStdin())
+				if err != nil {
+					return err
 				}
-				createReq.CloudflareAccountID = cloudflareAccountID
-				createReq.CloudflareTimestamp = cloudflareTimestamp
-				createReq.CloudflareSignature = cloudflareSignature
+				createReq.CloudflareAccountID = billing.AccountID
+				createReq.CloudflareTimestamp = billing.Timestamp
+				createReq.CloudflareSignature = billing.Signature
 			}
 
 			client, err := ch.Client()
@@ -154,16 +153,55 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().Int64Var(&flags.minStorage, "min-storage", 0, "Minimum storage size in bytes")
 	cmd.Flags().Int64Var(&flags.maxStorage, "max-storage", 0, "Maximum storage size in bytes for autoscaling")
 
-	cmd.Flags().StringVar(&flags.cloudflareAccountID, "cloudflare-account-id", "", "Cloudflare account ID to bill this database to. Requires --cloudflare-timestamp and --cloudflare-signature.")
-	cmd.Flags().StringVar(&flags.cloudflareTimestamp, "cloudflare-timestamp", "", "Unix timestamp for the Cloudflare billing signature. Requires --cloudflare-account-id and --cloudflare-signature.")
-	cmd.Flags().StringVar(&flags.cloudflareSignature, "cloudflare-signature", "", "HMAC signature proving Cloudflare billing intent. Requires --cloudflare-account-id and --cloudflare-timestamp.")
-	_ = cmd.Flags().MarkHidden("cloudflare-account-id")
-	_ = cmd.Flags().MarkHidden("cloudflare-timestamp")
-	_ = cmd.Flags().MarkHidden("cloudflare-signature")
+	cmd.Flags().StringVar(&flags.cloudflareBilling, "cloudflare-billing", "", `Cloudflare billing proof as JSON, or "@-" to read it from stdin.`)
+	_ = cmd.Flags().MarkHidden("cloudflare-billing")
 
 	cmd.Flags().BoolVar(&flags.wait, "wait", false, "Wait until the database is ready")
 
 	return cmd
+}
+
+type cloudflareBilling struct {
+	AccountID string `json:"account_id"`
+	Timestamp string `json:"timestamp"`
+	Signature string `json:"signature"`
+}
+
+func parseCloudflareBilling(value string, stdin io.Reader) (*cloudflareBilling, error) {
+	data := []byte(value)
+	if value == "@-" {
+		var err error
+		data, err = io.ReadAll(stdin)
+		if err != nil {
+			return nil, fmt.Errorf("reading --cloudflare-billing from stdin: %w", err)
+		}
+	}
+
+	var billing cloudflareBilling
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&billing); err != nil {
+		return nil, fmt.Errorf("parsing --cloudflare-billing JSON: %w", err)
+	}
+	if err := ensureJSONEOF(decoder); err != nil {
+		return nil, fmt.Errorf("parsing --cloudflare-billing JSON: %w", err)
+	}
+	if billing.AccountID == "" || billing.Timestamp == "" || billing.Signature == "" {
+		return nil, fmt.Errorf(`--cloudflare-billing requires non-empty "account_id", "timestamp", and "signature" fields`)
+	}
+
+	return &billing, nil
+}
+
+func ensureJSONEOF(decoder *json.Decoder) error {
+	var extra any
+	if err := decoder.Decode(&extra); err != io.EOF {
+		if err == nil {
+			return errors.New("multiple JSON values are not allowed")
+		}
+		return err
+	}
+	return nil
 }
 
 func parseDatabaseEngine(engine string) (ps.DatabaseEngine, error) {
