@@ -119,7 +119,7 @@ Vitess-only settings: --allow-data-branching, --allow-foreign-key-constraints,
 			}
 			end()
 
-			return ch.Printer.PrintResource(toDatabase(database))
+			return printDatabase(ch, database)
 		},
 	}
 

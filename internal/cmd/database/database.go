@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/planetscale/cli/internal/cmdutil"
+	"github.com/planetscale/cli/internal/printer"
 	"github.com/spf13/cobra"
 
 	ps "github.com/planetscale/cli/internal/planetscale"
@@ -132,4 +133,48 @@ func (d *Database) MarshalJSON() ([]byte, error) {
 
 func (d *Database) MarshalCSVValue() interface{} {
 	return []*Database{d}
+}
+
+// printDatabase prints a database in the configured format. Human output uses a
+// vertical key/value layout so settings remain readable.
+func printDatabase(ch *cmdutil.Helper, db *ps.Database) error {
+	view := toDatabase(db)
+	if ch.Printer.Format() != printer.Human {
+		return ch.Printer.PrintResource(view)
+	}
+
+	printDatabaseHuman(ch.Printer, view)
+	return nil
+}
+
+func printDatabaseHuman(p *printer.Printer, db *Database) {
+	p.Printf("%-32s %s\n", "Name", db.Name)
+	p.Printf("%-32s %s\n", "Kind", db.Kind)
+	p.Printf("%-32s %s\n", "Default Branch", db.DefaultBranch)
+	p.Printf("%-32s %t\n", "Require Approval For Deploy", db.RequireApprovalForDeploy)
+	p.Printf("%-32s %t\n", "Restrict Branch Region", db.RestrictBranchRegion)
+	p.Printf("%-32s %t\n", "Allow Data Branching", db.AllowDataBranching)
+	p.Printf("%-32s %t\n", "Foreign Keys Enabled", db.ForeignKeysEnabled)
+	p.Printf("%-32s %s\n", "Automatic Migrations", emptyAsDash(db.AutomaticMigrations))
+	p.Printf("%-32s %s\n", "Migration Framework", emptyAsDash(db.MigrationFramework))
+	p.Printf("%-32s %s\n", "Migration Table Name", emptyAsDash(db.MigrationTableName))
+	p.Printf("%-32s %t\n", "Insights Raw Queries", db.InsightsRawQueries)
+	p.Printf("%-32s %t\n", "Insights Enabled", db.InsightsEnabled)
+	p.Printf("%-32s %t\n", "Production Branch Web Console", db.ProductionBranchWebConsole)
+	p.Printf("%-32s %s\n", "Created At", formatUnixMilli(db.CreatedAt))
+	p.Printf("%-32s %s\n", "Updated At", formatUnixMilli(db.UpdatedAt))
+}
+
+func emptyAsDash(v string) string {
+	if v == "" {
+		return "-"
+	}
+	return v
+}
+
+func formatUnixMilli(ms int64) string {
+	if ms == 0 {
+		return "-"
+	}
+	return time.UnixMilli(ms).UTC().Format(time.RFC3339)
 }

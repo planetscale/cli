@@ -61,7 +61,7 @@ func ShowCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 			end()
 
-			return ch.Printer.PrintResource(toDatabase(database))
+			return printDatabase(ch, database)
 		},
 	}
 
