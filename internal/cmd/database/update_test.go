@@ -36,6 +36,9 @@ func TestDatabase_UpdateCmd(t *testing.T) {
 	}
 
 	svc := &mock.DatabaseService{
+		GetFn: func(ctx context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
+			return &ps.Database{Name: db, Kind: "mysql"}, nil
+		},
 		UpdateSettingsFn: func(ctx context.Context, req *ps.UpdateDatabaseSettingsRequest) (*ps.Database, error) {
 			c.Assert(req.Organization, qt.Equals, org)
 			c.Assert(req.Database, qt.Equals, db)
@@ -151,6 +154,9 @@ func TestDatabase_UpdateCmd_VitessFlags(t *testing.T) {
 	}
 
 	svc := &mock.DatabaseService{
+		GetFn: func(ctx context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
+			return &ps.Database{Name: db, Kind: "mysql"}, nil
+		},
 		UpdateSettingsFn: func(ctx context.Context, req *ps.UpdateDatabaseSettingsRequest) (*ps.Database, error) {
 			c.Assert(req.AllowDataBranching, qt.IsNotNil)
 			c.Assert(*req.AllowDataBranching, qt.IsTrue)
@@ -221,5 +227,40 @@ func TestDatabase_UpdateCmd_NoFlags(t *testing.T) {
 	err := cmd.Execute()
 
 	c.Assert(err, qt.ErrorMatches, "at least one settings flag must be provided")
+	c.Assert(svc.UpdateSettingsFnInvoked, qt.IsFalse)
+}
+
+func TestDatabase_UpdateCmd_VitessFlagsRejectedOnPostgres(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	svc := &mock.DatabaseService{
+		GetFn: func(ctx context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
+			return &ps.Database{Name: "pg-db", Kind: "postgresql"}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: "planetscale",
+		},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{
+				Databases: svc,
+			}, nil
+		},
+	}
+
+	cmd := UpdateCmd(ch)
+	cmd.SetArgs([]string{"pg-db", "--allow-data-branching=true"})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.ErrorMatches, `(?s).*--allow-data-branching is only valid for Vitess \(MySQL\) databases.*postgresql.*`)
+	c.Assert(svc.GetFnInvoked, qt.IsTrue)
 	c.Assert(svc.UpdateSettingsFnInvoked, qt.IsFalse)
 }

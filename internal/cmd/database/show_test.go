@@ -113,6 +113,62 @@ func TestDatabase_ShowCmd_HumanVertical(t *testing.T) {
 	c.Assert(out, qt.Contains, "Default Branch")
 	c.Assert(out, qt.Contains, "main")
 	c.Assert(out, qt.Contains, "Require Approval For Deploy")
+	c.Assert(out, qt.Contains, "Allow Data Branching")
+	c.Assert(out, qt.Contains, "Automatic Migrations")
 	c.Assert(out, qt.Contains, "Insights Raw Queries")
 	c.Assert(strings.Contains(out, "|"), qt.IsFalse)
+}
+
+func TestDatabase_ShowCmd_HumanVerticalPostgresOmitsVitessSettings(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.Human
+	p := printer.NewPrinter(&format)
+	p.SetHumanOutput(&buf)
+
+	res := &ps.Database{
+		Name:                       "pg-db",
+		Kind:                       "postgresql",
+		DefaultBranch:              "main",
+		RequireApprovalForDeploy:   true,
+		AllowDataBranching:         true,
+		ForeignKeysEnabled:         true,
+		InsightsRawQueries:         false,
+		InsightsEnabled:            true,
+		ProductionBranchWebConsole: true,
+	}
+
+	svc := &mock.DatabaseService{
+		GetFn: func(ctx context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
+			return res, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: "planetscale",
+		},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{
+				Databases: svc,
+			}, nil
+		},
+	}
+
+	cmd := ShowCmd(ch)
+	cmd.SetArgs([]string{"pg-db"})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNil)
+	out := buf.String()
+	c.Assert(out, qt.Contains, "postgresql")
+	c.Assert(out, qt.Contains, "Default Branch")
+	c.Assert(out, qt.Contains, "Insights Raw Queries")
+	c.Assert(out, qt.Not(qt.Contains), "Require Approval For Deploy")
+	c.Assert(out, qt.Not(qt.Contains), "Allow Data Branching")
+	c.Assert(out, qt.Not(qt.Contains), "Foreign Keys Enabled")
+	c.Assert(out, qt.Not(qt.Contains), "Automatic Migrations")
+	c.Assert(out, qt.Not(qt.Contains), "Migration Framework")
 }
