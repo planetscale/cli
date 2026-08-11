@@ -289,3 +289,25 @@ func TestPostgresBouncerResizeRequest_Finished(t *testing.T) {
 	c.Assert((&PostgresBouncerResizeRequest{State: PostgresBouncerResizeStateCompleted}).Finished(), qt.IsTrue)
 	c.Assert((&PostgresBouncerResizeRequest{State: PostgresBouncerResizeStateCanceled}).Finished(), qt.IsTrue)
 }
+
+func TestPostgresBouncers_Resize_NoChange(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodPatch)
+		w.WriteHeader(204)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	resize, err := client.PostgresBouncers.Resize(context.Background(), &ResizePostgresBouncerRequest{
+		Organization: testOrg,
+		Database:     "my-db",
+		Branch:       "main",
+		Bouncer:      "read-pool",
+		BouncerSize:  "PGB_10",
+	})
+	c.Assert(err, qt.IsNil)
+	c.Assert(resize, qt.IsNil)
+}

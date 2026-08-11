@@ -17,22 +17,22 @@ const (
 
 // PostgresBouncerResizeRequest is an asynchronous dedicated-PgBouncer change.
 type PostgresBouncerResizeRequest struct {
-	ID                      string                      `json:"id"`
-	State                   string                      `json:"state"`
-	ReplicasPerCell         int                         `json:"replicas_per_cell"`
-	Target                  string                      `json:"target"`
-	Parameters              map[string]any              `json:"parameters"`
-	PreviousReplicasPerCell int                         `json:"previous_replicas_per_cell"`
-	PreviousTarget          string                      `json:"previous_target"`
-	PreviousParameters      map[string]any              `json:"previous_parameters"`
-	StartedAt               *time.Time                  `json:"started_at"`
-	CompletedAt             *time.Time                  `json:"completed_at"`
-	CreatedAt               time.Time                   `json:"created_at"`
-	UpdatedAt               time.Time                   `json:"updated_at"`
-	Actor       Actor                 `json:"actor"`
-	Bouncer     PostgresBouncerBranch `json:"bouncer"`
-	SKU         *PostgresBouncerSKU   `json:"sku"`
-	PreviousSKU *PostgresBouncerSKU   `json:"previous_sku"`
+	ID                      string                `json:"id"`
+	State                   string                `json:"state"`
+	ReplicasPerCell         int                   `json:"replicas_per_cell"`
+	Target                  string                `json:"target"`
+	Parameters              map[string]any        `json:"parameters"`
+	PreviousReplicasPerCell int                   `json:"previous_replicas_per_cell"`
+	PreviousTarget          string                `json:"previous_target"`
+	PreviousParameters      map[string]any        `json:"previous_parameters"`
+	StartedAt               *time.Time            `json:"started_at"`
+	CompletedAt             *time.Time            `json:"completed_at"`
+	CreatedAt               time.Time             `json:"created_at"`
+	UpdatedAt               time.Time             `json:"updated_at"`
+	Actor                   Actor                 `json:"actor"`
+	Bouncer                 PostgresBouncerBranch `json:"bouncer"`
+	SKU                     *PostgresBouncerSKU   `json:"sku"`
+	PreviousSKU             *PostgresBouncerSKU   `json:"previous_sku"`
 }
 
 // Finished reports whether the resize request is in a terminal state.
@@ -104,6 +104,13 @@ func (s *postgresBouncersService) Resize(ctx context.Context, resizeReq *ResizeP
 	out := &PostgresBouncerResizeRequest{}
 	if err := s.client.do(ctx, req, &out); err != nil {
 		return nil, err
+	}
+
+	// An empty body (for example a 204 when the bouncer already matches the
+	// requested configuration) leaves the ID empty. Surface that as a nil
+	// resize request so callers can detect the no-op.
+	if out.ID == "" {
+		return nil, nil
 	}
 
 	return out, nil

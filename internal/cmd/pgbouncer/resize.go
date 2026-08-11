@@ -89,6 +89,21 @@ configure the local PgBouncer on database nodes.`,
 			}
 			end()
 
+			// A nil resize request means the bouncer already matches the
+			// requested configuration (the API responded with no content).
+			if resize == nil {
+				if ch.Printer.Format() == printer.Human {
+					ch.Printer.Printf("PgBouncer %s already matches the requested configuration; no changes applied.\n", printer.BoldBlue(name))
+					return nil
+				}
+				return ch.Printer.PrintResource(map[string]string{
+					"result":   "no_change",
+					"name":     name,
+					"database": database,
+					"branch":   branch,
+				})
+			}
+
 			if flags.wait {
 				resize, err = waitForBouncerResize(ctx, ch, client, database, branch, name, resize, flags.waitTimeout)
 				if err != nil {

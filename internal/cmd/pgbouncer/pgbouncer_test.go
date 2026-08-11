@@ -399,3 +399,38 @@ func TestPgBouncer_ResizeCancelCmd(t *testing.T) {
 		"branch":   branch,
 	})
 }
+
+func TestPgBouncer_ResizeCmd_NoChange(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	org := "planetscale"
+	db := "mydb"
+	branch := "main"
+	name := "read-pool"
+
+	dbSvc := &mock.DatabaseService{
+		GetFn: func(ctx context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
+			return postgresDB(db), nil
+		},
+	}
+	svc := &mock.PostgresBouncersService{
+		ResizeFn: func(ctx context.Context, req *ps.ResizePostgresBouncerRequest) (*ps.PostgresBouncerResizeRequest, error) {
+			return nil, nil
+		},
+	}
+
+	cmd := ResizeCmd(testHelper(org, dbSvc, svc, printer.JSON, &buf))
+	cmd.SetArgs([]string{db, branch, name, "--size", "PGB_10", "--wait"})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.ResizeFnInvoked, qt.IsTrue)
+	c.Assert(svc.ListResizesFnInvoked, qt.IsFalse)
+	c.Assert(buf.String(), qt.JSONEquals, map[string]string{
+		"result":   "no_change",
+		"name":     name,
+		"database": db,
+		"branch":   branch,
+	})
+}
