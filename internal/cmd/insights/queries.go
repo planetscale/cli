@@ -32,6 +32,8 @@ var sortMetrics = []string{
 
 // QueryRow is a query statistics row formatted for table output.
 type QueryRow struct {
+	Fingerprint   string  `header:"fingerprint" json:"fingerprint"`
+	Keyspace      string  `header:"keyspace" json:"keyspace"`
 	Count         int64   `header:"count" json:"query_count"`
 	TotalTimeMs   float64 `header:"total time (ms)" json:"sum_total_duration_millis"`
 	TimePerQryMs  float64 `header:"per query (ms)" json:"time_per_query"`
@@ -63,7 +65,10 @@ func QueriesCmd(ch *cmdutil.Helper) *cobra.Command {
   pscale insights queries mydb main --org myorg --sort rowsReadPerReturned
 
   # Highest p99 latency over the last hour
-  pscale insights queries mydb main --org myorg --sort p99Latency --period 1h`,
+  pscale insights queries mydb main --org myorg --sort p99Latency --period 1h
+
+  # Recent executions for a fingerprint from the list (keyspace is required)
+  pscale insights queries samples mydb main b129e8fa --org myorg --keyspace mydb`,
 		Args: cmdutil.RequiredArgs("database", "branch"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -112,7 +117,9 @@ func QueriesCmd(ch *cmdutil.Helper) *cobra.Command {
 		fmt.Sprintf("Metric to rank queries by, one of: %s", strings.Join(sortMetrics, ", ")))
 	cmd.Flags().StringVar(&flags.dir, "dir", "desc", "Sort direction: asc or desc")
 	cmd.Flags().IntVar(&flags.limit, "limit", 15, "Number of queries to return")
-	cmd.Flags().StringVar(&flags.period, "period", "", "Time period to aggregate over (e.g. 1h, 24h)")
+	cmd.Flags().StringVar(&flags.period, "period", "", "Time period to aggregate over (e.g. 1h, 1d)")
+
+	cmd.AddCommand(QuerySamplesCmd(ch))
 
 	return cmd
 }
@@ -121,6 +128,8 @@ func toQueryRows(insights []*ps.QueryInsight) []*QueryRow {
 	rows := make([]*QueryRow, 0, len(insights))
 	for _, in := range insights {
 		rows = append(rows, &QueryRow{
+			Fingerprint:   in.Fingerprint,
+			Keyspace:      in.Keyspace,
 			Count:         in.QueryCount,
 			TotalTimeMs:   round2(in.SumTotalDurationMillis),
 			TimePerQryMs:  round2(in.TimePerQuery),

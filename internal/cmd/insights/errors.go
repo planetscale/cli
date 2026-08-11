@@ -76,7 +76,7 @@ func ErrorsCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 
 	cmd.Flags().IntVar(&flags.limit, "limit", 15, "Number of errors to return")
-	cmd.Flags().StringVar(&flags.period, "period", "", "Time period to aggregate over (e.g. 1h, 24h)")
+	cmd.Flags().StringVar(&flags.period, "period", "", "Time period to aggregate over (e.g. 1h, 1d)")
 
 	return cmd
 }

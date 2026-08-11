@@ -10,12 +10,16 @@ import (
 var _ QueryInsightsService = &queryInsightsService{}
 
 // QueryInsightsService is an interface for communicating with the PlanetScale
-// Query Insights API: aggregated query statistics, query errors, and detected
-// anomalies for a database branch.
+// Query Insights API: aggregated query statistics, query errors, detected
+// anomalies, per-fingerprint samples, and query tags for a database branch.
 type QueryInsightsService interface {
 	ListQueries(context.Context, *ListQueryInsightsRequest, ...ListOption) ([]*QueryInsight, error)
+	ListQuerySamples(context.Context, *ListQuerySamplesRequest, ...ListOption) ([]*QuerySample, error)
 	ListErrors(context.Context, *ListQueryInsightsErrorsRequest, ...ListOption) ([]*QueryInsightError, error)
 	ListAnomalies(context.Context, *ListAnomaliesRequest, ...ListOption) ([]*Anomaly, error)
+	ListTags(context.Context, *ListQueryTagsRequest, ...ListOption) ([]*QueryTag, error)
+	GetTag(context.Context, *GetQueryTagRequest, ...ListOption) (*QueryTag, error)
+	ListTagSummaries(context.Context, *ListTagSummariesRequest, ...ListOption) ([]*TagSummary, error)
 }
 
 // QueryInsight is an aggregated statistics record for a normalized query
@@ -99,6 +103,39 @@ type ListAnomaliesRequest struct {
 	Branch       string
 }
 
+// QuerySampleTag is a name/value tag attached to an individual query execution.
+type QuerySampleTag struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
+}
+
+// QuerySample is an individual query execution recorded for a fingerprint.
+type QuerySample struct {
+	ID                  string           `json:"id"`
+	Fingerprint         string           `json:"fingerprint"`
+	NormalizedSQL       string           `json:"normalized_sql"`
+	StatementType       string           `json:"statement_type"`
+	Keyspace            string           `json:"keyspace"`
+	Tables              []string         `json:"tables"`
+	Username            string           `json:"username"`
+	RemoteAddress       string           `json:"remote_address"`
+	RowsRead            int64            `json:"rows_read"`
+	RowsAffected        int64            `json:"rows_affected"`
+	RowsReturned        int64            `json:"rows_returned"`
+	TotalDurationMillis float64          `json:"total_duration_millis"`
+	ErrorMessage        string           `json:"error_message"`
+	StartedAt           time.Time        `json:"started_at"`
+	Tags                []QuerySampleTag `json:"tags"`
+}
+
+// ListQuerySamplesRequest lists individual executions for a query fingerprint.
+type ListQuerySamplesRequest struct {
+	Organization string
+	Database     string
+	Branch       string
+	Fingerprint  string
+}
+
 // WithSort returns a ListOption that sets the "sort" and "dir" URL parameters.
 func WithSort(sort, dir string) ListOption {
 	return func(opt *ListOptions) error {
@@ -113,7 +150,7 @@ func WithSort(sort, dir string) ListOption {
 }
 
 // WithPeriod returns a ListOption that sets the "period" URL parameter
-// (e.g. "1h", "24h").
+// (e.g. "1h", "1d").
 func WithPeriod(period string) ListOption {
 	return func(opt *ListOptions) error {
 		if period != "" {
@@ -187,6 +224,30 @@ func (s *queryInsightsService) ListAnomalies(ctx context.Context, request *ListA
 	return resp.Anomalies, nil
 }
 
+type querySamplesResponse struct {
+	Data []*QuerySample `json:"data"`
+}
+
+func (s *queryInsightsService) ListQuerySamples(ctx context.Context, request *ListQuerySamplesRequest, opts ...ListOption) ([]*QuerySample, error) {
+	listOpts := defaultListOptions(opts...)
+
+	req, err := s.client.newRequest(http.MethodGet, insightsFingerprintAPIPath(request.Organization, request.Database, request.Branch, request.Fingerprint), nil, WithQueryParams(*listOpts.URLValues))
+	if err != nil {
+		return nil, err
+	}
+
+	resp := &querySamplesResponse{}
+	if err := s.client.do(ctx, req, &resp); err != nil {
+		return nil, err
+	}
+
+	return resp.Data, nil
+}
+
 func insightsAPIPath(org, db, branch string) string {
 	return path.Join("v1/organizations", org, "databases", db, "branches", branch, "insights")
+}
+
+func insightsFingerprintAPIPath(org, db, branch, fingerprint string) string {
+	return path.Join(insightsAPIPath(org, db, branch), fingerprint)
 }

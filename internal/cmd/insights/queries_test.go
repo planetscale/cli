@@ -216,3 +216,155 @@ func TestInsights_RecommendationDismissCmd_RequiresForceInJSON(t *testing.T) {
 	c.Assert(err, qt.ErrorMatches, `(?s).*run with --force.*`)
 	c.Assert(svc.DismissFnInvoked, qt.IsFalse)
 }
+
+func TestInsights_QuerySamplesCmd(t *testing.T) {
+	c := qt.New(t)
+
+	svc := &mock.QueryInsightsService{
+		ListQuerySamplesFn: func(ctx context.Context, req *ps.ListQuerySamplesRequest, opts ...ps.ListOption) ([]*ps.QuerySample, error) {
+			c.Assert(req.Database, qt.Equals, "mydb")
+			c.Assert(req.Branch, qt.Equals, "main")
+			c.Assert(req.Fingerprint, qt.Equals, "b129e8fa")
+			return []*ps.QuerySample{{
+				ID:                  "exec-1",
+				Fingerprint:         "b129e8fa",
+				NormalizedSQL:       "select 1",
+				Username:            "app",
+				TotalDurationMillis: 1.5,
+				StartedAt:           time.Date(2026, 8, 11, 18, 0, 0, 0, time.UTC),
+				Tags:                []ps.QuerySampleTag{{Name: "Sapp", Value: "web"}},
+			}}, nil
+		},
+	}
+
+	var buf bytes.Buffer
+	ch := testHelper(&buf, printer.JSON, &ps.Client{QueryInsights: svc})
+
+	cmd := QuerySamplesCmd(ch)
+	cmd.SetArgs([]string{"mydb", "main", "b129e8fa", "--keyspace", "mydb"})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.ListQuerySamplesFnInvoked, qt.IsTrue)
+
+	var out []map[string]any
+	c.Assert(json.Unmarshal(buf.Bytes(), &out), qt.IsNil)
+	c.Assert(out[0]["id"], qt.Equals, "exec-1")
+	c.Assert(out[0]["username"], qt.Equals, "app")
+}
+
+func TestInsights_QuerySamplesCmd_RequiresKeyspace(t *testing.T) {
+	c := qt.New(t)
+
+	svc := &mock.QueryInsightsService{}
+	ch := testHelper(&bytes.Buffer{}, printer.JSON, &ps.Client{QueryInsights: svc})
+
+	cmd := QuerySamplesCmd(ch)
+	cmd.SetArgs([]string{"mydb", "main", "b129e8fa"})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNotNil)
+	c.Assert(err.Error(), qt.Contains, "keyspace")
+	c.Assert(svc.ListQuerySamplesFnInvoked, qt.IsFalse)
+}
+
+func TestInsights_TagsCmd(t *testing.T) {
+	c := qt.New(t)
+
+	svc := &mock.QueryInsightsService{
+		ListTagsFn: func(ctx context.Context, req *ps.ListQueryTagsRequest, opts ...ps.ListOption) ([]*ps.QueryTag, error) {
+			return []*ps.QueryTag{{
+				ID:         "Sapp",
+				Name:       "app",
+				Source:     "sql",
+				QueryCount: 100,
+				Values:     []ps.QueryTagValue{{Name: "web", QueryCount: 80, Kind: "literal"}},
+			}}, nil
+		},
+	}
+
+	var buf bytes.Buffer
+	ch := testHelper(&buf, printer.JSON, &ps.Client{QueryInsights: svc})
+
+	cmd := TagsCmd(ch)
+	cmd.SetArgs([]string{"mydb", "main"})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.ListTagsFnInvoked, qt.IsTrue)
+
+	var out []map[string]any
+	c.Assert(json.Unmarshal(buf.Bytes(), &out), qt.IsNil)
+	c.Assert(out[0]["name"], qt.Equals, "app")
+	c.Assert(out[0]["id"], qt.Equals, "Sapp")
+}
+
+func TestInsights_TagSummariesCmd(t *testing.T) {
+	c := qt.New(t)
+
+	svc := &mock.QueryInsightsService{
+		ListTagsFn: func(ctx context.Context, req *ps.ListQueryTagsRequest, opts ...ps.ListOption) ([]*ps.QueryTag, error) {
+			return []*ps.QueryTag{
+				{ID: "Busername", Name: "username", Source: "system"},
+				{ID: "Sapp", Name: "app", Source: "sql"},
+			}, nil
+		},
+		ListTagSummariesFn: func(ctx context.Context, req *ps.ListTagSummariesRequest, opts ...ps.ListOption) ([]*ps.TagSummary, error) {
+			c.Assert(req.Tags, qt.DeepEquals, []string{"Busername", "Sapp"})
+			return []*ps.TagSummary{{
+				Dimensions:             map[string]string{"Busername": "alice", "Sapp": "web"},
+				QueryCount:             10,
+				SumTotalDurationMillis: 42,
+			}}, nil
+		},
+	}
+
+	var buf bytes.Buffer
+	ch := testHelper(&buf, printer.JSON, &ps.Client{QueryInsights: svc})
+
+	cmd := TagSummariesCmd(ch)
+	cmd.SetArgs([]string{"mydb", "main", "--tags", "username", "--tags", "app"})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.ListTagsFnInvoked, qt.IsTrue)
+	c.Assert(svc.ListTagSummariesFnInvoked, qt.IsTrue)
+
+	var out []map[string]any
+	c.Assert(json.Unmarshal(buf.Bytes(), &out), qt.IsNil)
+	c.Assert(out[0]["query_count"], qt.Equals, float64(10))
+}
+
+func TestInsights_TagShowCmd(t *testing.T) {
+	c := qt.New(t)
+
+	svc := &mock.QueryInsightsService{
+		ListTagsFn: func(ctx context.Context, req *ps.ListQueryTagsRequest, opts ...ps.ListOption) ([]*ps.QueryTag, error) {
+			return []*ps.QueryTag{{ID: "Sapp", Name: "app", Source: "sql"}}, nil
+		},
+		GetTagFn: func(ctx context.Context, req *ps.GetQueryTagRequest, opts ...ps.ListOption) (*ps.QueryTag, error) {
+			c.Assert(req.Tag, qt.Equals, "Sapp")
+			return &ps.QueryTag{
+				ID:         "Sapp",
+				Name:       "app",
+				Source:     "sql",
+				QueryCount: 100,
+				Values:     []ps.QueryTagValue{{Name: "web", QueryCount: 80, Kind: "literal"}},
+			}, nil
+		},
+	}
+
+	var buf bytes.Buffer
+	ch := testHelper(&buf, printer.JSON, &ps.Client{QueryInsights: svc})
+
+	cmd := TagShowCmd(ch)
+	cmd.SetArgs([]string{"mydb", "main", "app"})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.GetTagFnInvoked, qt.IsTrue)
+
+	var out map[string]any
+	c.Assert(json.Unmarshal(buf.Bytes(), &out), qt.IsNil)
+	c.Assert(out["id"], qt.Equals, "Sapp")
+}
