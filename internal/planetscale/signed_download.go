@@ -38,7 +38,11 @@ func newSignedDownloadTransportError(request *http.Request, err error) error {
 	return &signedDownloadTransportError{host: request.URL.Host, cause: err}
 }
 
-// downloadSignedURL uses an anonymous client to keep API credentials isolated to the request using them
+// The download endpoint redirects to blob storage. The client's
+// credentials live in its transport, so following the redirect with that
+// client would send the Authorization header to the storage host, which
+// rejects requests carrying credentials beyond the presigned URL. Stop at
+// the redirect and fetch its target with an unauthenticated client.
 func (c *Client) downloadSignedURL(ctx context.Context, req *http.Request) (io.ReadCloser, error) {
 	httpClient := *c.client
 	httpClient.CheckRedirect = func(*http.Request, []*http.Request) error {
