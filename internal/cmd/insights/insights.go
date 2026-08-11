@@ -32,6 +32,7 @@ see pscale inspect.`,
 	cmd.AddCommand(QueriesCmd(ch))
 	cmd.AddCommand(ErrorsCmd(ch))
 	cmd.AddCommand(AnomaliesCmd(ch))
+	cmd.AddCommand(TagsCmd(ch))
 	cmd.AddCommand(RecommendationsCmd(ch))
 
 	return cmd

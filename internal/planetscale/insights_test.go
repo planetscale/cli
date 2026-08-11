@@ -166,3 +166,156 @@ func TestQueryInsights_ListAnomalies(t *testing.T) {
 	c.Assert(anomalies[0].Active, qt.Equals, false)
 	c.Assert(anomalies[0].Duration, qt.Equals, 1800.0)
 }
+
+func TestQueryInsights_ListQuerySamples(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		c.Assert(r.Method, qt.Equals, http.MethodGet)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/planetscale-go-test-db/branches/main/insights/b129e8fa")
+		c.Assert(r.URL.Query().Get("per_page"), qt.Equals, "10")
+		c.Assert(r.URL.Query().Get("period"), qt.Equals, "1h")
+		c.Assert(r.URL.Query().Get("keyspace"), qt.Equals, "public")
+
+		out := `{
+			"type": "list",
+			"data": [{
+				"id": "exec-1",
+				"fingerprint": "b129e8fa",
+				"normalized_sql": "select * from users where id = ?",
+				"username": "app",
+				"rows_read": 1,
+				"rows_returned": 1,
+				"total_duration_millis": 2.5,
+				"started_at": "2026-08-11T18:00:00.000Z",
+				"error_message": "",
+				"tags": [{"name": "Sapp", "value": "web"}, {"name": "Busername", "value": "alice"}]
+			}]
+		}`
+		_, err := w.Write([]byte(out))
+		c.Assert(err, qt.IsNil)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	samples, err := client.QueryInsights.ListQuerySamples(context.Background(), &ListQuerySamplesRequest{
+		Organization: testOrg,
+		Database:     testDatabase,
+		Branch:       "main",
+		Fingerprint:  "b129e8fa",
+	}, WithPerPage(10), WithPeriod("1h"), WithKeyspace("public"))
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(samples, qt.HasLen, 1)
+	c.Assert(samples[0].ID, qt.Equals, "exec-1")
+	c.Assert(samples[0].Username, qt.Equals, "app")
+	c.Assert(samples[0].TotalDurationMillis, qt.Equals, 2.5)
+	c.Assert(samples[0].Tags, qt.DeepEquals, []QuerySampleTag{
+		{Name: "Sapp", Value: "web"},
+		{Name: "Busername", Value: "alice"},
+	})
+}
+
+func TestQueryInsights_ListTags(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/planetscale-go-test-db/branches/main/insights/tags")
+
+		out := `{
+			"type": "list",
+			"data": [{
+				"id": "Sapp",
+				"name": "app",
+				"source": "sql",
+				"query_count": 100,
+				"values": [{"name": "web", "query_count": 80, "kind": "literal"}]
+			}]
+		}`
+		_, err := w.Write([]byte(out))
+		c.Assert(err, qt.IsNil)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	tags, err := client.QueryInsights.ListTags(context.Background(), &ListQueryTagsRequest{
+		Organization: testOrg,
+		Database:     testDatabase,
+		Branch:       "main",
+	})
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(tags, qt.HasLen, 1)
+	c.Assert(tags[0].ID, qt.Equals, "Sapp")
+	c.Assert(tags[0].Name, qt.Equals, "app")
+	c.Assert(tags[0].Source, qt.Equals, "sql")
+}
+
+func TestQueryInsights_GetTag(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/planetscale-go-test-db/branches/main/insights/tags/Sapp")
+
+		out := `{"id":"Sapp","name":"app","source":"sql","query_count":100,"values":[{"name":"web","query_count":80,"kind":"literal"}]}`
+		_, err := w.Write([]byte(out))
+		c.Assert(err, qt.IsNil)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	tag, err := client.QueryInsights.GetTag(context.Background(), &GetQueryTagRequest{
+		Organization: testOrg,
+		Database:     testDatabase,
+		Branch:       "main",
+		Tag:          "Sapp",
+	})
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(tag.ID, qt.Equals, "Sapp")
+	c.Assert(tag.Values, qt.HasLen, 1)
+}
+
+func TestQueryInsights_ListTagSummaries(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/planetscale-go-test-db/branches/main/insights/tags/summaries")
+		c.Assert(r.URL.Query()["tags[]"], qt.DeepEquals, []string{"Sapp", "Busername"})
+		c.Assert(r.URL.Query().Get("sort"), qt.Equals, "totalTime")
+
+		out := `{
+			"type": "list",
+			"data": [{
+				"dimensions": {"Sapp": "web", "Busername": "alice"},
+				"query_count": 10,
+				"sum_total_duration_millis": 50.5,
+				"p99_latency": 3.2
+			}]
+		}`
+		_, err := w.Write([]byte(out))
+		c.Assert(err, qt.IsNil)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	summaries, err := client.QueryInsights.ListTagSummaries(context.Background(), &ListTagSummariesRequest{
+		Organization: testOrg,
+		Database:     testDatabase,
+		Branch:       "main",
+		Tags:         []string{"Sapp", "Busername"},
+	}, WithSort("totalTime", "desc"))
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(summaries, qt.HasLen, 1)
+	c.Assert(summaries[0].QueryCount, qt.Equals, int64(10))
+	c.Assert(summaries[0].Dimensions["Sapp"], qt.Equals, "web")
+}

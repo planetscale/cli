@@ -224,8 +224,11 @@ Two complementary read-only surfaces. When diagnosing database health or perform
 
 ```bash
 pscale insights queries <database> <branch> --org <org> --format json --sort totalTime   # top queries; sorts: totalTime, count, p99Latency, rowsRead, rowsReadPerReturned, errorCount, ...
+pscale insights queries samples <database> <branch> <fingerprint> --org <org> --format json --keyspace <keyspace>  # recent executions; keyspace from queries list
 pscale insights errors <database> <branch> --org <org> --format json                     # failing queries with error messages
 pscale insights anomalies <database> <branch> --org <org> --format json                  # detected resource anomalies (CPU, memory, IOPS, rows)
+pscale insights tags <database> <branch> --org <org> --format json                       # query tag keys (sqlcommenter / system); use names with summaries
+pscale insights tags summaries <database> <branch> --org <org> --format json --tags username  # stats grouped by tag; names match the Insights UI Key picker
 pscale insights recommendations <database> --org <org> --format json                     # schema recommendations with ready-to-apply DDL
 pscale insights recommendations dismiss <database> <number> --org <org> --format json --force  # dismiss a recommendation
 ```
