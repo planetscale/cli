@@ -253,7 +253,6 @@ func TestInsights_QuerySamplesCmd(t *testing.T) {
 	c.Assert(out[0]["username"], qt.Equals, "app")
 }
 
-
 func TestInsights_QuerySamplesCmd_RequiresKeyspace(t *testing.T) {
 	c := qt.New(t)
 
