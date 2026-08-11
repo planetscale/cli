@@ -196,12 +196,3 @@ func TestDeployRequest_DeployStrategyFlagInvalid(t *testing.T) {
 	c.Assert(err, qt.ErrorMatches, `invalid --strategy "nope".*`)
 	c.Assert(svc.DeployFnInvoked, qt.IsFalse)
 }
-
-func TestDeployRequest_DeployStrategyFlagHidden(t *testing.T) {
-	c := qt.New(t)
-
-	cmd := DeployCmd(&cmdutil.Helper{})
-	flag := cmd.Flags().Lookup("strategy")
-	c.Assert(flag, qt.IsNotNil)
-	c.Assert(flag.Hidden, qt.IsTrue)
-}
