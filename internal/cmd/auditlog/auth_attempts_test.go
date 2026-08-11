@@ -403,3 +403,114 @@ func TestAuthAttemptsDownloadInterruptedCopyDoesNotPublishPartialFile(t *testing
 	c.Assert(err, qt.IsNil)
 	c.Assert(len(entries), qt.Equals, 0)
 }
+
+func TestAuthAttemptsDownloadRetriesFailedFileDownloadWithFreshSignedURL(t *testing.T) {
+	c := qt.New(t)
+	var downloadRequests, blobRequests int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost:
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = io.WriteString(w, `{"id":"export1","state":"ready","format":"jsonl"}`)
+		case strings.HasSuffix(r.URL.Path, "/download"):
+			downloadRequests++
+			http.Redirect(w, r, fmt.Sprintf("/blob/%d", downloadRequests), http.StatusFound)
+		case strings.HasPrefix(r.URL.Path, "/blob/"):
+			blobRequests++
+			if blobRequests == 1 {
+				connection, writer, err := w.(http.Hijacker).Hijack()
+				c.Assert(err, qt.IsNil)
+				_, _ = writer.WriteString("HTTP/1.1 200 OK\r\nContent-Length: 10\r\n\r\npartial")
+				c.Assert(writer.Flush(), qt.IsNil)
+				_ = connection.Close()
+				return
+			}
+			_, _ = io.WriteString(w, "complete")
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	output := filepath.Join(t.TempDir(), "auth-attempts.zip")
+	cmd := AuthAttemptsCmd(authAttemptTestHelper("my-org", server.URL, printer.JSON, &bytes.Buffer{}))
+	cmd.SetErr(io.Discard)
+	cmd.SetArgs([]string{"download", "--start-at", "2026-07-29T00:00:00Z", "--end-at", "2026-07-29T01:00:00Z", "--output", output})
+
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(downloadRequests, qt.Equals, 2)
+	c.Assert(blobRequests, qt.Equals, 2)
+	content, err := os.ReadFile(output)
+	c.Assert(err, qt.IsNil)
+	c.Assert(content, qt.DeepEquals, []byte("complete"))
+}
+
+func TestAuthAttemptsDownloadDoesNotRetryStdoutAfterPartialOutput(t *testing.T) {
+	c := qt.New(t)
+	var downloadRequests int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost:
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = io.WriteString(w, `{"id":"export1","state":"ready","format":"jsonl"}`)
+		case strings.HasSuffix(r.URL.Path, "/download"):
+			downloadRequests++
+			connection, writer, err := w.(http.Hijacker).Hijack()
+			c.Assert(err, qt.IsNil)
+			_, _ = writer.WriteString("HTTP/1.1 200 OK\r\nContent-Length: 10\r\n\r\npartial")
+			c.Assert(writer.Flush(), qt.IsNil)
+			_ = connection.Close()
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	var stdout bytes.Buffer
+	cmd := AuthAttemptsCmd(authAttemptTestHelper("my-org", server.URL, printer.JSON, &bytes.Buffer{}))
+	cmd.SilenceUsage = true
+	cmd.SetOut(&stdout)
+	cmd.SetErr(io.Discard)
+	cmd.SetArgs([]string{"download", "--start-at", "2026-07-29T00:00:00Z", "--end-at", "2026-07-29T01:00:00Z", "--output", "-"})
+
+	err := cmd.Execute()
+	c.Assert(err, qt.ErrorMatches, `(?s).*export1.*pscale api organizations/my-org/auth-attempt-exports/export1/download > report\.zip.*`)
+	c.Assert(downloadRequests, qt.Equals, 1)
+	c.Assert(stdout.Bytes(), qt.DeepEquals, []byte("partial"))
+}
+
+func TestAuthAttemptsDownloadKeepsRecoveryGuidanceAfterRetryFailure(t *testing.T) {
+	c := qt.New(t)
+	var downloadRequests int
+	blob := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "unavailable", http.StatusServiceUnavailable)
+	}))
+	t.Cleanup(blob.Close)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost:
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = io.WriteString(w, `{"id":"export1","state":"ready","format":"jsonl"}`)
+		case strings.HasSuffix(r.URL.Path, "/download"):
+			downloadRequests++
+			if downloadRequests == 1 {
+				http.Redirect(w, r, "http://127.0.0.1:1/signed?X-Amz-Signature=secret", http.StatusFound)
+				return
+			}
+			http.Redirect(w, r, blob.URL, http.StatusFound)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	cmd := AuthAttemptsCmd(authAttemptTestHelper("my-org", server.URL, printer.JSON, &bytes.Buffer{}))
+	cmd.SilenceUsage = true
+	cmd.SetErr(io.Discard)
+	cmd.SetArgs([]string{"download", "--start-at", "2026-07-29T00:00:00Z", "--end-at", "2026-07-29T01:00:00Z", "--output", filepath.Join(t.TempDir(), "auth-attempts.zip")})
+
+	err := cmd.Execute()
+	c.Assert(err, qt.ErrorMatches, `(?s).*export1.*signed download returned Service Unavailable.*pscale api organizations/my-org/auth-attempt-exports/export1/download > report\.zip.*`)
+	c.Assert(err.Error(), qt.Not(qt.Contains), "X-Amz-Signature")
+	c.Assert(downloadRequests, qt.Equals, 2)
+}

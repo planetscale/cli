@@ -2,12 +2,41 @@ package planetscale
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 
 	"github.com/hashicorp/go-cleanhttp"
 )
+
+type signedDownloadTransportError struct {
+	host  string
+	cause error
+}
+
+func (e *signedDownloadTransportError) Error() string {
+	return fmt.Sprintf("signed download from %s: %v", e.host, e.cause)
+}
+
+func (e *signedDownloadTransportError) Unwrap() error {
+	return e.cause
+}
+
+// IsSignedDownloadTransportError reports whether a signed download failed before its response body was available.
+func IsSignedDownloadTransportError(err error) bool {
+	var transportErr *signedDownloadTransportError
+	return errors.As(err, &transportErr)
+}
+
+func newSignedDownloadTransportError(request *http.Request, err error) error {
+	var urlErr *url.Error
+	if errors.As(err, &urlErr) {
+		err = urlErr.Err
+	}
+	return &signedDownloadTransportError{host: request.URL.Host, cause: err}
+}
 
 // downloadSignedURL uses an anonymous client to keep API credentials isolated to the request using them
 func (c *Client) downloadSignedURL(ctx context.Context, req *http.Request) (io.ReadCloser, error) {
@@ -18,7 +47,7 @@ func (c *Client) downloadSignedURL(ctx context.Context, req *http.Request) (io.R
 
 	res, err := httpClient.Do(req.WithContext(ctx))
 	if err != nil {
-		return nil, fmt.Errorf("initial signed download request: %w", err)
+		return nil, newSignedDownloadTransportError(req, err)
 	}
 
 	switch {
@@ -37,7 +66,7 @@ func (c *Client) downloadSignedURL(ctx context.Context, req *http.Request) (io.R
 
 		res, err = cleanhttp.DefaultClient().Do(blobReq)
 		if err != nil {
-			return nil, fmt.Errorf("signed download request: %w", err)
+			return nil, newSignedDownloadTransportError(blobReq, err)
 		}
 		if res.StatusCode >= 300 {
 			res.Body.Close()

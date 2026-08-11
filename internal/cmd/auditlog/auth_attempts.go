@@ -209,33 +209,58 @@ func createAndPollAuthAttemptExport(ctx context.Context, client *ps.Client, orga
 }
 
 func downloadAndPrintAuthAttemptExport(cmd *cobra.Command, ch *cmdutil.Helper, client *ps.Client, exportID, format, path string, startAt, endAt time.Time, toStdout bool, endProgress func()) error {
-	body, err := client.AuthAttemptExports.DownloadExport(cmd.Context(), &ps.DownloadAuthAttemptExportRequest{
-		Organization: ch.Config.Organization,
-		Export:       exportID,
-	})
-	if err != nil {
-		if cmd.Context().Err() != nil {
-			return authAttemptExportInterrupted(ch.Config.Organization, exportID, cmd.Context().Err())
-		}
-		if cmdutil.ErrCode(err) == ps.ErrNotFound {
-			return authAttemptExportNotFoundError(ch.Config.Organization, exportID)
-		}
-		return cmdutil.HandleError(err)
+	attempts := 1
+	if !toStdout {
+		attempts = 2
 	}
-
-	if toStdout {
-		defer body.Close()
-		if _, err := io.Copy(cmd.OutOrStdout(), body); err != nil {
+	for attempt := 0; attempt < attempts; attempt++ {
+		body, err := client.AuthAttemptExports.DownloadExport(cmd.Context(), &ps.DownloadAuthAttemptExportRequest{
+			Organization: ch.Config.Organization,
+			Export:       exportID,
+		})
+		if err != nil {
 			if cmd.Context().Err() != nil {
 				return authAttemptExportInterrupted(ch.Config.Organization, exportID, cmd.Context().Err())
 			}
-			return fmt.Errorf("writing auth attempt export to stdout: %w", err)
+			if cmdutil.ErrCode(err) == ps.ErrNotFound {
+				return authAttemptExportNotFoundError(ch.Config.Organization, exportID)
+			}
+			if attempt+1 < attempts && ps.IsSignedDownloadTransportError(err) {
+				continue
+			}
+			if toStdout || attempt > 0 || ps.IsSignedDownloadTransportError(err) {
+				return authAttemptExportDownloadFailure(ch.Config.Organization, exportID, cmdutil.HandleError(err))
+			}
+			return cmdutil.HandleError(err)
 		}
-		return nil
-	}
-	if err := publishAuthAttemptExport(cmd.Context(), body, path); err != nil {
+
+		if toStdout {
+			_, copyErr := io.Copy(cmd.OutOrStdout(), body)
+			closeErr := body.Close()
+			if copyErr == nil {
+				copyErr = closeErr
+			}
+			if copyErr != nil {
+				if cmd.Context().Err() != nil {
+					return authAttemptExportInterrupted(ch.Config.Organization, exportID, cmd.Context().Err())
+				}
+				return authAttemptExportDownloadFailure(ch.Config.Organization, exportID, copyErr)
+			}
+			return nil
+		}
+
+		err = publishAuthAttemptExport(cmd.Context(), body, path)
+		if err == nil {
+			break
+		}
 		if cmd.Context().Err() != nil {
 			return authAttemptExportInterrupted(ch.Config.Organization, exportID, cmd.Context().Err())
+		}
+		if attempt+1 < attempts && isAuthAttemptExportDownloadReadError(err) {
+			continue
+		}
+		if isAuthAttemptExportDownloadReadError(err) {
+			return authAttemptExportDownloadFailure(ch.Config.Organization, exportID, err)
 		}
 		return fmt.Errorf("writing auth attempt export to %s: %w", path, err)
 	}
@@ -249,6 +274,23 @@ func downloadAndPrintAuthAttemptExport(cmd *cobra.Command, ch *cmdutil.Helper, c
 		ID: exportID, State: "ready", Format: format,
 		StartAt: startAt.Format(time.RFC3339), EndAt: endAt.Format(time.RFC3339), File: path,
 	})
+}
+
+type authAttemptExportDownloadReadError struct {
+	err error
+}
+
+func (e *authAttemptExportDownloadReadError) Error() string {
+	return e.err.Error()
+}
+
+func (e *authAttemptExportDownloadReadError) Unwrap() error {
+	return e.err
+}
+
+func isAuthAttemptExportDownloadReadError(err error) bool {
+	var readErr *authAttemptExportDownloadReadError
+	return errors.As(err, &readErr)
 }
 
 func authAttemptExportOutputPath(output, organization, format string) string {
@@ -268,7 +310,7 @@ func publishAuthAttemptExport(ctx context.Context, body io.ReadCloser, path stri
 	tmpPath := tmp.Name()
 	defer os.Remove(tmpPath)
 
-	_, copyErr := io.Copy(tmp, body)
+	copyErr := copyAuthAttemptExport(tmp, body)
 	bodyCloseErr := body.Close()
 	closeErr := tmp.Close()
 	if copyErr == nil {
@@ -287,6 +329,29 @@ func publishAuthAttemptExport(ctx context.Context, body io.ReadCloser, path stri
 		return fmt.Errorf("renaming temporary file: %w", err)
 	}
 	return nil
+}
+
+func copyAuthAttemptExport(destination *os.File, source io.Reader) error {
+	buffer := make([]byte, 32*1024)
+	for {
+		read, readErr := source.Read(buffer)
+		if read > 0 {
+			if _, err := destination.Write(buffer[:read]); err != nil {
+				return err
+			}
+		}
+		if readErr == io.EOF {
+			return nil
+		}
+		if readErr != nil {
+			return &authAttemptExportDownloadReadError{err: readErr}
+		}
+	}
+}
+
+func authAttemptExportDownloadFailure(organization, exportID string, err error) error {
+	return fmt.Errorf("downloading auth attempt export %s: %w; recover with pscale api organizations/%s/auth-attempt-exports/%s/download > report.zip",
+		printer.BoldBlue(exportID), err, organization, exportID)
 }
 
 func authAttemptExportInterrupted(organization, exportID string, err error) error {
