@@ -445,6 +445,43 @@ func TestAuthAttemptsDownloadRetriesFailedFileDownloadWithFreshSignedURL(t *test
 	c.Assert(content, qt.DeepEquals, []byte("complete"))
 }
 
+func TestAuthAttemptsDownloadRetriesSignedBlobHTTPFailure(t *testing.T) {
+	c := qt.New(t)
+	var downloadRequests, blobRequests int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost:
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = io.WriteString(w, `{"id":"export1","state":"ready","format":"jsonl"}`)
+		case strings.HasSuffix(r.URL.Path, "/download"):
+			downloadRequests++
+			http.Redirect(w, r, fmt.Sprintf("/blob/%d?X-Amz-Signature=secret-%d", downloadRequests, downloadRequests), http.StatusFound)
+		case strings.HasPrefix(r.URL.Path, "/blob/"):
+			blobRequests++
+			if blobRequests == 1 {
+				http.Error(w, "unavailable", http.StatusServiceUnavailable)
+				return
+			}
+			_, _ = io.WriteString(w, "complete")
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	output := filepath.Join(t.TempDir(), "auth-attempts.zip")
+	cmd := AuthAttemptsCmd(authAttemptTestHelper("my-org", server.URL, printer.JSON, &bytes.Buffer{}))
+	cmd.SetErr(io.Discard)
+	cmd.SetArgs([]string{"download", "--start-at", "2026-07-29T00:00:00Z", "--end-at", "2026-07-29T01:00:00Z", "--output", output})
+
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(downloadRequests, qt.Equals, 2)
+	c.Assert(blobRequests, qt.Equals, 2)
+	content, err := os.ReadFile(output)
+	c.Assert(err, qt.IsNil)
+	c.Assert(content, qt.DeepEquals, []byte("complete"))
+}
+
 func TestAuthAttemptsDownloadDoesNotRetryStdoutAfterPartialOutput(t *testing.T) {
 	c := qt.New(t)
 	var downloadRequests int

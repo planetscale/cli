@@ -70,7 +70,7 @@ func (c *Client) downloadSignedURL(ctx context.Context, req *http.Request) (io.R
 		}
 		if res.StatusCode >= 300 {
 			res.Body.Close()
-			return nil, fmt.Errorf("signed download returned %s", http.StatusText(res.StatusCode))
+			return nil, newSignedDownloadTransportError(blobReq, fmt.Errorf("signed download returned %s", http.StatusText(res.StatusCode)))
 		}
 	case res.StatusCode >= 400:
 		defer res.Body.Close()
