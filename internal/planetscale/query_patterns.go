@@ -10,8 +10,6 @@ import (
 	"net/http"
 	"path"
 	"time"
-
-	"github.com/hashicorp/go-cleanhttp"
 )
 
 // QueryPatternsReport represents a query patterns report for a branch.
@@ -74,7 +72,7 @@ func (s *queryPatternsService) CreateReport(ctx context.Context, createReq *Crea
 	}
 
 	report := &QueryPatternsReport{}
-	if err := s.client.do(ctx, req, &report); err != nil {
+	if err := s.client.do(ctx, req, report); err != nil {
 		return nil, err
 	}
 
@@ -90,7 +88,7 @@ func (s *queryPatternsService) GetReport(ctx context.Context, getReq *GetQueryPa
 	}
 
 	report := &QueryPatternsReport{}
-	if err := s.client.do(ctx, req, &report); err != nil {
+	if err := s.client.do(ctx, req, report); err != nil {
 		return nil, err
 	}
 
@@ -106,49 +104,11 @@ func (s *queryPatternsService) DownloadReport(ctx context.Context, downloadReq *
 		return nil, fmt.Errorf("error creating http request: %w", err)
 	}
 
-	// The download endpoint redirects to blob storage. The client's
-	// credentials live in its transport, so following the redirect with that
-	// client would send the Authorization header to the storage host, which
-	// rejects requests carrying credentials beyond the presigned URL. Stop at
-	// the redirect and fetch its target with an unauthenticated client.
-	httpClient := *s.client.client
-	httpClient.CheckRedirect = func(*http.Request, []*http.Request) error {
-		return http.ErrUseLastResponse
-	}
-
-	res, err := httpClient.Do(req.WithContext(ctx))
+	body, err := s.client.downloadSignedURL(ctx, req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("downloading query patterns report: %w", err)
 	}
-
-	switch {
-	case res.StatusCode >= 300 && res.StatusCode < 400:
-		location, err := res.Location()
-		res.Body.Close()
-		if err != nil {
-			return nil, err
-		}
-
-		blobReq, err := http.NewRequestWithContext(ctx, http.MethodGet, location.String(), nil)
-		if err != nil {
-			return nil, err
-		}
-		blobReq.Header.Set("User-Agent", s.client.UserAgent)
-
-		res, err = cleanhttp.DefaultClient().Do(blobReq)
-		if err != nil {
-			return nil, err
-		}
-		if res.StatusCode >= 300 {
-			res.Body.Close()
-			return nil, fmt.Errorf("downloading query patterns report: %s", http.StatusText(res.StatusCode))
-		}
-	case res.StatusCode >= 400:
-		defer res.Body.Close()
-		return nil, s.client.handleResponse(ctx, res, nil)
-	}
-
-	return decompressedReadCloser(res.Body)
+	return decompressedReadCloser(body)
 }
 
 // decompressedReadCloser wraps body so gzip-compressed content is transparently
