@@ -2,6 +2,7 @@ package planetscale
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -158,7 +159,11 @@ func TestSchemaRecommendations_Dismiss(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(200)
 		c.Assert(r.Method, qt.Equals, http.MethodPost)
-		c.Assert(r.URL.String(), qt.Equals, "/v1/organizations/my-org/databases/planetscale-go-test-db/schema-recommendations/recommendation-123/dismiss")
+		c.Assert(r.URL.String(), qt.Equals, "/v1/organizations/my-org/databases/planetscale-go-test-db/schema-recommendations/1/dismiss")
+
+		var body map[string]any
+		c.Assert(json.NewDecoder(r.Body).Decode(&body), qt.IsNil)
+		c.Assert(body["reason"], qt.Equals, "not applicable")
 
 		out := `{
 			"id": "recommendation-123",
@@ -191,7 +196,8 @@ func TestSchemaRecommendations_Dismiss(t *testing.T) {
 	recommendation, err := client.SchemaRecommendations.Dismiss(ctx, &DismissSchemaRecommendationRequest{
 		Organization: testOrg,
 		Database:     testDatabase,
-		ID:           "recommendation-123",
+		ID:           "1",
+		Reason:       "not applicable",
 	})
 
 	c.Assert(err, qt.IsNil)

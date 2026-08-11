@@ -227,6 +227,7 @@ pscale insights queries <database> <branch> --org <org> --format json --sort tot
 pscale insights errors <database> <branch> --org <org> --format json                     # failing queries with error messages
 pscale insights anomalies <database> <branch> --org <org> --format json                  # detected resource anomalies (CPU, memory, IOPS, rows)
 pscale insights recommendations <database> --org <org> --format json                     # schema recommendations with ready-to-apply DDL
+pscale insights recommendations dismiss <database> <number> --org <org> --format json --force  # dismiss a recommendation
 ```
 
 **`pscale inspect`** — live, point-in-time checks run over a direct connection (same credentials model as `pscale sql`, always read-only):

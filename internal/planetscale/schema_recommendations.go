@@ -60,10 +60,12 @@ type GetSchemaRecommendationRequest struct {
 }
 
 // DismissSchemaRecommendationRequest is the request for dismissing a schema recommendation.
+// ID is the recommendation sequence number from list/show (path param `number`).
 type DismissSchemaRecommendationRequest struct {
 	Organization string `json:"-"`
 	Database     string `json:"-"`
 	ID           string `json:"-"`
+	Reason       string `json:"reason,omitempty"`
 }
 
 type schemaRecommendationService struct {
@@ -101,7 +103,7 @@ func (s *schemaRecommendationService) Get(ctx context.Context, request *GetSchem
 }
 
 func (s *schemaRecommendationService) Dismiss(ctx context.Context, request *DismissSchemaRecommendationRequest) (*SchemaRecommendation, error) {
-	req, err := s.client.newRequest(http.MethodPost, dismissSchemaRecommendationAPIPath(request.Organization, request.Database, request.ID), nil)
+	req, err := s.client.newRequest(http.MethodPost, dismissSchemaRecommendationAPIPath(request.Organization, request.Database, request.ID), request)
 	if err != nil {
 		return nil, err
 	}

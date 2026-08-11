@@ -166,3 +166,53 @@ func TestInsights_RecommendationsCmd(t *testing.T) {
 	c.Assert(out[0]["recommendation_type"], qt.Equals, "duplicate_index")
 	c.Assert(out[0]["ddl_statement"], qt.Equals, "ALTER TABLE users DROP INDEX idx_email")
 }
+
+func TestInsights_RecommendationDismissCmd(t *testing.T) {
+	c := qt.New(t)
+
+	svc := &mock.SchemaRecommendationService{
+		DismissFn: func(ctx context.Context, req *ps.DismissSchemaRecommendationRequest) (*ps.SchemaRecommendation, error) {
+			c.Assert(req.Organization, qt.Equals, "planetscale")
+			c.Assert(req.Database, qt.Equals, "mydb")
+			c.Assert(req.ID, qt.Equals, "42")
+			c.Assert(req.Reason, qt.Equals, "false positive")
+			return &ps.SchemaRecommendation{
+				ID:                 "rec-42",
+				Number:             42,
+				State:              "dismissed",
+				RecommendationType: "unused_index",
+				Table:              "users",
+				Title:              "Drop unused index",
+			}, nil
+		},
+	}
+
+	var buf bytes.Buffer
+	ch := testHelper(&buf, printer.JSON, &ps.Client{SchemaRecommendations: svc})
+
+	cmd := RecommendationDismissCmd(ch)
+	cmd.SetArgs([]string{"mydb", "42", "--force", "--reason", "false positive"})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.DismissFnInvoked, qt.IsTrue)
+
+	var out map[string]any
+	c.Assert(json.Unmarshal(buf.Bytes(), &out), qt.IsNil)
+	c.Assert(out["state"], qt.Equals, "dismissed")
+	c.Assert(out["number"], qt.Equals, float64(42))
+}
+
+func TestInsights_RecommendationDismissCmd_RequiresForceInJSON(t *testing.T) {
+	c := qt.New(t)
+
+	svc := &mock.SchemaRecommendationService{}
+	ch := testHelper(&bytes.Buffer{}, printer.JSON, &ps.Client{SchemaRecommendations: svc})
+
+	cmd := RecommendationDismissCmd(ch)
+	cmd.SetArgs([]string{"mydb", "42"})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.ErrorMatches, `(?s).*run with --force.*`)
+	c.Assert(svc.DismissFnInvoked, qt.IsFalse)
+}

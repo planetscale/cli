@@ -28,7 +28,9 @@ func RecommendationsCmd(ch *cmdutil.Helper) *cobra.Command {
 		Long: `List PlanetScale's schema recommendations for a database: unused tables and
 indexes, duplicate indexes, bloated tables and indexes, missing indexes
 derived from production query patterns, and sequence overflow risks. Each
-recommendation includes ready-to-apply DDL (shown with --format json).`,
+recommendation includes ready-to-apply DDL (shown with --format json).
+
+Use "pscale insights recommendations dismiss" to dismiss a recommendation.`,
 		Aliases: []string{"recommendation"},
 		Args:    cmdutil.RequiredArgs("database"),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -77,6 +79,8 @@ recommendation includes ready-to-apply DDL (shown with --format json).`,
 			return ch.Printer.PrintResource(rows)
 		},
 	}
+
+	cmd.AddCommand(RecommendationDismissCmd(ch))
 
 	return cmd
 }
