@@ -673,8 +673,8 @@ func columnReferencesUUIDKeyVisited(col ColumnSchema, table TableSchema, all []T
 	}
 	visited[key] = struct{}{}
 
-	refTable, refCol := columnFKTarget(col, table)
-	if refTable == "" {
+	refTable, refCol := columnFKTarget(col, table, all)
+	if refTable == "" || refCol == "" {
 		return false
 	}
 	ref := tableByName(all, refTable)
@@ -708,14 +708,14 @@ func isExplicitUUIDColumn(col ColumnSchema) bool {
 	return false
 }
 
-func columnFKTarget(col ColumnSchema, table TableSchema) (string, string) {
+func columnFKTarget(col ColumnSchema, table TableSchema, all []TableSchema) (string, string) {
 	if col.ForeignKey != "" {
-		return parseReferencesTarget(col.ForeignKey)
+		return parseReferencesTarget(col.ForeignKey, all)
 	}
 	for _, constraint := range table.Constraints {
 		cols, refs := parseTableLevelForeignKey(constraint)
 		if slices.Contains(cols, col.Name) {
-			return parseReferencesTarget(refs)
+			return parseReferencesTarget(refs, all)
 		}
 	}
 	return "", ""
@@ -736,7 +736,7 @@ func parseTableLevelForeignKey(constraint string) ([]string, string) {
 	return cols, strings.TrimSpace(m[2])
 }
 
-func parseReferencesTarget(refs string) (string, string) {
+func parseReferencesTarget(refs string, all []TableSchema) (string, string) {
 	table, colList, _, ok := parseReferencesParts(refs)
 	if !ok {
 		return "", ""
@@ -744,6 +744,13 @@ func parseReferencesTarget(refs string) (string, string) {
 	refCol := ""
 	if cols := splitCommaList(colList); len(cols) > 0 {
 		refCol = cleanIndexedColumnName(cols[0])
+	}
+	if refCol == "" && len(all) > 0 {
+		if ref := tableByName(all, table); ref != nil {
+			if pks := primaryKeyColumns(*ref); len(pks) > 0 {
+				refCol = pks[0]
+			}
+		}
 	}
 	return table, refCol
 }

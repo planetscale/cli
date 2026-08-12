@@ -10,7 +10,7 @@ func TestParseTableLevelForeignKey(t *testing.T) {
 	if len(cols) != 1 || cols[0] != "entity_id" {
 		t.Fatalf("unexpected columns: %#v", cols)
 	}
-	refTable, refCol := parseReferencesTarget(refs)
+	refTable, refCol := parseReferencesTarget(refs, nil)
 	if refTable != "external_entities" || refCol != "id" {
 		t.Fatalf("unexpected ref target: %s.%s", refTable, refCol)
 	}
@@ -31,7 +31,7 @@ func TestColumnFKTargetUsesTableConstraint(t *testing.T) {
 	}
 	col := table.Columns[0]
 
-	refTable, refCol := columnFKTarget(col, table)
+	refTable, refCol := columnFKTarget(col, table, nil)
 	if refTable != "external_entities" || refCol != "id" {
 		t.Fatalf("got %s.%s", refTable, refCol)
 	}

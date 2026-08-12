@@ -152,6 +152,44 @@ func TestLintUnresolvedForeignKey(t *testing.T) {
 	}
 }
 
+func TestLintForeignKeyIgnoresCommentedRawDDL(t *testing.T) {
+	parent := TableSchema{
+		Name: "users",
+		Columns: []ColumnSchema{{Name: "id", Type: "INTEGER", PrimaryKey: true}},
+	}
+	child := TableSchema{
+		Name: "posts",
+		Columns: []ColumnSchema{
+			{Name: "id", Type: "INTEGER", PrimaryKey: true},
+			{Name: "user_id", Type: "INTEGER"},
+		},
+		RawDDL: `CREATE TABLE posts (
+  id INTEGER PRIMARY KEY,
+  user_id INTEGER
+  -- FOREIGN KEY (user_id) REFERENCES missing_table(id)
+);`,
+	}
+	issues := lintForeignKeyReferences(child, []TableSchema{parent, child})
+	if len(issues) != 0 {
+		t.Fatalf("commented RawDDL FK must not lint: %#v", issues)
+	}
+}
+
+func TestParseReferencesTargetDefaultsToPrimaryKey(t *testing.T) {
+	parent := TableSchema{
+		Name: "users",
+		Columns: []ColumnSchema{{Name: "id", Type: "INTEGER", PrimaryKey: true}},
+	}
+	table, col := parseReferencesTarget(`REFERENCES users`, []TableSchema{parent})
+	if table != "users" || col != "id" {
+		t.Fatalf("got %s.%s, want users.id", table, col)
+	}
+	table, col = parseReferencesTarget(`REFERENCES users`, nil)
+	if table != "users" || col != "" {
+		t.Fatalf("without table set got %s.%s, want users.\"\"", table, col)
+	}
+}
+
 func TestDeferredForeignKeysBracketAndSchemaQualified(t *testing.T) {
 	tables := []TableSchema{
 		{

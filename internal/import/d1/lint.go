@@ -174,9 +174,9 @@ func lintForeignKeyReferences(table TableSchema, all []TableSchema) []Issue {
 			addIssue("", ref)
 		}
 	}
-	for _, ref := range parseTableFKReferences(table.RawDDL) {
-		addIssue("", ref)
-	}
+	// Do not scan RawDDL: it still contains SQL comments, so commented-out
+	// FOREIGN KEY text would false-positive as UNRESOLVED_FOREIGN_KEY. Parsed
+	// Columns and Constraints already cover real FKs after comment stripping.
 	return issues
 }
 
@@ -202,7 +202,7 @@ func isBooleanLikeColumn(col ColumnSchema, table TableSchema, ctx *TypeCoercionC
 	// A foreign key column tracks its referenced primary key's real integer identity, even
 	// if the sampled values in this dataset happen to only be 0/1 — coercing it to BOOLEAN
 	// would mismatch the referenced (BIGINT) column's type.
-	if refTable, _ := columnFKTarget(col, table); refTable != "" {
+	if refTable, _ := columnFKTarget(col, table, nil); refTable != "" {
 		return false
 	}
 	if ctx == nil {
