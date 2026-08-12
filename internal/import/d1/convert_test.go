@@ -26,7 +26,7 @@ func convertTablesDDL(t *testing.T, sql string) string {
 	if err != nil {
 		t.Fatalf("ConvertSchemaParts: %v", err)
 	}
-	return parts.Tables
+	return parts.Tables + parts.ForeignKeys
 }
 
 // pgTestDBName is the scratch database used to verify generated DDL against a real
@@ -569,8 +569,11 @@ INSERT INTO roles (id) VALUES (0), (1), (2);
 INSERT INTO users (id, role_id) VALUES (1, 0), (2, 1);
 `
 	ddl := convertTablesDDL(t, sql)
-	if !strings.Contains(ddl, `"role_id" BIGINT REFERENCES "roles" ("id")`) {
+	if !strings.Contains(ddl, `"role_id" BIGINT`) {
 		t.Fatalf("expected FK column to stay BIGINT despite 0/1-only sampled values:\n%s", ddl)
+	}
+	if !strings.Contains(ddl, `FOREIGN KEY ("role_id") REFERENCES "roles" ("id")`) {
+		t.Fatalf("expected deferred FK for role_id:\n%s", ddl)
 	}
 	if strings.Contains(ddl, `"role_id" BOOLEAN`) {
 		t.Fatalf("FK column must not be coerced to BOOLEAN:\n%s", ddl)

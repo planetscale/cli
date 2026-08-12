@@ -9,7 +9,6 @@ import (
 )
 
 var (
-	referencesClauseRe     = regexp.MustCompile(`(?is)^REFERENCES\s+(?:"([^"]+)"|'([^']+)'|` + "`" + `([^` + "`" + `]+)` + "`" + `|([a-zA-Z_][\w]*))\s*\(\s*([^)]+)\)\s*(.*)$`)
 	foreignKeyConstraintRe = regexp.MustCompile(`(?is)^FOREIGN\s+KEY\s*\(\s*([^)]+)\)\s*(REFERENCES\s+.+)$`)
 	primaryKeyConstraintRe = regexp.MustCompile(`(?is)^PRIMARY\s+KEY\s*\(\s*([^)]+)\)\s*(?:ON\s+CONFLICT\s+\w+)?\s*$`)
 	uniqueConstraintRe     = regexp.MustCompile(`(?is)^UNIQUE\s*\(\s*([^)]+)\)\s*(?:ON\s+CONFLICT\s+\w+)?\s*$`)
@@ -50,6 +49,10 @@ func referencesClause(colDef string) string {
 }
 
 func convertTableConstraint(clause string, table TableSchema, all []TableSchema, ctx *TypeCoercionContext) string {
+	return convertTableConstraintWithOptions(clause, table, all, ctx, tableConvertOptions{})
+}
+
+func convertTableConstraintWithOptions(clause string, table TableSchema, all []TableSchema, ctx *TypeCoercionContext, opts tableConvertOptions) string {
 	clause = strings.TrimSpace(clause)
 	clause = strings.TrimSuffix(clause, ",")
 	if clause == "" {
@@ -59,8 +62,11 @@ func convertTableConstraint(clause string, table TableSchema, all []TableSchema,
 	upper := strings.ToUpper(clause)
 	switch {
 	case strings.HasPrefix(upper, "CONSTRAINT "):
-		return convertNamedConstraint(clause, table, all, ctx)
+		return convertNamedConstraintWithOptions(clause, table, all, ctx, opts)
 	case strings.HasPrefix(upper, "FOREIGN KEY"):
+		if opts.omitForeignKeys {
+			return ""
+		}
 		return convertForeignKeyConstraint(clause, table, all)
 	case strings.HasPrefix(upper, "PRIMARY KEY"):
 		return convertPrimaryKeyConstraint(clause, table)
@@ -73,16 +79,16 @@ func convertTableConstraint(clause string, table TableSchema, all []TableSchema,
 	}
 }
 
-// convertNamedConstraint converts a `CONSTRAINT <name> <body>` clause by re-quoting the
+// convertNamedConstraintWithOptions converts a `CONSTRAINT <name> <body>` clause by re-quoting the
 // constraint name and running the body through the same conversion as unnamed constraints,
 // so named constraints get identical quoting/canonicalization fixes.
-func convertNamedConstraint(clause string, table TableSchema, all []TableSchema, ctx *TypeCoercionContext) string {
+func convertNamedConstraintWithOptions(clause string, table TableSchema, all []TableSchema, ctx *TypeCoercionContext, opts tableConvertOptions) string {
 	rest := strings.TrimSpace(clause[len("CONSTRAINT"):])
 	name, body := parseColumnNameAndRest(rest)
 	if name == "" || body == "" {
 		return clause
 	}
-	converted := convertTableConstraint(body, table, all, ctx)
+	converted := convertTableConstraintWithOptions(body, table, all, ctx, opts)
 	if converted == "" {
 		return ""
 	}
@@ -401,30 +407,105 @@ func convertUniqueConstraint(clause string, table TableSchema) string {
 // to the actual declared case from all (the full set of parsed tables) rather than quoting
 // whatever case happens to appear in this clause.
 //
-// Unrecognized REFERENCES text and unsafe action tails (statement terminators, extra
-// parentheses, or tokens outside the FK-action grammar) are dropped rather than emitted
-// verbatim into executed DDL.
+// Parsing matches parseReferencedTableName: bracket-, quote-, backtick-, and
+// schema-qualified identifiers are accepted. Unrecognized REFERENCES text and unsafe
+// action tails (statement terminators, extra parentheses, or tokens outside the FK-action
+// grammar) are dropped rather than emitted verbatim into executed DDL.
 func convertReferencesClause(refs string, all []TableSchema) string {
-	m := referencesClauseRe.FindStringSubmatch(refs)
-	if m == nil {
+	rawTable, colList, tail, ok := parseReferencesParts(refs)
+	if !ok {
 		return ""
 	}
-	rawTable := firstNonEmpty(m[1], m[2], m[3], m[4])
 	refTable := tableByName(all, rawTable)
 	tableName := rawTable
 	if refTable != nil {
 		tableName = refTable.Name
 	}
-	table := postgres.QuoteIdentifier(tableName)
-	refCols := quoteColumnListFor(m[5], refTable)
+	if strings.TrimSpace(colList) == "" {
+		if refTable == nil {
+			return ""
+		}
+		pks := primaryKeyColumns(*refTable)
+		if len(pks) == 0 {
+			return ""
+		}
+		colList = strings.Join(pks, ", ")
+	}
+	refCols := quoteColumnListFor(colList, refTable)
 	if refCols == "" {
 		return ""
 	}
-	out := "REFERENCES " + table + " (" + refCols + ")"
-	if tail := sanitizeReferencesTail(strings.TrimSpace(m[6])); tail != "" {
-		return out + " " + tail
+	out := "REFERENCES " + postgres.QuoteIdentifier(tableName) + " (" + refCols + ")"
+	if safe := sanitizeReferencesTail(tail); safe != "" {
+		return out + " " + safe
 	}
 	return out
+}
+
+// parseReferencesParts extracts the referenced table, column list, and action tail from a
+// REFERENCES clause (or a larger string containing one). The table name is returned without
+// any schema qualifier.
+func parseReferencesParts(refs string) (table, colList, tail string, ok bool) {
+	refs = strings.TrimSpace(refs)
+	if refs == "" {
+		return "", "", "", false
+	}
+	if idx := indexOfIgnoreCase(refs, "REFERENCES"); idx >= 0 {
+		refs = strings.TrimSpace(refs[idx+len("REFERENCES"):])
+	} else {
+		return "", "", "", false
+	}
+
+	rawTable, rest := parseQualifiedTableRef(refs)
+	if rawTable == "" {
+		return "", "", "", false
+	}
+
+	params, remainder, found := extractLeadingParenGroup(rest)
+	if found && len(params) >= 2 {
+		return rawTable, params[1 : len(params)-1], strings.TrimSpace(remainder), true
+	}
+	// SQLite allows REFERENCES parent with no column list (defaults to the parent's PK).
+	return rawTable, "", strings.TrimSpace(rest), true
+}
+
+// parseQualifiedTableRef parses table or schema.table from the start of s and returns the
+// table name only (schema stripped when present).
+//
+//   - Bare schema.table is one token ('.' is not an identifier break); the segment after the
+//     last '.' is treated as the table name.
+//   - Quoted/bracketed schema.table is two tokens joined by '.'; only the second token is kept.
+//   - A single quoted/bracketed identifier that itself contains '.' (e.g. "my.table") is kept
+//     intact — the dot is part of the table name, not a schema separator.
+func parseQualifiedTableRef(s string) (name, rest string) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return "", s
+	}
+	quoted := s[0] == '"' || s[0] == '[' || s[0] == '`' || s[0] == '\''
+	first, rest := parseColumnNameAndRest(s)
+	if first == "" {
+		return "", s
+	}
+	rest = strings.TrimSpace(rest)
+	if strings.HasPrefix(rest, ".") {
+		second, rest2 := parseColumnNameAndRest(strings.TrimSpace(rest[1:]))
+		if second != "" {
+			return second, rest2
+		}
+	}
+	if !quoted {
+		if dot := strings.LastIndex(first, "."); dot >= 0 {
+			// Re-parse the segment after the last '.' so bare schema + quoted/bracketed
+			// table (main."Parent", main.[Parent]) yields Parent, not quote characters.
+			segment := first[dot+1:]
+			if name, _ := parseColumnNameAndRest(segment); name != "" {
+				return name, rest
+			}
+			return segment, rest
+		}
+	}
+	return first, rest
 }
 
 // fkActionTailRe matches a sequence of SQLite/Postgres foreign-key action clauses only.
@@ -592,8 +673,8 @@ func columnReferencesUUIDKeyVisited(col ColumnSchema, table TableSchema, all []T
 	}
 	visited[key] = struct{}{}
 
-	refTable, refCol := columnFKTarget(col, table)
-	if refTable == "" {
+	refTable, refCol := columnFKTarget(col, table, all)
+	if refTable == "" || refCol == "" {
 		return false
 	}
 	ref := tableByName(all, refTable)
@@ -627,15 +708,20 @@ func isExplicitUUIDColumn(col ColumnSchema) bool {
 	return false
 }
 
-func columnFKTarget(col ColumnSchema, table TableSchema) (string, string) {
+func columnFKTarget(col ColumnSchema, table TableSchema, all []TableSchema) (string, string) {
 	if col.ForeignKey != "" {
-		return parseReferencesTarget(col.ForeignKey)
+		return parseReferencesTarget(col.ForeignKey, all)
 	}
 	for _, constraint := range table.Constraints {
 		cols, refs := parseTableLevelForeignKey(constraint)
-		if slices.Contains(cols, col.Name) {
-			return parseReferencesTarget(refs)
+		pos := slices.Index(cols, col.Name)
+		if pos < 0 {
+			continue
 		}
+		// Map the local column to the referenced column at the same position, so each
+		// part of a composite FK inherits the correct parent column (and type) rather
+		// than always the first one.
+		return parseReferencesTargetAt(refs, pos, all)
 	}
 	return "", ""
 }
@@ -655,16 +741,28 @@ func parseTableLevelForeignKey(constraint string) ([]string, string) {
 	return cols, strings.TrimSpace(m[2])
 }
 
-func parseReferencesTarget(refs string) (string, string) {
-	m := referencesClauseRe.FindStringSubmatch(strings.TrimSpace(refs))
-	if m == nil {
+func parseReferencesTarget(refs string, all []TableSchema) (string, string) {
+	return parseReferencesTargetAt(refs, 0, all)
+}
+
+// parseReferencesTargetAt resolves the referenced table and the referenced column at
+// position pos. When the REFERENCES clause omits its column list, it defaults to the
+// parent primary key column at the same position (SQLite matches PK columns positionally).
+func parseReferencesTargetAt(refs string, pos int, all []TableSchema) (string, string) {
+	table, colList, _, ok := parseReferencesParts(refs)
+	if !ok {
 		return "", ""
 	}
-	table := firstNonEmpty(m[1], m[2], m[3], m[4])
-	refCols := splitCommaList(m[5])
 	refCol := ""
-	if len(refCols) > 0 {
-		refCol = strings.Trim(strings.TrimSpace(refCols[0]), "`\"'")
+	if cols := splitCommaList(colList); pos < len(cols) {
+		refCol = cleanIndexedColumnName(cols[pos])
+	}
+	if refCol == "" && strings.TrimSpace(colList) == "" && len(all) > 0 {
+		if ref := tableByName(all, table); ref != nil {
+			if pks := primaryKeyColumns(*ref); pos < len(pks) {
+				refCol = pks[pos]
+			}
+		}
 	}
 	return table, refCol
 }

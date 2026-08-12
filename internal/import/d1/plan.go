@@ -119,22 +119,24 @@ func defaultCastRules() []CastRule {
 
 func topologicalLoadOrder(tables []TableSchema) []string {
 	names := make([]string, 0, len(tables))
-	nameSet := make(map[string]bool)
+	canonicalName := make(map[string]string)
 	for _, t := range tables {
 		names = append(names, t.Name)
-		nameSet[t.Name] = true
+		canonicalName[strings.ToLower(t.Name)] = t.Name
 	}
 
 	deps := make(map[string][]string)
 	for _, t := range tables {
 		for _, col := range t.Columns {
-			if ref := parseFKReference(col.ForeignKey); ref != "" && nameSet[ref] && !slices.Contains(deps[t.Name], ref) {
-				deps[t.Name] = append(deps[t.Name], ref)
+			if ref := parseFKReference(col.ForeignKey); ref != "" {
+				if canon := canonicalName[strings.ToLower(ref)]; canon != "" && !slices.Contains(deps[t.Name], canon) {
+					deps[t.Name] = append(deps[t.Name], canon)
+				}
 			}
 		}
 		for _, ref := range parseTableFKReferences(t.RawDDL) {
-			if nameSet[ref] && !slices.Contains(deps[t.Name], ref) {
-				deps[t.Name] = append(deps[t.Name], ref)
+			if canon := canonicalName[strings.ToLower(ref)]; canon != "" && !slices.Contains(deps[t.Name], canon) {
+				deps[t.Name] = append(deps[t.Name], canon)
 			}
 		}
 	}
@@ -166,33 +168,29 @@ func topologicalLoadOrder(tables []TableSchema) []string {
 }
 
 func parseFKReference(fk string) string {
-	if fk == "" {
-		return ""
-	}
-	idx := indexOfIgnoreCase(fk, "REFERENCES")
-	if idx < 0 {
-		return ""
-	}
-	rest := strings.TrimSpace(fk[idx+len("REFERENCES"):])
-	parts := strings.Fields(rest)
-	if len(parts) == 0 {
-		return ""
-	}
-	ref := strings.Trim(parts[0], "`\"'")
-	if paren := strings.Index(ref, "("); paren >= 0 {
-		ref = ref[:paren]
-	}
-	return ref
+	return parseReferencedTableName(fk)
 }
 
-var tableFKRe = regexp.MustCompile(`(?i)FOREIGN\s+KEY[^)]*\)\s*REFERENCES\s+(?:` + "`" + `([^` + "`" + `]+)` + "`" + `|"([^"]+)"|'([^']+)'|([a-zA-Z_][\w]*))`)
+// parseReferencedTableName extracts the referenced table from a REFERENCES clause or
+// column/table FOREIGN KEY definition. SQLite resolves table names case-insensitively and
+// accepts bracket-, backtick-, double-quoted, and schema-qualified identifiers.
+func parseReferencedTableName(refs string) string {
+	table, _, _, ok := parseReferencesParts(refs)
+	if !ok {
+		return ""
+	}
+	return table
+}
+
+// tableFKFindRe locates table-level FOREIGN KEY ... REFERENCES clauses. The referenced
+// table is parsed with parseReferencedTableName so bracket / schema-qualified forms work.
+var tableFKFindRe = regexp.MustCompile(`(?i)FOREIGN\s+KEY\s*\([^)]*\)\s*REFERENCES\s+`)
 
 func parseTableFKReferences(ddl string) []string {
-	matches := tableFKRe.FindAllStringSubmatch(ddl, -1)
 	var refs []string
-	for _, m := range matches {
-		ref := firstNonEmpty(m[1], m[2], m[3], m[4])
-		if ref != "" {
+	for _, loc := range tableFKFindRe.FindAllStringIndex(ddl, -1) {
+		ref := parseReferencedTableName(ddl[loc[0]:])
+		if ref != "" && !slices.Contains(refs, ref) {
 			refs = append(refs, ref)
 		}
 	}

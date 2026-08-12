@@ -2,6 +2,7 @@ package d1
 
 import (
 	"fmt"
+	"hash/fnv"
 	"unicode"
 )
 
@@ -43,6 +44,23 @@ func lintIdentifier(table, name, column string) []Issue {
 		})
 	}
 	return issues
+}
+
+// fitPostgresIdentifier truncates name to PostgreSQL's 63-byte identifier limit. When
+// truncation is required, a stable hash suffix is appended so distinct long names do not
+// collide after truncation.
+func fitPostgresIdentifier(name string) string {
+	if len(name) <= postgresMaxIdentifierBytes {
+		return name
+	}
+	sum := fnv.New32a()
+	_, _ = sum.Write([]byte(name))
+	suffix := fmt.Sprintf("_%08x", sum.Sum32())
+	keep := postgresMaxIdentifierBytes - len(suffix)
+	if keep < 1 {
+		return suffix[1 : postgresMaxIdentifierBytes+1]
+	}
+	return name[:keep] + suffix
 }
 
 func hasMixedCaseIdentifier(name string) bool {

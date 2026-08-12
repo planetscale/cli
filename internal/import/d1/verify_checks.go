@@ -343,6 +343,25 @@ func primaryKeyColumns(table TableSchema) []string {
 	if len(pks) > 0 {
 		return pks
 	}
+	for _, constraint := range table.Constraints {
+		clause := strings.TrimSpace(constraint)
+		clause = strings.TrimSuffix(clause, ",")
+		upper := strings.ToUpper(clause)
+		if strings.HasPrefix(upper, "CONSTRAINT ") {
+			_, body := parseColumnNameAndRest(strings.TrimSpace(clause[len("CONSTRAINT"):]))
+			clause = strings.TrimSpace(body)
+		}
+		if m := primaryKeyConstraintRe.FindStringSubmatch(clause); m != nil {
+			for _, part := range splitCommaList(m[1]) {
+				if name := cleanIndexedColumnName(part); name != "" {
+					pks = append(pks, canonicalColumnName(name, &table))
+				}
+			}
+			if len(pks) > 0 {
+				return pks
+			}
+		}
+	}
 	for _, col := range table.Columns {
 		if col.AutoIncrement {
 			return []string{col.Name}

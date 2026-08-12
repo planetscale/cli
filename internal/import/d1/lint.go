@@ -1,6 +1,7 @@
 package d1
 
 import (
+	"fmt"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -53,6 +54,7 @@ func lintTable(table TableSchema, all []TableSchema, ctx *TypeCoercionContext) [
 
 	issues = append(issues, lintORMMetadata(table)...)
 	issues = append(issues, lintIdentifiers(table)...)
+	issues = append(issues, lintForeignKeyReferences(table, all)...)
 
 	for _, col := range table.Columns {
 		if col.AutoIncrement {
@@ -141,6 +143,43 @@ func lintTable(table TableSchema, all []TableSchema, ctx *TypeCoercionContext) [
 	return issues
 }
 
+func lintForeignKeyReferences(table TableSchema, all []TableSchema) []Issue {
+	var issues []Issue
+	seen := make(map[string]struct{})
+
+	addIssue := func(column, ref string) {
+		if ref == "" || tableByName(all, ref) != nil {
+			return
+		}
+		key := table.Name + "." + column + "->" + ref
+		if _, ok := seen[key]; ok {
+			return
+		}
+		seen[key] = struct{}{}
+		issues = append(issues, Issue{
+			Code:        "UNRESOLVED_FOREIGN_KEY",
+			Severity:    SeverityError,
+			Table:       table.Name,
+			Column:      column,
+			Message:     fmt.Sprintf("foreign key references missing table %q", ref),
+			Remediation: "Include the referenced table in the D1 export or remove the foreign key before import",
+		})
+	}
+
+	for _, col := range table.Columns {
+		addIssue(col.Name, parseReferencedTableName(col.ForeignKey))
+	}
+	for _, constraint := range table.Constraints {
+		for _, ref := range parseTableFKReferences(constraint) {
+			addIssue("", ref)
+		}
+	}
+	// Do not scan RawDDL: it still contains SQL comments, so commented-out
+	// FOREIGN KEY text would false-positive as UNRESOLVED_FOREIGN_KEY. Parsed
+	// Columns and Constraints already cover real FKs after comment stripping.
+	return issues
+}
+
 var booleanNameHints = []string{"active", "enabled", "published", "archived", "disabled"}
 
 func isBooleanNameHint(col ColumnSchema) bool {
@@ -163,7 +202,7 @@ func isBooleanLikeColumn(col ColumnSchema, table TableSchema, ctx *TypeCoercionC
 	// A foreign key column tracks its referenced primary key's real integer identity, even
 	// if the sampled values in this dataset happen to only be 0/1 — coercing it to BOOLEAN
 	// would mismatch the referenced (BIGINT) column's type.
-	if refTable, _ := columnFKTarget(col, table); refTable != "" {
+	if refTable, _ := columnFKTarget(col, table, nil); refTable != "" {
 		return false
 	}
 	if ctx == nil {

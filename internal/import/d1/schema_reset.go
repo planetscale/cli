@@ -229,13 +229,14 @@ func buildImportTablesSQL(inputPath string, tables []TableSchema) (string, error
 		tableByName[table.Name] = table
 	}
 
+	importOpts := tableConvertOptions{omitForeignKeys: true}
 	var b strings.Builder
 	for _, name := range topologicalLoadOrder(tables) {
 		table, ok := tableByName[name]
 		if !ok || IsORMMetadataTable(table.Name) {
 			continue
 		}
-		b.WriteString(convertTableDDL(table, tables, coerceCtx))
+		b.WriteString(convertTableDDLWithOptions(table, tables, coerceCtx, importOpts))
 		b.WriteString("\n\n")
 	}
 	return b.String(), nil
