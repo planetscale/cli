@@ -194,7 +194,7 @@ func formatNotifyProgressMessage(p ImportProgress) string {
 func shouldNotifyProgress(p ImportProgress) bool {
 	switch p.Stage {
 	case ImportStageConnecting, ImportStageSQLiteStaging, ImportStageSchema,
-		ImportStageIndexes, ImportStageSequences,
+		ImportStageIndexes, ImportStageForeignKeys, ImportStageSequences,
 		VerifyStageSequences, VerifyStageBoolean, VerifyStageFingerprints, VerifyStageSampleRows:
 		return true
 	case ImportStagePgloader:

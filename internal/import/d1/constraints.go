@@ -421,6 +421,16 @@ func convertReferencesClause(refs string, all []TableSchema) string {
 	if refTable != nil {
 		tableName = refTable.Name
 	}
+	if strings.TrimSpace(colList) == "" {
+		if refTable == nil {
+			return ""
+		}
+		pks := primaryKeyColumns(*refTable)
+		if len(pks) == 0 {
+			return ""
+		}
+		colList = strings.Join(pks, ", ")
+	}
 	refCols := quoteColumnListFor(colList, refTable)
 	if refCols == "" {
 		return ""
@@ -452,10 +462,11 @@ func parseReferencesParts(refs string) (table, colList, tail string, ok bool) {
 	}
 
 	params, remainder, found := extractLeadingParenGroup(rest)
-	if !found || len(params) < 2 {
-		return "", "", "", false
+	if found && len(params) >= 2 {
+		return rawTable, params[1 : len(params)-1], strings.TrimSpace(remainder), true
 	}
-	return rawTable, params[1 : len(params)-1], strings.TrimSpace(remainder), true
+	// SQLite allows REFERENCES parent with no column list (defaults to the parent's PK).
+	return rawTable, "", strings.TrimSpace(rest), true
 }
 
 // parseQualifiedTableRef parses table or schema.table from the start of s and returns the
@@ -485,7 +496,13 @@ func parseQualifiedTableRef(s string) (name, rest string) {
 	}
 	if !quoted {
 		if dot := strings.LastIndex(first, "."); dot >= 0 {
-			first = first[dot+1:]
+			// Re-parse the segment after the last '.' so bare schema + quoted/bracketed
+			// table (main."Parent", main.[Parent]) yields Parent, not quote characters.
+			segment := first[dot+1:]
+			if name, _ := parseColumnNameAndRest(segment); name != "" {
+				return name, rest
+			}
+			return segment, rest
 		}
 	}
 	return first, rest

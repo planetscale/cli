@@ -26,7 +26,7 @@ func convertTablesDDL(t *testing.T, sql string) string {
 	if err != nil {
 		t.Fatalf("ConvertSchemaParts: %v", err)
 	}
-	return parts.Tables
+	return parts.Tables + parts.ForeignKeys
 }
 
 // pgTestDBName is the scratch database used to verify generated DDL against a real

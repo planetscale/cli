@@ -9,6 +9,7 @@ const (
 	ImportStageSchema        = "schema"
 	ImportStagePgloader      = "pgloader"
 	ImportStageIndexes       = "indexes"
+	ImportStageForeignKeys   = "foreign_keys"
 	ImportStageSequences     = "sequences"
 )
 
@@ -51,6 +52,8 @@ func FormatProgressMessage(p ImportProgress) string {
 		return "Loading tables with pgloader..."
 	case ImportStageIndexes:
 		return "Building indexes..."
+	case ImportStageForeignKeys:
+		return "Applying foreign keys..."
 	case ImportStageSequences:
 		return "Resetting identity sequences..."
 	case VerifyStageRowCounts:

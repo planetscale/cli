@@ -239,10 +239,5 @@ func buildImportTablesSQL(inputPath string, tables []TableSchema) (string, error
 		b.WriteString(convertTableDDLWithOptions(table, tables, coerceCtx, importOpts))
 		b.WriteString("\n\n")
 	}
-	if fkSQL := buildDeferredForeignKeysSQL(tables, coerceCtx); fkSQL != "" {
-		b.WriteString("-- Foreign keys (deferred until all tables exist)\n")
-		b.WriteString(fkSQL)
-		b.WriteString("\n")
-	}
 	return b.String(), nil
 }

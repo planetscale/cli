@@ -34,6 +34,7 @@ func TestShouldNotifyProgressMajorStages(t *testing.T) {
 		ImportStageSQLiteStaging,
 		ImportStageSchema,
 		ImportStageIndexes,
+		ImportStageForeignKeys,
 		ImportStageSequences,
 	} {
 		if !shouldNotifyProgress(ImportProgress{Stage: stage}) {
