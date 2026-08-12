@@ -154,7 +154,7 @@ func TestLintUnresolvedForeignKey(t *testing.T) {
 
 func TestLintForeignKeyIgnoresCommentedRawDDL(t *testing.T) {
 	parent := TableSchema{
-		Name: "users",
+		Name:    "users",
 		Columns: []ColumnSchema{{Name: "id", Type: "INTEGER", PrimaryKey: true}},
 	}
 	child := TableSchema{
@@ -177,7 +177,7 @@ func TestLintForeignKeyIgnoresCommentedRawDDL(t *testing.T) {
 
 func TestParseReferencesTargetDefaultsToPrimaryKey(t *testing.T) {
 	parent := TableSchema{
-		Name: "users",
+		Name:    "users",
 		Columns: []ColumnSchema{{Name: "id", Type: "INTEGER", PrimaryKey: true}},
 	}
 	table, col := parseReferencesTarget(`REFERENCES users`, []TableSchema{parent})
