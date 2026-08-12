@@ -714,9 +714,14 @@ func columnFKTarget(col ColumnSchema, table TableSchema, all []TableSchema) (str
 	}
 	for _, constraint := range table.Constraints {
 		cols, refs := parseTableLevelForeignKey(constraint)
-		if slices.Contains(cols, col.Name) {
-			return parseReferencesTarget(refs, all)
+		pos := slices.Index(cols, col.Name)
+		if pos < 0 {
+			continue
 		}
+		// Map the local column to the referenced column at the same position, so each
+		// part of a composite FK inherits the correct parent column (and type) rather
+		// than always the first one.
+		return parseReferencesTargetAt(refs, pos, all)
 	}
 	return "", ""
 }
@@ -737,18 +742,25 @@ func parseTableLevelForeignKey(constraint string) ([]string, string) {
 }
 
 func parseReferencesTarget(refs string, all []TableSchema) (string, string) {
+	return parseReferencesTargetAt(refs, 0, all)
+}
+
+// parseReferencesTargetAt resolves the referenced table and the referenced column at
+// position pos. When the REFERENCES clause omits its column list, it defaults to the
+// parent primary key column at the same position (SQLite matches PK columns positionally).
+func parseReferencesTargetAt(refs string, pos int, all []TableSchema) (string, string) {
 	table, colList, _, ok := parseReferencesParts(refs)
 	if !ok {
 		return "", ""
 	}
 	refCol := ""
-	if cols := splitCommaList(colList); len(cols) > 0 {
-		refCol = cleanIndexedColumnName(cols[0])
+	if cols := splitCommaList(colList); pos < len(cols) {
+		refCol = cleanIndexedColumnName(cols[pos])
 	}
-	if refCol == "" && len(all) > 0 {
+	if refCol == "" && strings.TrimSpace(colList) == "" && len(all) > 0 {
 		if ref := tableByName(all, table); ref != nil {
-			if pks := primaryKeyColumns(*ref); len(pks) > 0 {
-				refCol = pks[0]
+			if pks := primaryKeyColumns(*ref); pos < len(pks) {
+				refCol = pks[pos]
 			}
 		}
 	}

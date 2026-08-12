@@ -175,6 +175,40 @@ func TestLintForeignKeyIgnoresCommentedRawDDL(t *testing.T) {
 	}
 }
 
+func TestColumnFKTargetCompositePositional(t *testing.T) {
+	parent := TableSchema{
+		Name: "parent",
+		Columns: []ColumnSchema{
+			{Name: "a", Type: "INTEGER"},
+			{Name: "b", Type: "TEXT"},
+		},
+		Constraints: []string{`PRIMARY KEY (a, b)`},
+	}
+	child := TableSchema{
+		Name: "child",
+		Columns: []ColumnSchema{
+			{Name: "pa", Type: "INTEGER"},
+			{Name: "pb", Type: "TEXT"},
+		},
+		// No referenced column list: defaults to parent PK, positionally.
+		Constraints: []string{`FOREIGN KEY (pa, pb) REFERENCES parent`},
+	}
+	all := []TableSchema{parent, child}
+
+	if _, col := columnFKTarget(child.Columns[0], child, all); col != "a" {
+		t.Fatalf("child.pa -> %q, want a", col)
+	}
+	if _, col := columnFKTarget(child.Columns[1], child, all); col != "b" {
+		t.Fatalf("child.pb -> %q, want b", col)
+	}
+
+	// Explicit referenced column list must also map positionally.
+	child.Constraints = []string{`FOREIGN KEY (pa, pb) REFERENCES parent(a, b)`}
+	if _, col := columnFKTarget(child.Columns[1], child, all); col != "b" {
+		t.Fatalf("explicit child.pb -> %q, want b", col)
+	}
+}
+
 func TestParseReferencesTargetDefaultsToPrimaryKey(t *testing.T) {
 	parent := TableSchema{
 		Name:    "users",
