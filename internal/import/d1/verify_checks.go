@@ -350,7 +350,6 @@ func primaryKeyColumns(table TableSchema) []string {
 		if strings.HasPrefix(upper, "CONSTRAINT ") {
 			_, body := parseColumnNameAndRest(strings.TrimSpace(clause[len("CONSTRAINT"):]))
 			clause = strings.TrimSpace(body)
-			upper = strings.ToUpper(clause)
 		}
 		if m := primaryKeyConstraintRe.FindStringSubmatch(clause); m != nil {
 			for _, part := range splitCommaList(m[1]) {
