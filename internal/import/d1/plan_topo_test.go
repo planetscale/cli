@@ -15,6 +15,8 @@ func TestParseReferencedTableName(t *testing.T) {
 		`REFERENCES main.parent_table(id)`:              "parent_table",
 		`REFERENCES "main"."parent_table"(id)`:          "parent_table",
 		`REFERENCES [main].[parent_table](id)`:          "parent_table",
+		`REFERENCES "my.table"(id)`:                     "my.table",
+		`REFERENCES [my.table](id)`:                     "my.table",
 		`FOREIGN KEY (x) REFERENCES users(id)`:          "users",
 		`FOREIGN KEY (x) REFERENCES [Parent_Table](id)`: "Parent_Table",
 		`FOREIGN KEY (x) REFERENCES main.parent(id)`:    "parent",
@@ -200,6 +202,32 @@ func TestFitPostgresIdentifierTruncatesConstraintNames(t *testing.T) {
 	}
 	if fitPostgresIdentifier(name) != name {
 		t.Fatalf("fitPostgresIdentifier should be idempotent for fitted names")
+	}
+}
+
+func TestBuildImportTablesSQLDottedQuotedTableName(t *testing.T) {
+	tables := []TableSchema{
+		{
+			Name: "my.table",
+			Columns: []ColumnSchema{{
+				Name: "id", Type: "INTEGER", PrimaryKey: true,
+			}},
+		},
+		{
+			Name: "child",
+			Columns: []ColumnSchema{
+				{Name: "id", Type: "INTEGER", PrimaryKey: true},
+				{Name: "parent_id", Type: "INTEGER", ForeignKey: `REFERENCES "my.table"(id)`},
+			},
+		},
+	}
+	sql, err := buildImportTablesSQL("", tables)
+	if err != nil {
+		t.Fatalf("buildImportTablesSQL: %v", err)
+	}
+	want := `ALTER TABLE "child" ADD CONSTRAINT "d1_fk_child_parent_id" FOREIGN KEY ("parent_id") REFERENCES "my.table" ("id");`
+	if !strings.Contains(sql, want) {
+		t.Fatalf("expected dotted quoted table name preserved:\n%s", sql)
 	}
 }
 

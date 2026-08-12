@@ -454,9 +454,6 @@ func parseReferencesParts(refs string) (table, colList, tail string, ok bool) {
 	if rawTable == "" {
 		return "", "", "", false
 	}
-	if dot := strings.LastIndex(rawTable, "."); dot >= 0 {
-		rawTable = rawTable[dot+1:]
-	}
 
 	params, remainder, found := extractLeadingParenGroup(rest)
 	if !found || len(params) < 2 {
@@ -465,11 +462,21 @@ func parseReferencesParts(refs string) (table, colList, tail string, ok bool) {
 	return rawTable, params[1 : len(params)-1], strings.TrimSpace(remainder), true
 }
 
-// parseQualifiedTableRef parses table or schema.table from the start of s. Bare
-// schema.table forms are a single token ('.' is not an identifier break); quoted /
-// bracketed schema and table are two tokens joined by '.'.
+// parseQualifiedTableRef parses table or schema.table from the start of s and returns the
+// table name only (schema stripped when present).
+//
+// - Bare schema.table is one token ('.' is not an identifier break); the segment after the
+//   last '.' is treated as the table name.
+// - Quoted/bracketed schema.table is two tokens joined by '.'; only the second token is kept.
+// - A single quoted/bracketed identifier that itself contains '.' (e.g. "my.table") is kept
+//   intact — the dot is part of the table name, not a schema separator.
 func parseQualifiedTableRef(s string) (name, rest string) {
-	first, rest := parseColumnNameAndRest(strings.TrimSpace(s))
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return "", s
+	}
+	quoted := s[0] == '"' || s[0] == '[' || s[0] == '`' || s[0] == '\''
+	first, rest := parseColumnNameAndRest(s)
 	if first == "" {
 		return "", s
 	}
@@ -477,7 +484,12 @@ func parseQualifiedTableRef(s string) (name, rest string) {
 	if strings.HasPrefix(rest, ".") {
 		second, rest2 := parseColumnNameAndRest(strings.TrimSpace(rest[1:]))
 		if second != "" {
-			return first + "." + second, rest2
+			return second, rest2
+		}
+	}
+	if !quoted {
+		if dot := strings.LastIndex(first, "."); dot >= 0 {
+			first = first[dot+1:]
 		}
 	}
 	return first, rest
