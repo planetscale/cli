@@ -578,6 +578,50 @@ INSERT INTO users (id, role_id) VALUES (1, 0), (2, 1);
 	assertValidPostgresDDL(t, ddl)
 }
 
+// Autoincrement identity columns stay INTEGER even when sampled values are only 0/1.
+// Verify must not run boolean coercion checks against them or Postgres rejects
+// "integer = boolean" comparisons.
+func TestBooleanHeuristicIgnoresAutoIncrement(t *testing.T) {
+	sql := `CREATE TABLE counters (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  value INTEGER NOT NULL
+);
+INSERT INTO counters (id, value) VALUES (0, 10), (1, 20);
+`
+	path := writeDump(t, sql)
+	tables, err := ParseDump(path)
+	if err != nil {
+		t.Fatalf("ParseDump: %v", err)
+	}
+	coerceCtx, err := BuildTypeCoercionContext(path, tables)
+	if err != nil {
+		t.Fatalf("BuildTypeCoercionContext: %v", err)
+	}
+
+	var idCol ColumnSchema
+	for _, col := range tables[0].Columns {
+		if col.Name == "id" {
+			idCol = col
+			break
+		}
+	}
+	if idCol.Name == "" {
+		t.Fatal("missing id column")
+	}
+	if isBooleanLikeColumn(idCol, tables[0], coerceCtx) {
+		t.Fatal("autoincrement id must not be treated as boolean-like")
+	}
+	if got := sqliteTypeToPostgres(idCol, tables[0], tables, coerceCtx); got != "INTEGER" {
+		t.Fatalf("expected autoincrement id to map to INTEGER, got %s", got)
+	}
+
+	ddl := convertTablesDDL(t, sql)
+	if strings.Contains(ddl, `"id" BOOLEAN`) {
+		t.Fatalf("autoincrement id must not be coerced to BOOLEAN:\n%s", ddl)
+	}
+	assertValidPostgresDDL(t, ddl)
+}
+
 func TestConvertDefaultBooleanNonZeroOneLiteral(t *testing.T) {
 	sql := `CREATE TABLE flags (
   id INTEGER PRIMARY KEY,

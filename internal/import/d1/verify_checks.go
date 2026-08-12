@@ -193,7 +193,7 @@ func verifyBooleanColumns(ctx context.Context, db *sql.DB, sqlitePath string, ta
 			continue
 		}
 		for _, col := range table.Columns {
-			if !isBooleanLikeColumn(col, table, coerceCtx) {
+			if sqliteTypeToPostgres(col, table, tables, coerceCtx) != "BOOLEAN" {
 				continue
 			}
 			src, err := sqliteBooleanDistribution(ctx, sqlitePath, table.Name, col.Name)
