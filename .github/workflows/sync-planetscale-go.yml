@@ -3,8 +3,11 @@ name: Sync client to planetscale-go
 # The API client at internal/planetscale is canonical (see doc/api-client.md).
 # This workflow copies it into planetscale/planetscale-go and opens a PR there
 # so external users of the module can pick up new endpoints. It never pushes
-# to main directly: a human reviews the PR, including the gorelease API report,
-# and decides the version to tag.
+# to main directly. Cursor PR Routing & Approval (see APPROVAL_POLICY.md in
+# planetscale-go) can approve mechanical sync PRs; this job enables GitHub
+# auto-merge so the PR merges once that approval and required checks land.
+# Version tagging after merge remains a separate step (use the gorelease
+# report in the PR body).
 #
 # Auth comes from the CLI GitHub App (same as release.yml); the app must be
 # installed on planetscale-go with contents and pull request write access.
@@ -131,13 +134,15 @@ jobs:
             echo "The client in the cli repo (internal/planetscale) is the source of"
             echo "truth; this repo is a read-only mirror for external module users."
             echo
-            echo "Review the API report below before merging. If it lists incompatible"
-            echo "changes, the next tag needs to reflect that."
+            echo "Auto-merge is enabled. Cursor Approval Agent may approve per"
+            echo "APPROVAL_POLICY.md. Use the gorelease report below when choosing"
+            echo "the next tag; incompatible changes need a matching semver bump."
             echo
             cat /tmp/gorelease-report.md
           } > /tmp/pr-body.md
-          gh pr create \
+          pr_url=$(gh pr create \
             --repo planetscale/planetscale-go \
             --head "$branch" \
             --title "Sync API client from cli@${source_sha}" \
-            --body-file /tmp/pr-body.md
+            --body-file /tmp/pr-body.md)
+          gh pr merge --repo planetscale/planetscale-go --auto --merge "$pr_url"
