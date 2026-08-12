@@ -173,33 +173,24 @@ func parseFKReference(fk string) string {
 
 // parseReferencedTableName extracts the referenced table from a REFERENCES clause or
 // column/table FOREIGN KEY definition. SQLite resolves table names case-insensitively and
-// accepts bracket-, backtick-, and double-quoted identifiers.
+// accepts bracket-, backtick-, double-quoted, and schema-qualified identifiers.
 func parseReferencedTableName(refs string) string {
-	refs = strings.TrimSpace(refs)
-	if refs == "" {
+	table, _, _, ok := parseReferencesParts(refs)
+	if !ok {
 		return ""
 	}
-	if idx := indexOfIgnoreCase(refs, "REFERENCES"); idx >= 0 {
-		refs = strings.TrimSpace(refs[idx+len("REFERENCES"):])
-	}
-	name, _ := parseColumnNameAndRest(refs)
-	if name == "" {
-		return ""
-	}
-	if dot := strings.LastIndex(name, "."); dot >= 0 {
-		name = name[dot+1:]
-	}
-	return name
+	return table
 }
 
-var tableFKRe = regexp.MustCompile(`(?i)FOREIGN\s+KEY[^)]*\)\s*REFERENCES\s+(?:` + "`" + `([^` + "`" + `]+)` + "`" + `|"([^"]+)"|'([^']+)'|([a-zA-Z_][\w]*))`)
+// tableFKFindRe locates table-level FOREIGN KEY ... REFERENCES clauses. The referenced
+// table is parsed with parseReferencedTableName so bracket / schema-qualified forms work.
+var tableFKFindRe = regexp.MustCompile(`(?i)FOREIGN\s+KEY\s*\([^)]*\)\s*REFERENCES\s+`)
 
 func parseTableFKReferences(ddl string) []string {
-	matches := tableFKRe.FindAllStringSubmatch(ddl, -1)
 	var refs []string
-	for _, m := range matches {
-		ref := firstNonEmpty(m[1], m[2], m[3], m[4])
-		if ref != "" {
+	for _, loc := range tableFKFindRe.FindAllStringIndex(ddl, -1) {
+		ref := parseReferencedTableName(ddl[loc[0]:])
+		if ref != "" && !slices.Contains(refs, ref) {
 			refs = append(refs, ref)
 		}
 	}

@@ -9,7 +9,6 @@ import (
 )
 
 var (
-	referencesClauseRe     = regexp.MustCompile(`(?is)^REFERENCES\s+(?:"([^"]+)"|'([^']+)'|` + "`" + `([^` + "`" + `]+)` + "`" + `|([a-zA-Z_][\w]*))\s*\(\s*([^)]+)\)\s*(.*)$`)
 	foreignKeyConstraintRe = regexp.MustCompile(`(?is)^FOREIGN\s+KEY\s*\(\s*([^)]+)\)\s*(REFERENCES\s+.+)$`)
 	primaryKeyConstraintRe = regexp.MustCompile(`(?is)^PRIMARY\s+KEY\s*\(\s*([^)]+)\)\s*(?:ON\s+CONFLICT\s+\w+)?\s*$`)
 	uniqueConstraintRe     = regexp.MustCompile(`(?is)^UNIQUE\s*\(\s*([^)]+)\)\s*(?:ON\s+CONFLICT\s+\w+)?\s*$`)
@@ -412,30 +411,76 @@ func convertUniqueConstraint(clause string, table TableSchema) string {
 // to the actual declared case from all (the full set of parsed tables) rather than quoting
 // whatever case happens to appear in this clause.
 //
-// Unrecognized REFERENCES text and unsafe action tails (statement terminators, extra
-// parentheses, or tokens outside the FK-action grammar) are dropped rather than emitted
-// verbatim into executed DDL.
+// Parsing matches parseReferencedTableName: bracket-, quote-, backtick-, and
+// schema-qualified identifiers are accepted. Unrecognized REFERENCES text and unsafe
+// action tails (statement terminators, extra parentheses, or tokens outside the FK-action
+// grammar) are dropped rather than emitted verbatim into executed DDL.
 func convertReferencesClause(refs string, all []TableSchema) string {
-	m := referencesClauseRe.FindStringSubmatch(refs)
-	if m == nil {
+	rawTable, colList, tail, ok := parseReferencesParts(refs)
+	if !ok {
 		return ""
 	}
-	rawTable := firstNonEmpty(m[1], m[2], m[3], m[4])
 	refTable := tableByName(all, rawTable)
 	tableName := rawTable
 	if refTable != nil {
 		tableName = refTable.Name
 	}
-	table := postgres.QuoteIdentifier(tableName)
-	refCols := quoteColumnListFor(m[5], refTable)
+	refCols := quoteColumnListFor(colList, refTable)
 	if refCols == "" {
 		return ""
 	}
-	out := "REFERENCES " + table + " (" + refCols + ")"
-	if tail := sanitizeReferencesTail(strings.TrimSpace(m[6])); tail != "" {
-		return out + " " + tail
+	out := "REFERENCES " + postgres.QuoteIdentifier(tableName) + " (" + refCols + ")"
+	if safe := sanitizeReferencesTail(tail); safe != "" {
+		return out + " " + safe
 	}
 	return out
+}
+
+// parseReferencesParts extracts the referenced table, column list, and action tail from a
+// REFERENCES clause (or a larger string containing one). The table name is returned without
+// any schema qualifier.
+func parseReferencesParts(refs string) (table, colList, tail string, ok bool) {
+	refs = strings.TrimSpace(refs)
+	if refs == "" {
+		return "", "", "", false
+	}
+	if idx := indexOfIgnoreCase(refs, "REFERENCES"); idx >= 0 {
+		refs = strings.TrimSpace(refs[idx+len("REFERENCES"):])
+	} else {
+		return "", "", "", false
+	}
+
+	rawTable, rest := parseQualifiedTableRef(refs)
+	if rawTable == "" {
+		return "", "", "", false
+	}
+	if dot := strings.LastIndex(rawTable, "."); dot >= 0 {
+		rawTable = rawTable[dot+1:]
+	}
+
+	params, remainder, found := extractLeadingParenGroup(rest)
+	if !found || len(params) < 2 {
+		return "", "", "", false
+	}
+	return rawTable, params[1 : len(params)-1], strings.TrimSpace(remainder), true
+}
+
+// parseQualifiedTableRef parses table or schema.table from the start of s. Bare
+// schema.table forms are a single token ('.' is not an identifier break); quoted /
+// bracketed schema and table are two tokens joined by '.'.
+func parseQualifiedTableRef(s string) (name, rest string) {
+	first, rest := parseColumnNameAndRest(strings.TrimSpace(s))
+	if first == "" {
+		return "", s
+	}
+	rest = strings.TrimSpace(rest)
+	if strings.HasPrefix(rest, ".") {
+		second, rest2 := parseColumnNameAndRest(strings.TrimSpace(rest[1:]))
+		if second != "" {
+			return first + "." + second, rest2
+		}
+	}
+	return first, rest
 }
 
 // fkActionTailRe matches a sequence of SQLite/Postgres foreign-key action clauses only.
@@ -667,15 +712,13 @@ func parseTableLevelForeignKey(constraint string) ([]string, string) {
 }
 
 func parseReferencesTarget(refs string) (string, string) {
-	m := referencesClauseRe.FindStringSubmatch(strings.TrimSpace(refs))
-	if m == nil {
+	table, colList, _, ok := parseReferencesParts(refs)
+	if !ok {
 		return "", ""
 	}
-	table := firstNonEmpty(m[1], m[2], m[3], m[4])
-	refCols := splitCommaList(m[5])
 	refCol := ""
-	if len(refCols) > 0 {
-		refCol = strings.Trim(strings.TrimSpace(refCols[0]), "`\"'")
+	if cols := splitCommaList(colList); len(cols) > 0 {
+		refCol = cleanIndexedColumnName(cols[0])
 	}
 	return table, refCol
 }

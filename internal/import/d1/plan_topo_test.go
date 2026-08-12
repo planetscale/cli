@@ -1,23 +1,25 @@
 package d1
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 )
 
 func TestParseReferencedTableName(t *testing.T) {
 	cases := map[string]string{
-		`REFERENCES parent_table(id)`:          "parent_table",
-		`REFERENCES Parent_Table(id)`:          "Parent_Table",
-		`REFERENCES "Parent_Table"(id)`:        "Parent_Table",
-		`REFERENCES [Parent_Table](id)`:        "Parent_Table",
-		`REFERENCES main.parent_table(id)`:     "parent_table",
-		`FOREIGN KEY (x) REFERENCES users(id)`: "",
+		`REFERENCES parent_table(id)`:                   "parent_table",
+		`REFERENCES Parent_Table(id)`:                   "Parent_Table",
+		`REFERENCES "Parent_Table"(id)`:                 "Parent_Table",
+		`REFERENCES [Parent_Table](id)`:                 "Parent_Table",
+		`REFERENCES main.parent_table(id)`:              "parent_table",
+		`REFERENCES "main"."parent_table"(id)`:          "parent_table",
+		`REFERENCES [main].[parent_table](id)`:          "parent_table",
+		`FOREIGN KEY (x) REFERENCES users(id)`:          "users",
+		`FOREIGN KEY (x) REFERENCES [Parent_Table](id)`: "Parent_Table",
+		`FOREIGN KEY (x) REFERENCES main.parent(id)`:    "parent",
 	}
 	for in, want := range cases {
-		if in == `FOREIGN KEY (x) REFERENCES users(id)` {
-			continue
-		}
 		got := parseReferencedTableName(in)
 		if got != want {
 			t.Errorf("parseReferencedTableName(%q) = %q, want %q", in, got, want)
@@ -125,5 +127,92 @@ func TestLintUnresolvedForeignKey(t *testing.T) {
 	issues := lintForeignKeyReferences(table, nil)
 	if len(issues) != 1 || issues[0].Code != "UNRESOLVED_FOREIGN_KEY" {
 		t.Fatalf("issues = %#v, want unresolved foreign key error", issues)
+	}
+}
+
+func TestBuildImportTablesSQLBracketAndSchemaQualifiedFK(t *testing.T) {
+	tables := []TableSchema{
+		{
+			Name: "parent_table",
+			Columns: []ColumnSchema{{
+				Name: "id", Type: "INTEGER", PrimaryKey: true,
+			}},
+		},
+		{
+			Name: "child_bracket",
+			Columns: []ColumnSchema{
+				{Name: "id", Type: "INTEGER", PrimaryKey: true},
+				{Name: "parent_id", Type: "INTEGER", ForeignKey: `REFERENCES [parent_table](id)`},
+			},
+		},
+		{
+			Name: "child_schema",
+			Columns: []ColumnSchema{
+				{Name: "id", Type: "INTEGER", PrimaryKey: true},
+				{Name: "parent_id", Type: "INTEGER", ForeignKey: `REFERENCES main.parent_table(id)`},
+			},
+		},
+	}
+
+	sql, err := buildImportTablesSQL("", tables)
+	if err != nil {
+		t.Fatalf("buildImportTablesSQL: %v", err)
+	}
+	for _, want := range []string{
+		`ALTER TABLE "child_bracket" ADD CONSTRAINT "d1_fk_child_bracket_parent_id" FOREIGN KEY ("parent_id") REFERENCES "parent_table" ("id");`,
+		`ALTER TABLE "child_schema" ADD CONSTRAINT "d1_fk_child_schema_parent_id" FOREIGN KEY ("parent_id") REFERENCES "parent_table" ("id");`,
+	} {
+		if !strings.Contains(sql, want) {
+			t.Fatalf("missing deferred FK %q in:\n%s", want, sql)
+		}
+	}
+}
+
+func TestCollectDeferredForeignKeysDedupesColumnAndTableFK(t *testing.T) {
+	table := TableSchema{
+		Name: "child_table",
+		Columns: []ColumnSchema{
+			{Name: "id", Type: "INTEGER", PrimaryKey: true},
+			{Name: "parent_id", Type: "INTEGER", ForeignKey: `REFERENCES parent_table(id)`},
+		},
+		Constraints: []string{
+			`FOREIGN KEY (parent_id) REFERENCES parent_table(id)`,
+		},
+	}
+	parent := TableSchema{
+		Name: "parent_table",
+		Columns: []ColumnSchema{{
+			Name: "id", Type: "INTEGER", PrimaryKey: true,
+		}},
+	}
+	alters := collectDeferredForeignKeyAlters(table, []TableSchema{parent, table}, nil)
+	if len(alters) != 1 {
+		t.Fatalf("expected 1 deferred FK after dedupe, got %d:\n%v", len(alters), alters)
+	}
+}
+
+func TestFitPostgresIdentifierTruncatesConstraintNames(t *testing.T) {
+	longTable := strings.Repeat("t", 40)
+	longCol := strings.Repeat("c", 40)
+	name := fitPostgresIdentifier(fmt.Sprintf("d1_fk_%s_%s", longTable, longCol))
+	if len(name) > postgresMaxIdentifierBytes {
+		t.Fatalf("fitPostgresIdentifier length %d exceeds %d: %q", len(name), postgresMaxIdentifierBytes, name)
+	}
+	if fitPostgresIdentifier(name) != name {
+		t.Fatalf("fitPostgresIdentifier should be idempotent for fitted names")
+	}
+}
+
+func TestConvertSchemaPartsDefersForeignKeys(t *testing.T) {
+	sql := `CREATE TABLE parent_table (id INTEGER PRIMARY KEY);
+CREATE TABLE child_table (id INTEGER PRIMARY KEY, parent_id INTEGER REFERENCES [parent_table](id));
+`
+	ddl := convertTablesDDL(t, sql)
+	createSection := strings.Split(ddl, "-- Foreign keys")[0]
+	if strings.Contains(createSection, "REFERENCES") {
+		t.Fatalf("expected CREATE TABLE section without inline foreign keys:\n%s", createSection)
+	}
+	if !strings.Contains(ddl, `ALTER TABLE "child_table" ADD CONSTRAINT "d1_fk_child_table_parent_id" FOREIGN KEY ("parent_id") REFERENCES "parent_table" ("id");`) {
+		t.Fatalf("expected deferred foreign key alter:\n%s", ddl)
 	}
 }

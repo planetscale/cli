@@ -230,8 +230,8 @@ func TestConvertNamedConstraint(t *testing.T) {
 CREATE TABLE Posts (id INTEGER PRIMARY KEY, user_id INTEGER, CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES USERS(ID));
 `
 	ddl = convertTablesDDL(t, sql)
-	if !strings.Contains(ddl, `CONSTRAINT "fk_user" FOREIGN KEY ("user_id") REFERENCES "Users" ("id")`) {
-		t.Fatalf("expected named FOREIGN KEY constraint converted:\n%s", ddl)
+	if !strings.Contains(ddl, `ALTER TABLE "Posts" ADD CONSTRAINT "fk_user" FOREIGN KEY ("user_id") REFERENCES "Users" ("id")`) {
+		t.Fatalf("expected named FOREIGN KEY constraint deferred and converted:\n%s", ddl)
 	}
 
 	ddl = convertTablesDDL(t, `CREATE TABLE t (a INTEGER, b INTEGER, CONSTRAINT uq_ab UNIQUE (a, b) ON CONFLICT REPLACE);`)

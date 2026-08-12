@@ -47,6 +47,7 @@ func ConvertSchemaParts(inputPath string) (SchemaParts, int, error) {
 	for _, table := range tables {
 		tableByName[table.Name] = table
 	}
+	importOpts := tableConvertOptions{omitForeignKeys: true}
 	for _, name := range topologicalLoadOrder(tables) {
 		table, ok := tableByName[name]
 		if !ok {
@@ -55,9 +56,14 @@ func ConvertSchemaParts(inputPath string) (SchemaParts, int, error) {
 		if IsORMMetadataTable(table.Name) {
 			continue
 		}
-		tableBuf.WriteString(convertTableDDL(table, tables, coerceCtx))
+		tableBuf.WriteString(convertTableDDLWithOptions(table, tables, coerceCtx, importOpts))
 		tableBuf.WriteString("\n\n")
 		converted++
+	}
+	if fkSQL := buildDeferredForeignKeysSQL(tables, coerceCtx); fkSQL != "" {
+		tableBuf.WriteString("-- Foreign keys (deferred until all tables exist)\n")
+		tableBuf.WriteString(fkSQL)
+		tableBuf.WriteString("\n")
 	}
 
 	var indexBuf strings.Builder
@@ -153,7 +159,18 @@ func buildDeferredForeignKeysSQL(tables []TableSchema, ctx *TypeCoercionContext)
 
 func collectDeferredForeignKeyAlters(table TableSchema, all []TableSchema, ctx *TypeCoercionContext) []string {
 	var alters []string
+	seen := make(map[string]struct{})
 	unnamed := 0
+
+	add := func(constraintName, fkClause string) {
+		key := strings.ToLower(fkClause)
+		if _, ok := seen[key]; ok {
+			return
+		}
+		seen[key] = struct{}{}
+		alters = append(alters, formatForeignKeyAlter(table.Name, fitPostgresIdentifier(constraintName), fkClause))
+	}
+
 	for _, col := range table.Columns {
 		if col.ForeignKey == "" {
 			continue
@@ -164,8 +181,7 @@ func collectDeferredForeignKeyAlters(table TableSchema, all []TableSchema, ctx *
 		}
 		fk := "FOREIGN KEY (" + postgres.QuoteIdentifier(col.Name) + ") " + refs
 		unnamed++
-		name := fmt.Sprintf("d1_fk_%s_%s", table.Name, col.Name)
-		alters = append(alters, formatForeignKeyAlter(table.Name, name, fk))
+		add(fmt.Sprintf("d1_fk_%s_%s", table.Name, col.Name), fk)
 	}
 	for _, constraint := range table.Constraints {
 		clause := strings.TrimSpace(constraint)
@@ -181,15 +197,14 @@ func collectDeferredForeignKeyAlters(table TableSchema, all []TableSchema, ctx *
 			if fk == "" {
 				continue
 			}
-			alters = append(alters, formatForeignKeyAlter(table.Name, cname, fk))
+			add(cname, fk)
 		case strings.HasPrefix(upper, "FOREIGN KEY"):
 			fk := convertForeignKeyConstraint(clause, table, all)
 			if fk == "" {
 				continue
 			}
 			unnamed++
-			name := fmt.Sprintf("d1_fk_%s_%d", table.Name, unnamed)
-			alters = append(alters, formatForeignKeyAlter(table.Name, name, fk))
+			add(fmt.Sprintf("d1_fk_%s_%d", table.Name, unnamed), fk)
 		}
 	}
 	return alters
