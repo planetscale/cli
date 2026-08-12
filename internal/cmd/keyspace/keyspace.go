@@ -25,6 +25,7 @@ func KeyspaceCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.AddCommand(ShowCmd(ch))
 	cmd.AddCommand(VSchemaCmd(ch))
 	cmd.AddCommand(CreateCmd(ch))
+	cmd.AddCommand(DeleteCmd(ch))
 	cmd.AddCommand(ResizeCmd(ch))
 	cmd.AddCommand(RolloutStatusCmd(ch))
 	cmd.AddCommand(ReadOnlyRegionsCmd(ch))

@@ -195,6 +195,27 @@ func TestKeyspaces_Create(t *testing.T) {
 	c.Assert(keyspace.Shards, qt.Equals, 2)
 }
 
+func TestKeyspaces_Delete(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodDelete)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/foo/databases/bar/branches/baz/keyspaces/qux")
+		w.WriteHeader(http.StatusNoContent)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	err = client.Keyspaces.Delete(context.Background(), &DeleteKeyspaceRequest{
+		Organization: "foo",
+		Database:     "bar",
+		Branch:       "baz",
+		Keyspace:     "qux",
+	})
+	c.Assert(err, qt.IsNil)
+}
+
 func TestKeyspaces_VSchema(t *testing.T) {
 	c := qt.New(t)
 

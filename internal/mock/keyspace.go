@@ -25,6 +25,9 @@ type KeyspacesService struct {
 	CreateFn        func(context.Context, *ps.CreateKeyspaceRequest) (*ps.Keyspace, error)
 	CreateFnInvoked bool
 
+	DeleteFn        func(context.Context, *ps.DeleteKeyspaceRequest) error
+	DeleteFnInvoked bool
+
 	ResizeFn        func(context.Context, *ps.ResizeKeyspaceRequest) (*ps.KeyspaceResizeRequest, error)
 	ResizeFnInvoked bool
 
@@ -48,7 +51,6 @@ func (s *KeyspacesService) List(ctx context.Context, req *ps.ListKeyspacesReques
 
 func (s *KeyspacesService) Get(ctx context.Context, req *ps.GetKeyspaceRequest) (*ps.Keyspace, error) {
 	s.GetFnInvoked = true
-	s.GetFnInvoked = true
 	return s.GetFn(ctx, req)
 }
 
@@ -70,6 +72,11 @@ func (s *KeyspacesService) UpdateVSchema(ctx context.Context, req *ps.UpdateKeys
 func (s *KeyspacesService) Create(ctx context.Context, req *ps.CreateKeyspaceRequest) (*ps.Keyspace, error) {
 	s.CreateFnInvoked = true
 	return s.CreateFn(ctx, req)
+}
+
+func (s *KeyspacesService) Delete(ctx context.Context, req *ps.DeleteKeyspaceRequest) error {
+	s.DeleteFnInvoked = true
+	return s.DeleteFn(ctx, req)
 }
 
 func (s *KeyspacesService) Resize(ctx context.Context, req *ps.ResizeKeyspaceRequest) (*ps.KeyspaceResizeRequest, error) {

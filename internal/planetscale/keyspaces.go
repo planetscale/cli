@@ -70,6 +70,13 @@ type GetKeyspaceRequest struct {
 	Full         bool   `json:"-"`
 }
 
+type DeleteKeyspaceRequest struct {
+	Organization string `json:"-"`
+	Database     string `json:"-"`
+	Branch       string `json:"-"`
+	Keyspace     string `json:"-"`
+}
+
 type UpdateReadOnlyRegionsRequest struct {
 	Organization    string                          `json:"-"`
 	Database        string                          `json:"-"`
@@ -184,6 +191,7 @@ type KeyspacesService interface {
 	Create(context.Context, *CreateKeyspaceRequest) (*Keyspace, error)
 	List(context.Context, *ListKeyspacesRequest) ([]*Keyspace, error)
 	Get(context.Context, *GetKeyspaceRequest) (*Keyspace, error)
+	Delete(context.Context, *DeleteKeyspaceRequest) error
 	UpdateReadOnlyRegions(context.Context, *UpdateReadOnlyRegionsRequest) ([]*ReadOnlyRegionKeyspace, error)
 	VSchema(context.Context, *GetKeyspaceVSchemaRequest) (*VSchema, error)
 	UpdateVSchema(context.Context, *UpdateKeyspaceVSchemaRequest) (*VSchema, error)
@@ -268,6 +276,16 @@ func (s *keyspacesService) Create(ctx context.Context, createReq *CreateKeyspace
 	}
 
 	return keyspace, nil
+}
+
+// Delete deletes a keyspace from a branch.
+func (s *keyspacesService) Delete(ctx context.Context, deleteReq *DeleteKeyspaceRequest) error {
+	req, err := s.client.newRequest(http.MethodDelete, keyspaceAPIPath(deleteReq.Organization, deleteReq.Database, deleteReq.Branch, deleteReq.Keyspace), nil)
+	if err != nil {
+		return fmt.Errorf("error creating http request: %w", err)
+	}
+
+	return s.client.do(ctx, req, nil)
 }
 
 // VSchema returns the VSchema for a keyspace in a branch
