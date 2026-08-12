@@ -115,10 +115,6 @@ type tableConvertOptions struct {
 	omitForeignKeys bool
 }
 
-func convertTableDDL(table TableSchema, all []TableSchema, ctx *TypeCoercionContext) string {
-	return convertTableDDLWithOptions(table, all, ctx, tableConvertOptions{})
-}
-
 func convertTableDDLWithOptions(table TableSchema, all []TableSchema, ctx *TypeCoercionContext, opts tableConvertOptions) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "CREATE TABLE IF NOT EXISTS %s (\n", postgres.QuoteIdentifier(table.Name))

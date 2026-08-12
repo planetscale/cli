@@ -79,13 +79,9 @@ func convertTableConstraintWithOptions(clause string, table TableSchema, all []T
 	}
 }
 
-// convertNamedConstraint converts a `CONSTRAINT <name> <body>` clause by re-quoting the
+// convertNamedConstraintWithOptions converts a `CONSTRAINT <name> <body>` clause by re-quoting the
 // constraint name and running the body through the same conversion as unnamed constraints,
 // so named constraints get identical quoting/canonicalization fixes.
-func convertNamedConstraint(clause string, table TableSchema, all []TableSchema, ctx *TypeCoercionContext) string {
-	return convertNamedConstraintWithOptions(clause, table, all, ctx, tableConvertOptions{})
-}
-
 func convertNamedConstraintWithOptions(clause string, table TableSchema, all []TableSchema, ctx *TypeCoercionContext, opts tableConvertOptions) string {
 	rest := strings.TrimSpace(clause[len("CONSTRAINT"):])
 	name, body := parseColumnNameAndRest(rest)
@@ -465,11 +461,11 @@ func parseReferencesParts(refs string) (table, colList, tail string, ok bool) {
 // parseQualifiedTableRef parses table or schema.table from the start of s and returns the
 // table name only (schema stripped when present).
 //
-// - Bare schema.table is one token ('.' is not an identifier break); the segment after the
-//   last '.' is treated as the table name.
-// - Quoted/bracketed schema.table is two tokens joined by '.'; only the second token is kept.
-// - A single quoted/bracketed identifier that itself contains '.' (e.g. "my.table") is kept
-//   intact — the dot is part of the table name, not a schema separator.
+//   - Bare schema.table is one token ('.' is not an identifier break); the segment after the
+//     last '.' is treated as the table name.
+//   - Quoted/bracketed schema.table is two tokens joined by '.'; only the second token is kept.
+//   - A single quoted/bracketed identifier that itself contains '.' (e.g. "my.table") is kept
+//     intact — the dot is part of the table name, not a schema separator.
 func parseQualifiedTableRef(s string) (name, rest string) {
 	s = strings.TrimSpace(s)
 	if s == "" {
