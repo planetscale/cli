@@ -161,7 +161,7 @@ func TestByteaSignatureExprsUseHex(t *testing.T) {
 	col := ColumnSchema{Name: "payload", Type: "BLOB"}
 	table := TableSchema{Name: "attachments", Columns: []ColumnSchema{col}}
 
-	sqliteExpr := sqliteSignatureColumnExpr(col, table, nil)
+	sqliteExpr := sqliteSignatureColumnExpr(col, table, []TableSchema{table}, nil)
 	if !strings.Contains(sqliteExpr, "hex(") {
 		t.Fatalf("sqlite blob signature should use hex(), got %q", sqliteExpr)
 	}
@@ -169,6 +169,101 @@ func TestByteaSignatureExprsUseHex(t *testing.T) {
 	pgExpr := postgresSignatureColumnExpr(col, table, nil, nil)
 	if !strings.Contains(pgExpr, "encode(") || !strings.Contains(pgExpr, "'hex'") {
 		t.Fatalf("postgres bytea signature should use encode(..., 'hex'), got %q", pgExpr)
+	}
+}
+
+func TestSignatureColumnExprsUseResolvedCoercionType(t *testing.T) {
+	sql := `CREATE TABLE flags (
+  id INTEGER PRIMARY KEY,
+  active BOOL NOT NULL,
+  enabled INTEGER NOT NULL
+);
+INSERT INTO flags (id, active, enabled) VALUES (1, 1, 1), (2, 0, 0);
+`
+	path := writeDump(t, sql)
+	tables, err := ParseDump(path)
+	if err != nil {
+		t.Fatalf("ParseDump: %v", err)
+	}
+	coerceCtx, err := BuildTypeCoercionContext(path, tables)
+	if err != nil {
+		t.Fatalf("BuildTypeCoercionContext: %v", err)
+	}
+	table := tables[0]
+
+	active := columnByName(table, "active")
+	enabled := columnByName(table, "enabled")
+	if sqliteTypeToPostgres(active, table, tables, coerceCtx) != "BOOLEAN" {
+		t.Fatalf("expected native BOOL column to map to BOOLEAN")
+	}
+	if sqliteTypeToPostgres(enabled, table, tables, coerceCtx) != "BOOLEAN" {
+		t.Fatalf("expected 0/1 INTEGER column to map to BOOLEAN")
+	}
+
+	sqliteActive := sqliteSignatureColumnExpr(active, table, tables, coerceCtx)
+	pgActive := postgresSignatureColumnExpr(active, table, tables, coerceCtx)
+	if !strings.Contains(sqliteActive, "CASE WHEN") || !strings.Contains(pgActive, "IS TRUE") {
+		t.Fatalf("expected boolean coercion signatures for native BOOL column, got sqlite=%q postgres=%q", sqliteActive, pgActive)
+	}
+
+	sqliteEnabled := sqliteSignatureColumnExpr(enabled, table, tables, coerceCtx)
+	pgEnabled := postgresSignatureColumnExpr(enabled, table, tables, coerceCtx)
+	if !strings.Contains(sqliteEnabled, "CASE WHEN") || !strings.Contains(pgEnabled, "IS TRUE") {
+		t.Fatalf("expected boolean coercion signatures for coerced INTEGER column, got sqlite=%q postgres=%q", sqliteEnabled, pgEnabled)
+	}
+}
+
+func TestShouldFingerprintPKSumUsesResolvedType(t *testing.T) {
+	sql := `CREATE TABLE flags (
+  id INTEGER PRIMARY KEY,
+  enabled INTEGER NOT NULL
+);
+INSERT INTO flags (id, enabled) VALUES (1, 1), (2, 0);
+`
+	path := writeDump(t, sql)
+	tables, err := ParseDump(path)
+	if err != nil {
+		t.Fatalf("ParseDump: %v", err)
+	}
+	coerceCtx, err := BuildTypeCoercionContext(path, tables)
+	if err != nil {
+		t.Fatalf("BuildTypeCoercionContext: %v", err)
+	}
+	table := tables[0]
+
+	if !shouldFingerprintPKSum(table, "id", tables, coerceCtx) {
+		t.Fatal("expected integer primary key to participate in id_sum fingerprint")
+	}
+	if shouldFingerprintPKSum(table, "enabled", tables, coerceCtx) {
+		t.Fatal("expected boolean-coerced non-PK integer column to be excluded from id_sum fingerprint")
+	}
+}
+
+func TestVerifyBooleanColumnsTargetResolvedBooleanType(t *testing.T) {
+	sql := `CREATE TABLE counters (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  enabled INTEGER NOT NULL
+);
+INSERT INTO counters (id, enabled) VALUES (0, 1), (1, 0);
+`
+	path := writeDump(t, sql)
+	tables, err := ParseDump(path)
+	if err != nil {
+		t.Fatalf("ParseDump: %v", err)
+	}
+	coerceCtx, err := BuildTypeCoercionContext(path, tables)
+	if err != nil {
+		t.Fatalf("BuildTypeCoercionContext: %v", err)
+	}
+	table := tables[0]
+
+	idCol := columnByName(table, "id")
+	enabledCol := columnByName(table, "enabled")
+	if sqliteTypeToPostgres(idCol, table, tables, coerceCtx) == "BOOLEAN" {
+		t.Fatal("autoincrement id must not resolve to BOOLEAN")
+	}
+	if sqliteTypeToPostgres(enabledCol, table, tables, coerceCtx) != "BOOLEAN" {
+		t.Fatal("expected enabled column to resolve to BOOLEAN")
 	}
 }
 

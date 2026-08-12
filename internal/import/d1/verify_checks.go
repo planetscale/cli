@@ -193,7 +193,7 @@ func verifyBooleanColumns(ctx context.Context, db *sql.DB, sqlitePath string, ta
 			continue
 		}
 		for _, col := range table.Columns {
-			if !isBooleanLikeColumn(col, table, coerceCtx) {
+			if sqliteTypeToPostgres(col, table, tables, coerceCtx) != "BOOLEAN" {
 				continue
 			}
 			src, err := sqliteBooleanDistribution(ctx, sqlitePath, table.Name, col.Name)
@@ -362,8 +362,12 @@ func shouldFingerprintPKSum(table TableSchema, pkCol string, all []TableSchema, 
 	if isUUIDColumn(col, table, all, coerceCtx) {
 		return false
 	}
-	upper := strings.ToUpper(col.Type)
-	return col.AutoIncrement || strings.Contains(upper, "INT")
+	switch sqliteTypeToPostgres(col, table, all, coerceCtx) {
+	case "INTEGER", "BIGINT":
+		return true
+	default:
+		return false
+	}
 }
 
 func tableFingerprintFromSQLite(ctx context.Context, sqlitePath string, table TableSchema, pkCol string, all []TableSchema, coerceCtx *TypeCoercionContext) (tableFingerprint, error) {
@@ -444,7 +448,7 @@ func verifySampleRows(ctx context.Context, db *sql.DB, sqlitePath string, tables
 		checked++
 
 		for _, id := range ids {
-			src, err := sqliteRowSignature(ctx, sqlitePath, table, pkCol, id, coerceCtx)
+			src, err := sqliteRowSignature(ctx, sqlitePath, table, pkCol, id, tables, coerceCtx)
 			if err != nil {
 				return checks, false, err
 			}
@@ -494,21 +498,20 @@ func samplePrimaryKeys(ctx context.Context, sqlitePath, table, pkCol string, lim
 	return ids, nil
 }
 
-func sqliteSignatureColumnExpr(col ColumnSchema, table TableSchema, coerceCtx *TypeCoercionContext) string {
+func sqliteSignatureColumnExpr(col ColumnSchema, table TableSchema, all []TableSchema, coerceCtx *TypeCoercionContext) string {
 	name := quoteSQLiteIdentifier(col.Name)
-	if isBooleanLikeColumn(col, table, coerceCtx) {
-		return fmt.Sprintf(`CASE WHEN %s IN (1, '1') THEN '1' WHEN %s IN (0, '0') THEN '0' ELSE '' END`, name, name)
-	}
-	if isJSONText(col) && coerceCtx != nil && samplesAllowJSON(table.Name, col.Name, coerceCtx) {
-		return fmt.Sprintf(`COALESCE(json(%s), CAST(%s AS TEXT), '')`, name, name)
-	}
-	if isBlobColumn(col) {
-		return fmt.Sprintf(`COALESCE(hex(%s), '')`, name)
-	}
-	if isTimestampText(col) && coerceCtx != nil && samplesAllowTimestamp(table.Name, col.Name, coerceCtx) {
+	switch sqliteTypeToPostgres(col, table, all, coerceCtx) {
+	case "BOOLEAN":
+		return fmt.Sprintf(`CASE WHEN %s IN (1, '1', 'true', 'TRUE') THEN '1' WHEN %s IN (0, '0', 'false', 'FALSE') THEN '0' ELSE '' END`, name, name)
+	case "TIMESTAMPTZ":
 		return fmt.Sprintf(`COALESCE(strftime('%%Y-%%m-%%dT%%H:%%M:%%SZ', %s), COALESCE(CAST(%s AS TEXT), ''))`, name, name)
+	case "JSONB":
+		return fmt.Sprintf(`COALESCE(json(%s), CAST(%s AS TEXT), '')`, name, name)
+	case "BYTEA":
+		return fmt.Sprintf(`COALESCE(hex(%s), '')`, name)
+	default:
+		return fmt.Sprintf(`COALESCE(CAST(%s AS TEXT), '')`, name)
 	}
-	return fmt.Sprintf(`COALESCE(CAST(%s AS TEXT), '')`, name)
 }
 
 func postgresSignatureColumnExpr(col ColumnSchema, table TableSchema, all []TableSchema, coerceCtx *TypeCoercionContext) string {
@@ -656,10 +659,10 @@ func normalizeTimestamp(s string) string {
 	return s
 }
 
-func sqliteRowSignature(ctx context.Context, sqlitePath string, table TableSchema, pkCol, pkVal string, coerceCtx *TypeCoercionContext) (string, error) {
+func sqliteRowSignature(ctx context.Context, sqlitePath string, table TableSchema, pkCol, pkVal string, all []TableSchema, coerceCtx *TypeCoercionContext) (string, error) {
 	cols := make([]string, 0, len(table.Columns))
 	for _, col := range table.Columns {
-		cols = append(cols, sqliteSignatureColumnExpr(col, table, coerceCtx))
+		cols = append(cols, sqliteSignatureColumnExpr(col, table, all, coerceCtx))
 	}
 	query := fmt.Sprintf(
 		`SELECT %s FROM %q WHERE %q = %s LIMIT 1;`,
