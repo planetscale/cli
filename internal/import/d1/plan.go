@@ -168,23 +168,28 @@ func topologicalLoadOrder(tables []TableSchema) []string {
 }
 
 func parseFKReference(fk string) string {
-	if fk == "" {
+	return parseReferencedTableName(fk)
+}
+
+// parseReferencedTableName extracts the referenced table from a REFERENCES clause or
+// column/table FOREIGN KEY definition. SQLite resolves table names case-insensitively and
+// accepts bracket-, backtick-, and double-quoted identifiers.
+func parseReferencedTableName(refs string) string {
+	refs = strings.TrimSpace(refs)
+	if refs == "" {
 		return ""
 	}
-	idx := indexOfIgnoreCase(fk, "REFERENCES")
-	if idx < 0 {
+	if idx := indexOfIgnoreCase(refs, "REFERENCES"); idx >= 0 {
+		refs = strings.TrimSpace(refs[idx+len("REFERENCES"):])
+	}
+	name, _ := parseColumnNameAndRest(refs)
+	if name == "" {
 		return ""
 	}
-	rest := strings.TrimSpace(fk[idx+len("REFERENCES"):])
-	parts := strings.Fields(rest)
-	if len(parts) == 0 {
-		return ""
+	if dot := strings.LastIndex(name, "."); dot >= 0 {
+		name = name[dot+1:]
 	}
-	ref := strings.Trim(parts[0], "`\"'")
-	if paren := strings.Index(ref, "("); paren >= 0 {
-		ref = ref[:paren]
-	}
-	return ref
+	return name
 }
 
 var tableFKRe = regexp.MustCompile(`(?i)FOREIGN\s+KEY[^)]*\)\s*REFERENCES\s+(?:` + "`" + `([^` + "`" + `]+)` + "`" + `|"([^"]+)"|'([^']+)'|([a-zA-Z_][\w]*))`)

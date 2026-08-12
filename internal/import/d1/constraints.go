@@ -50,6 +50,10 @@ func referencesClause(colDef string) string {
 }
 
 func convertTableConstraint(clause string, table TableSchema, all []TableSchema, ctx *TypeCoercionContext) string {
+	return convertTableConstraintWithOptions(clause, table, all, ctx, tableConvertOptions{})
+}
+
+func convertTableConstraintWithOptions(clause string, table TableSchema, all []TableSchema, ctx *TypeCoercionContext, opts tableConvertOptions) string {
 	clause = strings.TrimSpace(clause)
 	clause = strings.TrimSuffix(clause, ",")
 	if clause == "" {
@@ -59,8 +63,11 @@ func convertTableConstraint(clause string, table TableSchema, all []TableSchema,
 	upper := strings.ToUpper(clause)
 	switch {
 	case strings.HasPrefix(upper, "CONSTRAINT "):
-		return convertNamedConstraint(clause, table, all, ctx)
+		return convertNamedConstraintWithOptions(clause, table, all, ctx, opts)
 	case strings.HasPrefix(upper, "FOREIGN KEY"):
+		if opts.omitForeignKeys {
+			return ""
+		}
 		return convertForeignKeyConstraint(clause, table, all)
 	case strings.HasPrefix(upper, "PRIMARY KEY"):
 		return convertPrimaryKeyConstraint(clause, table)
@@ -77,12 +84,16 @@ func convertTableConstraint(clause string, table TableSchema, all []TableSchema,
 // constraint name and running the body through the same conversion as unnamed constraints,
 // so named constraints get identical quoting/canonicalization fixes.
 func convertNamedConstraint(clause string, table TableSchema, all []TableSchema, ctx *TypeCoercionContext) string {
+	return convertNamedConstraintWithOptions(clause, table, all, ctx, tableConvertOptions{})
+}
+
+func convertNamedConstraintWithOptions(clause string, table TableSchema, all []TableSchema, ctx *TypeCoercionContext, opts tableConvertOptions) string {
 	rest := strings.TrimSpace(clause[len("CONSTRAINT"):])
 	name, body := parseColumnNameAndRest(rest)
 	if name == "" || body == "" {
 		return clause
 	}
-	converted := convertTableConstraint(body, table, all, ctx)
+	converted := convertTableConstraintWithOptions(body, table, all, ctx, opts)
 	if converted == "" {
 		return ""
 	}

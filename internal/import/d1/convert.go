@@ -105,16 +105,24 @@ func ConvertSchema(inputPath, outputPath string) (int, error) {
 	return converted, nil
 }
 
+type tableConvertOptions struct {
+	omitForeignKeys bool
+}
+
 func convertTableDDL(table TableSchema, all []TableSchema, ctx *TypeCoercionContext) string {
+	return convertTableDDLWithOptions(table, all, ctx, tableConvertOptions{})
+}
+
+func convertTableDDLWithOptions(table TableSchema, all []TableSchema, ctx *TypeCoercionContext, opts tableConvertOptions) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "CREATE TABLE IF NOT EXISTS %s (\n", postgres.QuoteIdentifier(table.Name))
 
 	var lines []string
 	for _, col := range table.Columns {
-		lines = append(lines, "  "+convertColumn(col, table, all, ctx))
+		lines = append(lines, "  "+convertColumnWithOptions(col, table, all, ctx, opts))
 	}
 	for _, constraint := range table.Constraints {
-		if converted := convertTableConstraint(constraint, table, all, ctx); converted != "" {
+		if converted := convertTableConstraintWithOptions(constraint, table, all, ctx, opts); converted != "" {
 			lines = append(lines, "  "+converted)
 		}
 	}
@@ -124,7 +132,81 @@ func convertTableDDL(table TableSchema, all []TableSchema, ctx *TypeCoercionCont
 	return b.String()
 }
 
+func buildDeferredForeignKeysSQL(tables []TableSchema, ctx *TypeCoercionContext) string {
+	tableByName := make(map[string]TableSchema, len(tables))
+	for _, table := range tables {
+		tableByName[table.Name] = table
+	}
+
+	var b strings.Builder
+	for _, name := range topologicalLoadOrder(tables) {
+		table, ok := tableByName[name]
+		if !ok || IsORMMetadataTable(table.Name) {
+			continue
+		}
+		for _, alter := range collectDeferredForeignKeyAlters(table, tables, ctx) {
+			b.WriteString(alter)
+		}
+	}
+	return b.String()
+}
+
+func collectDeferredForeignKeyAlters(table TableSchema, all []TableSchema, ctx *TypeCoercionContext) []string {
+	var alters []string
+	unnamed := 0
+	for _, col := range table.Columns {
+		if col.ForeignKey == "" {
+			continue
+		}
+		refs := convertReferencesClause(col.ForeignKey, all)
+		if refs == "" {
+			continue
+		}
+		fk := "FOREIGN KEY (" + postgres.QuoteIdentifier(col.Name) + ") " + refs
+		unnamed++
+		name := fmt.Sprintf("d1_fk_%s_%s", table.Name, col.Name)
+		alters = append(alters, formatForeignKeyAlter(table.Name, name, fk))
+	}
+	for _, constraint := range table.Constraints {
+		clause := strings.TrimSpace(constraint)
+		clause = strings.TrimSuffix(clause, ",")
+		upper := strings.ToUpper(clause)
+		switch {
+		case strings.HasPrefix(upper, "CONSTRAINT "):
+			cname, body := parseColumnNameAndRest(strings.TrimSpace(clause[len("CONSTRAINT"):]))
+			if cname == "" || !strings.HasPrefix(strings.ToUpper(strings.TrimSpace(body)), "FOREIGN KEY") {
+				continue
+			}
+			fk := convertForeignKeyConstraint(body, table, all)
+			if fk == "" {
+				continue
+			}
+			alters = append(alters, formatForeignKeyAlter(table.Name, cname, fk))
+		case strings.HasPrefix(upper, "FOREIGN KEY"):
+			fk := convertForeignKeyConstraint(clause, table, all)
+			if fk == "" {
+				continue
+			}
+			unnamed++
+			name := fmt.Sprintf("d1_fk_%s_%d", table.Name, unnamed)
+			alters = append(alters, formatForeignKeyAlter(table.Name, name, fk))
+		}
+	}
+	return alters
+}
+
+func formatForeignKeyAlter(tableName, constraintName, fkClause string) string {
+	return fmt.Sprintf("ALTER TABLE %s ADD CONSTRAINT %s %s;\n",
+		postgres.QuoteIdentifier(tableName),
+		postgres.QuoteIdentifier(constraintName),
+		fkClause)
+}
+
 func convertColumn(col ColumnSchema, table TableSchema, all []TableSchema, ctx *TypeCoercionContext) string {
+	return convertColumnWithOptions(col, table, all, ctx, tableConvertOptions{})
+}
+
+func convertColumnWithOptions(col ColumnSchema, table TableSchema, all []TableSchema, ctx *TypeCoercionContext, opts tableConvertOptions) string {
 	pgType := sqliteTypeToPostgres(col, table, all, ctx)
 
 	var parts []string
@@ -165,7 +247,7 @@ func convertColumn(col ColumnSchema, table TableSchema, all []TableSchema, ctx *
 		parts = append(parts, "CHECK ("+convertCheckExpr(check, table, ctx)+")")
 	}
 
-	if col.ForeignKey != "" {
+	if col.ForeignKey != "" && !opts.omitForeignKeys {
 		if refs := convertReferencesClause(col.ForeignKey, all); refs != "" {
 			parts = append(parts, refs)
 		}
