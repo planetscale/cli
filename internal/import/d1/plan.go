@@ -119,22 +119,24 @@ func defaultCastRules() []CastRule {
 
 func topologicalLoadOrder(tables []TableSchema) []string {
 	names := make([]string, 0, len(tables))
-	nameSet := make(map[string]bool)
+	canonicalName := make(map[string]string)
 	for _, t := range tables {
 		names = append(names, t.Name)
-		nameSet[t.Name] = true
+		canonicalName[strings.ToLower(t.Name)] = t.Name
 	}
 
 	deps := make(map[string][]string)
 	for _, t := range tables {
 		for _, col := range t.Columns {
-			if ref := parseFKReference(col.ForeignKey); ref != "" && nameSet[ref] && !slices.Contains(deps[t.Name], ref) {
-				deps[t.Name] = append(deps[t.Name], ref)
+			if ref := parseFKReference(col.ForeignKey); ref != "" {
+				if canon := canonicalName[strings.ToLower(ref)]; canon != "" && !slices.Contains(deps[t.Name], canon) {
+					deps[t.Name] = append(deps[t.Name], canon)
+				}
 			}
 		}
 		for _, ref := range parseTableFKReferences(t.RawDDL) {
-			if nameSet[ref] && !slices.Contains(deps[t.Name], ref) {
-				deps[t.Name] = append(deps[t.Name], ref)
+			if canon := canonicalName[strings.ToLower(ref)]; canon != "" && !slices.Contains(deps[t.Name], canon) {
+				deps[t.Name] = append(deps[t.Name], canon)
 			}
 		}
 	}
