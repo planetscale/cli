@@ -140,9 +140,31 @@ jobs:
             echo
             cat /tmp/gorelease-report.md
           } > /tmp/pr-body.md
-          pr_url=$(gh pr create \
+          gh pr create \
             --repo planetscale/planetscale-go \
             --head "$branch" \
             --title "Sync API client from cli@${source_sha}" \
-            --body-file /tmp/pr-body.md)
+            --body-file /tmp/pr-body.md
+
+      # Runs for both newly created sync PRs and re-runs where the branch
+      # already exists (e.g. create succeeded but enabling auto-merge failed).
+      - name: Enable auto-merge
+        if: steps.changes.outputs.changed == 'true'
+        working-directory: planetscale-go
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          branch="${{ steps.commit.outputs.branch }}"
+          pr_json=$(gh pr view --repo planetscale/planetscale-go "$branch" \
+            --json url,state,autoMergeRequest)
+          state=$(printf '%s' "$pr_json" | jq -r .state)
+          if [ "$state" != "OPEN" ]; then
+            echo "PR for $branch is $state; nothing to do"
+            exit 0
+          fi
+          if [ "$(printf '%s' "$pr_json" | jq -r '.autoMergeRequest != null')" = "true" ]; then
+            echo "Auto-merge already enabled for $branch"
+            exit 0
+          fi
+          pr_url=$(printf '%s' "$pr_json" | jq -r .url)
           gh pr merge --repo planetscale/planetscale-go --auto --merge "$pr_url"
