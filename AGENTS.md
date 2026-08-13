@@ -247,6 +247,29 @@ Caveats:
 - `outliers`/`calls` need `pg_stat_statements` on PostgreSQL; if missing, use `pscale insights queries` instead (no extension needed).
 - Rule of thumb: start with `insights` (traffic-aware, historical), use `inspect` for live state (locks, in-flight queries) and physical layout (sizes, bloat, index usage).
 
+## Vitess deploy requests (inspect + throttler)
+
+Core lifecycle is already covered (`list/create/show/diff/review/deploy/apply/edit/cancel/close/revert/skip-revert`). These inspect commands are read-only:
+
+```bash
+pscale deploy-request queue <database> --org <org> --format json                         # database deploy queue (first page)
+pscale deploy-request operations <database> <number> --org <org> --format json           # per-table schema ops + progress
+pscale deploy-request reviews <database> <number> --org <org> --format json              # existing reviews (create with review)
+pscale deploy-request deployment <database> <number> --org <org> --format json           # deployment detail (cutover flags, queue state)
+pscale deploy-request storage-check <database> <number> --org <org> --format json        # enough_storage / bytes needed
+pscale deploy-request throttler show <database> <number> --org <org> --format json       # per-DR throttler ratios (not database throttler)
+```
+
+Throttler update mutates the deploy request (use after `throttler show`):
+
+```bash
+pscale deploy-request throttler update <database> <number> --org <org> --format json --ratio 25
+pscale deploy-request throttler update <database> <number> --org <org> --format json \
+  --configuration main=10 --configuration sharded=40
+```
+
+Alias: `pscale dr …` works the same. Vitess only. `--ratio` is 0–95 (0 disables throttling; 95 is slowest). Use either `--ratio` or `--configuration keyspace=ratio`, not both.
+
 ## Postgres branch changes (size, replicas, parameters)
 
 `pscale branch resize` queues a single asynchronous **change request** for a Postgres branch covering cluster size, replica count, and configuration parameters in any combination. Track it with `resize status`; cancel it with `resize cancel` while queued.

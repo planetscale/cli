@@ -51,6 +51,24 @@ type DeployRequestsService struct {
 
 	GetDeployOperationsFn        func(context.Context, *ps.GetDeployOperationsRequest) ([]*ps.DeployOperation, error)
 	GetDeployOperationsFnInvoked bool
+
+	GetDeployQueueFn        func(context.Context, *ps.GetDeployQueueRequest) ([]*ps.Deployment, error)
+	GetDeployQueueFnInvoked bool
+
+	GetDeploymentFn        func(context.Context, *ps.GetDeploymentRequest) (*ps.Deployment, error)
+	GetDeploymentFnInvoked bool
+
+	ListReviewsFn        func(context.Context, *ps.ListDeployRequestReviewsRequest) ([]*ps.DeployRequestReview, error)
+	ListReviewsFnInvoked bool
+
+	CheckStorageFn        func(context.Context, *ps.CheckDeployRequestStorageRequest) (*ps.DeployRequestStorageCheck, error)
+	CheckStorageFnInvoked bool
+
+	GetThrottlerFn        func(context.Context, *ps.GetDeployRequestThrottlerRequest) (*ps.DeployRequestThrottler, error)
+	GetThrottlerFnInvoked bool
+
+	UpdateThrottlerFn        func(context.Context, *ps.UpdateDeployRequestThrottlerRequest) (*ps.DeployRequestThrottler, error)
+	UpdateThrottlerFnInvoked bool
 }
 
 func (d *DeployRequestsService) ApplyDeploy(ctx context.Context, req *ps.ApplyDeployRequestRequest) (*ps.DeployRequest, error) {
@@ -121,4 +139,34 @@ func (d *DeployRequestsService) SkipRevertDeploy(ctx context.Context, req *ps.Sk
 func (d *DeployRequestsService) GetDeployOperations(ctx context.Context, req *ps.GetDeployOperationsRequest) ([]*ps.DeployOperation, error) {
 	d.GetDeployOperationsFnInvoked = true
 	return d.GetDeployOperationsFn(ctx, req)
+}
+
+func (d *DeployRequestsService) GetDeployQueue(ctx context.Context, req *ps.GetDeployQueueRequest) ([]*ps.Deployment, error) {
+	d.GetDeployQueueFnInvoked = true
+	return d.GetDeployQueueFn(ctx, req)
+}
+
+func (d *DeployRequestsService) GetDeployment(ctx context.Context, req *ps.GetDeploymentRequest) (*ps.Deployment, error) {
+	d.GetDeploymentFnInvoked = true
+	return d.GetDeploymentFn(ctx, req)
+}
+
+func (d *DeployRequestsService) ListReviews(ctx context.Context, req *ps.ListDeployRequestReviewsRequest) ([]*ps.DeployRequestReview, error) {
+	d.ListReviewsFnInvoked = true
+	return d.ListReviewsFn(ctx, req)
+}
+
+func (d *DeployRequestsService) CheckStorage(ctx context.Context, req *ps.CheckDeployRequestStorageRequest) (*ps.DeployRequestStorageCheck, error) {
+	d.CheckStorageFnInvoked = true
+	return d.CheckStorageFn(ctx, req)
+}
+
+func (d *DeployRequestsService) GetThrottler(ctx context.Context, req *ps.GetDeployRequestThrottlerRequest) (*ps.DeployRequestThrottler, error) {
+	d.GetThrottlerFnInvoked = true
+	return d.GetThrottlerFn(ctx, req)
+}
+
+func (d *DeployRequestsService) UpdateThrottler(ctx context.Context, req *ps.UpdateDeployRequestThrottlerRequest) (*ps.DeployRequestThrottler, error) {
+	d.UpdateThrottlerFnInvoked = true
+	return d.UpdateThrottlerFn(ctx, req)
 }
