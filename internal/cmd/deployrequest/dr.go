@@ -32,6 +32,7 @@ func DeployRequestCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.AddCommand(DeploymentCmd(ch))
 	cmd.AddCommand(DiffCmd(ch))
 	cmd.AddCommand(EditCmd(ch))
+	cmd.AddCommand(ForceCutoverCmd(ch))
 	cmd.AddCommand(ListCmd(ch))
 	cmd.AddCommand(OperationsCmd(ch))
 	cmd.AddCommand(QueueCmd(ch))
