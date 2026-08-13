@@ -29,13 +29,19 @@ func DeployRequestCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.AddCommand(CloseCmd(ch))
 	cmd.AddCommand(CreateCmd(ch))
 	cmd.AddCommand(DeployCmd(ch))
+	cmd.AddCommand(DeploymentCmd(ch))
 	cmd.AddCommand(DiffCmd(ch))
 	cmd.AddCommand(EditCmd(ch))
 	cmd.AddCommand(ListCmd(ch))
+	cmd.AddCommand(OperationsCmd(ch))
+	cmd.AddCommand(QueueCmd(ch))
 	cmd.AddCommand(ReviewCmd(ch))
+	cmd.AddCommand(ReviewsCmd(ch))
 	cmd.AddCommand(ShowCmd(ch))
-	cmd.AddCommand(RevertCmd(ch))
 	cmd.AddCommand(SkipRevertCmd(ch))
+	cmd.AddCommand(StorageCheckCmd(ch))
+	cmd.AddCommand(ThrottlerCmd(ch))
+	cmd.AddCommand(RevertCmd(ch))
 
 	return cmd
 }

@@ -29,6 +29,12 @@ type DeployRequestsService interface {
 	Get(context.Context, *GetDeployRequestRequest) (*DeployRequest, error)
 	List(context.Context, *ListDeployRequestsRequest) ([]*DeployRequest, error)
 	GetDeployOperations(context.Context, *GetDeployOperationsRequest) ([]*DeployOperation, error)
+	GetDeployQueue(context.Context, *GetDeployQueueRequest) ([]*Deployment, error)
+	GetDeployment(context.Context, *GetDeploymentRequest) (*Deployment, error)
+	ListReviews(context.Context, *ListDeployRequestReviewsRequest) ([]*DeployRequestReview, error)
+	CheckStorage(context.Context, *CheckDeployRequestStorageRequest) (*DeployRequestStorageCheck, error)
+	GetThrottler(context.Context, *GetDeployRequestThrottlerRequest) (*DeployRequestThrottler, error)
+	UpdateThrottler(context.Context, *UpdateDeployRequestThrottlerRequest) (*DeployRequestThrottler, error)
 	SkipRevertDeploy(context.Context, *SkipRevertDeployRequestRequest) (*DeployRequest, error)
 	RevertDeploy(context.Context, *RevertDeployRequestRequest) (*DeployRequest, error)
 }
@@ -134,15 +140,110 @@ type Deployment struct {
 	InstantDDLEligible bool `json:"instant_ddl_eligible"`
 	InstantDDL         bool `json:"instant_ddl"`
 
+	AutoCutover         bool   `json:"auto_cutover"`
+	AutoDeleteBranch    bool   `json:"auto_delete_branch"`
+	CutoverExpiring     bool   `json:"cutover_expiring"`
+	TableLocked         bool   `json:"table_locked"`
+	QueuePaused         bool   `json:"queue_paused"`
+	ParallelLaneBlocked bool   `json:"parallel_lane_blocked"`
+	DeployCheckErrors   string `json:"deploy_check_errors"`
+	LockedTableName     string `json:"locked_table_name"`
+	QueuePauseReason    string `json:"queue_pause_reason"`
+	Strategy            string `json:"strategy"`
+
 	Actor          *Actor `json:"actor"`
 	CutoverActor   *Actor `json:"cutover_actor"`
 	CancelledActor *Actor `json:"cancelled_actor"`
 
-	CreatedAt  time.Time  `json:"created_at"`
-	UpdatedAt  time.Time  `json:"updated_at"`
-	StartedAt  *time.Time `json:"started_at"`
-	QueuedAt   *time.Time `json:"queued_at"`
-	FinishedAt *time.Time `json:"finished_at"`
+	CreatedAt               time.Time  `json:"created_at"`
+	UpdatedAt               time.Time  `json:"updated_at"`
+	StartedAt               *time.Time `json:"started_at"`
+	QueuedAt                *time.Time `json:"queued_at"`
+	FinishedAt              *time.Time `json:"finished_at"`
+	SubmittedAt             *time.Time `json:"submitted_at"`
+	CutoverAt               *time.Time `json:"cutover_at"`
+	ReadyToCutoverAt        *time.Time `json:"ready_to_cutover_at"`
+	ForceCutoverRequestedAt *time.Time `json:"force_cutover_requested_at"`
+	SchemaLastUpdatedAt     *time.Time `json:"schema_last_updated_at"`
+}
+
+// GetDeployQueueRequest gets the deploy queue for a database.
+type GetDeployQueueRequest struct {
+	Organization string `json:"-"`
+	Database     string `json:"-"`
+}
+
+// GetDeploymentRequest gets the deployment for a deploy request.
+type GetDeploymentRequest struct {
+	Organization string `json:"-"`
+	Database     string `json:"-"`
+	Number       uint64 `json:"-"`
+}
+
+// ListDeployRequestReviewsRequest lists reviews for a deploy request.
+type ListDeployRequestReviewsRequest struct {
+	Organization string `json:"-"`
+	Database     string `json:"-"`
+	Number       uint64 `json:"-"`
+}
+
+// CheckDeployRequestStorageRequest checks storage readiness for a deploy request.
+type CheckDeployRequestStorageRequest struct {
+	Organization string `json:"-"`
+	Database     string `json:"-"`
+	Number       uint64 `json:"-"`
+}
+
+// DeployRequestStorageCheck is the storage check response for a deploy request.
+type DeployRequestStorageCheck struct {
+	EnoughStorage      bool           `json:"enough_storage"`
+	Upgradeable        bool           `json:"upgradeable"`
+	StorageBytesNeeded int64          `json:"storage_bytes_needed"`
+	StorageReport      map[string]any `json:"storage_report"`
+}
+
+// GetDeployRequestThrottlerRequest gets throttler config for a deploy request.
+type GetDeployRequestThrottlerRequest struct {
+	Organization string `json:"-"`
+	Database     string `json:"-"`
+	Number       uint64 `json:"-"`
+}
+
+// UpdateDeployRequestThrottlerRequest updates throttler config for a deploy request.
+type UpdateDeployRequestThrottlerRequest struct {
+	Organization   string                          `json:"-"`
+	Database       string                          `json:"-"`
+	Number         uint64                          `json:"-"`
+	Ratio          *int                            `json:"ratio,omitempty"`
+	Configurations []*UpdateThrottlerConfiguration `json:"configurations,omitempty"`
+}
+
+// UpdateThrottlerConfiguration is a per-keyspace throttler ratio for updates.
+type UpdateThrottlerConfiguration struct {
+	KeyspaceName string `json:"keyspace_name"`
+	Ratio        int    `json:"ratio"`
+}
+
+// DeployRequestThrottler is the throttler configuration for a deploy request.
+type DeployRequestThrottler struct {
+	Keyspaces      []string                  `json:"keyspaces"`
+	Configurable   *ThrottlerConfigurable    `json:"configurable"`
+	Configurations []*ThrottlerConfiguration `json:"configurations"`
+}
+
+// ThrottlerConfigurable identifies the resource owning throttler config.
+type ThrottlerConfigurable struct {
+	ID        string     `json:"id"`
+	Name      string     `json:"name"`
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at"`
+	DeletedAt *time.Time `json:"deleted_at"`
+}
+
+// ThrottlerConfiguration is a per-keyspace throttler ratio.
+type ThrottlerConfiguration struct {
+	KeyspaceName string  `json:"keyspace_name"`
+	Ratio        float64 `json:"ratio"`
 }
 
 // DeployRequest encapsulates the request to deploy a database branch's schema
@@ -526,6 +627,99 @@ func (d *deployRequestsService) GetDeployOperations(ctx context.Context, getReq 
 	}
 
 	return resp.Ops, nil
+}
+
+type deployQueueResponse struct {
+	Deployments []*Deployment `json:"data"`
+}
+
+func (d *deployRequestsService) GetDeployQueue(ctx context.Context, getReq *GetDeployQueueRequest) ([]*Deployment, error) {
+	pathStr := path.Join(databasesAPIPath(getReq.Organization), getReq.Database, "deploy-queue")
+	req, err := d.client.newRequest(http.MethodGet, pathStr, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating http request: %w", err)
+	}
+
+	resp := &deployQueueResponse{}
+	if err := d.client.do(ctx, req, &resp); err != nil {
+		return nil, err
+	}
+
+	return resp.Deployments, nil
+}
+
+func (d *deployRequestsService) GetDeployment(ctx context.Context, getReq *GetDeploymentRequest) (*Deployment, error) {
+	req, err := d.client.newRequest(http.MethodGet, deployRequestActionAPIPath(getReq.Organization, getReq.Database, getReq.Number, "deployment"), nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating http request: %w", err)
+	}
+
+	deployment := &Deployment{}
+	if err := d.client.do(ctx, req, deployment); err != nil {
+		return nil, err
+	}
+
+	return deployment, nil
+}
+
+type deployRequestReviewsResponse struct {
+	Reviews []*DeployRequestReview `json:"data"`
+}
+
+func (d *deployRequestsService) ListReviews(ctx context.Context, listReq *ListDeployRequestReviewsRequest) ([]*DeployRequestReview, error) {
+	req, err := d.client.newRequest(http.MethodGet, deployRequestActionAPIPath(listReq.Organization, listReq.Database, listReq.Number, "reviews"), nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating http request: %w", err)
+	}
+
+	resp := &deployRequestReviewsResponse{}
+	if err := d.client.do(ctx, req, &resp); err != nil {
+		return nil, err
+	}
+
+	return resp.Reviews, nil
+}
+
+func (d *deployRequestsService) CheckStorage(ctx context.Context, checkReq *CheckDeployRequestStorageRequest) (*DeployRequestStorageCheck, error) {
+	req, err := d.client.newRequest(http.MethodGet, deployRequestActionAPIPath(checkReq.Organization, checkReq.Database, checkReq.Number, "storage-check"), nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating http request: %w", err)
+	}
+
+	check := &DeployRequestStorageCheck{}
+	if err := d.client.do(ctx, req, check); err != nil {
+		return nil, err
+	}
+
+	return check, nil
+}
+
+func (d *deployRequestsService) GetThrottler(ctx context.Context, getReq *GetDeployRequestThrottlerRequest) (*DeployRequestThrottler, error) {
+	req, err := d.client.newRequest(http.MethodGet, deployRequestActionAPIPath(getReq.Organization, getReq.Database, getReq.Number, "throttler"), nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating http request: %w", err)
+	}
+
+	throttler := &DeployRequestThrottler{}
+	if err := d.client.do(ctx, req, throttler); err != nil {
+		return nil, err
+	}
+
+	return throttler, nil
+}
+
+func (d *deployRequestsService) UpdateThrottler(ctx context.Context, updateReq *UpdateDeployRequestThrottlerRequest) (*DeployRequestThrottler, error) {
+	req, err := d.client.newRequest(http.MethodPatch, deployRequestActionAPIPath(updateReq.Organization, updateReq.Database, updateReq.Number, "throttler"), updateReq)
+	if err != nil {
+		return nil, fmt.Errorf("error creating http request: %w", err)
+	}
+
+	throttler := &DeployRequestThrottler{}
+	if err := d.client.do(ctx, req, throttler); err != nil {
+		return nil, err
+	}
+
+	return throttler, nil
 }
 
 func deployRequestsAPIPath(org, db string) string {

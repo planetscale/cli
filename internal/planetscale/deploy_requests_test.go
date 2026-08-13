@@ -579,3 +579,164 @@ func TestDeployRequests_DeployOperations(t *testing.T) {
 	c.Assert(err, qt.IsNil)
 	c.Assert(do, qt.DeepEquals, want)
 }
+
+func TestDeployRequests_GetDeployQueue(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodGet)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/test-organization/databases/test-database/deploy-queue")
+		w.WriteHeader(200)
+		_, err := w.Write([]byte(`{"type":"list","data":[{"id":"dep-1","deploy_request_number":7,"state":"queued","auto_cutover":true}]}`))
+		c.Assert(err, qt.IsNil)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	deployments, err := client.DeployRequests.GetDeployQueue(context.Background(), &GetDeployQueueRequest{
+		Organization: "test-organization",
+		Database:     "test-database",
+	})
+	c.Assert(err, qt.IsNil)
+	c.Assert(deployments, qt.HasLen, 1)
+	c.Assert(deployments[0].ID, qt.Equals, "dep-1")
+	c.Assert(deployments[0].DeployRequestNumber, qt.Equals, uint64(7))
+	c.Assert(deployments[0].AutoCutover, qt.IsTrue)
+}
+
+func TestDeployRequests_GetDeployment(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodGet)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/test-organization/databases/test-database/deploy-requests/42/deployment")
+		w.WriteHeader(200)
+		_, err := w.Write([]byte(`{"id":"dep-1","deploy_request_number":42,"state":"in_progress","auto_delete_branch":true}`))
+		c.Assert(err, qt.IsNil)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	deployment, err := client.DeployRequests.GetDeployment(context.Background(), &GetDeploymentRequest{
+		Organization: "test-organization",
+		Database:     "test-database",
+		Number:       42,
+	})
+	c.Assert(err, qt.IsNil)
+	c.Assert(deployment.ID, qt.Equals, "dep-1")
+	c.Assert(deployment.AutoDeleteBranch, qt.IsTrue)
+}
+
+func TestDeployRequests_ListReviews(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodGet)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/test-organization/databases/test-database/deploy-requests/42/reviews")
+		w.WriteHeader(200)
+		_, err := w.Write([]byte(`{"type":"list","data":[{"id":"rev-1","state":"approved","body":"lgtm","actor":{"display_name":"gomez"}}]}`))
+		c.Assert(err, qt.IsNil)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	reviews, err := client.DeployRequests.ListReviews(context.Background(), &ListDeployRequestReviewsRequest{
+		Organization: "test-organization",
+		Database:     "test-database",
+		Number:       42,
+	})
+	c.Assert(err, qt.IsNil)
+	c.Assert(reviews, qt.HasLen, 1)
+	c.Assert(reviews[0].ID, qt.Equals, "rev-1")
+	c.Assert(reviews[0].Actor.Name, qt.Equals, "gomez")
+}
+
+func TestDeployRequests_CheckStorage(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodGet)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/test-organization/databases/test-database/deploy-requests/42/storage-check")
+		w.WriteHeader(200)
+		_, err := w.Write([]byte(`{"enough_storage":true,"upgradeable":false,"storage_bytes_needed":0,"storage_report":{}}`))
+		c.Assert(err, qt.IsNil)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	check, err := client.DeployRequests.CheckStorage(context.Background(), &CheckDeployRequestStorageRequest{
+		Organization: "test-organization",
+		Database:     "test-database",
+		Number:       42,
+	})
+	c.Assert(err, qt.IsNil)
+	c.Assert(check.EnoughStorage, qt.IsTrue)
+	c.Assert(check.StorageBytesNeeded, qt.Equals, int64(0))
+}
+
+func TestDeployRequests_GetThrottler(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodGet)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/test-organization/databases/test-database/deploy-requests/42/throttler")
+		w.WriteHeader(200)
+		_, err := w.Write([]byte(`{"keyspaces":["main"],"configurable":{"id":"dr-1","name":"42"},"configurations":[{"keyspace_name":"main","ratio":50}]}`))
+		c.Assert(err, qt.IsNil)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	throttler, err := client.DeployRequests.GetThrottler(context.Background(), &GetDeployRequestThrottlerRequest{
+		Organization: "test-organization",
+		Database:     "test-database",
+		Number:       42,
+	})
+	c.Assert(err, qt.IsNil)
+	c.Assert(throttler.Keyspaces, qt.DeepEquals, []string{"main"})
+	c.Assert(throttler.Configurations, qt.HasLen, 1)
+	c.Assert(throttler.Configurations[0].Ratio, qt.Equals, float64(50))
+}
+
+func TestDeployRequests_UpdateThrottler(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodPatch)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/test-organization/databases/test-database/deploy-requests/42/throttler")
+
+		var body UpdateDeployRequestThrottlerRequest
+		c.Assert(json.NewDecoder(r.Body).Decode(&body), qt.IsNil)
+		c.Assert(body.Ratio, qt.IsNotNil)
+		c.Assert(*body.Ratio, qt.Equals, 25)
+		c.Assert(body.Configurations, qt.DeepEquals, []*UpdateThrottlerConfiguration{
+			{KeyspaceName: "main", Ratio: 10},
+		})
+
+		w.WriteHeader(200)
+		_, err := w.Write([]byte(`{"keyspaces":["main"],"configurations":[{"keyspace_name":"main","ratio":10}]}`))
+		c.Assert(err, qt.IsNil)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	ratio := 25
+	throttler, err := client.DeployRequests.UpdateThrottler(context.Background(), &UpdateDeployRequestThrottlerRequest{
+		Organization: "test-organization",
+		Database:     "test-database",
+		Number:       42,
+		Ratio:        &ratio,
+		Configurations: []*UpdateThrottlerConfiguration{
+			{KeyspaceName: "main", Ratio: 10},
+		},
+	})
+	c.Assert(err, qt.IsNil)
+	c.Assert(throttler.Configurations, qt.HasLen, 1)
+	c.Assert(throttler.Configurations[0].Ratio, qt.Equals, float64(10))
+}
