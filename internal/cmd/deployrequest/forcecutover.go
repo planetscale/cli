@@ -21,12 +21,15 @@ func ForceCutoverCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "force-cutover <database> <number>",
-		Short: "Force cutover for a deploy request stuck in the cutover phase",
-		Long: `Force cutover for a deploy request stuck in the cutover phase.
+		Short: "Force cutover when a migration is delayed by a table lock",
+		Long: `Force cutover when a deploy request is delayed waiting for a table lock.
 
-Use this when a deploy request is in in_progress_cutover and cannot finish because
-queries are holding metadata locks. Force cutover may terminate those blocking
-queries so the schema swap can complete.
+The final step of a migration requires a brief table lock. Long-running
+transactions can block that lock and delay completion. PlanetScale keeps
+retrying for up to 1 hour, then forces cutover automatically.
+
+Use this command to skip the wait: force cutover kills long-running
+transactions that are blocking the table lock so the migration can finish.
 
 Only allowed when the deployment state is in_progress_cutover.`,
 		Args: cmdutil.RequiredArgs("database", "number"),
@@ -55,7 +58,7 @@ Only allowed when the deployment state is in_progress_cutover.`,
 				}
 
 				prompt := &survey.Confirm{
-					Message: "Are you sure you want to force cutover? This may terminate queries blocking the schema swap.",
+					Message: "Force cutover now? This will kill long-running transactions that are blocking the table lock.",
 					Default: false,
 				}
 
@@ -90,7 +93,7 @@ Only allowed when the deployment state is in_progress_cutover.`,
 			}
 
 			if ch.Printer.Format() == printer.Human {
-				ch.Printer.Printf("Force cutover requested for deploy request %s/%s. Cutover should complete once blocking queries are terminated.\n",
+				ch.Printer.Printf("Successfully requested force cutover for deploy request %s/%s. Vitess will attempt again momentarily.\n",
 					printer.BoldBlue(database),
 					printer.BoldBlue(dr.Number))
 				return nil
@@ -100,7 +103,7 @@ Only allowed when the deployment state is in_progress_cutover.`,
 		},
 	}
 
-	cmd.Flags().BoolVar(&force, "force", false, "Force cutover without prompting for confirmation.")
+	cmd.Flags().BoolVar(&force, "force", false, "Skip the confirmation prompt and force cutover now.")
 
 	return cmd
 }
