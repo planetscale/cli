@@ -146,6 +146,72 @@ func TestVtctld_GetRoutingRules(t *testing.T) {
 	c.Assert(string(data), qt.Equals, `{"rules":[]}`)
 }
 
+func TestVtctld_GetKeyspaceRoutingRules(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodGet)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/my-db/branches/my-branch/vtctld/keyspace-routing-rules")
+
+		w.WriteHeader(200)
+		_, err := w.Write([]byte(`{"data":{"rules":[]}}`))
+		c.Assert(err, qt.IsNil)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	data, err := client.Vtctld.GetKeyspaceRoutingRules(context.Background(), &VtctldGetKeyspaceRoutingRulesRequest{
+		Organization: "my-org",
+		Database:     "my-db",
+		Branch:       "my-branch",
+	})
+	c.Assert(err, qt.IsNil)
+	c.Assert(string(data), qt.Equals, `{"rules":[]}`)
+}
+
+func TestVtctld_ApplyKeyspaceRoutingRules(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodPut)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/my-db/branches/my-branch/vtctld/keyspace-routing-rules")
+
+		var body VtctldApplyKeyspaceRoutingRulesRequest
+		err := json.NewDecoder(r.Body).Decode(&body)
+		c.Assert(err, qt.IsNil)
+		c.Assert(body.Rules, qt.DeepEquals, []VtctldKeyspaceRoutingRule{{
+			FromKeyspace: "source",
+			ToKeyspace:   "target",
+		}})
+		c.Assert(body.SkipRebuild, qt.IsTrue)
+		c.Assert(body.RebuildCells, qt.DeepEquals, []string{"zone1"})
+
+		w.WriteHeader(200)
+		_, err = w.Write([]byte(`{"data":{"rules":[{"from_keyspace":"source","to_keyspace":"target"}]}}`))
+		c.Assert(err, qt.IsNil)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	data, err := client.Vtctld.ApplyKeyspaceRoutingRules(context.Background(), &VtctldApplyKeyspaceRoutingRulesRequest{
+		Organization: "my-org",
+		Database:     "my-db",
+		Branch:       "my-branch",
+		Rules: []VtctldKeyspaceRoutingRule{{
+			FromKeyspace: "source",
+			ToKeyspace:   "target",
+		}},
+		SkipRebuild:  true,
+		RebuildCells: []string{"zone1"},
+	})
+	c.Assert(err, qt.IsNil)
+	c.Assert(string(data), qt.Equals, `{"rules":[{"from_keyspace":"source","to_keyspace":"target"}]}`)
+}
+
 func TestVtctld_GetShard(t *testing.T) {
 	c := qt.New(t)
 
