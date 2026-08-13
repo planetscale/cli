@@ -10,6 +10,9 @@ type DeployRequestsService struct {
 	ApplyFn        func(context.Context, *ps.ApplyDeployRequestRequest) (*ps.DeployRequest, error)
 	ApplyFnInvoked bool
 
+	ForceCutoverFn        func(context.Context, *ps.ForceCutoverDeployRequestRequest) (*ps.DeployRequest, error)
+	ForceCutoverFnInvoked bool
+
 	AutoApplyFn        func(context.Context, *ps.AutoApplyDeployRequestRequest) (*ps.DeployRequest, error)
 	AutoApplyFnInvoked bool
 
@@ -53,6 +56,11 @@ type DeployRequestsService struct {
 func (d *DeployRequestsService) ApplyDeploy(ctx context.Context, req *ps.ApplyDeployRequestRequest) (*ps.DeployRequest, error) {
 	d.ApplyFnInvoked = true
 	return d.ApplyFn(ctx, req)
+}
+
+func (d *DeployRequestsService) ForceCutover(ctx context.Context, req *ps.ForceCutoverDeployRequestRequest) (*ps.DeployRequest, error) {
+	d.ForceCutoverFnInvoked = true
+	return d.ForceCutoverFn(ctx, req)
 }
 
 func (d *DeployRequestsService) AutoApplyDeploy(ctx context.Context, req *ps.AutoApplyDeployRequestRequest) (*ps.DeployRequest, error) {
