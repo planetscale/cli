@@ -26,6 +26,7 @@ type DeployRequestsService interface {
 	CreateReview(context.Context, *ReviewDeployRequestRequest) (*DeployRequestReview, error)
 	Deploy(context.Context, *PerformDeployRequest) (*DeployRequest, error)
 	Diff(ctx context.Context, diffReq *DiffRequest) ([]*Diff, error)
+	ForceCutover(context.Context, *ForceCutoverDeployRequestRequest) (*DeployRequest, error)
 	Get(context.Context, *GetDeployRequestRequest) (*DeployRequest, error)
 	List(context.Context, *ListDeployRequestsRequest) ([]*DeployRequest, error)
 	GetDeployOperations(context.Context, *GetDeployOperationsRequest) ([]*DeployOperation, error)
@@ -138,11 +139,12 @@ type Deployment struct {
 	CutoverActor   *Actor `json:"cutover_actor"`
 	CancelledActor *Actor `json:"cancelled_actor"`
 
-	CreatedAt  time.Time  `json:"created_at"`
-	UpdatedAt  time.Time  `json:"updated_at"`
-	StartedAt  *time.Time `json:"started_at"`
-	QueuedAt   *time.Time `json:"queued_at"`
-	FinishedAt *time.Time `json:"finished_at"`
+	CreatedAt               time.Time  `json:"created_at"`
+	UpdatedAt               time.Time  `json:"updated_at"`
+	StartedAt               *time.Time `json:"started_at"`
+	QueuedAt                *time.Time `json:"queued_at"`
+	FinishedAt              *time.Time `json:"finished_at"`
+	ForceCutoverRequestedAt *time.Time `json:"force_cutover_requested_at"`
 }
 
 // DeployRequest encapsulates the request to deploy a database branch's schema
@@ -177,6 +179,12 @@ type DeployRequest struct {
 }
 
 type ApplyDeployRequestRequest struct {
+	Organization string `json:"-"`
+	Database     string `json:"-"`
+	Number       uint64 `json:"-"`
+}
+
+type ForceCutoverDeployRequestRequest struct {
 	Organization string `json:"-"`
 	Database     string `json:"-"`
 	Number       uint64 `json:"-"`
@@ -354,6 +362,22 @@ func (d *deployRequestsService) CancelDeploy(ctx context.Context, deployReq *Can
 func (d *deployRequestsService) ApplyDeploy(ctx context.Context, applyReq *ApplyDeployRequestRequest) (*DeployRequest, error) {
 	path := deployRequestActionAPIPath(applyReq.Organization, applyReq.Database, applyReq.Number, "apply-deploy")
 	req, err := d.client.newRequest(http.MethodPost, path, applyReq)
+	if err != nil {
+		return nil, fmt.Errorf("error creating http request: %w", err)
+	}
+
+	drr := &DeployRequest{}
+	if err := d.client.do(ctx, req, &drr); err != nil {
+		return nil, err
+	}
+
+	return drr, nil
+}
+
+// ForceCutover requests a force cutover for a deploy request stuck in the cutover phase.
+func (d *deployRequestsService) ForceCutover(ctx context.Context, forceReq *ForceCutoverDeployRequestRequest) (*DeployRequest, error) {
+	path := deployRequestActionAPIPath(forceReq.Organization, forceReq.Database, forceReq.Number, "force-cutover")
+	req, err := d.client.newRequest(http.MethodPost, path, forceReq)
 	if err != nil {
 		return nil, fmt.Errorf("error creating http request: %w", err)
 	}
