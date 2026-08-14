@@ -61,6 +61,7 @@ type Client struct {
 	DeployRequests        DeployRequestsService
 	Keyspaces             KeyspacesService
 	LookupVindex          LookupVindexService
+	MaintenanceSchedules  MaintenanceSchedulesService
 	Materialize           MaterializeService
 	MoveTables            MoveTablesService
 	Organizations         OrganizationsService
@@ -334,6 +335,7 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 	c.DeployRequests = &deployRequestsService{client: c}
 	c.Keyspaces = &keyspacesService{client: c}
 	c.LookupVindex = &lookupVindexService{client: c}
+	c.MaintenanceSchedules = &maintenanceSchedulesService{client: c}
 	c.Materialize = &materializeService{client: c}
 	c.MoveTables = &moveTablesService{client: c}
 	c.Organizations = &organizationsService{client: c}

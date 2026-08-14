@@ -48,6 +48,7 @@ import (
 	"github.com/planetscale/cli/internal/cmd/insights"
 	"github.com/planetscale/cli/internal/cmd/inspect"
 	"github.com/planetscale/cli/internal/cmd/keyspace"
+	"github.com/planetscale/cli/internal/cmd/maintenance"
 	"github.com/planetscale/cli/internal/cmd/org"
 	"github.com/planetscale/cli/internal/cmd/password"
 	"github.com/planetscale/cli/internal/cmd/pgbouncer"
@@ -358,6 +359,10 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 	keyspaceCmd := keyspace.KeyspaceCmd(ch)
 	keyspaceCmd.GroupID = "vitess"
 	rootCmd.AddCommand(keyspaceCmd)
+
+	maintenanceCmd := maintenance.MaintenanceCmd(ch)
+	maintenanceCmd.GroupID = "vitess"
+	rootCmd.AddCommand(maintenanceCmd)
 
 	passwordCmd := password.PasswordCmd(ch)
 	passwordCmd.GroupID = "vitess"
