@@ -138,6 +138,14 @@ func TestFormatDay(t *testing.T) {
 	c.Assert(formatDay(99), qt.Equals, "99")
 }
 
+func TestFormatWeek(t *testing.T) {
+	c := qt.New(t)
+	c.Assert(formatWeek(0, "month"), qt.Equals, "first")
+	c.Assert(formatWeek(3, "month"), qt.Equals, "fourth")
+	c.Assert(formatWeek(9, "month"), qt.Equals, "9")
+	c.Assert(formatWeek(0, "week"), qt.Equals, "-")
+}
+
 func TestFormatFrequency(t *testing.T) {
 	c := qt.New(t)
 	c.Assert(formatFrequency(1, "week"), qt.Equals, "week")

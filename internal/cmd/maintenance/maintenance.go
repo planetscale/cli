@@ -40,6 +40,7 @@ type MaintenanceSchedule struct {
 	Required             bool   `header:"required" json:"required"`
 	Frequency            string `header:"frequency" json:"frequency"`
 	Day                  string `header:"day" json:"day"`
+	Week                 string `header:"week" json:"week"`
 	HourUTC              int    `header:"hour_utc" json:"hour_utc"`
 	DurationHours        int    `header:"duration_hours" json:"duration_hours"`
 	NextWindow           int64  `header:"next_window,timestamp(ms|utc|human)" json:"next_window"`
@@ -70,6 +71,7 @@ func toMaintenanceSchedule(schedule *ps.MaintenanceSchedule) *MaintenanceSchedul
 		Required:      schedule.Required,
 		Frequency:     formatFrequency(schedule.FrequencyValue, schedule.FrequencyUnit),
 		Day:           formatDay(schedule.Day),
+		Week:          formatWeek(schedule.Week, schedule.FrequencyUnit),
 		HourUTC:       schedule.Hour,
 		DurationHours: schedule.Duration,
 		NextWindow:    printer.GetMilliseconds(schedule.NextWindowDatetime),
@@ -131,5 +133,23 @@ func formatDay(day int) string {
 		return "every day"
 	default:
 		return fmt.Sprintf("%d", day)
+	}
+}
+
+func formatWeek(week int, frequencyUnit string) string {
+	if frequencyUnit != "month" {
+		return "-"
+	}
+	switch week {
+	case 0:
+		return "first"
+	case 1:
+		return "second"
+	case 2:
+		return "third"
+	case 3:
+		return "fourth"
+	default:
+		return fmt.Sprintf("%d", week)
 	}
 }
