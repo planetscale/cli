@@ -270,6 +270,18 @@ pscale deploy-request throttler update <database> <number> --org <org> --format 
 
 Alias: `pscale dr …` works the same. Vitess only. `--ratio` is 0–95 (0 disables throttling; 95 is slowest). Use either `--ratio` or `--configuration keyspace=ratio`, not both.
 
+## Maintenance schedules (Vitess Enterprise)
+
+Read-only visibility into planned maintenance windows for a Vitess database (Enterprise plans):
+
+```bash
+pscale maintenance list <database> --org <org> --format json
+pscale maintenance show <database> <schedule-id> --org <org> --format json
+pscale maintenance windows <database> <schedule-id> --org <org> --format json
+```
+
+`--org` is required. Schedules include next/last window times, frequency, and any pending Vitess/MySQL version updates. Vitess Enterprise only.
+
 ## Postgres branch changes (size, replicas, parameters)
 
 `pscale branch resize` queues a single asynchronous **change request** for a Postgres branch covering cluster size, replica count, and configuration parameters in any combination. Track it with `resize status`; cancel it with `resize cancel` while queued.
