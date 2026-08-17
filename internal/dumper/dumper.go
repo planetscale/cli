@@ -361,10 +361,12 @@ func (d *Dumper) dumpTable(ctx context.Context, conn *Connection, database strin
 	}
 
 	// Close before the success log so a stream/network error is not preceded by "done".
-	if err = cursor.Close(); err != nil {
+	cerr := cursor.Close()
+	closed = true
+	if cerr != nil {
+		err = cerr
 		return err
 	}
-	closed = true
 
 	d.log.Info(
 		"dumping table done...",
