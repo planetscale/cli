@@ -299,7 +299,11 @@ func (d *Dumper) dumpTable(ctx context.Context, conn *Connection, database strin
 	}
 	// Always close the stream so pooled connections are not left mid-result-set.
 	// Preserve the primary error; only surface Close failures when the dump otherwise succeeded.
+	closed := false
 	defer func() {
+		if closed {
+			return
+		}
 		if cerr := cursor.Close(); cerr != nil && err == nil {
 			err = cerr
 		}
@@ -355,6 +359,12 @@ func (d *Dumper) dumpTable(ctx context.Context, conn *Connection, database strin
 	if err = writer.Close(d.cfg.Outdir, database, table, fileNo); err != nil {
 		return err
 	}
+
+	// Close before the success log so a stream/network error is not preceded by "done".
+	if err = cursor.Close(); err != nil {
+		return err
+	}
+	closed = true
 
 	d.log.Info(
 		"dumping table done...",
