@@ -98,18 +98,32 @@ func renderTable(w io.Writer, columns []string, rows []map[string]any) {
 	fmt.Fprint(w, border.String())
 }
 
+// writeTableRow writes one logical row. A cell with embedded newlines spreads
+// the row over multiple physical lines, padding every column on every line so
+// the grid stays closed.
 func writeTableRow(w io.Writer, cells []string, widths []int) {
+	lines := make([][]string, len(cells))
+	height := 1
 	for i, cell := range cells {
-		// Pad relative to the last line so single-line cells align and
-		// multi-line cells still close their border cleanly.
-		lines := strings.Split(cell, "\n")
-		pad := widths[i] - utf8.RuneCountInString(lines[len(lines)-1])
-		if pad < 0 {
-			pad = 0
+		lines[i] = strings.Split(cell, "\n")
+		if len(lines[i]) > height {
+			height = len(lines[i])
 		}
-		fmt.Fprintf(w, "| %s%s ", cell, strings.Repeat(" ", pad))
 	}
-	fmt.Fprint(w, "|\n")
+	for line := 0; line < height; line++ {
+		for i := range cells {
+			var s string
+			if line < len(lines[i]) {
+				s = lines[i][line]
+			}
+			pad := widths[i] - utf8.RuneCountInString(s)
+			if pad < 0 {
+				pad = 0
+			}
+			fmt.Fprintf(w, "| %s%s ", s, strings.Repeat(" ", pad))
+		}
+		fmt.Fprint(w, "|\n")
+	}
 }
 
 // renderVertical writes rows in the mysql \G style: one column per line,

@@ -68,22 +68,47 @@ func TestRenderTableMultiLineValue(t *testing.T) {
 	var b bytes.Buffer
 	renderTable(&b, columns, rows)
 
-	got := b.String()
-	if !strings.Contains(got, "aaaa:1-5,\nbb:1-2") {
-		t.Fatalf("multi-line value must be printed verbatim:\n%s", got)
+	want := strings.Join([]string{
+		"+-----------+",
+		"| gtid      |",
+		"+-----------+",
+		"| aaaa:1-5, |",
+		"| bb:1-2    |",
+		"+-----------+",
+		"",
+	}, "\n")
+	if b.String() != want {
+		t.Fatalf("renderTable output:\n%s\nwant:\n%s", b.String(), want)
 	}
-	// The column is sized to the longest line, not the whole value, and the
-	// row's final line still closes its border.
-	lines := strings.Split(strings.TrimRight(got, "\n"), "\n")
-	border := lines[0]
-	if border != "+-----------+" {
-		t.Fatalf("border = %q, want width of longest line", border)
+}
+
+func TestRenderTableMultiLineValueKeepsLaterColumnsAligned(t *testing.T) {
+	columns := []string{"id", "gtid", "host"}
+	rows := []map[string]any{
+		{"id": int64(1), "gtid": "a:1-5,\nb:1-2", "host": "h1"},
 	}
-	if lines[len(lines)-1] != border {
-		t.Fatalf("table must end with border, got %q", lines[len(lines)-1])
+
+	var b bytes.Buffer
+	renderTable(&b, columns, rows)
+
+	want := strings.Join([]string{
+		"+----+--------+------+",
+		"| id | gtid   | host |",
+		"+----+--------+------+",
+		"| 1  | a:1-5, | h1   |",
+		"|    | b:1-2  |      |",
+		"+----+--------+------+",
+		"",
+	}, "\n")
+	if b.String() != want {
+		t.Fatalf("renderTable output:\n%s\nwant:\n%s", b.String(), want)
 	}
-	if !strings.HasSuffix(lines[len(lines)-2], "|") {
-		t.Fatalf("last row line must close its border, got %q", lines[len(lines)-2])
+
+	// Every physical line must open and close its border.
+	for i, line := range strings.Split(strings.TrimRight(b.String(), "\n"), "\n") {
+		if !strings.HasPrefix(line, "+") && (!strings.HasPrefix(line, "| ") || !strings.HasSuffix(line, "|")) {
+			t.Fatalf("line %d does not close its border: %q", i+1, line)
+		}
 	}
 }
 
