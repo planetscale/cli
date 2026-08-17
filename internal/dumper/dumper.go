@@ -198,9 +198,9 @@ func (d *Dumper) Run(ctx context.Context) error {
 					zap.Int("thread_conn_id", conn.ID),
 				)
 
-				err := d.dumpTable(ctx, conn, database, table)
-				if err != nil {
+				if err := d.dumpTable(ctx, conn, database, table); err != nil {
 					d.log.Error("error dumping table", zap.Error(err))
+					return err
 				}
 
 				return nil
@@ -297,7 +297,6 @@ func (d *Dumper) dumpTable(ctx context.Context, conn *Connection, database strin
 	if err != nil {
 		return err
 	}
-	defer cursor.Close()
 
 	var allBytes uint64
 	var allRows uint64
@@ -343,6 +342,11 @@ func (d *Dumper) dumpTable(ctx context.Context, conn *Connection, database strin
 	}
 
 	if err := writer.Close(d.cfg.Outdir, database, table, fileNo); err != nil {
+		_ = cursor.Close()
+		return err
+	}
+
+	if err := cursor.Close(); err != nil {
 		return err
 	}
 
