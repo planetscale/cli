@@ -580,3 +580,64 @@ func TestDatabases_UpdateSettings(t *testing.T) {
 	c.Assert(db.RequireApprovalForDeploy, qt.IsTrue)
 	c.Assert(db.InsightsRawQueries, qt.IsFalse)
 }
+
+func TestDatabases_GetThrottler(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodGet)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/planetscale-go-test-db/throttler")
+		w.WriteHeader(200)
+		_, err := w.Write([]byte(`{"keyspaces":["main"],"configurable":{"id":"db-1","name":"planetscale-go-test-db"},"configurations":[{"keyspace_name":"main","ratio":50}]}`))
+		c.Assert(err, qt.IsNil)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	throttler, err := client.Databases.GetThrottler(context.Background(), &GetDatabaseThrottlerRequest{
+		Organization: testOrg,
+		Database:     testDatabase,
+	})
+	c.Assert(err, qt.IsNil)
+	c.Assert(throttler.Keyspaces, qt.DeepEquals, []string{"main"})
+	c.Assert(throttler.Configurations, qt.HasLen, 1)
+	c.Assert(throttler.Configurations[0].Ratio, qt.Equals, float64(50))
+}
+
+func TestDatabases_UpdateThrottler(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodPatch)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/planetscale-go-test-db/throttler")
+
+		var body UpdateDatabaseThrottlerRequest
+		c.Assert(json.NewDecoder(r.Body).Decode(&body), qt.IsNil)
+		c.Assert(body.Ratio, qt.IsNotNil)
+		c.Assert(*body.Ratio, qt.Equals, 25)
+		c.Assert(body.Configurations, qt.DeepEquals, []*UpdateThrottlerConfiguration{
+			{KeyspaceName: "main", Ratio: 10},
+		})
+
+		w.WriteHeader(200)
+		_, err := w.Write([]byte(`{"keyspaces":["main"],"configurations":[{"keyspace_name":"main","ratio":10}]}`))
+		c.Assert(err, qt.IsNil)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	ratio := 25
+	throttler, err := client.Databases.UpdateThrottler(context.Background(), &UpdateDatabaseThrottlerRequest{
+		Organization: testOrg,
+		Database:     testDatabase,
+		Ratio:        &ratio,
+		Configurations: []*UpdateThrottlerConfiguration{
+			{KeyspaceName: "main", Ratio: 10},
+		},
+	})
+	c.Assert(err, qt.IsNil)
+	c.Assert(throttler.Configurations, qt.HasLen, 1)
+	c.Assert(throttler.Configurations[0].Ratio, qt.Equals, float64(10))
+}

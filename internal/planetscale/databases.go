@@ -74,6 +74,29 @@ type UpdateDatabaseSettingsRequest struct {
 	DefaultBranch              *string `json:"default_branch,omitempty"`
 }
 
+// GetDatabaseThrottlerRequest gets the database-level Vitess migration throttler.
+type GetDatabaseThrottlerRequest struct {
+	Organization string `json:"-"`
+	Database     string `json:"-"`
+}
+
+// UpdateDatabaseThrottlerRequest updates the database-level Vitess migration throttler.
+type UpdateDatabaseThrottlerRequest struct {
+	Organization   string                          `json:"-"`
+	Database       string                          `json:"-"`
+	Ratio          *int                            `json:"ratio,omitempty"`
+	Configurations []*UpdateThrottlerConfiguration `json:"configurations,omitempty"`
+}
+
+// DatabaseThrottler is the database-level throttler configuration for Vitess
+// deploy request migrations. Distinct from per-deploy-request throttler and
+// from tablet/vtctld throttler.
+type DatabaseThrottler struct {
+	Keyspaces      []string                  `json:"keyspaces"`
+	Configurable   *ThrottlerConfigurable    `json:"configurable"`
+	Configurations []*ThrottlerConfiguration `json:"configurations"`
+}
+
 // DatabaseService is an interface for communicating with the PlanetScale
 // Databases API endpoint.
 type DatabasesService interface {
@@ -82,6 +105,8 @@ type DatabasesService interface {
 	List(context.Context, *ListDatabasesRequest, ...ListOption) ([]*Database, error)
 	Delete(context.Context, *DeleteDatabaseRequest) (*DatabaseDeletionRequest, error)
 	UpdateSettings(context.Context, *UpdateDatabaseSettingsRequest) (*Database, error)
+	GetThrottler(context.Context, *GetDatabaseThrottlerRequest) (*DatabaseThrottler, error)
+	UpdateThrottler(context.Context, *UpdateDatabaseThrottlerRequest) (*DatabaseThrottler, error)
 }
 
 // DatabaseDeletionRequest encapsulates the request for deleting a database from
@@ -229,6 +254,36 @@ func (ds *databasesService) UpdateSettings(ctx context.Context, updateReq *Updat
 	}
 
 	return db, nil
+}
+
+func (ds *databasesService) GetThrottler(ctx context.Context, getReq *GetDatabaseThrottlerRequest) (*DatabaseThrottler, error) {
+	pathStr := path.Join(databasesAPIPath(getReq.Organization), getReq.Database, "throttler")
+	req, err := ds.client.newRequest(http.MethodGet, pathStr, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request for get database throttler: %w", err)
+	}
+
+	throttler := &DatabaseThrottler{}
+	if err := ds.client.do(ctx, req, throttler); err != nil {
+		return nil, err
+	}
+
+	return throttler, nil
+}
+
+func (ds *databasesService) UpdateThrottler(ctx context.Context, updateReq *UpdateDatabaseThrottlerRequest) (*DatabaseThrottler, error) {
+	pathStr := path.Join(databasesAPIPath(updateReq.Organization), updateReq.Database, "throttler")
+	req, err := ds.client.newRequest(http.MethodPatch, pathStr, updateReq)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request for update database throttler: %w", err)
+	}
+
+	throttler := &DatabaseThrottler{}
+	if err := ds.client.do(ctx, req, throttler); err != nil {
+		return nil, err
+	}
+
+	return throttler, nil
 }
 
 func databasesAPIPath(org string) string {
