@@ -21,6 +21,12 @@ type DatabaseService struct {
 
 	UpdateSettingsFn        func(context.Context, *ps.UpdateDatabaseSettingsRequest) (*ps.Database, error)
 	UpdateSettingsFnInvoked bool
+
+	GetThrottlerFn        func(context.Context, *ps.GetDatabaseThrottlerRequest) (*ps.DatabaseThrottler, error)
+	GetThrottlerFnInvoked bool
+
+	UpdateThrottlerFn        func(context.Context, *ps.UpdateDatabaseThrottlerRequest) (*ps.DatabaseThrottler, error)
+	UpdateThrottlerFnInvoked bool
 }
 
 func (d *DatabaseService) Create(ctx context.Context, req *ps.CreateDatabaseRequest) (*ps.Database, error) {
@@ -46,4 +52,14 @@ func (d *DatabaseService) Delete(ctx context.Context, req *ps.DeleteDatabaseRequ
 func (d *DatabaseService) UpdateSettings(ctx context.Context, req *ps.UpdateDatabaseSettingsRequest) (*ps.Database, error) {
 	d.UpdateSettingsFnInvoked = true
 	return d.UpdateSettingsFn(ctx, req)
+}
+
+func (d *DatabaseService) GetThrottler(ctx context.Context, req *ps.GetDatabaseThrottlerRequest) (*ps.DatabaseThrottler, error) {
+	d.GetThrottlerFnInvoked = true
+	return d.GetThrottlerFn(ctx, req)
+}
+
+func (d *DatabaseService) UpdateThrottler(ctx context.Context, req *ps.UpdateDatabaseThrottlerRequest) (*ps.DatabaseThrottler, error) {
+	d.UpdateThrottlerFnInvoked = true
+	return d.UpdateThrottlerFn(ctx, req)
 }

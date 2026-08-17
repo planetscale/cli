@@ -247,6 +247,19 @@ Caveats:
 - `outliers`/`calls` need `pg_stat_statements` on PostgreSQL; if missing, use `pscale insights queries` instead (no extension needed).
 - Rule of thumb: start with `insights` (traffic-aware, historical), use `inspect` for live state (locks, in-flight queries) and physical layout (sizes, bloat, index usage).
 
+## Vitess database throttler
+
+Database-level default for future deploy request migrations (not per-DR, not tablet/vtctld):
+
+```bash
+pscale database throttler show <database> --org <org> --format json
+pscale database throttler update <database> --org <org> --format json --ratio 25
+pscale database throttler update <database> --org <org> --format json \
+  --configuration main=10 --configuration sharded=40
+```
+
+`--ratio` is 0–95 (0 disables throttling; 95 is slowest). Use either `--ratio` or `--configuration keyspace=ratio`, not both. Vitess only.
+
 ## Vitess deploy requests (inspect + throttler)
 
 Core lifecycle is already covered (`list/create/show/diff/review/deploy/apply/edit/cancel/close/revert/skip-revert`). These inspect commands are read-only:
