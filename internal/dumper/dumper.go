@@ -272,7 +272,7 @@ func (d *Dumper) dumpTableSchema(conn *Connection, database string, table string
 }
 
 // Dump a table in the configured output format
-func (d *Dumper) dumpTable(ctx context.Context, conn *Connection, database string, table string) error {
+func (d *Dumper) dumpTable(ctx context.Context, conn *Connection, database string, table string) (err error) {
 	var writer TableWriter
 
 	switch d.cfg.OutputFormat {
@@ -297,23 +297,33 @@ func (d *Dumper) dumpTable(ctx context.Context, conn *Connection, database strin
 	if err != nil {
 		return err
 	}
+	// Always close the stream so pooled connections are not left mid-result-set.
+	// Preserve the primary error; only surface Close failures when the dump otherwise succeeded.
+	defer func() {
+		if cerr := cursor.Close(); cerr != nil && err == nil {
+			err = cerr
+		}
+	}()
 
 	var allBytes uint64
 	var allRows uint64
 	fileNo := 1
 	for cursor.Next() {
-		row, err := cursor.RowValues()
-		if err != nil {
+		row, rowErr := cursor.RowValues()
+		if rowErr != nil {
+			err = rowErr
 			return err
 		}
 
 		// Allows for quicker exit when using Ctrl+C at the Terminal:
 		if ctx.Err() != nil {
-			return ctx.Err()
+			err = ctx.Err()
+			return err
 		}
 
-		bytesAdded, err := writer.WriteRow(row)
-		if err != nil {
+		bytesAdded, writeErr := writer.WriteRow(row)
+		if writeErr != nil {
+			err = writeErr
 			return err
 		}
 
@@ -323,7 +333,8 @@ func (d *Dumper) dumpTable(ctx context.Context, conn *Connection, database strin
 		atomic.AddUint64(&d.cfg.Allrows, 1)
 
 		if writer.ShouldFlush() {
-			if err := writer.Flush(d.cfg.Outdir, database, table, fileNo); err != nil {
+			if flushErr := writer.Flush(d.cfg.Outdir, database, table, fileNo); flushErr != nil {
+				err = flushErr
 				return err
 			}
 
@@ -341,12 +352,7 @@ func (d *Dumper) dumpTable(ctx context.Context, conn *Connection, database strin
 		}
 	}
 
-	if err := writer.Close(d.cfg.Outdir, database, table, fileNo); err != nil {
-		_ = cursor.Close()
-		return err
-	}
-
-	if err := cursor.Close(); err != nil {
+	if err = writer.Close(d.cfg.Outdir, database, table, fileNo); err != nil {
 		return err
 	}
 

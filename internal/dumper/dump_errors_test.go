@@ -16,9 +16,11 @@ import (
 )
 
 type errCloseRows struct {
-	row      []sqltypes.Value
-	rowSent  bool
-	closeErr error
+	row         []sqltypes.Value
+	rowSent     bool
+	closeErr    error
+	rowValuesErr error
+	closeCalled bool
 }
 
 func (r *errCloseRows) Next() bool {
@@ -30,6 +32,7 @@ func (r *errCloseRows) Next() bool {
 }
 
 func (r *errCloseRows) Close() error {
+	r.closeCalled = true
 	return r.closeErr
 }
 
@@ -46,6 +49,9 @@ func (r *errCloseRows) LastError() error { return nil }
 func (r *errCloseRows) Fields() []*querypb.Field { return nil }
 
 func (r *errCloseRows) RowValues() ([]sqltypes.Value, error) {
+	if r.rowValuesErr != nil {
+		return nil, r.rowValuesErr
+	}
 	return r.row, nil
 }
 
@@ -133,6 +139,52 @@ func TestDumpTableReportsCursorCloseError(t *testing.T) {
 
 	err := d.dumpTable(context.Background(), conn, "test", "t1")
 	c.Assert(err, qt.ErrorIs, closeErr)
+}
+
+func TestDumpTableClosesCursorOnRowValuesError(t *testing.T) {
+	c := qt.New(t)
+
+	rowErr := errors.New("row decode failed")
+	fieldsResult := &sqltypes.Result{
+		Fields: []*querypb.Field{
+			{Name: "Field", Type: querypb.Type_VARCHAR},
+			{Name: "Type", Type: querypb.Type_VARCHAR},
+			{Name: "Null", Type: querypb.Type_VARCHAR},
+			{Name: "Key", Type: querypb.Type_VARCHAR},
+			{Name: "Default", Type: querypb.Type_VARCHAR},
+			{Name: "Extra", Type: querypb.Type_VARCHAR},
+		},
+		Rows: [][]sqltypes.Value{
+			testRow("id", ""),
+		},
+	}
+
+	rows := &errCloseRows{
+		rowValuesErr: rowErr,
+		closeErr:     errors.New("should not mask row error"),
+	}
+
+	conn := &Connection{
+		ID: 0,
+		client: &fakeConn{
+			fieldsResult: fieldsResult,
+			streamRows:   rows,
+		},
+	}
+
+	cfg := NewDefaultConfig()
+	cfg.Outdir = c.TempDir()
+	cfg.ChunksizeInMB = 128
+	cfg.StmtSize = 1000000
+
+	d := &Dumper{
+		cfg: cfg,
+		log: cmdutil.NewZapLogger(false),
+	}
+
+	err := d.dumpTable(context.Background(), conn, "test", "t1")
+	c.Assert(err, qt.ErrorIs, rowErr)
+	c.Assert(rows.closeCalled, qt.IsTrue)
 }
 
 func TestRunReturnsDumpError(t *testing.T) {
