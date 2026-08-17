@@ -16,11 +16,11 @@ import (
 )
 
 type errCloseRows struct {
-	row         []sqltypes.Value
-	rowSent     bool
-	closeErr    error
+	row          []sqltypes.Value
+	rowSent      bool
+	closeErr     error
 	rowValuesErr error
-	closeCalled bool
+	closeCalled  bool
 }
 
 func (r *errCloseRows) Next() bool {
