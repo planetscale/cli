@@ -67,6 +67,10 @@ func printSeriesSummary(ch *cmdutil.Helper, database, branch string, response *p
 	ch.Printer.Printf("Range: %s · interval: %ds · up to %d points/series\n\n",
 		formatMetricRange(response.StartDate, response.EndDate), response.Interval, maxPoints)
 
+	return ch.Printer.PrintResource(seriesSummaryRows(response))
+}
+
+func seriesSummaryRows(response *ps.MetricSeries) []*seriesSummaryRow {
 	rows := make([]*seriesSummaryRow, 0, len(response.Series))
 	for _, series := range response.Series {
 		values := pointValues(series.Points)
@@ -96,8 +100,7 @@ func printSeriesSummary(ch *cmdutil.Helper, database, branch string, response *p
 			Trend:      sparkline(values, 12),
 		})
 	}
-
-	return ch.Printer.PrintResource(rows)
+	return rows
 }
 
 func metricPointRows(response *ps.MetricSeries) []*metricPointCSVRow {

@@ -25,6 +25,7 @@ or current value for use in scripts and analysis tools.`,
 
 	cmd.AddCommand(ShowCmd(ch))
 	cmd.AddCommand(InstantCmd(ch))
+	cmd.AddCommand(ReportCmd(ch))
 
 	return cmd
 }
