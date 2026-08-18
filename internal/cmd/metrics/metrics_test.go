@@ -134,6 +134,9 @@ func TestHumanMetricFormatting(t *testing.T) {
 		{metric: "latency_p99", value: 18.2, want: "18.2 ms"},
 		{metric: "planetscale_volume_usage_percentage", value: 71.4, want: "71.4%"},
 		{metric: "planetscale_primary_storage_usage", value: 1073741824, want: "1.0 GiB"},
+		{metric: "planetscale_edge_bytes_received", value: 10485760, want: "10 MiB"},
+		{metric: "planetscale_edge_bytes_received_rate", value: 10485760, want: "10 MiB/s"},
+		{metric: "planetscale_edge_bytes_sent_rate", value: 1536, want: "1.5 KiB/s"},
 		{metric: "block_cache_hit_ratio", value: 99.2, want: "99.2%"},
 		{metric: "vtgate_cpu_by_az", value: 42.3, want: "42.3%"},
 	}
@@ -147,6 +150,20 @@ func TestHumanMetricFormatting(t *testing.T) {
 	c.Assert(formatNumber(123.456789), qt.Equals, "123.5")
 	c.Assert(formatNumber(12.3456789), qt.Equals, "12.35")
 	c.Assert(formatNumber(0.00123456789), qt.Equals, "0.001235")
+}
+
+func TestSeriesSummaryRowsFormatsByteRates(t *testing.T) {
+	c := qt.New(t)
+	response := sampleSeries()
+	response.Series[0].Metric = "planetscale_edge_bytes_received_rate"
+	response.Series[0].Points = [][]float64{{1787068800, 10485760}}
+
+	rows := seriesSummaryRows(response)
+	c.Assert(rows, qt.HasLen, 1)
+	c.Assert(rows[0].Latest, qt.Equals, "10 MiB/s")
+	c.Assert(rows[0].Min, qt.Equals, "10 MiB/s")
+	c.Assert(rows[0].Avg, qt.Equals, "10 MiB/s")
+	c.Assert(rows[0].Max, qt.Equals, "10 MiB/s")
 }
 
 func sampleInstantMetrics() *ps.InstantMetrics {

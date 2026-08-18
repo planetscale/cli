@@ -297,6 +297,7 @@ type unit int
 const (
 	unitNumber unit = iota
 	unitBytes
+	unitBytesPerSecond
 	unitPercent
 	unitMilliseconds
 	unitSeconds
@@ -304,6 +305,9 @@ const (
 
 func metricUnit(metric string) unit {
 	lower := strings.ToLower(metric)
+	if strings.Contains(lower, "bytes") && strings.HasSuffix(lower, "_rate") {
+		return unitBytesPerSecond
+	}
 	if strings.Contains(lower, "bytes") || lower == "storage_per_table" || lower == "shard_storage_usage" || lower == "shard_storage_available" || lower == "planetscale_primary_storage_usage" {
 		return unitBytes
 	}
@@ -324,6 +328,10 @@ func formatMetricValue(metric string, value float64) string {
 	case unitBytes:
 		if value >= 0 {
 			return humanize.IBytes(uint64(math.Round(value)))
+		}
+	case unitBytesPerSecond:
+		if value >= 0 {
+			return humanize.IBytes(uint64(math.Round(value))) + "/s"
 		}
 	case unitPercent:
 		return formatSignificant(value, 4) + "%"
