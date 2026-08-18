@@ -216,6 +216,20 @@ Error: one JSON object on stdout with `status: "error"`, `error`, `issues`, and 
 
 Destructive SQL without `--force`: `status: "action_required"`, `query_kind: "destructive"`, `issues`, and `next_steps` (includes `--force` retry command).
 
+## Metrics
+
+Query historical or current branch metrics through the public metrics API:
+
+```bash
+pscale metrics show <database> <branch> --org <org> --format json --metric queries --metric latency_p99 --period 1h
+pscale metrics instant <database> <branch> --org <org> --format json --metric planetscale_volume_usage_percentage
+```
+
+- `--metric` is required and may be repeated or comma-separated.
+- Historical queries support `--period`, or a custom `--from`/`--to` ISO 8601 range, plus `--steps` and dimension filters such as `--tablet-type`, `--keyspace`, `--shard`, `--role`, `--pod`, and `--pods`.
+- JSON preserves the API response: historical results contain `start_date`, `end_date`, `interval`, and `series`; each series contains `metric`, `label`, `labels`, and `[Unix timestamp, value]` points. Instant results contain current values grouped by their dimensions.
+- Human output summarizes each historical series with latest/min/average/max values and a sparkline. CSV flattens historical samples or instant values to one row each.
+
 ## Diagnostics: insights + inspect
 
 Two complementary read-only surfaces. When diagnosing database health or performance, **check both** — they see different things.

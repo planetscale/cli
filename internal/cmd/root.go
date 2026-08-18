@@ -49,6 +49,7 @@ import (
 	"github.com/planetscale/cli/internal/cmd/inspect"
 	"github.com/planetscale/cli/internal/cmd/keyspace"
 	"github.com/planetscale/cli/internal/cmd/maintenance"
+	"github.com/planetscale/cli/internal/cmd/metrics"
 	"github.com/planetscale/cli/internal/cmd/org"
 	"github.com/planetscale/cli/internal/cmd/password"
 	"github.com/planetscale/cli/internal/cmd/pgbouncer"
@@ -338,6 +339,10 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 	inspectCmd := inspect.InspectCmd(ch)
 	inspectCmd.GroupID = "database"
 	rootCmd.AddCommand(inspectCmd)
+
+	metricsCmd := metrics.MetricsCmd(ch)
+	metricsCmd.GroupID = "database"
+	rootCmd.AddCommand(metricsCmd)
 
 	webhookCmd := webhook.WebhookCmd(ch)
 	webhookCmd.GroupID = "database"

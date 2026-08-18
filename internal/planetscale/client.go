@@ -63,6 +63,7 @@ type Client struct {
 	LookupVindex          LookupVindexService
 	MaintenanceSchedules  MaintenanceSchedulesService
 	Materialize           MaterializeService
+	Metrics               MetricsService
 	MoveTables            MoveTablesService
 	Organizations         OrganizationsService
 	Passwords             PasswordsService
@@ -337,6 +338,7 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 	c.LookupVindex = &lookupVindexService{client: c}
 	c.MaintenanceSchedules = &maintenanceSchedulesService{client: c}
 	c.Materialize = &materializeService{client: c}
+	c.Metrics = &metricsService{client: c}
 	c.MoveTables = &moveTablesService{client: c}
 	c.Organizations = &organizationsService{client: c}
 	c.Passwords = &passwordsService{client: c}
