@@ -292,7 +292,7 @@ Vitess only. See https://planetscale.com/docs/vitess/schema-changes/aggressive-c
 
 ## Vitess deploy requests (inspect + throttler)
 
-Core lifecycle is already covered (`list/create/show/diff/review/deploy/apply/edit/cancel/close/revert/skip-revert`). These inspect commands are read-only:
+Core lifecycle is already covered (`list/create/show/diff/review/deploy/apply/unblock/edit/cancel/close/revert/skip-revert`). `unblock` clears the queue after a failed deploy or revert (dashboard “Unblock deploy queue”); it is not `apply`. These inspect commands are read-only:
 
 ```bash
 pscale deploy-request queue <database> --org <org> --format json                         # database deploy queue (first page)
@@ -312,6 +312,12 @@ pscale deploy-request throttler update <database> <number> --org <org> --format 
 ```
 
 Alias: `pscale dr …` works the same. Vitess only. `--ratio` is 0–95 (0 disables throttling; 95 is slowest). Use either `--ratio` or `--configuration keyspace=ratio`, not both.
+
+After a failed deploy or revert (`complete_error` / `complete_revert_error`), unblock the queue. This is not `apply` (gated cutover) and it cannot fix a deploy-check `error`:
+
+```bash
+pscale deploy-request unblock <database> <number> --org <org> --format json
+```
 
 ## Maintenance schedules (Vitess Enterprise)
 
