@@ -38,6 +38,7 @@ type DeployRequestsService interface {
 	UpdateThrottler(context.Context, *UpdateDeployRequestThrottlerRequest) (*DeployRequestThrottler, error)
 	SkipRevertDeploy(context.Context, *SkipRevertDeployRequestRequest) (*DeployRequest, error)
 	RevertDeploy(context.Context, *RevertDeployRequestRequest) (*DeployRequest, error)
+	UnblockDeploy(context.Context, *UnblockDeployRequestRequest) (*DeployRequest, error)
 }
 
 // DeployRequestReview posts a review to a deploy request.
@@ -290,6 +291,14 @@ type ForceCutoverDeployRequestRequest struct {
 	Number       uint64 `json:"-"`
 }
 
+// UnblockDeployRequestRequest unblocks the deploy queue after a failed deploy
+// or revert (complete_error / complete_revert_error).
+type UnblockDeployRequestRequest struct {
+	Organization string `json:"-"`
+	Database     string `json:"-"`
+	Number       uint64 `json:"-"`
+}
+
 type AutoApplyDeployRequestRequest struct {
 	Organization string `json:"-"`
 	Database     string `json:"-"`
@@ -478,6 +487,22 @@ func (d *deployRequestsService) ApplyDeploy(ctx context.Context, applyReq *Apply
 func (d *deployRequestsService) ForceCutover(ctx context.Context, forceReq *ForceCutoverDeployRequestRequest) (*DeployRequest, error) {
 	path := deployRequestActionAPIPath(forceReq.Organization, forceReq.Database, forceReq.Number, "force-cutover")
 	req, err := d.client.newRequest(http.MethodPost, path, forceReq)
+	if err != nil {
+		return nil, fmt.Errorf("error creating http request: %w", err)
+	}
+
+	drr := &DeployRequest{}
+	if err := d.client.do(ctx, req, &drr); err != nil {
+		return nil, err
+	}
+
+	return drr, nil
+}
+
+// UnblockDeploy marks a failed deploy or revert complete so the queue can proceed.
+func (d *deployRequestsService) UnblockDeploy(ctx context.Context, unblockReq *UnblockDeployRequestRequest) (*DeployRequest, error) {
+	path := deployRequestActionAPIPath(unblockReq.Organization, unblockReq.Database, unblockReq.Number, "complete-deploy")
+	req, err := d.client.newRequest(http.MethodPost, path, unblockReq)
 	if err != nil {
 		return nil, fmt.Errorf("error creating http request: %w", err)
 	}

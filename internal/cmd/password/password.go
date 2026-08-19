@@ -1,12 +1,16 @@
 package password
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"strings"
 	"time"
 
 	"github.com/lensesio/tableprinter"
 	"github.com/planetscale/cli/internal/cmdutil"
+	"github.com/planetscale/cli/internal/printer"
 	"github.com/spf13/cobra"
 
 	ps "github.com/planetscale/cli/internal/planetscale"
@@ -16,8 +20,8 @@ import (
 func PasswordCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "password <command>",
-		Short:             "Create, list, and delete branch passwords",
-		Long:              "Create, list, and delete branch passwords.\n\nThis command is only supported for Vitess databases.",
+		Short:             "Create, list, update, and delete branch passwords",
+		Long:              "Create, list, update, and delete branch passwords.\n\nThis command is only supported for Vitess databases.",
 		PersistentPreRunE: cmdutil.CheckAuthentication(ch.Config),
 	}
 
@@ -26,10 +30,65 @@ func PasswordCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	cmd.AddCommand(CreateCmd(ch))
 	cmd.AddCommand(ListCmd(ch))
+	cmd.AddCommand(ShowCmd(ch))
+	cmd.AddCommand(UpdateCmd(ch))
 	cmd.AddCommand(DeleteCmd(ch))
 	cmd.AddCommand(RenewCmd(ch))
 
 	return cmd
+}
+
+// resolvePasswordID resolves the password ID for commands that accept either a
+// password ID argument or a --name flag. Exactly one of id or name must be set.
+func resolvePasswordID(ctx context.Context, ch *cmdutil.Helper, client *ps.Client, database, branch, id, name string) (string, error) {
+	if name == "" {
+		return id, nil
+	}
+
+	end := ch.Printer.PrintProgress(fmt.Sprintf("Finding password %s in %s/%s",
+		printer.BoldBlue(name), printer.BoldBlue(database), printer.BoldBlue(branch)))
+	defer end()
+
+	perPage := 100
+	for page := 1; ; page++ {
+		passwords, err := client.Passwords.List(ctx, &ps.ListDatabaseBranchPasswordRequest{
+			Organization: ch.Config.Organization,
+			Database:     database,
+			Branch:       branch,
+		}, ps.WithPage(page), ps.WithPerPage(perPage))
+		if err != nil {
+			switch cmdutil.ErrCode(err) {
+			case ps.ErrNotFound:
+				return "", fmt.Errorf("branch %s does not exist in database %s (organization: %s)",
+					printer.BoldBlue(branch), printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
+			default:
+				return "", cmdutil.HandleError(err)
+			}
+		}
+
+		for _, password := range passwords {
+			if password.Name == name {
+				return password.PublicID, nil
+			}
+		}
+
+		if len(passwords) < perPage {
+			return "", fmt.Errorf("password with name %s does not exist in branch %s of %s (organization: %s)",
+				printer.BoldBlue(name), printer.BoldBlue(branch), printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
+		}
+	}
+}
+
+// passwordSelector validates the password-id argument and --name flag pair used
+// by show, update, and delete.
+func passwordSelector(args []string, name string) error {
+	if name != "" && len(args) == 3 {
+		return errors.New("cannot specify both password-id argument and --name flag")
+	}
+	if name == "" && len(args) != 3 {
+		return errors.New("must provide either password-id argument or --name flag")
+	}
+	return nil
 }
 
 type Passwords []*Password
