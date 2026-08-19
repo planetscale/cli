@@ -3,6 +3,7 @@ package planetscale
 import (
 	"context"
 	"net/http"
+	"net/url"
 	"path"
 	"time"
 )
@@ -71,6 +72,9 @@ type ListTrafficBudgetsRequest struct {
 	Organization string `json:"-"`
 	Database     string `json:"-"`
 	Branch       string `json:"-"`
+	// Fingerprint, when set, returns only budgets with a rule for that query
+	// fingerprint.
+	Fingerprint string `json:"-"`
 }
 
 // GetTrafficBudgetRequest is the request for getting a traffic budget.
@@ -144,7 +148,14 @@ func NewTrafficBudgetsService(client *Client) *trafficBudgetsService {
 }
 
 func (s *trafficBudgetsService) List(ctx context.Context, listReq *ListTrafficBudgetsRequest) ([]*TrafficBudget, error) {
-	req, err := s.client.newRequest(http.MethodGet, trafficBudgetsAPIPath(listReq.Organization, listReq.Database, listReq.Branch), nil)
+	var opts []RequestOption
+	if listReq.Fingerprint != "" {
+		v := url.Values{}
+		v.Add("fingerprint", listReq.Fingerprint)
+		opts = append(opts, WithQueryParams(v))
+	}
+
+	req, err := s.client.newRequest(http.MethodGet, trafficBudgetsAPIPath(listReq.Organization, listReq.Database, listReq.Branch), nil, opts...)
 	if err != nil {
 		return nil, err
 	}

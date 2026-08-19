@@ -10,6 +10,33 @@ import (
 	qt "github.com/frankban/quicktest"
 )
 
+func TestTrafficBudgets_ListWithFingerprint(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodGet)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/planetscale-go-test-db/branches/planetscale-go-test-db-branch/traffic/budgets")
+		c.Assert(r.URL.Query().Get("fingerprint"), qt.Equals, "abc123")
+
+		w.WriteHeader(200)
+		_, err := w.Write([]byte(`{"data":[]}`))
+		c.Assert(err, qt.IsNil)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	budgets, err := client.TrafficBudgets.List(context.Background(), &ListTrafficBudgetsRequest{
+		Organization: testOrg,
+		Database:     testDatabase,
+		Branch:       testBranch,
+		Fingerprint:  "abc123",
+	})
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(budgets, qt.HasLen, 0)
+}
+
 func TestTrafficBudgets_List(t *testing.T) {
 	c := qt.New(t)
 

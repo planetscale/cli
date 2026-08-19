@@ -29,6 +29,7 @@ func TrafficCmd(ch *cmdutil.Helper) *cobra.Command {
 		Short: "Manage traffic budgets",
 	}
 	budgetCmd.AddCommand(
+		BudgetListCmd(ch),
 		BudgetShowCmd(ch),
 		BudgetCreateCmd(ch),
 		BudgetUpdateCmd(ch),
@@ -85,6 +86,14 @@ func toTrafficBudget(b *ps.TrafficBudget) *TrafficBudget {
 		UpdatedAt:        printer.GetMilliseconds(b.UpdatedAt),
 		orig:             b,
 	}
+}
+
+func toTrafficBudgets(budgets []*ps.TrafficBudget) []*TrafficBudget {
+	out := make([]*TrafficBudget, 0, len(budgets))
+	for _, b := range budgets {
+		out = append(out, toTrafficBudget(b))
+	}
+	return out
 }
 
 type TrafficRuleDisplay struct {
