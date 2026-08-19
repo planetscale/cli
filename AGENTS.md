@@ -292,7 +292,7 @@ Vitess only. See https://planetscale.com/docs/vitess/schema-changes/aggressive-c
 
 ## Vitess deploy requests (inspect + throttler)
 
-Core lifecycle is already covered (`list/create/show/diff/review/deploy/apply/update/cancel/close/revert/skip-revert`). `update` (`edit` is an alias) sets auto-apply and auto-delete-branch. These inspect commands are read-only:
+Core lifecycle is already covered (`list/create/show/diff/review/deploy/apply/unblock/update/cancel/close/revert/skip-revert`). `update` (`edit` is an alias) sets auto-apply and auto-delete-branch. `unblock` clears the queue after a failed deploy or revert (dashboard “Unblock deploy queue”); it is not `apply`. These inspect commands are read-only:
 
 ```bash
 pscale deploy-request queue <database> --org <org> --format json                         # database deploy queue (first page)
@@ -318,6 +318,13 @@ pscale deploy-request update <database> <number> --org <org> --format json --ena
 pscale deploy-request update <database> <number> --org <org> --format json --auto-delete-branch=false
 ```
 
+After a failed deploy or revert (`complete_error` / `complete_revert_error`), unblock the queue. This is not `apply` (gated cutover) and it cannot fix a deploy-check `error`:
+
+```bash
+pscale deploy-request unblock <database> <number> --org <org> --format json
+```
+
+
 ## Maintenance schedules (Vitess Enterprise)
 
 Read-only visibility into planned maintenance windows for a Vitess database (Enterprise plans):
@@ -338,6 +345,9 @@ pscale maintenance windows <database> <schedule-id> --org <org> --format json
 # Read the parameter catalog first (names, current/default values, restart/immutable flags)
 pscale branch parameters list <database> <branch> --org <org> --format json
 pscale branch parameters list <database> <branch> --org <org> --format json --namespace pgconf
+
+# Extensions available on the cluster image (not CREATE EXTENSION state)
+pscale branch extensions list <database> <branch> --org <org> --format json
 
 # Change parameters (repeat --parameters; keys are namespace.name)
 pscale branch resize <database> <branch> --org <org> --format json --parameters pgconf.max_connections=200
@@ -360,6 +370,24 @@ pscale branch resize cancel <database> <branch> --org <org> --format json
 - A no-op (branch already matches the requested configuration) prints `{"result": "no_change", "branch": "<branch>"}` in JSON mode instead of a change request.
 - `resize cancel` prints `{"result": "canceled", "branch": "<branch>"}` in JSON mode.
 - MySQL databases are rejected: use `pscale keyspace resize` for Vitess keyspaces.
+
+## Postgres switchovers
+
+`pscale branch switchover` moves the primary of a Postgres branch to a replica. It is Postgres-only; Vitess/MySQL databases are rejected before any API call.
+
+```bash
+# Promote an automatically selected replica
+pscale branch switchover <database> <branch> --org <org> --format json
+
+# Promote a specific replica (names from `pscale branch infra`)
+pscale branch switchover <database> <branch> --org <org> --format json --candidate <replica-name>
+```
+
+- The command returns the created switchover (`id`, `state`, `method`) and exits; it does not wait. A fresh switchover is `pending` and `method` is empty until the operator picks one.
+- `method` is `switchover` (replica promoted) for branches with replicas, or `restart` for single-node branches, which are restarted in place and unreachable while they come back. Warn the user before running this against a single-node branch.
+- Writes are briefly interrupted while the switch completes. A branch accepts one switchover at a time.
+- A switchover that ends in `failed` has an unconfirmed outcome: the primary may still have moved and nothing is rolled back. Check the current primary with `pscale branch infra <database> <branch> --org <org> --format json` before retrying.
+- `--candidate` is rejected for branches without replicas. Poll status with `pscale api organizations/<org>/databases/<database>/branches/<branch>/switchovers/<id>`.
 
 ## Imports (Cloudflare D1)
 

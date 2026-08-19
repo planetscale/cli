@@ -2,6 +2,7 @@ package planetscale
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -334,6 +335,80 @@ func TestPasswords_Get(t *testing.T) {
 
 	c.Assert(err, qt.IsNil)
 	c.Assert(password, qt.DeepEquals, want)
+}
+
+func TestPasswords_Update(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodPatch)
+		c.Assert(r.URL.Path, qt.Equals, fmt.Sprintf("/v1/organizations/my-org/databases/planetscale-go-test-db/branches/my-branch/passwords/%s", testPasswordID))
+
+		var body map[string]any
+		c.Assert(json.NewDecoder(r.Body).Decode(&body), qt.IsNil)
+		c.Assert(body, qt.DeepEquals, map[string]any{
+			"name":  "renamed-password",
+			"cidrs": []any{"10.0.0.0/8"},
+		})
+
+		w.WriteHeader(200)
+		out := fmt.Sprintf(`{
+    "id": "%s",
+    "role": "writer",
+    "name": "renamed-password",
+    "cidrs": ["10.0.0.0/8"],
+    "created_at": "2021-01-14T10:19:23.000Z"
+}`, testPasswordID)
+		_, err := w.Write([]byte(out))
+		c.Assert(err, qt.IsNil)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	cidrs := []string{"10.0.0.0/8"}
+	password, err := client.Passwords.Update(context.Background(), &UpdateDatabaseBranchPasswordRequest{
+		Organization: "my-org",
+		Database:     "planetscale-go-test-db",
+		Branch:       "my-branch",
+		PasswordId:   testPasswordID,
+		Name:         "renamed-password",
+		CIDRs:        &cidrs,
+	})
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(password.Name, qt.Equals, "renamed-password")
+	c.Assert(password.CIDRs, qt.DeepEquals, []string{"10.0.0.0/8"})
+}
+
+func TestPasswords_UpdateClearsCIDRs(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]any
+		c.Assert(json.NewDecoder(r.Body).Decode(&body), qt.IsNil)
+		c.Assert(body, qt.DeepEquals, map[string]any{"cidrs": []any{}})
+
+		w.WriteHeader(200)
+		out := fmt.Sprintf(`{"id":"%s","name":"planetscale-go-test-password","cidrs":[]}`, testPasswordID)
+		_, err := w.Write([]byte(out))
+		c.Assert(err, qt.IsNil)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	cidrs := []string{}
+	password, err := client.Passwords.Update(context.Background(), &UpdateDatabaseBranchPasswordRequest{
+		Organization: "my-org",
+		Database:     "planetscale-go-test-db",
+		Branch:       "my-branch",
+		PasswordId:   testPasswordID,
+		CIDRs:        &cidrs,
+	})
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(password.CIDRs, qt.HasLen, 0)
 }
 
 func TestPasswords_Renew(t *testing.T) {
