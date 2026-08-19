@@ -13,6 +13,8 @@ type PasswordsService struct {
 	ListFnInvoked   bool
 	GetFn           func(context.Context, *ps.GetDatabaseBranchPasswordRequest) (*ps.DatabaseBranchPassword, error)
 	GetFnInvoked    bool
+	UpdateFn        func(context.Context, *ps.UpdateDatabaseBranchPasswordRequest) (*ps.DatabaseBranchPassword, error)
+	UpdateFnInvoked bool
 	DeleteFn        func(context.Context, *ps.DeleteDatabaseBranchPasswordRequest) error
 	DeleteFnInvoked bool
 	RenewFn         func(context.Context, *ps.RenewDatabaseBranchPasswordRequest) (*ps.DatabaseBranchPassword, error)
@@ -27,6 +29,11 @@ func (b *PasswordsService) Create(ctx context.Context, req *ps.DatabaseBranchPas
 func (b *PasswordsService) List(ctx context.Context, req *ps.ListDatabaseBranchPasswordRequest, opts ...ps.ListOption) ([]*ps.DatabaseBranchPassword, error) {
 	b.ListFnInvoked = true
 	return b.ListFn(ctx, req, opts...)
+}
+
+func (b *PasswordsService) Update(ctx context.Context, req *ps.UpdateDatabaseBranchPasswordRequest) (*ps.DatabaseBranchPassword, error) {
+	b.UpdateFnInvoked = true
+	return b.UpdateFn(ctx, req)
 }
 
 func (b *PasswordsService) Get(ctx context.Context, req *ps.GetDatabaseBranchPasswordRequest) (*ps.DatabaseBranchPassword, error) {

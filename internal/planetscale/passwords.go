@@ -24,6 +24,7 @@ type DatabaseBranchPassword struct {
 	TTL       int            `json:"ttl_seconds"`
 	Renewable bool           `json:"renewable"`
 	Replica   bool           `json:"replica"`
+	CIDRs     []string       `json:"cidrs"`
 
 	// ReadOnlyRegion is set client-side when the password is known to be scoped to a
 	// Vitess read-only region (the API does not currently return a dedicated flag).
@@ -61,6 +62,21 @@ type GetDatabaseBranchPasswordRequest struct {
 	PasswordId   string
 }
 
+// UpdateDatabaseBranchPasswordRequest encapsulates the request for updating a
+// password's name or IP restrictions.
+type UpdateDatabaseBranchPasswordRequest struct {
+	Organization string `json:"-"`
+	Database     string `json:"-"`
+	Branch       string `json:"-"`
+	PasswordId   string `json:"-"`
+
+	// Name renames the password when set.
+	Name string `json:"name,omitempty"`
+	// CIDRs replaces the IP restrictions when set. A pointer to an empty slice
+	// clears them.
+	CIDRs *[]string `json:"cidrs,omitempty"`
+}
+
 // DeleteDatabaseBranchPasswordRequest encapsulates the request for deleting a password
 // for a given database branch.
 type DeleteDatabaseBranchPasswordRequest struct {
@@ -87,6 +103,7 @@ type PasswordsService interface {
 	// List returns passwords with optional pagination support via ListOption parameters
 	List(context.Context, *ListDatabaseBranchPasswordRequest, ...ListOption) ([]*DatabaseBranchPassword, error)
 	Get(context.Context, *GetDatabaseBranchPasswordRequest) (*DatabaseBranchPassword, error)
+	Update(context.Context, *UpdateDatabaseBranchPasswordRequest) (*DatabaseBranchPassword, error)
 	Delete(context.Context, *DeleteDatabaseBranchPasswordRequest) error
 	Renew(context.Context, *RenewDatabaseBranchPasswordRequest) (*DatabaseBranchPassword, error)
 }
@@ -139,6 +156,22 @@ func (d *passwordsService) Delete(ctx context.Context, deleteReq *DeleteDatabase
 func (d *passwordsService) Get(ctx context.Context, getReq *GetDatabaseBranchPasswordRequest) (*DatabaseBranchPassword, error) {
 	pathStr := passwordBranchAPIPath(getReq.Organization, getReq.Database, getReq.Branch, getReq.PasswordId)
 	req, err := d.client.newRequest(http.MethodGet, pathStr, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating http request: %w", err)
+	}
+
+	password := &DatabaseBranchPassword{}
+	if err := d.client.do(ctx, req, &password); err != nil {
+		return nil, err
+	}
+
+	return password, nil
+}
+
+// Update an existing password's name or IP restrictions.
+func (d *passwordsService) Update(ctx context.Context, updateReq *UpdateDatabaseBranchPasswordRequest) (*DatabaseBranchPassword, error) {
+	pathStr := passwordBranchAPIPath(updateReq.Organization, updateReq.Database, updateReq.Branch, updateReq.PasswordId)
+	req, err := d.client.newRequest(http.MethodPatch, pathStr, updateReq)
 	if err != nil {
 		return nil, fmt.Errorf("error creating http request: %w", err)
 	}
