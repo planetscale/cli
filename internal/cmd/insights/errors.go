@@ -10,12 +10,14 @@ import (
 	"github.com/planetscale/cli/internal/printer"
 )
 
-// ErrorRow is a query error row formatted for table output.
+// ErrorRow is a query error row formatted for table output. The fingerprint is
+// the full error_fingerprint rather than the truncated id, so it can be passed
+// to 'pscale insights errors show'.
 type ErrorRow struct {
-	Count    int64  `header:"count" json:"error_count"`
-	LastSeen string `header:"last seen" json:"started_at"`
-	Message  string `header:"message" json:"error_message"`
-	ID       string `header:"id" json:"id"`
+	Count       int64  `header:"count" json:"error_count"`
+	LastSeen    string `header:"last seen" json:"started_at"`
+	Message     string `header:"message" json:"error_message"`
+	Fingerprint string `header:"fingerprint" json:"error_fingerprint"`
 }
 
 // ErrorsCmd lists aggregated query errors for a branch.
@@ -28,7 +30,11 @@ func ErrorsCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "errors <database> <branch>",
 		Short: "List queries that are failing with errors",
-		Args:  cmdutil.RequiredArgs("database", "branch"),
+		Long: `List aggregated query errors for a branch.
+
+Pass a value from the fingerprint column to 'pscale insights errors show' to
+see the individual queries behind an error.`,
+		Args: cmdutil.RequiredArgs("database", "branch"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			database, branch := args[0], args[1]
@@ -65,10 +71,10 @@ func ErrorsCmd(ch *cmdutil.Helper) *cobra.Command {
 			rows := make([]*ErrorRow, 0, len(errs))
 			for _, e := range errs {
 				rows = append(rows, &ErrorRow{
-					Count:    e.ErrorCount,
-					LastSeen: e.StartedAt.Format("2006-01-02 15:04"),
-					Message:  truncate(e.ErrorMessage, 100),
-					ID:       e.ID,
+					Count:       e.ErrorCount,
+					LastSeen:    e.StartedAt.Format("2006-01-02 15:04"),
+					Message:     truncate(e.ErrorMessage, 100),
+					Fingerprint: e.ErrorFingerprint,
 				})
 			}
 			return ch.Printer.PrintResource(rows)

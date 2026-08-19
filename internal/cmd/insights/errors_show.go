@@ -30,8 +30,10 @@ func ErrorsShowCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "show <database> <branch> <fingerprint>",
 		Short: "Show the queries behind an error fingerprint",
-		Long: `Show the individual query executions that failed with an error fingerprint
-from 'pscale insights errors <database> <branch>'.
+		Long: `Show the individual query executions that failed with an error fingerprint.
+
+Use the fingerprint column from 'pscale insights errors <database> <branch>'
+(error_fingerprint in JSON), not the truncated id.
 
 Useful for seeing which users, keyspaces, and statements produced the error.`,
 		Example: `  pscale insights errors show mydb main b129e8fa --org myorg

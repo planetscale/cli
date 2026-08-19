@@ -84,10 +84,11 @@ func TestInsights_ErrorsCmd(t *testing.T) {
 	svc := &mock.QueryInsightsService{
 		ListErrorsFn: func(ctx context.Context, req *ps.ListQueryInsightsErrorsRequest, opts ...ps.ListOption) ([]*ps.QueryInsightError, error) {
 			return []*ps.QueryInsightError{{
-				ID:           "e1",
-				ErrorCount:   4,
-				ErrorMessage: "relation \"widgets\" does not exist",
-				StartedAt:    time.Date(2026, 7, 22, 14, 5, 0, 0, time.UTC),
+				ID:               "e1",
+				ErrorFingerprint: "e1f4c9a2b7d3e1f4c9a2b7d3",
+				ErrorCount:       4,
+				ErrorMessage:     "relation \"widgets\" does not exist",
+				StartedAt:        time.Date(2026, 7, 22, 14, 5, 0, 0, time.UTC),
 			}}, nil
 		},
 	}
@@ -102,6 +103,8 @@ func TestInsights_ErrorsCmd(t *testing.T) {
 	c.Assert(err, qt.IsNil)
 	c.Assert(svc.ListErrorsFnInvoked, qt.IsTrue)
 	c.Assert(buf.String(), qt.Contains, "relation")
+	// The full fingerprint is what 'errors show' takes, so it must be printed.
+	c.Assert(buf.String(), qt.Contains, "e1f4c9a2b7d3e1f4c9a2b7d3")
 }
 
 func TestInsights_AnomaliesCmd(t *testing.T) {
