@@ -227,8 +227,8 @@ func verifyBooleanColumns(ctx context.Context, db *sql.DB, sqlitePath string, ta
 
 func sqliteBooleanDistribution(ctx context.Context, sqlitePath, table, column string) (booleanDistribution, error) {
 	query := fmt.Sprintf(
-		`SELECT SUM(CASE WHEN %q = 1 THEN 1 ELSE 0 END), SUM(CASE WHEN %q = 0 THEN 1 ELSE 0 END), SUM(CASE WHEN %q IS NULL THEN 1 ELSE 0 END) FROM %q;`,
-		column, column, column, table,
+		`SELECT SUM(CASE WHEN %s = 1 THEN 1 ELSE 0 END), SUM(CASE WHEN %s = 0 THEN 1 ELSE 0 END), SUM(CASE WHEN %s IS NULL THEN 1 ELSE 0 END) FROM %s;`,
+		quoteSQLiteIdentifier(column), quoteSQLiteIdentifier(column), quoteSQLiteIdentifier(column), quoteSQLiteIdentifier(table),
 	)
 	return querySQLiteDistribution(ctx, sqlitePath, query)
 }
@@ -684,10 +684,10 @@ func sqliteRowSignature(ctx context.Context, sqlitePath string, table TableSchem
 		cols = append(cols, sqliteSignatureColumnExpr(col, table, all, coerceCtx))
 	}
 	query := fmt.Sprintf(
-		`SELECT %s FROM %q WHERE %q = %s LIMIT 1;`,
+		`SELECT %s FROM %s WHERE %s = %s LIMIT 1;`,
 		strings.Join(cols, " || '|' || "),
-		table.Name,
-		pkCol,
+		quoteSQLiteIdentifier(table.Name),
+		quoteSQLiteIdentifier(pkCol),
 		sqliteLiteral(pkVal),
 	)
 	sqlite3, err := FindSQLite3()
