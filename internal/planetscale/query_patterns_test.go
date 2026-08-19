@@ -80,7 +80,7 @@ func TestQueryPatterns_GetReport(t *testing.T) {
 		State:       "completed",
 		DownloadURL: "https://api.planetscale.com/v1/organizations/my-org/databases/my-db/branches/my-branch/query-patterns/report1/download",
 		CreatedAt:   time.Date(2021, time.January, 14, 10, 19, 23, 0, time.UTC),
-		FinishedAt:  time.Date(2021, time.January, 14, 10, 20, 23, 0, time.UTC),
+		FinishedAt:  timePtr(time.Date(2021, time.January, 14, 10, 20, 23, 0, time.UTC)),
 	}
 
 	c.Assert(err, qt.IsNil)
@@ -228,3 +228,28 @@ func TestQueryPatterns_DownloadReportNotFound(t *testing.T) {
 	c.Assert(err, qt.ErrorAs, &perr)
 	c.Assert(perr.Code, qt.Equals, ErrNotFound)
 }
+
+func TestQueryPatterns_GetReportPendingOmitsFinishedAt(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		_, err := w.Write([]byte(`{"id":"report1","state":"pending","created_at":"2021-01-14T10:19:23.000Z"}`))
+		c.Assert(err, qt.IsNil)
+	}))
+	t.Cleanup(ts.Close)
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	report, err := client.QueryPatterns.GetReport(context.Background(), &GetQueryPatternsReportRequest{
+		Organization: "my-org",
+		Database:     "my-db",
+		Branch:       "my-branch",
+		Report:       "report1",
+	})
+	c.Assert(err, qt.IsNil)
+	c.Assert(report.FinishedAt, qt.IsNil)
+}
+
+func timePtr(t time.Time) *time.Time { return &t }

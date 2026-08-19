@@ -314,7 +314,7 @@ type queryPatternsReport struct {
 	State      string `header:"state" json:"state"`
 	Actor      string `header:"actor" json:"actor"`
 	CreatedAt  int64  `header:"created_at,timestamp(ms|utc|human)" json:"created_at"`
-	FinishedAt int64  `header:"finished_at,timestamp(ms|utc|human)" json:"finished_at"`
+	FinishedAt *int64 `header:"finished_at,timestamp(ms|utc|human)" json:"finished_at"`
 
 	orig *ps.QueryPatternsReport
 }
@@ -333,14 +333,12 @@ func toQueryPatternsReport(report *ps.QueryPatternsReport) *queryPatternsReport 
 		actor = report.Actor.Name
 	}
 	out := &queryPatternsReport{
-		ID:        report.PublicID,
-		State:     report.State,
-		Actor:     actor,
-		CreatedAt: printer.GetMilliseconds(report.CreatedAt),
-		orig:      report,
-	}
-	if !report.FinishedAt.IsZero() {
-		out.FinishedAt = printer.GetMilliseconds(report.FinishedAt)
+		ID:         report.PublicID,
+		State:      report.State,
+		Actor:      actor,
+		CreatedAt:  printer.GetMilliseconds(report.CreatedAt),
+		FinishedAt: printer.GetMillisecondsIfExists(report.FinishedAt),
+		orig:       report,
 	}
 	return out
 }

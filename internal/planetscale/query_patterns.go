@@ -14,13 +14,13 @@ import (
 
 // QueryPatternsReport represents a query patterns report for a branch.
 type QueryPatternsReport struct {
-	PublicID    string    `json:"id"`
-	State       string    `json:"state"`
-	Actor       *Actor    `json:"actor"`
-	URL         string    `json:"url"`
-	DownloadURL string    `json:"download_url"`
-	CreatedAt   time.Time `json:"created_at"`
-	FinishedAt  time.Time `json:"finished_at"`
+	PublicID    string     `json:"id"`
+	State       string     `json:"state"`
+	Actor       *Actor     `json:"actor"`
+	URL         string     `json:"url"`
+	DownloadURL string     `json:"download_url"`
+	CreatedAt   time.Time  `json:"created_at"`
+	FinishedAt  *time.Time `json:"finished_at"`
 }
 
 type CreateQueryPatternsReportRequest struct {

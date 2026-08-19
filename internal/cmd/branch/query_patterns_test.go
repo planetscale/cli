@@ -244,6 +244,39 @@ func TestBranch_QueryPatternsShowCmd(t *testing.T) {
 	c.Assert(buf.String(), qt.Contains, `"state": "completed"`)
 }
 
+func TestBranch_QueryPatternsShowCmd_PendingJSONOmitsZeroFinishedAt(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	svc := &mock.QueryPatternsService{
+		GetReportFn: func(ctx context.Context, req *ps.GetQueryPatternsReportRequest) (*ps.QueryPatternsReport, error) {
+			return &ps.QueryPatternsReport{
+				PublicID:  "report1",
+				State:     "pending",
+				CreatedAt: time.Date(2021, time.January, 14, 10, 19, 23, 0, time.UTC),
+			}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: "my-org"},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{QueryPatterns: svc}, nil
+		},
+	}
+
+	cmd := ShowQueryPatternsCmd(ch)
+	cmd.SetArgs([]string{"my-db", "my-branch", "report1"})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(buf.String(), qt.Not(qt.Contains), "0001-01-01")
+	c.Assert(buf.String(), qt.Contains, `"state": "pending"`)
+}
+
 func TestBranch_QueryPatternsDeleteCmd(t *testing.T) {
 	c := qt.New(t)
 
