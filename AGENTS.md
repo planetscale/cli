@@ -249,7 +249,12 @@ pscale insights tags <database> <branch> --org <org> --format json              
 pscale insights tags summaries <database> <branch> --org <org> --format json --tags username  # stats grouped by tag; names match the Insights UI Key picker
 pscale insights recommendations <database> --org <org> --format json                     # schema recommendations with ready-to-apply DDL
 pscale insights recommendations dismiss <database> <number> --org <org> --format json --force  # dismiss a recommendation
+pscale branch query-patterns list <database> <branch> --org <org> --format json
+pscale branch query-patterns show <database> <branch> <report-id> --org <org> --format json
+pscale branch query-patterns delete <database> <branch> <report-id> --org <org> --format json --force
 ```
+
+`branch query-patterns download` generates a new report, waits, and writes CSV. Use list/show/delete for reports that already exist.
 
 **`pscale inspect`** — live, point-in-time checks run over a direct connection (same credentials model as `pscale sql`, always read-only):
 

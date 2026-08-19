@@ -87,6 +87,56 @@ func TestQueryPatterns_GetReport(t *testing.T) {
 	c.Assert(report, qt.DeepEquals, want)
 }
 
+func TestQueryPatterns_ListReports(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodGet)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/my-db/branches/my-branch/query-patterns")
+		c.Assert(r.URL.Query().Get("limit"), qt.Equals, "10")
+		c.Assert(r.URL.Query().Get("starting_after"), qt.Equals, "report0")
+		w.WriteHeader(200)
+		_, err := w.Write([]byte(`{"data":[{"id":"report1","state":"completed","created_at":"2021-01-14T10:19:23.000Z"}]}`))
+		c.Assert(err, qt.IsNil)
+	}))
+	t.Cleanup(ts.Close)
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	reports, err := client.QueryPatterns.ListReports(context.Background(), &ListQueryPatternsReportsRequest{
+		Organization: "my-org",
+		Database:     "my-db",
+		Branch:       "my-branch",
+	}, WithLimit(10), WithStartingAfter("report0"))
+	c.Assert(err, qt.IsNil)
+	c.Assert(reports, qt.HasLen, 1)
+	c.Assert(reports[0].PublicID, qt.Equals, "report1")
+	c.Assert(reports[0].State, qt.Equals, "completed")
+}
+
+func TestQueryPatterns_DeleteReport(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodDelete)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/my-db/branches/my-branch/query-patterns/report1")
+		w.WriteHeader(204)
+	}))
+	t.Cleanup(ts.Close)
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	err = client.QueryPatterns.DeleteReport(context.Background(), &DeleteQueryPatternsReportRequest{
+		Organization: "my-org",
+		Database:     "my-db",
+		Branch:       "my-branch",
+		Report:       "report1",
+	})
+	c.Assert(err, qt.IsNil)
+}
+
 func TestQueryPatterns_DownloadReport(t *testing.T) {
 	c := qt.New(t)
 
