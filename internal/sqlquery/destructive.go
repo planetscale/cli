@@ -265,7 +265,8 @@ func parseExplainAnalyze(stmt string) (inner string, analyze bool) {
 			return "", false
 		}
 		opts := strings.ToUpper(rest[1:end])
-		analyze = containsWord(strings.NewReplacer(",", " ", "(", " ", ")", " ").Replace(opts), "ANALYZE")
+		opts = strings.Join(strings.Fields(strings.NewReplacer(",", " ", "(", " ", ")", " ").Replace(opts)), " ")
+		analyze = containsWord(opts, "ANALYZE") || containsWord(opts, "ANALYSE")
 		return strings.TrimSpace(rest[end+1:]), analyze
 	}
 	for {
@@ -274,6 +275,9 @@ func parseExplainAnalyze(stmt string) (inner string, analyze bool) {
 		case hasKeywordPrefix(upper, "ANALYZE"):
 			analyze = true
 			rest = strings.TrimSpace(rest[len("ANALYZE"):])
+		case hasKeywordPrefix(upper, "ANALYSE"):
+			analyze = true
+			rest = strings.TrimSpace(rest[len("ANALYSE"):])
 		case hasKeywordPrefix(upper, "VERBOSE"):
 			rest = strings.TrimSpace(rest[len("VERBOSE"):])
 		default:

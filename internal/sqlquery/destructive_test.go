@@ -55,7 +55,10 @@ func TestIsDestructiveQuery(t *testing.T) {
 		{query: "SELECT '\\'; DROP TABLE users; --'", want: true},
 		{query: "WITH d AS (DELETE FROM users RETURNING *) SELECT count(*) FROM d", want: true},
 		{query: "EXPLAIN ANALYZE DELETE FROM users", want: true},
+		{query: "EXPLAIN ANALYSE DELETE FROM users", want: true},
 		{query: "EXPLAIN (ANALYZE) DELETE FROM users", want: true},
+		{query: "EXPLAIN (ANALYSE) DELETE FROM users", want: true},
+		{query: "EXPLAIN (\nANALYZE\n) DELETE FROM users", want: true},
 		{query: "EXPLAIN DELETE FROM users", want: false},
 		{query: "EXPLAIN ANALYZE SELECT 1", want: false},
 	}
