@@ -292,7 +292,7 @@ Vitess only. See https://planetscale.com/docs/vitess/schema-changes/aggressive-c
 
 ## Vitess deploy requests (inspect + throttler)
 
-Core lifecycle is already covered (`list/create/show/diff/review/deploy/apply/edit/cancel/close/revert/skip-revert`). These inspect commands are read-only:
+Core lifecycle is already covered (`list/create/show/diff/review/deploy/apply/update/cancel/close/revert/skip-revert`). `update` (`edit` is an alias) sets auto-apply and auto-delete-branch. These inspect commands are read-only:
 
 ```bash
 pscale deploy-request queue <database> --org <org> --format json                         # database deploy queue (first page)
@@ -312,6 +312,11 @@ pscale deploy-request throttler update <database> <number> --org <org> --format 
 ```
 
 Alias: `pscale dr …` works the same. Vitess only. `--ratio` is 0–95 (0 disables throttling; 95 is slowest). Use either `--ratio` or `--configuration keyspace=ratio`, not both.
+
+```bash
+pscale deploy-request update <database> <number> --org <org> --format json --enable-auto-apply
+pscale deploy-request update <database> <number> --org <org> --format json --disable-auto-delete-branch
+```
 
 ## Maintenance schedules (Vitess Enterprise)
 

@@ -135,7 +135,7 @@ func TestDeployRequest_EditCmdNoFlags(t *testing.T) {
 	cmd.SetArgs([]string{db, strconv.FormatUint(number, 10)})
 	err := cmd.Execute()
 
-	c.Assert(err, qt.ErrorMatches, "must specify either --enable-auto-apply, --disable-auto-apply, or --auto-apply")
+	c.Assert(err, qt.ErrorMatches, "must specify at least one of --enable-auto-apply, --disable-auto-apply, --enable-auto-delete-branch, --disable-auto-delete-branch, or --auto-apply")
 }
 
 func TestDeployRequest_EditCmdBothFlags(t *testing.T) {
@@ -306,4 +306,105 @@ func TestDeployRequest_EditCmdMixedFlags(t *testing.T) {
 
 	res := &ps.DeployRequest{Number: number}
 	c.Assert(buf.String(), qt.JSONEquals, res)
+}
+
+func TestDeployRequest_UpdateCmdEnableAutoDeleteBranch(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	db := "planetscale"
+	number := uint64(10)
+
+	svc := &mock.DeployRequestsService{
+		AutoDeleteBranchFn: func(ctx context.Context, req *ps.AutoDeleteBranchRequest) (*ps.DeployRequest, error) {
+			c.Assert(req.Number, qt.Equals, number)
+			c.Assert(req.Database, qt.Equals, db)
+			c.Assert(req.Organization, qt.Equals, org)
+			c.Assert(req.Enable, qt.IsTrue)
+			return &ps.DeployRequest{Number: number}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: org},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{DeployRequests: svc}, nil
+		},
+	}
+
+	cmd := UpdateCmd(ch)
+	cmd.SetArgs([]string{db, strconv.FormatUint(number, 10), "--enable-auto-delete-branch"})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.AutoDeleteBranchFnInvoked, qt.IsTrue)
+	c.Assert(svc.AutoApplyFnInvoked, qt.IsFalse)
+	c.Assert(buf.String(), qt.JSONEquals, &ps.DeployRequest{Number: number})
+}
+
+func TestDeployRequest_UpdateCmdBothSettings(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	db := "planetscale"
+	number := uint64(10)
+
+	svc := &mock.DeployRequestsService{
+		AutoApplyFn: func(ctx context.Context, req *ps.AutoApplyDeployRequestRequest) (*ps.DeployRequest, error) {
+			c.Assert(req.Enable, qt.IsTrue)
+			return &ps.DeployRequest{Number: number}, nil
+		},
+		AutoDeleteBranchFn: func(ctx context.Context, req *ps.AutoDeleteBranchRequest) (*ps.DeployRequest, error) {
+			c.Assert(req.Enable, qt.IsFalse)
+			return &ps.DeployRequest{Number: number}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: org},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{DeployRequests: svc}, nil
+		},
+	}
+
+	cmd := UpdateCmd(ch)
+	cmd.SetArgs([]string{db, strconv.FormatUint(number, 10), "--enable-auto-apply", "--disable-auto-delete-branch"})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.AutoApplyFnInvoked, qt.IsTrue)
+	c.Assert(svc.AutoDeleteBranchFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.JSONEquals, &ps.DeployRequest{Number: number})
+}
+
+func TestDeployRequest_UpdateCmdBothAutoDeleteFlags(t *testing.T) {
+	c := qt.New(t)
+
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: "planetscale"},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{}, nil
+		},
+	}
+
+	cmd := UpdateCmd(ch)
+	cmd.SetArgs([]string{"planetscale", "10", "--enable-auto-delete-branch", "--disable-auto-delete-branch"})
+	err := cmd.Execute()
+	c.Assert(err, qt.ErrorMatches, "cannot use both --enable-auto-delete-branch and --disable-auto-delete-branch flags together")
 }
