@@ -73,8 +73,11 @@ func (w *sqlWriter) ShouldFlush() bool {
 
 func (w *sqlWriter) Flush(outdir, database, table string, fileNo int) error {
 	query := strings.Join(w.inserts, ";\n") + ";\n"
-	file := fmt.Sprintf("%s/%s.%s.%05d.sql", outdir, database, table, fileNo)
-	err := writeFile(file, query)
+	file, err := dumpOutputPath(outdir, database, table, fmt.Sprintf(".%05d.sql", fileNo))
+	if err != nil {
+		return err
+	}
+	err = writeFile(file, query)
 	if err != nil {
 		return err
 	}

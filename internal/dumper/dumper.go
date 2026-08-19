@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"sync/atomic"
 	"time"
+	"unicode"
 
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/printer"
@@ -256,10 +258,12 @@ func (d *Dumper) dumpTableSchema(conn *Connection, database string, table string
 
 	schema := qr.Rows[0][1].String() + ";\n"
 
-	file := fmt.Sprintf("%s/%s.%s-schema.sql", d.cfg.Outdir, database, table)
+	file, err := dumpOutputPath(d.cfg.Outdir, database, table, "-schema.sql")
 	if _, ok := views[table]; ok {
-		// https://github.com/mydumper/mydumper/blob/e55612616d17281a45eed0a60a9b054cdd1fe064/src/myloader_common.c#L374
-		file = fmt.Sprintf("%s/%s.%s-schema-view.sql", d.cfg.Outdir, database, table)
+		file, err = dumpOutputPath(d.cfg.Outdir, database, table, "-schema-view.sql")
+	}
+	if err != nil {
+		return err
 	}
 
 	err = writeFile(file, schema)
@@ -513,6 +517,33 @@ func (d *Dumper) dumpableFieldNames(conn *Connection, table string) ([]string, e
 	}
 
 	return fields, nil
+}
+
+func dumpOutputPath(outdir, database, table, suffix string) (string, error) {
+	db, err := sanitizeDumpComponent(database)
+	if err != nil {
+		return "", err
+	}
+	tbl, err := sanitizeDumpComponent(table)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(outdir, db+"."+tbl+suffix), nil
+}
+
+func sanitizeDumpComponent(name string) (string, error) {
+	if name == "" {
+		return "", fmt.Errorf("dump path component cannot be empty")
+	}
+	if strings.Contains(name, "..") || strings.ContainsAny(name, `/\:`) || filepath.Base(name) != name {
+		return "", fmt.Errorf("dump path component %q is not a safe file name", name)
+	}
+	for _, r := range name {
+		if unicode.IsControl(r) {
+			return "", fmt.Errorf("dump path component %q contains a control character", name)
+		}
+	}
+	return name, nil
 }
 
 // writeFile used to write datas to file.
