@@ -59,6 +59,16 @@ type GetPostgresBranchRequest struct {
 	Branch       string
 }
 
+// UpdatePostgresBranchRequest encapsulates the request for updating a Postgres
+// branch's settings.
+type UpdatePostgresBranchRequest struct {
+	Organization      string `json:"-"`
+	Database          string `json:"-"`
+	Branch            string `json:"-"`
+	NewName           string `json:"new_name,omitempty"`
+	DeletionProtected *bool  `json:"deletion_protected,omitempty"`
+}
+
 // DeletePostgresBranchRequest encapsulates the request to delete a Postgres branch.
 type DeletePostgresBranchRequest struct {
 	Organization      string
@@ -222,6 +232,7 @@ type PostgresBranchesService interface {
 	Create(context.Context, *CreatePostgresBranchRequest) (*PostgresBranch, error)
 	List(context.Context, *ListPostgresBranchesRequest, ...ListOption) ([]*PostgresBranch, error)
 	Get(context.Context, *GetPostgresBranchRequest) (*PostgresBranch, error)
+	Update(context.Context, *UpdatePostgresBranchRequest) (*PostgresBranch, error)
 	Delete(context.Context, *DeletePostgresBranchRequest) error
 	Schema(context.Context, *PostgresBranchSchemaRequest) ([]*PostgresBranchSchema, error)
 	ListClusterSKUs(context.Context, *ListBranchClusterSKUsRequest, ...ListOption) ([]*ClusterSKU, error)
@@ -302,6 +313,22 @@ func (p *postgresBranchesService) Get(ctx context.Context, getReq *GetPostgresBr
 }
 
 // Delete deletes a Postgres branch from the specified organization and database.
+// Update updates a Postgres branch's settings.
+func (p *postgresBranchesService) Update(ctx context.Context, updateReq *UpdatePostgresBranchRequest) (*PostgresBranch, error) {
+	path := postgresBranchAPIPath(updateReq.Organization, updateReq.Database, updateReq.Branch)
+	req, err := p.client.newRequest(http.MethodPatch, path, updateReq)
+	if err != nil {
+		return nil, fmt.Errorf("error creating http request: %w", err)
+	}
+
+	b := &PostgresBranch{}
+	if err := p.client.do(ctx, req, b); err != nil {
+		return nil, err
+	}
+
+	return b, nil
+}
+
 func (p *postgresBranchesService) Delete(ctx context.Context, deleteReq *DeletePostgresBranchRequest) error {
 	path := path.Join(postgresBranchesAPIPath(deleteReq.Organization, deleteReq.Database), deleteReq.Branch)
 

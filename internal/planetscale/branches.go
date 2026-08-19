@@ -50,6 +50,16 @@ type CreateDatabaseBranchRequest struct {
 	ClusterSize  string `json:"cluster_size,omitempty"`
 }
 
+// UpdateDatabaseBranchRequest encapsulates the request for updating a database
+// branch's settings.
+type UpdateDatabaseBranchRequest struct {
+	Organization      string `json:"-"`
+	Database          string `json:"-"`
+	Branch            string `json:"-"`
+	NewName           string `json:"new_name,omitempty"`
+	DeletionProtected *bool  `json:"deletion_protected,omitempty"`
+}
+
 // ListDatabaseBranchesRequest encapsulates the request for listing the branches
 // of a database.
 type ListDatabaseBranchesRequest struct {
@@ -170,6 +180,7 @@ type DatabaseBranchesService interface {
 	Create(context.Context, *CreateDatabaseBranchRequest) (*DatabaseBranch, error)
 	List(context.Context, *ListDatabaseBranchesRequest, ...ListOption) ([]*DatabaseBranch, error)
 	Get(context.Context, *GetDatabaseBranchRequest) (*DatabaseBranch, error)
+	Update(context.Context, *UpdateDatabaseBranchRequest) (*DatabaseBranch, error)
 	Delete(context.Context, *DeleteDatabaseBranchRequest) error
 	Diff(context.Context, *DiffBranchRequest) ([]*Diff, error)
 	Schema(context.Context, *BranchSchemaRequest) ([]*Diff, error)
@@ -302,6 +313,22 @@ func (d *databaseBranchesService) Get(ctx context.Context, getReq *GetDatabaseBr
 	req, err := d.client.newRequest(http.MethodGet, path, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating http request: %w", err)
+	}
+
+	dbBranch := &DatabaseBranch{}
+	if err := d.client.do(ctx, req, &dbBranch); err != nil {
+		return nil, err
+	}
+
+	return dbBranch, nil
+}
+
+// Update updates a database branch's settings.
+func (d *databaseBranchesService) Update(ctx context.Context, updateReq *UpdateDatabaseBranchRequest) (*DatabaseBranch, error) {
+	path := databaseBranchAPIPath(updateReq.Organization, updateReq.Database, updateReq.Branch)
+	req, err := d.client.newRequest(http.MethodPatch, path, updateReq)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request for update branch: %w", err)
 	}
 
 	dbBranch := &DatabaseBranch{}
