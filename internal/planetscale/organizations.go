@@ -23,6 +23,10 @@ type OrganizationsService interface {
 	List(context.Context) ([]*Organization, error)
 	ListRegions(context.Context, *ListOrganizationRegionsRequest) ([]*Region, error)
 	ListClusterSKUs(context.Context, *ListOrganizationClusterSKUsRequest, ...ListOption) ([]*ClusterSKU, error)
+	ListMembers(context.Context, *ListOrganizationMembersRequest, ...ListOption) ([]*OrganizationMembership, error)
+	GetMember(context.Context, *GetOrganizationMemberRequest) (*OrganizationMembership, error)
+	UpdateMember(context.Context, *UpdateOrganizationMemberRequest) (*OrganizationMembership, error)
+	RemoveMember(context.Context, *RemoveOrganizationMemberRequest) error
 }
 
 // ListRegionsRequest encapsulates the request for getting a list of regions for
