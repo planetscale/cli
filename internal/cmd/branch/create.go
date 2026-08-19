@@ -162,7 +162,8 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 						Database:     source,
 						Branch:       branch,
 					}
-					if err := waitUntilReady(ctx, client, ch.Printer, ch.Debug(), getReq); err != nil {
+					dbBranch, err = waitUntilReady(ctx, client, ch.Printer, ch.Debug(), getReq)
+					if err != nil {
 						return err
 					}
 					end()
@@ -226,7 +227,8 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 						Database:     source,
 						Branch:       branch,
 					}
-					if err := waitUntilPostgresReady(ctx, client, ch.Printer, ch.Debug(), getReq); err != nil {
+					dbBranch, err = waitUntilPostgresReady(ctx, client, ch.Printer, ch.Debug(), getReq)
+					if err != nil {
 						return err
 					}
 					end()
@@ -272,7 +274,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 }
 
 // waitUntilReady waits until the given database branch is ready. It times out after 10 minutes.
-func waitUntilReady(ctx context.Context, client *ps.Client, printer *printer.Printer, debug bool, getReq *ps.GetDatabaseBranchRequest) error {
+func waitUntilReady(ctx context.Context, client *ps.Client, printer *printer.Printer, debug bool, getReq *ps.GetDatabaseBranchRequest) (*ps.DatabaseBranch, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
 	defer cancel()
 
@@ -286,7 +288,7 @@ func waitUntilReady(ctx context.Context, client *ps.Client, printer *printer.Pri
 	for {
 		select {
 		case <-ctx.Done():
-			return errors.New("branch creation timed out")
+			return nil, errors.New("branch creation timed out")
 		case <-ticker.C:
 			resp, err := client.DatabaseBranches.Get(ctx, getReq)
 			if err != nil {
@@ -297,7 +299,7 @@ func waitUntilReady(ctx context.Context, client *ps.Client, printer *printer.Pri
 			}
 
 			if resp.Ready {
-				return nil
+				return resp, nil
 			}
 
 			elapsed := time.Since(startTime)
@@ -310,7 +312,7 @@ func waitUntilReady(ctx context.Context, client *ps.Client, printer *printer.Pri
 	}
 }
 
-func waitUntilPostgresReady(ctx context.Context, client *ps.Client, printer *printer.Printer, debug bool, getReq *ps.GetPostgresBranchRequest) error {
+func waitUntilPostgresReady(ctx context.Context, client *ps.Client, printer *printer.Printer, debug bool, getReq *ps.GetPostgresBranchRequest) (*ps.PostgresBranch, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
 	defer cancel()
 
@@ -324,7 +326,7 @@ func waitUntilPostgresReady(ctx context.Context, client *ps.Client, printer *pri
 	for {
 		select {
 		case <-ctx.Done():
-			return errors.New("branch creation timed out")
+			return nil, errors.New("branch creation timed out")
 		case <-ticker.C:
 			resp, err := client.PostgresBranches.Get(ctx, getReq)
 			if err != nil {
@@ -335,7 +337,7 @@ func waitUntilPostgresReady(ctx context.Context, client *ps.Client, printer *pri
 			}
 
 			if resp.Ready {
-				return nil
+				return resp, nil
 			}
 
 			elapsed := time.Since(startTime)

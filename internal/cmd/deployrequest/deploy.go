@@ -84,13 +84,13 @@ func DeployCmd(ch *cmdutil.Helper) *cobra.Command {
 					Database:     database,
 					Number:       number,
 				}
-				state, err := waitUntilReady(ctx, client, ch.Printer, ch.Debug(), getReq)
+				dr, err = waitUntilReady(ctx, client, ch.Printer, ch.Debug(), getReq)
 				if err != nil {
 					return err
 				}
 				end()
 
-				switch state {
+				switch dr.Deployment.State {
 				case "complete_pending_revert":
 					ch.Printer.Printf("Deploy request %s/%s is successfully deployed and revertable. You can skip the revert to unblock the deploy queue.\n\n",
 						printer.BoldBlue(database), printer.BoldBlue(number))
@@ -124,7 +124,7 @@ func DeployCmd(ch *cmdutil.Helper) *cobra.Command {
 }
 
 // waitUntilReady waits until the given deploy request has been deployed. It times out after 5 minutes.
-func waitUntilReady(ctx context.Context, client *planetscale.Client, printer *printer.Printer, debug bool, getReq *planetscale.GetDeployRequestRequest) (string, error) {
+func waitUntilReady(ctx context.Context, client *planetscale.Client, printer *printer.Printer, debug bool, getReq *planetscale.GetDeployRequestRequest) (*planetscale.DeployRequest, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
 	defer cancel()
 
@@ -133,7 +133,7 @@ func waitUntilReady(ctx context.Context, client *planetscale.Client, printer *pr
 	for {
 		select {
 		case <-ctx.Done():
-			return "", errors.New("deploy request queueing timed out")
+			return nil, errors.New("deploy request queueing timed out")
 		case <-ticker.C:
 			resp, err := client.DeployRequests.Get(ctx, getReq)
 			if err != nil {
@@ -144,7 +144,7 @@ func waitUntilReady(ctx context.Context, client *planetscale.Client, printer *pr
 			}
 
 			if resp.Deployment.State == "complete" || resp.Deployment.State == "complete_pending_revert" || resp.Deployment.State == "pending_cutover" {
-				return resp.Deployment.State, nil
+				return resp, nil
 			}
 		}
 	}

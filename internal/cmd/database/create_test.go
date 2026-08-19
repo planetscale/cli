@@ -68,6 +68,57 @@ func TestDatabase_CreateCmd(t *testing.T) {
 	c.Assert(buf.String(), qt.JSONEquals, res)
 }
 
+func TestDatabase_CreateCmdWithWaitPrintsReadyDatabase(t *testing.T) {
+	t.Parallel()
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	db := "planetscale"
+	pending := &ps.Database{Name: db, State: ps.DatabasePending}
+	ready := &ps.Database{Name: db, State: ps.DatabaseReady}
+
+	svc := &mock.DatabaseService{
+		CreateFn: func(_ context.Context, _ *ps.CreateDatabaseRequest) (*ps.Database, error) {
+			return pending, nil
+		},
+		GetFn: func(_ context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
+			c.Assert(req, qt.DeepEquals, &ps.GetDatabaseRequest{
+				Organization: org,
+				Database:     db,
+			})
+			return ready, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: org},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{
+				Databases: svc,
+				Organizations: &mock.OrganizationsService{
+					GetFn: func(_ context.Context, req *ps.GetOrganizationRequest) (*ps.Organization, error) {
+						return &ps.Organization{RemainingFreeDatabases: 1, Name: req.Organization}, nil
+					},
+				},
+			}, nil
+		},
+	}
+	debug := false
+	ch.SetDebug(&debug)
+
+	cmd := CreateCmd(ch)
+	cmd.SetArgs([]string{db, "--region", "us-east", "--wait"})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(svc.GetFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.JSONEquals, ready)
+}
+
 func TestDatabase_CreateCmdWithReplicasZero(t *testing.T) {
 	c := qt.New(t)
 
