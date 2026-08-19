@@ -315,7 +315,7 @@ Alias: `pscale dr …` works the same. Vitess only. `--ratio` is 0–95 (0 disab
 
 ```bash
 pscale deploy-request update <database> <number> --org <org> --format json --enable-auto-apply
-pscale deploy-request update <database> <number> --org <org> --format json --disable-auto-delete-branch
+pscale deploy-request update <database> <number> --org <org> --format json --auto-delete-branch=false
 ```
 
 ## Maintenance schedules (Vitess Enterprise)

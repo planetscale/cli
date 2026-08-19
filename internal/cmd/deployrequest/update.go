@@ -15,11 +15,10 @@ import (
 // UpdateCmd updates deploy-request settings. `edit` is kept as an alias.
 func UpdateCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
-		enable_auto_apply          bool
-		disable_auto_apply         bool
-		autoApply                  string // deprecated
-		enable_auto_delete_branch  bool
-		disable_auto_delete_branch bool
+		enable_auto_apply  bool
+		disable_auto_apply bool
+		autoApply          string // deprecated
+		auto_delete_branch bool
 	}
 
 	cmd := &cobra.Command{
@@ -29,8 +28,8 @@ func UpdateCmd(ch *cmdutil.Helper) *cobra.Command {
 		Long: `Update settings on a deploy request.
 
 Use --enable-auto-apply / --disable-auto-apply to control gated cutover, and
---enable-auto-delete-branch / --disable-auto-delete-branch to control whether
-the source branch is deleted after a successful deploy. At least one setting
+--auto-delete-branch to control whether the source branch is deleted after a
+successful deploy (same flag as 'deploy-request create'). At least one setting
 must be passed; unset flags are not sent.`,
 		Args: cmdutil.RequiredArgs("database", "number"),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -51,17 +50,14 @@ must be passed; unset flags are not sent.`,
 			if flags.enable_auto_apply && flags.disable_auto_apply {
 				return fmt.Errorf("cannot use both --enable-auto-apply and --disable-auto-apply flags together")
 			}
-			if flags.enable_auto_delete_branch && flags.disable_auto_delete_branch {
-				return fmt.Errorf("cannot use both --enable-auto-delete-branch and --disable-auto-delete-branch flags together")
-			}
 
 			hasNewAutoApply := flags.enable_auto_apply || flags.disable_auto_apply
 			hasDeprecatedFlag := flags.autoApply != ""
 			hasAutoApply := hasNewAutoApply || hasDeprecatedFlag
-			hasAutoDelete := flags.enable_auto_delete_branch || flags.disable_auto_delete_branch
+			hasAutoDelete := cmd.Flags().Changed("auto-delete-branch")
 
 			if !hasAutoApply && !hasAutoDelete {
-				return fmt.Errorf("must specify at least one of --enable-auto-apply, --disable-auto-apply, --enable-auto-delete-branch, --disable-auto-delete-branch, or --auto-apply")
+				return fmt.Errorf("must specify at least one of --enable-auto-apply, --disable-auto-apply, --auto-delete-branch, or --auto-apply")
 			}
 
 			if hasDeprecatedFlag {
@@ -108,7 +104,7 @@ must be passed; unset flags are not sent.`,
 					Organization: ch.Config.Organization,
 					Database:     database,
 					Number:       n,
-					Enable:       flags.enable_auto_delete_branch,
+					Enable:       flags.auto_delete_branch,
 				})
 				if err != nil {
 					return handleDRErr(err)
@@ -136,8 +132,7 @@ must be passed; unset flags are not sent.`,
 
 	cmd.Flags().BoolVar(&flags.enable_auto_apply, "enable-auto-apply", false, "Enable auto-apply. The deploy request will automatically swap over to the new schema once ready.")
 	cmd.Flags().BoolVar(&flags.disable_auto_apply, "disable-auto-apply", false, "Disable auto-apply. The deploy request will wait for your confirmation before swapping to the new schema. Use 'deploy-request apply' to apply the changes manually.")
-	cmd.Flags().BoolVar(&flags.enable_auto_delete_branch, "enable-auto-delete-branch", false, "Delete the source branch after the deploy request completes.")
-	cmd.Flags().BoolVar(&flags.disable_auto_delete_branch, "disable-auto-delete-branch", false, "Keep the source branch after the deploy request completes.")
+	cmd.Flags().BoolVar(&flags.auto_delete_branch, "auto-delete-branch", false, "Delete the branch after the deploy request completes. Pass --auto-delete-branch=false to keep it.")
 
 	cmd.Flags().StringVar(&flags.autoApply, "auto-apply", "", "Update the auto apply setting for a deploy request. Possible values: [enable,disable]")
 	cmd.Flags().MarkDeprecated("auto-apply", "use --enable-auto-apply or --disable-auto-apply instead")
