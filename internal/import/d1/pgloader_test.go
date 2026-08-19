@@ -176,9 +176,6 @@ func TestBuildPgloaderScriptQuotesCastIdentifiers(t *testing.T) {
 	}
 }
 
-// A name containing a double quote cannot use pgloader's double-quoted form, which has no
-// escape syntax. pgloader's CAST column refs accept either quoting form and strip both to
-// the same inner text, so such names fall back to the single-quoted form.
 func TestBuildPgloaderScriptQuotesCastIdentifierContainingDoubleQuote(t *testing.T) {
 	table := TableSchema{
 		Name:    `we"ird`,
