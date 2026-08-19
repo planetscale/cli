@@ -2,6 +2,7 @@ package planetscale
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -293,6 +294,42 @@ func TestBranches_RefreshSchema(t *testing.T) {
 		Branch:       testBranch,
 	})
 	c.Assert(err, qt.IsNil)
+}
+
+func TestBranches_Update(t *testing.T) {
+	c := qt.New(t)
+
+	wantURL := "/v1/organizations/my-org/databases/planetscale-go-test-db/branches/planetscale-go-test-db-branch"
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodPatch)
+		c.Assert(r.URL.String(), qt.DeepEquals, wantURL)
+
+		var body map[string]any
+		c.Assert(json.NewDecoder(r.Body).Decode(&body), qt.IsNil)
+		c.Assert(body, qt.DeepEquals, map[string]any{
+			"new_name":           "trunk",
+			"deletion_protected": true,
+		})
+
+		w.WriteHeader(200)
+		out := `{"id":"planetscale-go-test-db-branch","type":"database_branch","name":"trunk","created_at":"2021-01-14T10:19:23.000Z","updated_at":"2021-01-14T10:19:23.000Z"}`
+		_, err := w.Write([]byte(out))
+		c.Assert(err, qt.IsNil)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	protected := true
+	branch, err := client.DatabaseBranches.Update(context.Background(), &UpdateDatabaseBranchRequest{
+		Organization:      testOrg,
+		Database:          testDatabase,
+		Branch:            testBranch,
+		NewName:           "trunk",
+		DeletionProtected: &protected,
+	})
+	c.Assert(err, qt.IsNil)
+	c.Assert(branch.Name, qt.Equals, "trunk")
 }
 
 func TestBranches_Demote(t *testing.T) {
