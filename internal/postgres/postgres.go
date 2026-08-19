@@ -73,7 +73,7 @@ func parseURIFormat(uri string) (*Config, error) {
 	}
 
 	if cfg.SSLMode == "" {
-		cfg.SSLMode = "require"
+		cfg.SSLMode = "verify-full"
 	}
 
 	return cfg, nil
@@ -82,7 +82,7 @@ func parseURIFormat(uri string) (*Config, error) {
 func parseKeyValueFormat(connStr string) (*Config, error) {
 	cfg := &Config{
 		Port:    5432,
-		SSLMode: "require",
+		SSLMode: "verify-full",
 		Options: make(map[string]string),
 	}
 
