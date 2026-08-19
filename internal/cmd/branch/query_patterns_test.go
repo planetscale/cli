@@ -3,6 +3,7 @@ package branch
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/config"
+	"github.com/planetscale/cli/internal/mock"
 	ps "github.com/planetscale/cli/internal/planetscale"
 	"github.com/planetscale/cli/internal/printer"
 )
@@ -171,4 +173,136 @@ func TestBranch_QueryPatternsDownloadCmd_NotFound(t *testing.T) {
 
 	c.Assert(err, qt.IsNotNil)
 	c.Assert(err.Error(), qt.Contains, "query insights is not enabled")
+}
+
+func testQueryPatternsReport() *ps.QueryPatternsReport {
+	return &ps.QueryPatternsReport{
+		PublicID: "report1",
+		State:    "completed",
+		Actor:    &ps.Actor{Name: "Ada"},
+	}
+}
+
+func TestBranch_QueryPatternsListCmd(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	svc := &mock.QueryPatternsService{
+		ListReportsFn: func(ctx context.Context, req *ps.ListQueryPatternsReportsRequest, opts ...ps.ListOption) ([]*ps.QueryPatternsReport, error) {
+			c.Assert(req.Database, qt.Equals, "my-db")
+			c.Assert(req.Branch, qt.Equals, "my-branch")
+			return []*ps.QueryPatternsReport{testQueryPatternsReport()}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: "my-org"},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{QueryPatterns: svc}, nil
+		},
+	}
+
+	cmd := ListQueryPatternsCmd(ch)
+	cmd.SetArgs([]string{"my-db", "my-branch"})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(svc.ListReportsFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.Contains, "report1")
+}
+
+func TestBranch_QueryPatternsShowCmd(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	svc := &mock.QueryPatternsService{
+		GetReportFn: func(ctx context.Context, req *ps.GetQueryPatternsReportRequest) (*ps.QueryPatternsReport, error) {
+			c.Assert(req.Report, qt.Equals, "report1")
+			return testQueryPatternsReport(), nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: "my-org"},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{QueryPatterns: svc}, nil
+		},
+	}
+
+	cmd := ShowQueryPatternsCmd(ch)
+	cmd.SetArgs([]string{"my-db", "my-branch", "report1"})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(svc.GetReportFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.Contains, `"state": "completed"`)
+}
+
+func TestBranch_QueryPatternsShowCmd_PendingJSONOmitsZeroFinishedAt(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	svc := &mock.QueryPatternsService{
+		GetReportFn: func(ctx context.Context, req *ps.GetQueryPatternsReportRequest) (*ps.QueryPatternsReport, error) {
+			return &ps.QueryPatternsReport{
+				PublicID:  "report1",
+				State:     "pending",
+				CreatedAt: time.Date(2021, time.January, 14, 10, 19, 23, 0, time.UTC),
+			}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: "my-org"},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{QueryPatterns: svc}, nil
+		},
+	}
+
+	cmd := ShowQueryPatternsCmd(ch)
+	cmd.SetArgs([]string{"my-db", "my-branch", "report1"})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(buf.String(), qt.Not(qt.Contains), "0001-01-01")
+	c.Assert(buf.String(), qt.Contains, `"state": "pending"`)
+}
+
+func TestBranch_QueryPatternsDeleteCmd(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	svc := &mock.QueryPatternsService{
+		DeleteReportFn: func(ctx context.Context, req *ps.DeleteQueryPatternsReportRequest) error {
+			c.Assert(req.Report, qt.Equals, "report1")
+			return nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: "my-org"},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{QueryPatterns: svc}, nil
+		},
+	}
+
+	cmd := DeleteQueryPatternsCmd(ch)
+	cmd.SetArgs([]string{"my-db", "my-branch", "report1", "--force"})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(svc.DeleteReportFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.Contains, "query pattern report deleted")
 }

@@ -14,13 +14,13 @@ import (
 
 // QueryPatternsReport represents a query patterns report for a branch.
 type QueryPatternsReport struct {
-	PublicID    string    `json:"id"`
-	State       string    `json:"state"`
-	Actor       *Actor    `json:"actor"`
-	URL         string    `json:"url"`
-	DownloadURL string    `json:"download_url"`
-	CreatedAt   time.Time `json:"created_at"`
-	FinishedAt  time.Time `json:"finished_at"`
+	PublicID    string     `json:"id"`
+	State       string     `json:"state"`
+	Actor       *Actor     `json:"actor"`
+	URL         string     `json:"url"`
+	DownloadURL string     `json:"download_url"`
+	CreatedAt   time.Time  `json:"created_at"`
+	FinishedAt  *time.Time `json:"finished_at"`
 }
 
 type CreateQueryPatternsReportRequest struct {
@@ -43,11 +43,26 @@ type DownloadQueryPatternsReportRequest struct {
 	Report       string
 }
 
+type ListQueryPatternsReportsRequest struct {
+	Organization string
+	Database     string
+	Branch       string
+}
+
+type DeleteQueryPatternsReportRequest struct {
+	Organization string
+	Database     string
+	Branch       string
+	Report       string
+}
+
 // QueryPatternsService is an interface for communicating with the PlanetScale
 // query patterns API endpoints.
 type QueryPatternsService interface {
 	CreateReport(context.Context, *CreateQueryPatternsReportRequest) (*QueryPatternsReport, error)
+	ListReports(context.Context, *ListQueryPatternsReportsRequest, ...ListOption) ([]*QueryPatternsReport, error)
 	GetReport(context.Context, *GetQueryPatternsReportRequest) (*QueryPatternsReport, error)
+	DeleteReport(context.Context, *DeleteQueryPatternsReportRequest) error
 	DownloadReport(context.Context, *DownloadQueryPatternsReportRequest) (io.ReadCloser, error)
 }
 
@@ -79,6 +94,28 @@ func (s *queryPatternsService) CreateReport(ctx context.Context, createReq *Crea
 	return report, nil
 }
 
+// ListReports returns generated query patterns reports for a branch.
+func (s *queryPatternsService) ListReports(ctx context.Context, listReq *ListQueryPatternsReportsRequest, opts ...ListOption) ([]*QueryPatternsReport, error) {
+	listOpts := defaultListOptions(WithLimit(25))
+	for _, opt := range opts {
+		if err := opt(listOpts); err != nil {
+			return nil, err
+		}
+	}
+
+	req, err := s.client.newRequest(http.MethodGet, queryPatternsAPIPath(listReq.Organization, listReq.Database, listReq.Branch), nil, WithQueryParams(*listOpts.URLValues))
+	if err != nil {
+		return nil, fmt.Errorf("error creating http request: %w", err)
+	}
+
+	resp := &CursorPaginatedResponse[*QueryPatternsReport]{}
+	if err := s.client.do(ctx, req, resp); err != nil {
+		return nil, err
+	}
+
+	return resp.Data, nil
+}
+
 // GetReport returns a single query patterns report for a branch.
 func (s *queryPatternsService) GetReport(ctx context.Context, getReq *GetQueryPatternsReportRequest) (*QueryPatternsReport, error) {
 	path := queryPatternsReportAPIPath(getReq.Organization, getReq.Database, getReq.Branch, getReq.Report)
@@ -93,6 +130,17 @@ func (s *queryPatternsService) GetReport(ctx context.Context, getReq *GetQueryPa
 	}
 
 	return report, nil
+}
+
+// DeleteReport deletes a generated query patterns report.
+func (s *queryPatternsService) DeleteReport(ctx context.Context, deleteReq *DeleteQueryPatternsReportRequest) error {
+	path := queryPatternsReportAPIPath(deleteReq.Organization, deleteReq.Database, deleteReq.Branch, deleteReq.Report)
+	req, err := s.client.newRequest(http.MethodDelete, path, nil)
+	if err != nil {
+		return fmt.Errorf("error creating http request: %w", err)
+	}
+
+	return s.client.do(ctx, req, nil)
 }
 
 // DownloadReport returns the content of a completed query patterns report.
