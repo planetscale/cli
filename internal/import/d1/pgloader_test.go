@@ -176,6 +176,29 @@ func TestBuildPgloaderScriptQuotesCastIdentifiers(t *testing.T) {
 	}
 }
 
+// A name containing a double quote cannot use pgloader's double-quoted form, which has no
+// escape syntax. pgloader's CAST column refs accept either quoting form and strip both to
+// the same inner text, so such names fall back to the single-quoted form.
+func TestBuildPgloaderScriptQuotesCastIdentifierContainingDoubleQuote(t *testing.T) {
+	table := TableSchema{
+		Name:    `we"ird`,
+		Columns: []ColumnSchema{{Name: `is_"admin"`, Type: "BOOLEAN"}},
+	}
+
+	script := mustBuildPgloaderScript(t, "/tmp/test.sqlite", "postgresql://u:p@host/db", pgloaderScriptConfig{
+		dataOnly:  true,
+		tableName: table.Name,
+	}, []TableSchema{table}, []TableSchema{table}, nil)
+
+	want := `column 'we"ird'.'is_"admin"' to boolean using sqlite-int-to-boolean`
+	if !strings.Contains(script, want) {
+		t.Fatalf("expected single-quoted cast identifiers:\n%s", script)
+	}
+	if strings.Contains(script, `"we"ird"`) {
+		t.Fatalf("double-quoted form cannot hold an embedded double quote:\n%s", script)
+	}
+}
+
 func TestBuildPgloaderScriptRejectsUnquotableIdentifier(t *testing.T) {
 	table := TableSchema{
 		Name:    "O'Brien",
@@ -188,6 +211,18 @@ func TestBuildPgloaderScriptRejectsUnquotableIdentifier(t *testing.T) {
 	}, []TableSchema{table}, []TableSchema{table}, nil)
 	if err == nil {
 		t.Fatal("expected identifier containing a single quote to be rejected")
+	}
+
+	table = TableSchema{
+		Name:    "users",
+		Columns: []ColumnSchema{{Name: "O'Brien", Type: "INTEGER"}},
+	}
+	_, err = buildPgloaderScript("/tmp/test.sqlite", "postgresql://u:p@host/db", pgloaderScriptConfig{
+		dataOnly:  true,
+		tableName: table.Name,
+	}, []TableSchema{table}, []TableSchema{table}, nil)
+	if err == nil {
+		t.Fatal("expected column name containing a single quote to be rejected")
 	}
 }
 
