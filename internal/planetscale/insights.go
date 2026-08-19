@@ -16,7 +16,9 @@ type QueryInsightsService interface {
 	ListQueries(context.Context, *ListQueryInsightsRequest, ...ListOption) ([]*QueryInsight, error)
 	ListQuerySamples(context.Context, *ListQuerySamplesRequest, ...ListOption) ([]*QuerySample, error)
 	ListErrors(context.Context, *ListQueryInsightsErrorsRequest, ...ListOption) ([]*QueryInsightError, error)
+	ListErrorQueries(context.Context, *ListErrorQueriesRequest, ...ListOption) ([]*QuerySample, error)
 	ListAnomalies(context.Context, *ListAnomaliesRequest, ...ListOption) ([]*Anomaly, error)
+	GetAnomaly(context.Context, *GetAnomalyRequest) (*Anomaly, error)
 	ListTags(context.Context, *ListQueryTagsRequest, ...ListOption) ([]*QueryTag, error)
 	GetTag(context.Context, *GetQueryTagRequest, ...ListOption) (*QueryTag, error)
 	ListTagSummaries(context.Context, *ListTagSummariesRequest, ...ListOption) ([]*TagSummary, error)
@@ -71,15 +73,27 @@ type QueryInsightError struct {
 }
 
 // Anomaly is a detected resource-usage anomaly on a branch's primary.
+// Correlations are only returned when retrieving a single anomaly.
 type Anomaly struct {
-	ID                 string    `json:"id"`
-	PeriodStart        time.Time `json:"period_start"`
-	PeriodEnd          time.Time `json:"period_end"`
-	MinutesInViolation int64     `json:"minutes_in_violation"`
-	Active             bool      `json:"active"`
-	Duration           float64   `json:"duration"`
-	MetricsStart       time.Time `json:"metrics_start"`
-	MetricsEnd         time.Time `json:"metrics_end"`
+	ID                 string        `json:"id"`
+	PeriodStart        time.Time     `json:"period_start"`
+	PeriodEnd          time.Time     `json:"period_end"`
+	MinutesInViolation int64         `json:"minutes_in_violation"`
+	Active             bool          `json:"active"`
+	Duration           float64       `json:"duration"`
+	MetricsStart       time.Time     `json:"metrics_start"`
+	MetricsEnd         time.Time     `json:"metrics_end"`
+	Correlations       []Correlation `json:"correlations"`
+}
+
+// Correlation is a query correlated with an anomaly.
+type Correlation struct {
+	ID            string  `json:"id"`
+	R             float64 `json:"r"`
+	Keyspace      string  `json:"keyspace"`
+	Fingerprint   string  `json:"fingerprint"`
+	NormalizedSQL string  `json:"normalized_sql"`
+	TabletType    string  `json:"tablet_type"`
 }
 
 // ListQueryInsightsRequest is the request for listing query statistics for a branch.
@@ -96,11 +110,28 @@ type ListQueryInsightsErrorsRequest struct {
 	Branch       string
 }
 
+// ListErrorQueriesRequest is the request for listing the individual queries
+// that failed with a given error fingerprint.
+type ListErrorQueriesRequest struct {
+	Organization string
+	Database     string
+	Branch       string
+	Fingerprint  string
+}
+
 // ListAnomaliesRequest is the request for listing anomalies for a branch.
 type ListAnomaliesRequest struct {
 	Organization string
 	Database     string
 	Branch       string
+}
+
+// GetAnomalyRequest is the request for retrieving a single anomaly.
+type GetAnomalyRequest struct {
+	Organization string
+	Database     string
+	Branch       string
+	AnomalyID    string
 }
 
 // QuerySampleTag is a name/value tag attached to an individual query execution.
@@ -208,6 +239,23 @@ func (s *queryInsightsService) ListErrors(ctx context.Context, request *ListQuer
 	return resp.Errors, nil
 }
 
+func (s *queryInsightsService) ListErrorQueries(ctx context.Context, request *ListErrorQueriesRequest, opts ...ListOption) ([]*QuerySample, error) {
+	listOpts := defaultListOptions(opts...)
+
+	pathStr := path.Join(insightsAPIPath(request.Organization, request.Database, request.Branch), "errors", request.Fingerprint)
+	req, err := s.client.newRequest(http.MethodGet, pathStr, nil, WithQueryParams(*listOpts.URLValues))
+	if err != nil {
+		return nil, err
+	}
+
+	resp := &querySamplesResponse{}
+	if err := s.client.do(ctx, req, &resp); err != nil {
+		return nil, err
+	}
+
+	return resp.Data, nil
+}
+
 func (s *queryInsightsService) ListAnomalies(ctx context.Context, request *ListAnomaliesRequest, opts ...ListOption) ([]*Anomaly, error) {
 	listOpts := defaultListOptions(opts...)
 
@@ -222,6 +270,21 @@ func (s *queryInsightsService) ListAnomalies(ctx context.Context, request *ListA
 	}
 
 	return resp.Anomalies, nil
+}
+
+func (s *queryInsightsService) GetAnomaly(ctx context.Context, request *GetAnomalyRequest) (*Anomaly, error) {
+	pathStr := path.Join(insightsAPIPath(request.Organization, request.Database, request.Branch), "anomalies", request.AnomalyID)
+	req, err := s.client.newRequest(http.MethodGet, pathStr, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	anomaly := &Anomaly{}
+	if err := s.client.do(ctx, req, anomaly); err != nil {
+		return nil, err
+	}
+
+	return anomaly, nil
 }
 
 type querySamplesResponse struct {
