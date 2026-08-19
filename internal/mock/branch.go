@@ -204,6 +204,9 @@ type PostgresBranchesService struct {
 
 	ListParametersFn        func(context.Context, *ps.ListPostgresParametersRequest) ([]*ps.PostgresParameter, error)
 	ListParametersFnInvoked bool
+
+	ListExtensionsFn        func(context.Context, *ps.ListPostgresExtensionsRequest) ([]*ps.PostgresExtension, error)
+	ListExtensionsFnInvoked bool
 }
 
 func (p *PostgresBranchesService) Create(ctx context.Context, req *ps.CreatePostgresBranchRequest) (*ps.PostgresBranch, error) {
@@ -264,4 +267,9 @@ func (p *PostgresBranchesService) CancelChanges(ctx context.Context, req *ps.Can
 func (p *PostgresBranchesService) ListParameters(ctx context.Context, req *ps.ListPostgresParametersRequest) ([]*ps.PostgresParameter, error) {
 	p.ListParametersFnInvoked = true
 	return p.ListParametersFn(ctx, req)
+}
+
+func (p *PostgresBranchesService) ListExtensions(ctx context.Context, req *ps.ListPostgresExtensionsRequest) ([]*ps.PostgresExtension, error) {
+	p.ListExtensionsFnInvoked = true
+	return p.ListExtensionsFn(ctx, req)
 }
