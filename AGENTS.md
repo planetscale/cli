@@ -276,6 +276,18 @@ pscale database throttler update <database> --org <org> --format json \
 
 `--ratio` is 0–95 (0 disables throttling; 95 is slowest). Use either `--ratio` or `--configuration keyspace=ratio`, not both. Vitess only.
 
+## Vitess aggressive cutover
+
+Database-level setting for future deploy requests (not the same as `deploy-request force-cutover`):
+
+```bash
+pscale database aggressive-cutover show <database> --org <org> --format json
+pscale database aggressive-cutover enable <database> --org <org> --format json
+pscale database aggressive-cutover disable <database> --org <org> --format json
+```
+
+Vitess only. See https://planetscale.com/docs/vitess/schema-changes/aggressive-cutover
+
 ## Vitess deploy requests (inspect + throttler)
 
 Core lifecycle is already covered (`list/create/show/diff/review/deploy/apply/edit/cancel/close/revert/skip-revert`). These inspect commands are read-only:

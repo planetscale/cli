@@ -27,6 +27,15 @@ type DatabaseService struct {
 
 	UpdateThrottlerFn        func(context.Context, *ps.UpdateDatabaseThrottlerRequest) (*ps.DatabaseThrottler, error)
 	UpdateThrottlerFnInvoked bool
+
+	GetAggressiveCutoverFn        func(context.Context, *ps.AggressiveCutoverRequest) (*ps.AggressiveCutover, error)
+	GetAggressiveCutoverFnInvoked bool
+
+	EnableAggressiveCutoverFn        func(context.Context, *ps.AggressiveCutoverRequest) (*ps.AggressiveCutover, error)
+	EnableAggressiveCutoverFnInvoked bool
+
+	DisableAggressiveCutoverFn        func(context.Context, *ps.AggressiveCutoverRequest) (*ps.AggressiveCutover, error)
+	DisableAggressiveCutoverFnInvoked bool
 }
 
 func (d *DatabaseService) Create(ctx context.Context, req *ps.CreateDatabaseRequest) (*ps.Database, error) {
@@ -62,4 +71,19 @@ func (d *DatabaseService) GetThrottler(ctx context.Context, req *ps.GetDatabaseT
 func (d *DatabaseService) UpdateThrottler(ctx context.Context, req *ps.UpdateDatabaseThrottlerRequest) (*ps.DatabaseThrottler, error) {
 	d.UpdateThrottlerFnInvoked = true
 	return d.UpdateThrottlerFn(ctx, req)
+}
+
+func (d *DatabaseService) GetAggressiveCutover(ctx context.Context, req *ps.AggressiveCutoverRequest) (*ps.AggressiveCutover, error) {
+	d.GetAggressiveCutoverFnInvoked = true
+	return d.GetAggressiveCutoverFn(ctx, req)
+}
+
+func (d *DatabaseService) EnableAggressiveCutover(ctx context.Context, req *ps.AggressiveCutoverRequest) (*ps.AggressiveCutover, error) {
+	d.EnableAggressiveCutoverFnInvoked = true
+	return d.EnableAggressiveCutoverFn(ctx, req)
+}
+
+func (d *DatabaseService) DisableAggressiveCutover(ctx context.Context, req *ps.AggressiveCutoverRequest) (*ps.AggressiveCutover, error) {
+	d.DisableAggressiveCutoverFnInvoked = true
+	return d.DisableAggressiveCutoverFn(ctx, req)
 }

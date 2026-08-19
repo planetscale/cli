@@ -46,7 +46,7 @@ func ThrottlerShowCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
-			if err := requireVitessDatabase(ctx, ch, client, database); err != nil {
+			if err := requireVitessDatabase(ctx, ch, client, database, "database throttler"); err != nil {
 				return err
 			}
 
@@ -131,7 +131,7 @@ This is the database default for future deploy requests, not a single deploy req
 				return err
 			}
 
-			if err := requireVitessDatabase(ctx, ch, client, database); err != nil {
+			if err := requireVitessDatabase(ctx, ch, client, database, "database throttler"); err != nil {
 				return err
 			}
 
@@ -167,7 +167,7 @@ This is the database default for future deploy requests, not a single deploy req
 	return cmd
 }
 
-func requireVitessDatabase(ctx context.Context, ch *cmdutil.Helper, client *planetscale.Client, database string) error {
+func requireVitessDatabase(ctx context.Context, ch *cmdutil.Helper, client *planetscale.Client, database, feature string) error {
 	db, err := client.Databases.Get(ctx, &planetscale.GetDatabaseRequest{
 		Organization: ch.Config.Organization,
 		Database:     database,
@@ -182,8 +182,8 @@ func requireVitessDatabase(ctx context.Context, ch *cmdutil.Helper, client *plan
 		}
 	}
 	if db.Kind != planetscale.DatabaseEngineMySQL {
-		return fmt.Errorf("database throttler is only available for Vitess (MySQL) databases; %s is %s",
-			printer.BoldBlue(database), printer.BoldBlue(string(db.Kind)))
+		return fmt.Errorf("%s is only available for Vitess (MySQL) databases; %s is %s",
+			feature, printer.BoldBlue(database), printer.BoldBlue(string(db.Kind)))
 	}
 	return nil
 }
