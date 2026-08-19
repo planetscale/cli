@@ -437,8 +437,6 @@ https://mcp.pscale.dev/mcp/planetscale
 
 See the current MCP docs: https://planetscale.com/docs/connect/mcp
 
-Do not use the deprecated local `pscale mcp server` path unless you explicitly need backward compatibility with an old setup.
-
 ## PlanetScale agent skills
 
 Operational workflows (inventory, safety review, Insights, schema recommendations, Traffic Control) live in the public skills repo — not in this file.

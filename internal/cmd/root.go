@@ -28,7 +28,6 @@ import (
 
 	clicontent "github.com/planetscale/cli"
 	"github.com/planetscale/cli/internal/cmd/agentguide"
-	"github.com/planetscale/cli/internal/cmd/mcp"
 	"github.com/planetscale/cli/internal/cmd/role"
 	"github.com/planetscale/cli/internal/cmd/size"
 	"github.com/planetscale/cli/internal/cmd/trafficcontrol"
@@ -286,10 +285,6 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 	completionCmd := CompletionCmd()
 	completionCmd.GroupID = "platform"
 	rootCmd.AddCommand(completionCmd)
-
-	mcpCmd := mcp.McpCmd(ch)
-	mcpCmd.GroupID = "database"
-	rootCmd.AddCommand(mcpCmd)
 
 	orgCmd := org.OrgCmd(ch)
 	orgCmd.GroupID = "platform"

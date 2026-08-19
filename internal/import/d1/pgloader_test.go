@@ -27,6 +27,15 @@ const pgloaderTeamMembersZero = `
       Total import time          ✓          0                     0.966s
 `
 
+func mustBuildPgloaderScript(t *testing.T, sqlitePath, destURI string, cfg pgloaderScriptConfig, castTables, allTables []TableSchema, coerceCtx *TypeCoercionContext) string {
+	t.Helper()
+	script, err := buildPgloaderScript(sqlitePath, destURI, cfg, castTables, allTables, coerceCtx)
+	if err != nil {
+		t.Fatalf("buildPgloaderScript: %v", err)
+	}
+	return script
+}
+
 func TestBuildPgloaderScriptDataOnlyPerTable(t *testing.T) {
 	table := TableSchema{
 		Name: "organizations",
@@ -37,7 +46,7 @@ func TestBuildPgloaderScriptDataOnlyPerTable(t *testing.T) {
 			{Name: "created_at", Type: "TEXT", NotNull: true},
 		},
 	}
-	script := buildPgloaderScript("/tmp/test.sqlite", "postgresql://u:p@host/db", pgloaderScriptConfig{
+	script := mustBuildPgloaderScript(t, "/tmp/test.sqlite", "postgresql://u:p@host/db", pgloaderScriptConfig{
 		dataOnly:       true,
 		tableName:      "organizations",
 		resetSequences: false,
@@ -74,7 +83,7 @@ func TestBuildPgloaderScriptDataOnlyPerTable(t *testing.T) {
 }
 
 func TestBuildPgloaderScriptLargeTableProfile(t *testing.T) {
-	script := buildPgloaderScript("/tmp/test.sqlite", "postgresql://u:p@host/db", pgloaderScriptConfig{
+	script := mustBuildPgloaderScript(t, "/tmp/test.sqlite", "postgresql://u:p@host/db", pgloaderScriptConfig{
 		dataOnly:       true,
 		tableName:      "attachments",
 		resetSequences: true,
@@ -112,15 +121,15 @@ func TestBuildPgloaderScriptUUIDCast(t *testing.T) {
 		t.Fatal("expected entity_links table")
 	}
 
-	script := buildPgloaderScript("/tmp/test.sqlite", "postgresql://u:p@host/db", pgloaderScriptConfig{
+	script := mustBuildPgloaderScript(t, "/tmp/test.sqlite", "postgresql://u:p@host/db", pgloaderScriptConfig{
 		dataOnly:  true,
 		tableName: "entity_links",
 		profile:   pgloaderProfileForTable(0),
 	}, []TableSchema{*entityLinks}, tables, ctx)
 
 	for _, want := range []string{
-		"column entity_links.entity_id to uuid using sqlite-text-to-uuid",
-		"column entity_links.linked_at to timestamptz using sqlite-timestamp-to-timestamp",
+		`column "entity_links"."entity_id" to uuid using sqlite-text-to-uuid`,
+		`column "entity_links"."linked_at" to timestamptz using sqlite-timestamp-to-timestamp`,
 	} {
 		if !strings.Contains(script, want) {
 			t.Fatalf("script missing %q\n%s", want, script)
@@ -137,18 +146,63 @@ func TestBuildPgloaderScriptUUIDCast(t *testing.T) {
 	if externalEntities == nil {
 		t.Fatal("expected external_entities table")
 	}
-	script = buildPgloaderScript("/tmp/test.sqlite", "postgresql://u:p@host/db", pgloaderScriptConfig{
+	script = mustBuildPgloaderScript(t, "/tmp/test.sqlite", "postgresql://u:p@host/db", pgloaderScriptConfig{
 		dataOnly:  true,
 		tableName: "external_entities",
 		profile:   pgloaderProfileForTable(0),
 	}, []TableSchema{*externalEntities}, tables, ctx)
-	if !strings.Contains(script, "column external_entities.id to uuid using sqlite-text-to-uuid") {
+	if !strings.Contains(script, `column "external_entities"."id" to uuid using sqlite-text-to-uuid`) {
 		t.Fatalf("script missing external_entities UUID cast\n%s", script)
 	}
 }
 
+func TestBuildPgloaderScriptQuotesCastIdentifiers(t *testing.T) {
+	table := TableSchema{
+		Name: "users; BEFORE LOAD DO $$evil$$",
+		Columns: []ColumnSchema{{
+			Name: "is_admin, type text",
+			Type: "BOOLEAN",
+		}},
+	}
+
+	script := mustBuildPgloaderScript(t, "/tmp/test.sqlite", "postgresql://u:p@host/db", pgloaderScriptConfig{
+		dataOnly:  true,
+		tableName: table.Name,
+	}, []TableSchema{table}, []TableSchema{table}, nil)
+
+	want := `column "users; BEFORE LOAD DO $$evil$$"."is_admin, type text" to boolean using sqlite-int-to-boolean`
+	if !strings.Contains(script, want) {
+		t.Fatalf("cast identifiers were not safely quoted:\n%s", script)
+	}
+}
+
+func TestBuildPgloaderScriptRejectsUnquotableIdentifier(t *testing.T) {
+	table := TableSchema{
+		Name:    "users\"\u0027",
+		Columns: []ColumnSchema{{Name: "enabled", Type: "INTEGER"}},
+	}
+
+	_, err := buildPgloaderScript("/tmp/test.sqlite", "postgresql://u:p@host/db", pgloaderScriptConfig{
+		dataOnly:  true,
+		tableName: table.Name,
+	}, []TableSchema{table}, []TableSchema{table}, nil)
+	if err == nil {
+		t.Fatal("expected identifier containing both quote styles to be rejected")
+	}
+}
+
+func TestPgloaderTableLoadFileNameCannotTraverse(t *testing.T) {
+	name := pgloaderTableLoadFileName("x/../../ESCAPED")
+	if filepath.Base(name) != name {
+		t.Fatalf("load filename escaped work directory: %q", name)
+	}
+	if strings.Contains(name, "..") || strings.ContainsAny(name, `/\`) {
+		t.Fatalf("load filename contains path syntax: %q", name)
+	}
+}
+
 func TestBuildPgloaderScriptFullLoadResetsSequences(t *testing.T) {
-	script := buildPgloaderScript("/tmp/test.sqlite", "postgresql://u:p@host/db", pgloaderScriptConfig{
+	script := mustBuildPgloaderScript(t, "/tmp/test.sqlite", "postgresql://u:p@host/db", pgloaderScriptConfig{
 		dataOnly:       true,
 		resetSequences: true,
 		profile:        pgloaderProfileForTable(0),
