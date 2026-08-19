@@ -93,6 +93,35 @@ func TestOrg_MemberListCmd_Pagination(t *testing.T) {
 	c.Assert(svc.ListMembersFnInvoked, qt.IsTrue)
 }
 
+func TestOrg_MemberListCmd_EmptyPage(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.Human
+	p := printer.NewPrinter(&format)
+	p.SetHumanOutput(&buf)
+
+	svc := &mock.OrganizationsService{
+		ListMembersFn: func(ctx context.Context, req *ps.ListOrganizationMembersRequest, opts ...ps.ListOption) ([]*ps.OrganizationMembership, error) {
+			return nil, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: "planetscale"},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{Organizations: svc}, nil
+		},
+	}
+
+	cmd := MemberListCmd(ch)
+	cmd.SetArgs([]string{"--page", "4"})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(buf.String(), qt.Contains, "No members found on this page.")
+	c.Assert(buf.String(), qt.Not(qt.Contains), "No members in")
+}
+
 func TestOrg_MemberUpdateCmd_PermissionErrorKeepsServerReason(t *testing.T) {
 	c := qt.New(t)
 

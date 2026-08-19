@@ -52,7 +52,9 @@ Results are paginated: 100 members per page by default. Use --page and
 			end()
 
 			if len(members) == 0 && ch.Printer.Format() == printer.Human {
-				if flags.query != "" {
+				if flags.page > 0 {
+					ch.Printer.Println("No members found on this page.")
+				} else if flags.query != "" {
 					ch.Printer.Printf("No members in %s match %s.\n", printer.BoldBlue(org), printer.BoldBlue(flags.query))
 				} else {
 					ch.Printer.Printf("No members in %s.\n", printer.BoldBlue(org))
