@@ -84,6 +84,13 @@ type ResetDefaultRoleRequest struct {
 	Branch       string `json:"-"`
 }
 
+// GetDefaultPostgresRoleRequest encapsulates fetching the default postgres role.
+type GetDefaultPostgresRoleRequest struct {
+	Organization string
+	Database     string
+	Branch       string
+}
+
 // ResetPostgresRolePasswordRequest encapsulates the request for resetting a role's password for a database branch.
 type ResetPostgresRolePasswordRequest struct {
 	Organization string `json:"-"`
@@ -110,6 +117,7 @@ type PostgresRolesService interface {
 	Renew(context.Context, *RenewPostgresRoleRequest) (*PostgresRole, error)
 	Delete(context.Context, *DeletePostgresRoleRequest) error
 	ResetDefaultRole(context.Context, *ResetDefaultRoleRequest) (*PostgresRole, error)
+	GetDefaultRole(context.Context, *GetDefaultPostgresRoleRequest) (*PostgresRole, error)
 	ResetPassword(context.Context, *ResetPostgresRolePasswordRequest) (*PostgresRole, error)
 	ReassignObjects(context.Context, *ReassignPostgresRoleObjectsRequest) error
 }
@@ -130,6 +138,22 @@ func NewPostgresRolesService(client *Client) *postgresRolesService {
 func (p *postgresRolesService) ResetDefaultRole(ctx context.Context, resetReq *ResetDefaultRoleRequest) (*PostgresRole, error) {
 	pathStr := path.Join(postgresBranchRolesAPIPath(resetReq.Organization, resetReq.Database, resetReq.Branch), "reset-default")
 	req, err := p.client.newRequest(http.MethodPost, pathStr, resetReq)
+	if err != nil {
+		return nil, fmt.Errorf("error creating http request: %w", err)
+	}
+
+	role := &PostgresRole{}
+	if err := p.client.do(ctx, req, &role); err != nil {
+		return nil, err
+	}
+
+	return role, nil
+}
+
+// GetDefaultRole returns the default postgres role for a branch without rotating credentials.
+func (p *postgresRolesService) GetDefaultRole(ctx context.Context, getReq *GetDefaultPostgresRoleRequest) (*PostgresRole, error) {
+	pathStr := path.Join(postgresBranchRolesAPIPath(getReq.Organization, getReq.Database, getReq.Branch), "default")
+	req, err := p.client.newRequest(http.MethodGet, pathStr, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating http request: %w", err)
 	}

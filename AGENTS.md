@@ -349,6 +349,10 @@ pscale branch parameters list <database> <branch> --org <org> --format json --na
 # Extensions available on the cluster image (not CREATE EXTENSION state)
 pscale branch extensions list <database> <branch> --org <org> --format json
 
+# Default postgres role (read-only; reset-default rotates the password)
+pscale role default <database> <branch> --org <org> --format json
+pscale role reset-default <database> <branch> --org <org> --format json --force
+
 # Change parameters (repeat --parameters; keys are namespace.name)
 pscale branch resize <database> <branch> --org <org> --format json --parameters pgconf.max_connections=200
 
