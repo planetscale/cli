@@ -10,11 +10,19 @@ import (
 )
 
 func MemberListCmd(ch *cmdutil.Helper) *cobra.Command {
-	var query string
+	var flags struct {
+		query   string
+		page    int
+		perPage int
+	}
 
 	cmd := &cobra.Command{
-		Use:     "list",
-		Short:   "List members of an organization",
+		Use:   "list",
+		Short: "List members of an organization",
+		Long: `List members of an organization.
+
+Results are paginated: 100 members per page by default. Use --page and
+--per-page to walk organizations with more members than one page holds.`,
 		Args:    cobra.NoArgs,
 		Aliases: []string{"ls"},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -31,8 +39,8 @@ func MemberListCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			members, err := client.Organizations.ListMembers(ctx, &ps.ListOrganizationMembersRequest{
 				Organization: org,
-				Query:        query,
-			})
+				Query:        flags.query,
+			}, ps.WithPage(flags.page), ps.WithPerPage(flags.perPage))
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case ps.ErrNotFound:
@@ -44,8 +52,8 @@ func MemberListCmd(ch *cmdutil.Helper) *cobra.Command {
 			end()
 
 			if len(members) == 0 && ch.Printer.Format() == printer.Human {
-				if query != "" {
-					ch.Printer.Printf("No members in %s match %s.\n", printer.BoldBlue(org), printer.BoldBlue(query))
+				if flags.query != "" {
+					ch.Printer.Printf("No members in %s match %s.\n", printer.BoldBlue(org), printer.BoldBlue(flags.query))
 				} else {
 					ch.Printer.Printf("No members in %s.\n", printer.BoldBlue(org))
 				}
@@ -56,6 +64,8 @@ func MemberListCmd(ch *cmdutil.Helper) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&query, "query", "", "Filter members by name or email prefix")
+	cmd.Flags().StringVar(&flags.query, "query", "", "Filter members by name or email prefix")
+	cmd.Flags().IntVar(&flags.page, "page", 0, "Page number to fetch")
+	cmd.Flags().IntVar(&flags.perPage, "per-page", 100, "Number of results per page")
 	return cmd
 }

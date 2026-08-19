@@ -58,7 +58,9 @@ Assignable roles: admin, member, analyst.`,
 				case ps.ErrNotFound:
 					return memberNotFound(ch.Config.Organization, id)
 				case ps.ErrPermission:
-					return fmt.Errorf("only organization admins can change member roles")
+					// More than one server-side rule can reject this, so surface the
+					// API's reason rather than assuming the caller is not an admin.
+					return fmt.Errorf("cannot change the role for %s: %w", member.User.Email, err)
 				default:
 					return cmdutil.HandleError(err)
 				}

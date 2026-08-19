@@ -61,7 +61,9 @@ Removing someone else requires organization admin. You can remove yourself
 				case ps.ErrNotFound:
 					return memberNotFound(ch.Config.Organization, id)
 				case ps.ErrPermission:
-					return fmt.Errorf("only organization admins can remove other members")
+					// More than one server-side rule can reject this, so surface the
+					// API's reason rather than assuming the caller is not an admin.
+					return fmt.Errorf("cannot remove %s: %w", member.User.Email, err)
 				default:
 					return cmdutil.HandleError(err)
 				}
