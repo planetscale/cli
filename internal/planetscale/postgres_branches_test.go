@@ -553,6 +553,35 @@ func TestPostgresBranches_ListParameters(t *testing.T) {
 	c.Assert(parameters[0].Max, qt.Equals, float64(5000))
 }
 
+func TestPostgresBranches_ListExtensions(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodGet)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/postgres-test-db/branches/postgres-test-branch/extensions")
+		w.WriteHeader(200)
+		out := `[{"type":"PostgresClusterExtension","name":"vector","description":"<p>vector</p>","internal":false,"loader":"shared_preload_libraries","url":"https://github.com/pgvector/pgvector","available":true,"unavailable_reason":"","parameters":[]}]`
+		_, err := w.Write([]byte(out))
+		c.Assert(err, qt.IsNil)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	extensions, err := client.PostgresBranches.ListExtensions(context.Background(), &ListPostgresExtensionsRequest{
+		Organization: "my-org",
+		Database:     "postgres-test-db",
+		Branch:       testPostgresBranch,
+	})
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(extensions, qt.HasLen, 1)
+	c.Assert(extensions[0].Name, qt.Equals, "vector")
+	c.Assert(extensions[0].Loader, qt.Equals, "shared_preload_libraries")
+	c.Assert(extensions[0].Available, qt.IsTrue)
+	c.Assert(extensions[0].URL, qt.Equals, "https://github.com/pgvector/pgvector")
+}
+
 func TestPostgresBranches_ListParametersWithFilters(t *testing.T) {
 	c := qt.New(t)
 

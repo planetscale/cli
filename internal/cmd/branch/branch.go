@@ -28,6 +28,7 @@ func BranchCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.AddCommand(ResizeCmd(ch))
 	cmd.AddCommand(VtgateCmd(ch))
 	cmd.AddCommand(ParametersCmd(ch))
+	cmd.AddCommand(ExtensionsCmd(ch))
 	cmd.AddCommand(ShowCmd(ch))
 	cmd.AddCommand(UpdateCmd(ch))
 	cmd.AddCommand(SwitchCmd(ch))

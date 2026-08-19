@@ -334,6 +334,9 @@ pscale maintenance windows <database> <schedule-id> --org <org> --format json
 pscale branch parameters list <database> <branch> --org <org> --format json
 pscale branch parameters list <database> <branch> --org <org> --format json --namespace pgconf
 
+# Extensions available on the cluster image (not CREATE EXTENSION state)
+pscale branch extensions list <database> <branch> --org <org> --format json
+
 # Change parameters (repeat --parameters; keys are namespace.name)
 pscale branch resize <database> <branch> --org <org> --format json --parameters pgconf.max_connections=200
 
