@@ -17,14 +17,15 @@ func MemberRemoveCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:     "remove <user-id>",
+		Use:     "remove <email|user-id>",
 		Short:   "Remove a member from an organization",
 		Aliases: []string{"rm"},
 		Long: `Remove a member from an organization.
 
+Identify the member by email or by the USER_ID from 'org member list'.
 Removing someone else requires organization admin. You can remove yourself
 (leave) without being an admin. The last admin cannot be removed.`,
-		Args: cmdutil.RequiredArgs("user-id"),
+		Args: cmdutil.RequiredArgs("email|user-id"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			id := args[0]

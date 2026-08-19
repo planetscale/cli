@@ -11,12 +11,12 @@ import (
 
 func MemberShowCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "show <user-id>",
+		Use:   "show <email|user-id>",
 		Short: "Show an organization member",
-		Long: `Show an organization member by user id, email, or membership id.
+		Long: `Show an organization member by email or user id.
 
-The table user_id is the identifier used by update and remove.`,
-		Args: cmdutil.RequiredArgs("user-id"),
+'org member list' prints both EMAIL and USER_ID.`,
+		Args: cmdutil.RequiredArgs("email|user-id"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			id := args[0]

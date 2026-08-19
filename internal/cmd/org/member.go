@@ -18,6 +18,9 @@ func MemberCmd(ch *cmdutil.Helper) *cobra.Command {
 		Short: "List, show, update, and remove organization members",
 		Long: `Manage organization members and their roles.
 
+show, update, and remove take an email or a user id (the USER_ID column from
+'org member list'). Email is usually the easiest.
+
 Only organization admins can change another member's role or remove someone
 else. Nobody can change their own role. Members can still leave the organization
 themselves.`,

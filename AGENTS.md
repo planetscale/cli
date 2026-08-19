@@ -76,13 +76,13 @@ pscale --org <org> database list --format json
 
    Pass `--org <org>` on resource commands (`database`, `branch`, `sql`, `api`, …). Not on `org list`.
 
-   Organization members (`user_id` from list is what show/update/remove take; email also works):
+   Organization members (email or the USER_ID from list):
 
    ```bash
    pscale org member list --org <org> --format json
-   pscale org member show <user-id> --org <org> --format json
-   pscale org member update <user-id> --org <org> --format json --role member
-   pscale org member remove <user-id> --org <org> --format json --force
+   pscale org member show user@example.com --org <org> --format json
+   pscale org member update user@example.com --org <org> --format json --role member
+   pscale org member remove user@example.com --org <org> --format json --force
    ```
 
    Only org admins can change another member's role or remove someone else. Nobody can change their own role. `--role` is `admin`, `member`, or `analyst`.

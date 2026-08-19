@@ -13,13 +13,14 @@ func MemberUpdateCmd(ch *cmdutil.Helper) *cobra.Command {
 	var role string
 
 	cmd := &cobra.Command{
-		Use:   "update <user-id>",
+		Use:   "update <email|user-id>",
 		Short: "Update an organization member's role",
 		Long: `Update another member's organization role.
 
+Identify the member by email or by the USER_ID from 'org member list'.
 Only organization admins can do this. You cannot change your own role.
 Assignable roles: admin, member, analyst.`,
-		Args: cmdutil.RequiredArgs("user-id"),
+		Args: cmdutil.RequiredArgs("email|user-id"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			id := args[0]
