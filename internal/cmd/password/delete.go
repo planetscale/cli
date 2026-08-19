@@ -29,13 +29,8 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 			database := args[0]
 			branch := args[1]
 
-			// Validate that either password-id is provided as arg or --name flag is used
-			var passwordId string
-			if name != "" && len(args) == 3 {
-				return errors.New("cannot specify both password-id argument and --name flag")
-			}
-			if name == "" && len(args) != 3 {
-				return errors.New("must provide either password-id argument or --name flag")
+			if err := passwordSelector(args, name); err != nil {
+				return err
 			}
 
 			client, err := ch.Client()
@@ -43,55 +38,14 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
-			// If using --name flag, find the password by name
-			if name != "" {
-				end := ch.Printer.PrintProgress(fmt.Sprintf("Finding password %s in %s/%s",
-					printer.BoldBlue(name), printer.BoldBlue(database), printer.BoldBlue(branch)))
+			var argID string
+			if len(args) == 3 {
+				argID = args[2]
+			}
 
-				var foundPassword *ps.DatabaseBranchPassword
-				page := 1
-				perPage := 100
-
-				for {
-					passwords, err := client.Passwords.List(ctx, &ps.ListDatabaseBranchPasswordRequest{
-						Organization: ch.Config.Organization,
-						Database:     database,
-						Branch:       branch,
-					}, ps.WithPage(page), ps.WithPerPage(perPage))
-					if err != nil {
-						end()
-						switch cmdutil.ErrCode(err) {
-						case ps.ErrNotFound:
-							return fmt.Errorf("branch %s does not exist in database %s (organization: %s)",
-								printer.BoldBlue(branch), printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
-						default:
-							return cmdutil.HandleError(err)
-						}
-					}
-
-					for _, password := range passwords {
-						if password.Name == name {
-							foundPassword = password
-							break
-						}
-					}
-
-					if foundPassword != nil || len(passwords) < perPage {
-						break
-					}
-					page++
-				}
-
-				end()
-
-				if foundPassword == nil {
-					return fmt.Errorf("password with name %s does not exist in branch %s of %s (organization: %s)",
-						printer.BoldBlue(name), printer.BoldBlue(branch), printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
-				}
-
-				passwordId = foundPassword.PublicID
-			} else {
-				passwordId = args[2]
+			passwordId, err := resolvePasswordID(ctx, ch, client, database, branch, argID, name)
+			if err != nil {
+				return err
 			}
 
 			if !force {
