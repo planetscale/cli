@@ -178,7 +178,7 @@ func TestBuildPgloaderScriptQuotesCastIdentifiers(t *testing.T) {
 
 func TestBuildPgloaderScriptRejectsUnquotableIdentifier(t *testing.T) {
 	table := TableSchema{
-		Name:    "users\"\u0027",
+		Name:    "O'Brien",
 		Columns: []ColumnSchema{{Name: "enabled", Type: "INTEGER"}},
 	}
 
@@ -187,7 +187,7 @@ func TestBuildPgloaderScriptRejectsUnquotableIdentifier(t *testing.T) {
 		tableName: table.Name,
 	}, []TableSchema{table}, []TableSchema{table}, nil)
 	if err == nil {
-		t.Fatal("expected identifier containing both quote styles to be rejected")
+		t.Fatal("expected identifier containing a single quote to be rejected")
 	}
 }
 
@@ -239,17 +239,17 @@ CREATE TABLE users (id INTEGER PRIMARY KEY, org_id INTEGER);
 }
 
 func TestPgloaderTableNameFilterExactMatch(t *testing.T) {
-	got := pgloaderTableNameFilter("entity_links", nil)
+	got := mustPgloaderTableNameFilter(t, "entity_links", nil)
 	want := ` LIKE 'entity_links'`
 	if got != want {
 		t.Fatalf("pgloaderTableNameFilter() = %q, want %q", got, want)
 	}
-	got = pgloaderTableNameFilter("100%done", nil)
+	got = mustPgloaderTableNameFilter(t, "100%done", nil)
 	if got != ` LIKE '100%done'` {
 		t.Fatalf("pgloaderTableNameFilter() = %q", got)
 	}
 	all := []string{"tbl_a", "tbl1a", "users"}
-	got = pgloaderTableNameFilter("tbl_a", all)
+	got = mustPgloaderTableNameFilter(t, "tbl_a", all)
 	if !strings.Contains(got, ` LIKE 'tbl_a'`) {
 		t.Fatalf("pgloaderTableNameFilter() = %q", got)
 	}
@@ -259,10 +259,18 @@ func TestPgloaderTableNameFilterExactMatch(t *testing.T) {
 	if strings.Contains(got, `EXCLUDING TABLE NAMES LIKE 'users'`) {
 		t.Fatalf("did not expect users excluded, got %q", got)
 	}
-	got = pgloaderTableNameFilter("O'Brien", nil)
-	if got != ` LIKE 'O''Brien'` {
-		t.Fatalf("pgloaderTableNameFilter() = %q", got)
+	if _, err := pgloaderTableNameFilter("O'Brien", nil); err == nil {
+		t.Fatal("expected single-quoted table names to be rejected")
 	}
+}
+
+func mustPgloaderTableNameFilter(t *testing.T, name string, all []string) string {
+	t.Helper()
+	got, err := pgloaderTableNameFilter(name, all)
+	if err != nil {
+		t.Fatalf("pgloaderTableNameFilter(%q): %v", name, err)
+	}
+	return got
 }
 
 func TestSQLLikeMatch(t *testing.T) {

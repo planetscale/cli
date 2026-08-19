@@ -30,7 +30,7 @@ func lintIdentifier(table, name, column string) []Issue {
 			Table:       table,
 			Column:      column,
 			Message:     fmt.Sprintf("%s name %q cannot be represented safely in a pgloader control file", target, name),
-			Remediation: "Rename the " + target + " in SQLite before export to remove control characters or conflicting quote characters",
+			Remediation: "Rename the " + target + " in SQLite before export so it does not contain quotes or control characters",
 		})
 	}
 	if len(name) > postgresMaxIdentifierBytes {

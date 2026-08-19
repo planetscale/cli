@@ -88,7 +88,7 @@ If you need a more advanced example that works with service tokens and different
 
 ## MCP Server Integration
 
-> **Deprecated:** The CLI-based MCP server (`pscale mcp`) is deprecated and will be removed in a future version. Use the PlanetScale MCP server instead: https://planetscale.com/docs/connect/mcp
+Use the hosted PlanetScale MCP server: https://planetscale.com/docs/connect/mcp
 
 ## GitHub Actions Usage
 Use the [setup-pscale-action](https://github.com/planetscale/setup-pscale-action) to install and use `pscale` in GitHub Actions.

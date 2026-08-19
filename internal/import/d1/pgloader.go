@@ -410,8 +410,11 @@ func buildPgloaderScript(sqlitePath, destURI string, cfg pgloaderScriptConfig, c
 
 	if cfg.tableName != "" {
 		b.WriteString("\n")
-		tableNames := tableNames(allTables)
-		fmt.Fprintf(&b, " INCLUDING ONLY TABLE NAMES%s\n", pgloaderTableNameFilter(cfg.tableName, tableNames))
+		filter, err := pgloaderTableNameFilter(cfg.tableName, tableNames(allTables))
+		if err != nil {
+			return "", err
+		}
+		fmt.Fprintf(&b, " INCLUDING ONLY TABLE NAMES%s\n", filter)
 	}
 
 	if err := appendPgloaderCasts(&b, castTables, allTables, coerceCtx); err != nil {
@@ -483,6 +486,9 @@ func quotePgloaderIdentifier(name string) (string, error) {
 	if name == "" {
 		return "", fmt.Errorf("pgloader identifier cannot be empty")
 	}
+	if strings.ContainsRune(name, '\'') {
+		return "", fmt.Errorf("pgloader identifier %q contains a single quote", name)
+	}
 	for _, r := range name {
 		if unicode.IsControl(r) {
 			return "", fmt.Errorf("pgloader identifier %q contains a control character", name)
@@ -491,10 +497,7 @@ func quotePgloaderIdentifier(name string) (string, error) {
 	if !strings.ContainsRune(name, '"') {
 		return `"` + name + `"`, nil
 	}
-	if !strings.ContainsRune(name, '\'') {
-		return "'" + name + "'", nil
-	}
-	return "", fmt.Errorf("pgloader identifier %q contains both single and double quotes", name)
+	return "'" + name + "'", nil
 }
 
 func pgloaderTableLoadFileName(tableName string) string {
@@ -505,21 +508,42 @@ func pgloaderTableLoadFileName(tableName string) string {
 // pgloaderTableNameFilter returns a pgloader INCLUDING ONLY ... LIKE filter for one table.
 // pgloader 3.6.x accepts LIKE 'name' but does not parse ESCAPE clauses, so names with
 // LIKE metacharacters add EXCLUDING filters for other tables that would false-match.
-func pgloaderTableNameFilter(name string, allTableNames []string) string {
+func pgloaderTableNameFilter(name string, allTableNames []string) (string, error) {
+	if err := validatePgloaderLikeName(name); err != nil {
+		return "", err
+	}
 	var b strings.Builder
-	fmt.Fprintf(&b, " LIKE '%s'", escapePgloaderQuote(name))
+	fmt.Fprintf(&b, " LIKE '%s'", name)
 	if !strings.ContainsAny(name, "_%") {
-		return b.String()
+		return b.String(), nil
 	}
 	for _, other := range allTableNames {
 		if other == name {
 			continue
 		}
+		if err := validatePgloaderLikeName(other); err != nil {
+			return "", err
+		}
 		if sqlLikeMatch(name, other) {
-			fmt.Fprintf(&b, "\n EXCLUDING TABLE NAMES LIKE '%s'", escapePgloaderQuote(other))
+			fmt.Fprintf(&b, "\n EXCLUDING TABLE NAMES LIKE '%s'", other)
 		}
 	}
-	return b.String()
+	return b.String(), nil
+}
+
+func validatePgloaderLikeName(name string) error {
+	if name == "" {
+		return fmt.Errorf("pgloader table name cannot be empty")
+	}
+	if strings.ContainsRune(name, '\'') {
+		return fmt.Errorf("pgloader table name %q contains a single quote", name)
+	}
+	for _, r := range name {
+		if unicode.IsControl(r) {
+			return fmt.Errorf("pgloader table name %q contains a control character", name)
+		}
+	}
+	return nil
 }
 
 func sqliteStagingRowCounts(ctx context.Context, sqlitePath string, tables []string) (map[string]int64, error) {
@@ -568,8 +592,4 @@ func sqlLikeMatch(pattern, s string) bool {
 		}
 	}
 	return dp[m][n]
-}
-
-func escapePgloaderQuote(name string) string {
-	return strings.ReplaceAll(name, "'", "''")
 }
