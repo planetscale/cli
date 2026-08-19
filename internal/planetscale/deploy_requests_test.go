@@ -323,6 +323,51 @@ func TestDeployRequests_ForceCutover(t *testing.T) {
 	c.Assert(dr, qt.DeepEquals, want)
 }
 
+func TestDeployRequests_AutoDeleteBranch(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodPut)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/test-organization/databases/test-database/deploy-requests/1337/auto-delete-branch")
+		var body struct {
+			Enable bool `json:"enable"`
+		}
+		c.Assert(json.NewDecoder(r.Body).Decode(&body), qt.IsNil)
+		c.Assert(body.Enable, qt.IsTrue)
+		w.WriteHeader(200)
+		out := `{"id": "test-deploy-request-id", "branch": "development", "into_branch": "some-branch", "notes": "", "created_at": "2021-01-14T10:19:23.000Z", "updated_at": "2021-01-14T10:19:23.000Z", "closed_at": null, "deployment": { "state": "pending" }, "number": 1337}`
+		_, err := w.Write([]byte(out))
+		c.Assert(err, qt.IsNil)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	dr, err := client.DeployRequests.AutoDeleteBranch(context.Background(), &AutoDeleteBranchRequest{
+		Organization: "test-organization",
+		Database:     "test-database",
+		Number:       1337,
+		Enable:       true,
+	})
+
+	testTime := time.Date(2021, time.January, 14, 10, 19, 23, 0, time.UTC)
+	want := &DeployRequest{
+		ID:     "test-deploy-request-id",
+		Branch: "development",
+		Deployment: &Deployment{
+			State: "pending",
+		},
+		IntoBranch: "some-branch",
+		Number:     1337,
+		Notes:      "",
+		CreatedAt:  testTime,
+		UpdatedAt:  testTime,
+	}
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(dr, qt.DeepEquals, want)
+}
+
 func TestDeployRequests_Close(t *testing.T) {
 	c := qt.New(t)
 

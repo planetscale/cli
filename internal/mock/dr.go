@@ -19,6 +19,9 @@ type DeployRequestsService struct {
 	AutoApplyFn        func(context.Context, *ps.AutoApplyDeployRequestRequest) (*ps.DeployRequest, error)
 	AutoApplyFnInvoked bool
 
+	AutoDeleteBranchFn        func(context.Context, *ps.AutoDeleteBranchRequest) (*ps.DeployRequest, error)
+	AutoDeleteBranchFnInvoked bool
+
 	CancelFn        func(context.Context, *ps.CancelDeployRequestRequest) (*ps.DeployRequest, error)
 	CancelFnInvoked bool
 
@@ -92,6 +95,11 @@ func (d *DeployRequestsService) UnblockDeploy(ctx context.Context, req *ps.Unblo
 func (d *DeployRequestsService) AutoApplyDeploy(ctx context.Context, req *ps.AutoApplyDeployRequestRequest) (*ps.DeployRequest, error) {
 	d.AutoApplyFnInvoked = true
 	return d.AutoApplyFn(ctx, req)
+}
+
+func (d *DeployRequestsService) AutoDeleteBranch(ctx context.Context, req *ps.AutoDeleteBranchRequest) (*ps.DeployRequest, error) {
+	d.AutoDeleteBranchFnInvoked = true
+	return d.AutoDeleteBranchFn(ctx, req)
 }
 
 func (d *DeployRequestsService) CancelDeploy(ctx context.Context, req *ps.CancelDeployRequestRequest) (*ps.DeployRequest, error) {
