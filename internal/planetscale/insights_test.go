@@ -167,6 +167,95 @@ func TestQueryInsights_ListAnomalies(t *testing.T) {
 	c.Assert(anomalies[0].Duration, qt.Equals, 1800.0)
 }
 
+func TestQueryInsights_ListErrorQueries(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodGet)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/planetscale-go-test-db/branches/main/insights/errors/b129e8fa")
+		c.Assert(r.URL.Query().Get("per_page"), qt.Equals, "10")
+		c.Assert(r.URL.Query().Get("period"), qt.Equals, "1h")
+
+		w.WriteHeader(200)
+		out := `{
+			"type": "list",
+			"data": [{
+				"id": "exec-1",
+				"fingerprint": "b129e8fa",
+				"normalized_sql": "select * from users where id = ?",
+				"keyspace": "main",
+				"username": "app",
+				"total_duration_millis": 2.5,
+				"started_at": "2026-08-11T18:00:00.000Z",
+				"error_message": "target: main.-.primary: vttablet: rpc error"
+			}]
+		}`
+		_, err := w.Write([]byte(out))
+		c.Assert(err, qt.IsNil)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	queries, err := client.QueryInsights.ListErrorQueries(context.Background(), &ListErrorQueriesRequest{
+		Organization: testOrg,
+		Database:     testDatabase,
+		Branch:       "main",
+		Fingerprint:  "b129e8fa",
+	}, WithPerPage(10), WithPeriod("1h"))
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(queries, qt.HasLen, 1)
+	c.Assert(queries[0].ID, qt.Equals, "exec-1")
+	c.Assert(queries[0].Keyspace, qt.Equals, "main")
+	c.Assert(queries[0].ErrorMessage, qt.Equals, "target: main.-.primary: vttablet: rpc error")
+}
+
+func TestQueryInsights_GetAnomaly(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodGet)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/planetscale-go-test-db/branches/main/insights/anomalies/anomaly-123")
+
+		w.WriteHeader(200)
+		out := `{
+			"id": "anomaly-123",
+			"period_start": "2026-08-11T18:00:00.000Z",
+			"period_end": "2026-08-11T18:30:00.000Z",
+			"minutes_in_violation": 12,
+			"active": false,
+			"duration": 1800.0,
+			"correlations": [{
+				"id": "corr-1",
+				"r": 0.94,
+				"keyspace": "main",
+				"fingerprint": "b129e8fa",
+				"normalized_sql": "select * from users where id = ?",
+				"tablet_type": "primary"
+			}]
+		}`
+		_, err := w.Write([]byte(out))
+		c.Assert(err, qt.IsNil)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	anomaly, err := client.QueryInsights.GetAnomaly(context.Background(), &GetAnomalyRequest{
+		Organization: testOrg,
+		Database:     testDatabase,
+		Branch:       "main",
+		AnomalyID:    "anomaly-123",
+	})
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(anomaly.ID, qt.Equals, "anomaly-123")
+	c.Assert(anomaly.Correlations, qt.HasLen, 1)
+	c.Assert(anomaly.Correlations[0].Fingerprint, qt.Equals, "b129e8fa")
+	c.Assert(anomaly.Correlations[0].R, qt.Equals, 0.94)
+}
+
 func TestQueryInsights_ListQuerySamples(t *testing.T) {
 	c := qt.New(t)
 

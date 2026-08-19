@@ -16,8 +16,14 @@ type QueryInsightsService struct {
 	ListErrorsFn        func(context.Context, *ps.ListQueryInsightsErrorsRequest, ...ps.ListOption) ([]*ps.QueryInsightError, error)
 	ListErrorsFnInvoked bool
 
+	ListErrorQueriesFn        func(context.Context, *ps.ListErrorQueriesRequest, ...ps.ListOption) ([]*ps.QuerySample, error)
+	ListErrorQueriesFnInvoked bool
+
 	ListAnomaliesFn        func(context.Context, *ps.ListAnomaliesRequest, ...ps.ListOption) ([]*ps.Anomaly, error)
 	ListAnomaliesFnInvoked bool
+
+	GetAnomalyFn        func(context.Context, *ps.GetAnomalyRequest) (*ps.Anomaly, error)
+	GetAnomalyFnInvoked bool
 
 	ListTagsFn        func(context.Context, *ps.ListQueryTagsRequest, ...ps.ListOption) ([]*ps.QueryTag, error)
 	ListTagsFnInvoked bool
@@ -32,6 +38,16 @@ type QueryInsightsService struct {
 func (s *QueryInsightsService) ListQueries(ctx context.Context, req *ps.ListQueryInsightsRequest, opts ...ps.ListOption) ([]*ps.QueryInsight, error) {
 	s.ListQueriesFnInvoked = true
 	return s.ListQueriesFn(ctx, req, opts...)
+}
+
+func (s *QueryInsightsService) ListErrorQueries(ctx context.Context, req *ps.ListErrorQueriesRequest, opts ...ps.ListOption) ([]*ps.QuerySample, error) {
+	s.ListErrorQueriesFnInvoked = true
+	return s.ListErrorQueriesFn(ctx, req, opts...)
+}
+
+func (s *QueryInsightsService) GetAnomaly(ctx context.Context, req *ps.GetAnomalyRequest) (*ps.Anomaly, error) {
+	s.GetAnomalyFnInvoked = true
+	return s.GetAnomalyFn(ctx, req)
 }
 
 func (s *QueryInsightsService) ListQuerySamples(ctx context.Context, req *ps.ListQuerySamplesRequest, opts ...ps.ListOption) ([]*ps.QuerySample, error) {

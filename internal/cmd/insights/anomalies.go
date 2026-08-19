@@ -76,5 +76,7 @@ func AnomaliesCmd(ch *cmdutil.Helper) *cobra.Command {
 		},
 	}
 
+	cmd.AddCommand(AnomaliesShowCmd(ch))
+
 	return cmd
 }
