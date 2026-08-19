@@ -97,6 +97,19 @@ type DatabaseThrottler struct {
 	Configurations []*ThrottlerConfiguration `json:"configurations"`
 }
 
+// AggressiveCutoverRequest identifies a database for aggressive cutover ops.
+type AggressiveCutoverRequest struct {
+	Organization string `json:"-"`
+	Database     string `json:"-"`
+}
+
+// AggressiveCutover is the database-level Vitess setting that makes future
+// deploy requests cut over more aggressively when waiting on table locks.
+// Distinct from per-deploy-request force cutover.
+type AggressiveCutover struct {
+	Enabled bool `json:"enabled"`
+}
+
 // DatabaseService is an interface for communicating with the PlanetScale
 // Databases API endpoint.
 type DatabasesService interface {
@@ -107,6 +120,9 @@ type DatabasesService interface {
 	UpdateSettings(context.Context, *UpdateDatabaseSettingsRequest) (*Database, error)
 	GetThrottler(context.Context, *GetDatabaseThrottlerRequest) (*DatabaseThrottler, error)
 	UpdateThrottler(context.Context, *UpdateDatabaseThrottlerRequest) (*DatabaseThrottler, error)
+	GetAggressiveCutover(context.Context, *AggressiveCutoverRequest) (*AggressiveCutover, error)
+	EnableAggressiveCutover(context.Context, *AggressiveCutoverRequest) (*AggressiveCutover, error)
+	DisableAggressiveCutover(context.Context, *AggressiveCutoverRequest) (*AggressiveCutover, error)
 }
 
 // DatabaseDeletionRequest encapsulates the request for deleting a database from
@@ -284,6 +300,33 @@ func (ds *databasesService) UpdateThrottler(ctx context.Context, updateReq *Upda
 	}
 
 	return throttler, nil
+}
+
+func (ds *databasesService) GetAggressiveCutover(ctx context.Context, getReq *AggressiveCutoverRequest) (*AggressiveCutover, error) {
+	return ds.doAggressiveCutover(ctx, http.MethodGet, getReq, "get")
+}
+
+func (ds *databasesService) EnableAggressiveCutover(ctx context.Context, enableReq *AggressiveCutoverRequest) (*AggressiveCutover, error) {
+	return ds.doAggressiveCutover(ctx, http.MethodPost, enableReq, "enable")
+}
+
+func (ds *databasesService) DisableAggressiveCutover(ctx context.Context, disableReq *AggressiveCutoverRequest) (*AggressiveCutover, error) {
+	return ds.doAggressiveCutover(ctx, http.MethodDelete, disableReq, "disable")
+}
+
+func (ds *databasesService) doAggressiveCutover(ctx context.Context, method string, acReq *AggressiveCutoverRequest, action string) (*AggressiveCutover, error) {
+	pathStr := path.Join(databasesAPIPath(acReq.Organization), acReq.Database, "aggressive-cutover")
+	req, err := ds.client.newRequest(method, pathStr, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request for %s database aggressive cutover: %w", action, err)
+	}
+
+	status := &AggressiveCutover{}
+	if err := ds.client.do(ctx, req, status); err != nil {
+		return nil, err
+	}
+
+	return status, nil
 }
 
 func databasesAPIPath(org string) string {

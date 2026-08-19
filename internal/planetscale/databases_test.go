@@ -605,6 +605,72 @@ func TestDatabases_GetThrottler(t *testing.T) {
 	c.Assert(throttler.Configurations[0].Ratio, qt.Equals, float64(50))
 }
 
+func TestDatabases_GetAggressiveCutover(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodGet)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/planetscale-go-test-db/aggressive-cutover")
+		w.WriteHeader(200)
+		_, err := w.Write([]byte(`{"enabled":true}`))
+		c.Assert(err, qt.IsNil)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	status, err := client.Databases.GetAggressiveCutover(context.Background(), &AggressiveCutoverRequest{
+		Organization: testOrg,
+		Database:     testDatabase,
+	})
+	c.Assert(err, qt.IsNil)
+	c.Assert(status.Enabled, qt.IsTrue)
+}
+
+func TestDatabases_EnableAggressiveCutover(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodPost)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/planetscale-go-test-db/aggressive-cutover")
+		w.WriteHeader(200)
+		_, err := w.Write([]byte(`{"enabled":true}`))
+		c.Assert(err, qt.IsNil)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	status, err := client.Databases.EnableAggressiveCutover(context.Background(), &AggressiveCutoverRequest{
+		Organization: testOrg,
+		Database:     testDatabase,
+	})
+	c.Assert(err, qt.IsNil)
+	c.Assert(status.Enabled, qt.IsTrue)
+}
+
+func TestDatabases_DisableAggressiveCutover(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodDelete)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/planetscale-go-test-db/aggressive-cutover")
+		w.WriteHeader(200)
+		_, err := w.Write([]byte(`{"enabled":false}`))
+		c.Assert(err, qt.IsNil)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	status, err := client.Databases.DisableAggressiveCutover(context.Background(), &AggressiveCutoverRequest{
+		Organization: testOrg,
+		Database:     testDatabase,
+	})
+	c.Assert(err, qt.IsNil)
+	c.Assert(status.Enabled, qt.IsFalse)
+}
+
 func TestDatabases_UpdateThrottler(t *testing.T) {
 	c := qt.New(t)
 
