@@ -6,6 +6,13 @@ linters:
       - comments
       - common-false-positives
       - std-error-handling
+    rules:
+      # staticcheck does not always know that t.Fatal ends the test, so nil
+      # guards followed by a dereference are reported as SA5011.
+      - path: _test\.go
+        linters:
+          - staticcheck
+        text: SA5011
   disable:
     - errcheck # TODO: reenable after fixing all existing issues
 formatters:
