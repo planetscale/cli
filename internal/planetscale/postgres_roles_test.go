@@ -64,6 +64,39 @@ func TestResetDefaultRole(t *testing.T) {
 	c.Assert(role, qt.DeepEquals, want)
 }
 
+func TestGetDefaultRole(t *testing.T) {
+	c := qt.New(t)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, "GET")
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/my-db/branches/my-branch/roles/default")
+		w.WriteHeader(200)
+		out := `{
+			"id": "role-id",
+			"name": "postgres",
+			"access_host_url": "pg.psdb.cloud",
+			"database_name": "postgres",
+			"username": "postgres",
+			"created_at": "2025-07-15T10:19:23.000Z"
+		}`
+		_, err := w.Write([]byte(out))
+		c.Assert(err, qt.IsNil)
+	}))
+	t.Cleanup(ts.Close)
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	role, err := client.PostgresRoles.GetDefaultRole(context.Background(), &GetDefaultPostgresRoleRequest{
+		Organization: "my-org",
+		Database:     "my-db",
+		Branch:       "my-branch",
+	})
+	c.Assert(err, qt.IsNil)
+	c.Assert(role.ID, qt.Equals, "role-id")
+	c.Assert(role.Username, qt.Equals, "postgres")
+	c.Assert(role.Password, qt.Equals, "")
+}
+
 func TestPostgresRoles_List(t *testing.T) {
 	c := qt.New(t)
 
