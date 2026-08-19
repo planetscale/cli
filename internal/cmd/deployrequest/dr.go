@@ -42,6 +42,7 @@ func DeployRequestCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.AddCommand(SkipRevertCmd(ch))
 	cmd.AddCommand(StorageCheckCmd(ch))
 	cmd.AddCommand(ThrottlerCmd(ch))
+	cmd.AddCommand(UnblockCmd(ch))
 	cmd.AddCommand(RevertCmd(ch))
 
 	return cmd
