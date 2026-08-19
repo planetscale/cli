@@ -2,6 +2,7 @@ package d1
 
 import (
 	"context"
+	"crypto/sha256"
 	_ "embed"
 	"fmt"
 	"os"
@@ -11,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/planetscale/cli/internal/postgres"
 	execabs "golang.org/x/sys/execabs"
@@ -217,13 +219,16 @@ type pgloaderScriptConfig struct {
 func runPgloaderScript(ctx context.Context, pgloader string, opts PgloaderOptions, cfg pgloaderScriptConfig, table TableSchema, allTables []TableSchema, expectedRows int64, coerceCtx *TypeCoercionContext) error {
 	loadFile := filepath.Join(opts.WorkDir, "load.load")
 	if cfg.tableName != "" {
-		loadFile = filepath.Join(opts.WorkDir, "load-"+cfg.tableName+".load")
+		loadFile = filepath.Join(opts.WorkDir, pgloaderTableLoadFileName(cfg.tableName))
 	}
 	castTables := allTables
 	if table.Name != "" {
 		castTables = []TableSchema{table}
 	}
-	content := buildPgloaderScript(opts.SQLitePath, opts.DestURI, cfg, castTables, allTables, coerceCtx)
+	content, err := buildPgloaderScript(opts.SQLitePath, opts.DestURI, cfg, castTables, allTables, coerceCtx)
+	if err != nil {
+		return err
+	}
 	if err := os.WriteFile(loadFile, []byte(content), 0o600); err != nil {
 		return err
 	}
@@ -238,7 +243,7 @@ func runPgloaderScript(ctx context.Context, pgloader string, opts PgloaderOption
 	}
 
 	var out []byte
-	err := withConnectionRetry(ctx, func() error {
+	err = withConnectionRetry(ctx, func() error {
 		cmd := execabs.CommandContext(ctx, pgloader, "--load-lisp-file", transformsFile, loadFile)
 		cmd.Env = append(os.Environ(),
 			"SBCL_OPTIONS=--dynamic-space-size "+pgloaderDynamicSpace,
@@ -356,7 +361,16 @@ func validatePgloaderTableLoad(output, table string, expectedRows int64) error {
 	return nil
 }
 
-func buildPgloaderScript(sqlitePath, destURI string, cfg pgloaderScriptConfig, castTables, allTables []TableSchema, coerceCtx *TypeCoercionContext) string {
+func buildPgloaderScript(sqlitePath, destURI string, cfg pgloaderScriptConfig, castTables, allTables []TableSchema, coerceCtx *TypeCoercionContext) (string, error) {
+	if err := validatePgloaderIdentifiers(append(slices.Clone(castTables), allTables...)); err != nil {
+		return "", err
+	}
+	if cfg.tableName != "" {
+		if _, err := quotePgloaderIdentifier(cfg.tableName); err != nil {
+			return "", err
+		}
+	}
+
 	absSQLite, _ := filepath.Abs(sqlitePath)
 	src := "sqlite:///" + strings.ReplaceAll(absSQLite, " ", "%20")
 	target := destURI
@@ -396,24 +410,37 @@ func buildPgloaderScript(sqlitePath, destURI string, cfg pgloaderScriptConfig, c
 
 	if cfg.tableName != "" {
 		b.WriteString("\n")
-		tableNames := tableNames(allTables)
-		fmt.Fprintf(&b, " INCLUDING ONLY TABLE NAMES%s\n", pgloaderTableNameFilter(cfg.tableName, tableNames))
+		filter, err := pgloaderTableNameFilter(cfg.tableName, tableNames(allTables))
+		if err != nil {
+			return "", err
+		}
+		fmt.Fprintf(&b, " INCLUDING ONLY TABLE NAMES%s\n", filter)
 	}
 
-	appendPgloaderCasts(&b, castTables, allTables, coerceCtx)
+	if err := appendPgloaderCasts(&b, castTables, allTables, coerceCtx); err != nil {
+		return "", err
+	}
 
 	b.WriteString("\n")
 	fmt.Fprintf(&b, " SET work_mem to '%s', maintenance_work_mem to '%s', synchronous_commit to 'off';\n",
 		pgloaderLoadWorkMem, pgloaderLoadMaintenanceWorkMem)
-	return b.String()
+	return b.String(), nil
 }
 
-func appendPgloaderCasts(b *strings.Builder, castTables, allTables []TableSchema, coerceCtx *TypeCoercionContext) {
+func appendPgloaderCasts(b *strings.Builder, castTables, allTables []TableSchema, coerceCtx *TypeCoercionContext) error {
 	var rules []string
 	for _, table := range castTables {
+		tableName, err := quotePgloaderIdentifier(table.Name)
+		if err != nil {
+			return err
+		}
 		for _, col := range table.Columns {
+			columnName, err := quotePgloaderIdentifier(col.Name)
+			if err != nil {
+				return err
+			}
 			pgType := sqliteTypeToPostgres(col, table, allTables, coerceCtx)
-			ref := fmt.Sprintf("column %s.%s", table.Name, col.Name)
+			ref := fmt.Sprintf("column %s.%s", tableName, columnName)
 			switch pgType {
 			case "BOOLEAN":
 				rules = append(rules, ref+" to boolean using sqlite-int-to-boolean")
@@ -427,7 +454,7 @@ func appendPgloaderCasts(b *strings.Builder, castTables, allTables []TableSchema
 		}
 	}
 	if len(rules) == 0 {
-		return
+		return nil
 	}
 	b.WriteString("\n CAST ")
 	for i, rule := range rules {
@@ -438,26 +465,85 @@ func appendPgloaderCasts(b *strings.Builder, castTables, allTables []TableSchema
 		}
 		b.WriteString(rule)
 	}
+	return nil
+}
+
+func validatePgloaderIdentifiers(tables []TableSchema) error {
+	for _, table := range tables {
+		if _, err := quotePgloaderIdentifier(table.Name); err != nil {
+			return err
+		}
+		for _, column := range table.Columns {
+			if _, err := quotePgloaderIdentifier(column.Name); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func quotePgloaderIdentifier(name string) (string, error) {
+	if name == "" {
+		return "", fmt.Errorf("pgloader identifier cannot be empty")
+	}
+	if strings.ContainsRune(name, '\'') {
+		return "", fmt.Errorf("pgloader identifier %q contains a single quote", name)
+	}
+	for _, r := range name {
+		if unicode.IsControl(r) {
+			return "", fmt.Errorf("pgloader identifier %q contains a control character", name)
+		}
+	}
+	if !strings.ContainsRune(name, '"') {
+		return `"` + name + `"`, nil
+	}
+	return "'" + name + "'", nil
+}
+
+func pgloaderTableLoadFileName(tableName string) string {
+	sum := sha256.Sum256([]byte(tableName))
+	return fmt.Sprintf("load-%x.load", sum)
 }
 
 // pgloaderTableNameFilter returns a pgloader INCLUDING ONLY ... LIKE filter for one table.
 // pgloader 3.6.x accepts LIKE 'name' but does not parse ESCAPE clauses, so names with
 // LIKE metacharacters add EXCLUDING filters for other tables that would false-match.
-func pgloaderTableNameFilter(name string, allTableNames []string) string {
+func pgloaderTableNameFilter(name string, allTableNames []string) (string, error) {
+	if err := validatePgloaderLikeName(name); err != nil {
+		return "", err
+	}
 	var b strings.Builder
-	fmt.Fprintf(&b, " LIKE '%s'", escapePgloaderQuote(name))
+	fmt.Fprintf(&b, " LIKE '%s'", name)
 	if !strings.ContainsAny(name, "_%") {
-		return b.String()
+		return b.String(), nil
 	}
 	for _, other := range allTableNames {
 		if other == name {
 			continue
 		}
+		if err := validatePgloaderLikeName(other); err != nil {
+			return "", err
+		}
 		if sqlLikeMatch(name, other) {
-			fmt.Fprintf(&b, "\n EXCLUDING TABLE NAMES LIKE '%s'", escapePgloaderQuote(other))
+			fmt.Fprintf(&b, "\n EXCLUDING TABLE NAMES LIKE '%s'", other)
 		}
 	}
-	return b.String()
+	return b.String(), nil
+}
+
+func validatePgloaderLikeName(name string) error {
+	if name == "" {
+		return fmt.Errorf("pgloader table name cannot be empty")
+	}
+	if strings.ContainsRune(name, '\'') {
+		return fmt.Errorf("pgloader table name %q contains a single quote", name)
+	}
+	for _, r := range name {
+		if unicode.IsControl(r) {
+			return fmt.Errorf("pgloader table name %q contains a control character", name)
+		}
+	}
+	return nil
 }
 
 func sqliteStagingRowCounts(ctx context.Context, sqlitePath string, tables []string) (map[string]int64, error) {
@@ -506,8 +592,4 @@ func sqlLikeMatch(pattern, s string) bool {
 		}
 	}
 	return dp[m][n]
-}
-
-func escapePgloaderQuote(name string) string {
-	return strings.ReplaceAll(name, "'", "''")
 }

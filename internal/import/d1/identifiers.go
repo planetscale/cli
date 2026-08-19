@@ -19,6 +19,20 @@ func lintIdentifiers(table TableSchema) []Issue {
 
 func lintIdentifier(table, name, column string) []Issue {
 	var issues []Issue
+	if _, err := quotePgloaderIdentifier(name); err != nil {
+		target := "table"
+		if column != "" {
+			target = "column"
+		}
+		issues = append(issues, Issue{
+			Code:        "UNSAFE_IDENTIFIER",
+			Severity:    SeverityError,
+			Table:       table,
+			Column:      column,
+			Message:     fmt.Sprintf("%s name %q cannot be represented safely in a pgloader control file", target, name),
+			Remediation: "Rename the " + target + " in SQLite before export so it does not contain quotes or control characters",
+		})
+	}
 	if len(name) > postgresMaxIdentifierBytes {
 		target := "table"
 		if column != "" {
