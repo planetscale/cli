@@ -72,6 +72,7 @@ type Client struct {
 	PostgresBouncers      PostgresBouncersService
 	PostgresCIDRs         PostgresCIDRsService
 	PostgresRoles         PostgresRolesService
+	PostgresSwitchovers   PostgresSwitchoversService
 	Processlist           ProcesslistService
 	QueryInsights         QueryInsightsService
 	QueryPatterns         QueryPatternsService
@@ -348,6 +349,7 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 	c.PostgresBouncers = &postgresBouncersService{client: c}
 	c.PostgresCIDRs = &postgresCIDRsService{client: c}
 	c.PostgresRoles = &postgresRolesService{client: c}
+	c.PostgresSwitchovers = &postgresSwitchoversService{client: c}
 	c.QueryInsights = &queryInsightsService{client: c}
 	c.QueryPatterns = &queryPatternsService{client: c}
 	c.ReadOnlyRegions = &readOnlyRegionsService{client: c}
