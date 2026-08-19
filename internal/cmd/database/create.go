@@ -107,7 +107,8 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 					Organization: ch.Config.Organization,
 					Database:     database.Name,
 				}
-				if err := waitUntilReady(ctx, client, ch.Printer, ch.Debug(), getReq); err != nil {
+				database, err = waitUntilReady(ctx, client, ch.Printer, ch.Debug(), getReq)
+				if err != nil {
 					return err
 				}
 				end()
@@ -215,7 +216,7 @@ func parseDatabaseEngine(engine string) (ps.DatabaseEngine, error) {
 	}
 }
 
-func waitUntilReady(ctx context.Context, client *ps.Client, printer *printer.Printer, debug bool, getReq *ps.GetDatabaseRequest) error {
+func waitUntilReady(ctx context.Context, client *ps.Client, printer *printer.Printer, debug bool, getReq *ps.GetDatabaseRequest) (*ps.Database, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
 	defer cancel()
 
@@ -229,7 +230,7 @@ func waitUntilReady(ctx context.Context, client *ps.Client, printer *printer.Pri
 	for {
 		select {
 		case <-ctx.Done():
-			return errors.New("database creation timed out")
+			return nil, errors.New("database creation timed out")
 		case <-ticker.C:
 			resp, err := client.Databases.Get(ctx, getReq)
 			if err != nil {
@@ -239,8 +240,8 @@ func waitUntilReady(ctx context.Context, client *ps.Client, printer *printer.Pri
 				continue
 			}
 
-			if resp.State == "ready" {
-				return nil
+			if resp.State == ps.DatabaseReady {
+				return resp, nil
 			}
 
 			elapsed := time.Since(startTime)

@@ -69,6 +69,54 @@ func TestKeyspace_CreateCmd(t *testing.T) {
 	c.Assert(buf.String(), qt.JSONEquals, ks)
 }
 
+func TestKeyspace_CreateCmdWithWaitPrintsReadyKeyspace(t *testing.T) {
+	t.Parallel()
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	db := "planetscale"
+	branch := "main"
+	keyspace := "sharded"
+	pending := &ps.Keyspace{Name: keyspace, Ready: false}
+	ready := &ps.Keyspace{Name: keyspace, Ready: true}
+
+	svc := &mock.KeyspacesService{
+		CreateFn: func(_ context.Context, _ *ps.CreateKeyspaceRequest) (*ps.Keyspace, error) {
+			return pending, nil
+		},
+		GetFn: func(_ context.Context, req *ps.GetKeyspaceRequest) (*ps.Keyspace, error) {
+			c.Assert(req, qt.DeepEquals, &ps.GetKeyspaceRequest{
+				Organization: org,
+				Database:     db,
+				Branch:       branch,
+				Keyspace:     keyspace,
+			})
+			return ready, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: org},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{Keyspaces: svc}, nil
+		},
+	}
+	debug := false
+	ch.SetDebug(&debug)
+
+	cmd := CreateCmd(ch)
+	cmd.SetArgs([]string{db, branch, keyspace, "--cluster-size", "PS-20", "--wait"})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(svc.GetFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.JSONEquals, ready)
+}
+
 func TestKeyspace_CreateCmdOnlyClusterSize(t *testing.T) {
 	c := qt.New(t)
 

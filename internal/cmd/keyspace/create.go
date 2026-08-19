@@ -68,7 +68,8 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 					Branch:       branch,
 					Keyspace:     keyspace,
 				}
-				if err := waitUntilReady(ctx, client, ch.Printer, ch.Debug(), getReq); err != nil {
+				k, err = waitUntilReady(ctx, client, ch.Printer, ch.Debug(), getReq)
+				if err != nil {
 					return err
 				}
 				end()
@@ -96,7 +97,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	return cmd
 }
 
-func waitUntilReady(ctx context.Context, client *planetscale.Client, printer *printer.Printer, debug bool, getReq *planetscale.GetKeyspaceRequest) error {
+func waitUntilReady(ctx context.Context, client *planetscale.Client, printer *printer.Printer, debug bool, getReq *planetscale.GetKeyspaceRequest) (*planetscale.Keyspace, error) {
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Minute)
 	defer cancel()
 
@@ -105,7 +106,7 @@ func waitUntilReady(ctx context.Context, client *planetscale.Client, printer *pr
 	for {
 		select {
 		case <-ctx.Done():
-			return errors.New("keyspace creation timed out")
+			return nil, errors.New("keyspace creation timed out")
 		case <-ticker.C:
 			resp, err := client.Keyspaces.Get(ctx, getReq)
 			if err != nil {
@@ -116,7 +117,7 @@ func waitUntilReady(ctx context.Context, client *planetscale.Client, printer *pr
 			}
 
 			if resp.Ready {
-				return nil
+				return resp, nil
 			}
 		}
 	}

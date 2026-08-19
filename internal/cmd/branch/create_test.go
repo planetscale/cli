@@ -70,6 +70,118 @@ func TestBranch_CreateCmd(t *testing.T) {
 	c.Assert(buf.String(), qt.JSONEquals, res)
 }
 
+func TestBranch_CreateCmdWithWaitPrintsReadyBranch(t *testing.T) {
+	t.Parallel()
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	db := "planetscale"
+	branch := "development"
+
+	pending := &ps.DatabaseBranch{Name: branch, Ready: false}
+	ready := &ps.DatabaseBranch{Name: branch, Ready: true}
+
+	branchSvc := &mock.DatabaseBranchesService{
+		CreateFn: func(_ context.Context, _ *ps.CreateDatabaseBranchRequest) (*ps.DatabaseBranch, error) {
+			return pending, nil
+		},
+		GetFn: func(_ context.Context, req *ps.GetDatabaseBranchRequest) (*ps.DatabaseBranch, error) {
+			c.Assert(req, qt.DeepEquals, &ps.GetDatabaseBranchRequest{
+				Organization: org,
+				Database:     db,
+				Branch:       branch,
+			})
+			return ready, nil
+		},
+	}
+
+	dbSvc := &mock.DatabaseService{
+		GetFn: func(_ context.Context, _ *ps.GetDatabaseRequest) (*ps.Database, error) {
+			return &ps.Database{Kind: ps.DatabaseEngineMySQL}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: org},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{
+				Databases:        dbSvc,
+				DatabaseBranches: branchSvc,
+			}, nil
+		},
+	}
+	debug := false
+	ch.SetDebug(&debug)
+
+	cmd := CreateCmd(ch)
+	cmd.SetArgs([]string{db, branch, "--wait"})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(branchSvc.GetFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.JSONEquals, ready)
+}
+
+func TestBranch_CreatePostgresCmdWithWaitPrintsReadyBranch(t *testing.T) {
+	t.Parallel()
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	db := "planetscale"
+	branch := "development"
+
+	pending := &ps.PostgresBranch{Name: branch, Kind: "postgresql", Ready: false}
+	ready := &ps.PostgresBranch{Name: branch, Kind: "postgresql", Ready: true}
+
+	branchSvc := &mock.PostgresBranchesService{
+		CreateFn: func(_ context.Context, _ *ps.CreatePostgresBranchRequest) (*ps.PostgresBranch, error) {
+			return pending, nil
+		},
+		GetFn: func(_ context.Context, req *ps.GetPostgresBranchRequest) (*ps.PostgresBranch, error) {
+			c.Assert(req, qt.DeepEquals, &ps.GetPostgresBranchRequest{
+				Organization: org,
+				Database:     db,
+				Branch:       branch,
+			})
+			return ready, nil
+		},
+	}
+
+	dbSvc := &mock.DatabaseService{
+		GetFn: func(_ context.Context, _ *ps.GetDatabaseRequest) (*ps.Database, error) {
+			return &ps.Database{Kind: ps.DatabaseEnginePostgres}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: org},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{
+				Databases:        dbSvc,
+				PostgresBranches: branchSvc,
+			}, nil
+		},
+	}
+	debug := false
+	ch.SetDebug(&debug)
+
+	cmd := CreateCmd(ch)
+	cmd.SetArgs([]string{db, branch, "--wait"})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(branchSvc.GetFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.JSONEquals, ready)
+}
+
 func TestBranch_CreateCmdWithRestore(t *testing.T) {
 	c := qt.New(t)
 

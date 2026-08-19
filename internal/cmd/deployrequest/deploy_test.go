@@ -60,6 +60,58 @@ func TestDeployRequest_DeployCmd(t *testing.T) {
 	c.Assert(buf.String(), qt.JSONEquals, res)
 }
 
+func TestDeployRequest_DeployCmdWithWaitPrintsFinalDeployRequest(t *testing.T) {
+	t.Parallel()
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	db := "planetscale"
+	number := uint64(10)
+	pending := &ps.DeployRequest{
+		Number:     number,
+		Deployment: &ps.Deployment{State: "pending"},
+	}
+	complete := &ps.DeployRequest{
+		Number:     number,
+		Deployment: &ps.Deployment{State: "complete"},
+	}
+
+	svc := &mock.DeployRequestsService{
+		DeployFn: func(_ context.Context, _ *ps.PerformDeployRequest) (*ps.DeployRequest, error) {
+			return pending, nil
+		},
+		GetFn: func(_ context.Context, req *ps.GetDeployRequestRequest) (*ps.DeployRequest, error) {
+			c.Assert(req, qt.DeepEquals, &ps.GetDeployRequestRequest{
+				Organization: org,
+				Database:     db,
+				Number:       number,
+			})
+			return complete, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: org},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{DeployRequests: svc}, nil
+		},
+	}
+	debug := false
+	ch.SetDebug(&debug)
+
+	cmd := DeployCmd(ch)
+	cmd.SetArgs([]string{db, strconv.FormatUint(number, 10), "--wait"})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(svc.GetFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.JSONEquals, complete)
+}
+
 func TestDeployRequest_DeployBranchName(t *testing.T) {
 	c := qt.New(t)
 

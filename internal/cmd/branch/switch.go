@@ -80,7 +80,7 @@ func SwitchCmd(ch *cmdutil.Helper) *cobra.Command {
 						Database:     ch.Config.Database,
 						Branch:       branch,
 					}
-					if err := waitUntilReady(ctx, client, ch.Printer, ch.Debug(), getReq); err != nil {
+					if _, err := waitUntilReady(ctx, client, ch.Printer, ch.Debug(), getReq); err != nil {
 						return err
 					}
 					end()
