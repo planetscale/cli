@@ -448,7 +448,7 @@ func ResolveDestURI(ctx context.Context, psClient *ps.Client, opts ImportOptions
 		User:     role.Role.Username,
 		Password: role.Role.Password,
 		Database: dbName,
-		SSLMode:  "require",
+		SSLMode:  "verify-full",
 		Options:  map[string]string{},
 	})
 

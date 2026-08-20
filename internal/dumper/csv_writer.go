@@ -60,8 +60,11 @@ func (w *csvWriter) ShouldFlush() bool {
 }
 
 func (w *csvWriter) Flush(outdir, database, table string, fileNo int) error {
-	file := fmt.Sprintf("%s/%s.%s.%05d.csv", outdir, database, table, fileNo)
-	err := writeFile(file, w.csvBuffer.String())
+	file, err := dumpOutputPath(outdir, database, table, fmt.Sprintf(".%05d.csv", fileNo))
+	if err != nil {
+		return err
+	}
+	err = writeFile(file, w.csvBuffer.String())
 	if err != nil {
 		return err
 	}

@@ -40,6 +40,16 @@ func TestHasMixedCaseIdentifier(t *testing.T) {
 	}
 }
 
+func TestLintIdentifierRejectsPgloaderControlCharacters(t *testing.T) {
+	issues := lintIdentifier("users\nBEFORE LOAD DO", "users\nBEFORE LOAD DO", "")
+	for _, issue := range issues {
+		if issue.Code == "UNSAFE_IDENTIFIER" && issue.Severity == SeverityError {
+			return
+		}
+	}
+	t.Fatalf("expected unsafe identifier error, got %#v", issues)
+}
+
 func stringsRepeat(s string, n int) string {
 	out := make([]byte, n)
 	for i := range out {

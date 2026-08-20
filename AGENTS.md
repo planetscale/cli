@@ -260,7 +260,12 @@ pscale insights tags <database> <branch> --org <org> --format json              
 pscale insights tags summaries <database> <branch> --org <org> --format json --tags username  # stats grouped by tag; names match the Insights UI Key picker
 pscale insights recommendations <database> --org <org> --format json                     # schema recommendations with ready-to-apply DDL
 pscale insights recommendations dismiss <database> <number> --org <org> --format json --force  # dismiss a recommendation
+pscale branch query-patterns list <database> <branch> --org <org> --format json
+pscale branch query-patterns show <database> <branch> <report-id> --org <org> --format json
+pscale branch query-patterns delete <database> <branch> <report-id> --org <org> --format json --force
 ```
+
+`branch query-patterns download` generates a new report, waits, and writes CSV. Use list/show/delete for reports that already exist.
 
 **`pscale inspect`** — live, point-in-time checks run over a direct connection (same credentials model as `pscale sql`, always read-only):
 
@@ -404,6 +409,25 @@ pscale branch switchover <database> <branch> --org <org> --format json --candida
 - A switchover that ends in `failed` has an unconfirmed outcome: the primary may still have moved and nothing is rolled back. Check the current primary with `pscale branch infra <database> <branch> --org <org> --format json` before retrying.
 - `--candidate` is rejected for branches without replicas. Poll status with `pscale api organizations/<org>/databases/<database>/branches/<branch>/switchovers/<id>`.
 
+## Postgres branch maintenance
+
+`pscale branch maintenance run` upgrades a Postgres branch to the latest cluster image. This is how regular version bumps, bugfixes, and quality-of-life improvements reach a branch; PlanetScale otherwise upgrades images only in emergencies, such as patching security issues.
+
+```bash
+# Run maintenance now
+pscale branch maintenance run <database> <branch> --org <org> --format json
+
+# Also upgrade to the latest PostgreSQL minor version
+pscale branch maintenance run <database> <branch> --org <org> --format json --update-postgres-minor-version
+```
+
+- The upgrade is applied to the replicas first, followed by a switchover from the old primary to an upgraded replica. That failover leads to a short period of database unavailability (seconds) and terminates all direct connections. A branch running a single instance has no replica to switch over to and is unavailable until it comes back. Warn the user before running this.
+- The command returns `{"result": "maintenance started", "branch": "<branch>"}` and exits; it does not wait. Check progress with `pscale branch infra <database> <branch> --org <org> --format json`.
+- Rejected while a change request from `pscale branch resize` is still in progress — check `pscale branch resize status` first.
+- `--update-postgres-minor-version` is rejected when the branch is already on the latest minor version or the upgrade is unavailable for it.
+- Postgres only; Vitess/MySQL databases are rejected before any API call.
+- See https://planetscale.com/docs/postgres/operations-philosophy
+
 ## Imports (Cloudflare D1)
 
 `pscale import d1` migrates a Cloudflare D1 (SQLite) export into a PlanetScale Postgres branch. Every subcommand supports `--format json` and returns `status`, `issues`, and `next_steps`; stateful steps return a `migration_id` — pass it back with `--migration-id` to resume.
@@ -436,8 +460,6 @@ https://mcp.pscale.dev/mcp/planetscale
 ```
 
 See the current MCP docs: https://planetscale.com/docs/connect/mcp
-
-Do not use the deprecated local `pscale mcp server` path unless you explicitly need backward compatibility with an old setup.
 
 ## PlanetScale agent skills
 

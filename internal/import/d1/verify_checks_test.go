@@ -314,3 +314,11 @@ func TestSummarizeRowSignatureForOutputOmitsBlobPayload(t *testing.T) {
 		t.Fatalf("expected blob byte count in summary, got %q", got)
 	}
 }
+
+func TestQuoteSQLiteIdentifierEscapesEmbeddedQuotes(t *testing.T) {
+	got := quoteSQLiteIdentifier(`id"; ATTACH DATABASE 'x' AS y; SELECT "`)
+	want := `"id""; ATTACH DATABASE 'x' AS y; SELECT """`
+	if got != want {
+		t.Fatalf("quoteSQLiteIdentifier = %q, want %q", got, want)
+	}
+}
