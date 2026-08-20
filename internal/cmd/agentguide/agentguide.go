@@ -1,7 +1,7 @@
 package agentguide
 
 import (
-	"fmt"
+	"io"
 
 	"github.com/spf13/cobra"
 
@@ -66,8 +66,8 @@ frontmatter plus the guide), suitable for dropping into a skills directory.`,
 				// resource. Write straight to stdout: Printer.Print routes
 				// non-human formats to io.Discard, which would exit 0 with an
 				// empty file when combined with --format json.
-				fmt.Print(SkillDoc())
-				return nil
+				_, err := io.WriteString(cmd.OutOrStdout(), SkillDoc())
+				return err
 			}
 			if ch.Printer.Format() == printer.JSON {
 				return ch.Printer.PrintJSON(response{

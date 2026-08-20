@@ -3,8 +3,6 @@ package agentguide
 import (
 	"bytes"
 	"encoding/json"
-	"io"
-	"os"
 	"strings"
 	"testing"
 
@@ -69,7 +67,7 @@ func TestSkillDoc(t *testing.T) {
 }
 
 // --skill writes to stdout regardless of --format (it is a raw file dump, not a
-// resource), so capture os.Stdout and verify it is not discarded in JSON mode.
+// resource), so verify it is not discarded in JSON mode.
 func TestAgentGuideSkillFlag(t *testing.T) {
 	for _, format := range []printer.Format{printer.Human, printer.JSON} {
 		t.Run(format.String(), func(t *testing.T) {
@@ -78,41 +76,20 @@ func TestAgentGuideSkillFlag(t *testing.T) {
 				Printer: printer.NewPrinter(&f),
 			}
 
-			got := captureStdout(t, func() {
-				cmd := AgentGuideCmd(ch)
-				cmd.SetArgs([]string{"--skill"})
-				if err := cmd.Execute(); err != nil {
-					t.Fatalf("execute: %v", err)
-				}
-			})
+			var out bytes.Buffer
+			cmd := AgentGuideCmd(ch)
+			cmd.SetOut(&out)
+			cmd.SetArgs([]string{"--skill"})
+			if err := cmd.Execute(); err != nil {
+				t.Fatalf("execute: %v", err)
+			}
+
+			got := out.String()
 			if !strings.HasPrefix(got, "---\nname: pscale-cli\n") {
 				t.Fatalf("--skill output missing frontmatter (format=%s), got prefix: %q", format, got[:min(40, len(got))])
 			}
 		})
 	}
-}
-
-func captureStdout(t *testing.T, fn func()) string {
-	t.Helper()
-	old := os.Stdout
-	r, w, err := os.Pipe()
-	if err != nil {
-		t.Fatalf("pipe: %v", err)
-	}
-	os.Stdout = w
-	defer func() { os.Stdout = old }()
-
-	done := make(chan string)
-	go func() {
-		var buf bytes.Buffer
-		_, _ = io.Copy(&buf, r)
-		done <- buf.String()
-	}()
-
-	fn()
-	_ = w.Close()
-	os.Stdout = old
-	return <-done
 }
 
 func min(a, b int) int {

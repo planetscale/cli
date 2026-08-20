@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"log"
 	"os"
@@ -73,8 +74,9 @@ import (
 )
 
 var (
-	cfgFile  string
-	replacer = strings.NewReplacer("-", "_", ".", "_")
+	cfgFile   string
+	skillFlag bool
+	replacer  = strings.NewReplacer("-", "_", ".", "_")
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -88,6 +90,13 @@ Agents and automation should start with:
   pscale --skill
   pscale auth check --format json`,
 	TraverseChildren: true,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if skillFlag && len(args) == 0 {
+			_, err := io.WriteString(cmd.OutOrStdout(), agentguide.SkillDoc())
+			return err
+		}
+		return cmd.Help()
+	},
 }
 
 // Execute executes the command and returns the exit status of the finished
@@ -170,18 +179,6 @@ func isRootOrgFlagError(err error) bool {
 func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.Format, debug *bool, sigc chan os.Signal, signals []os.Signal) error {
 	cobra.OnInitialize(initConfig)
 
-	// `pscale --skill` prints the agent guide as an installable skill file,
-	// mirroring `herdr --skill` (an alias for `pscale agent-guide --skill`). It is
-	// handled before cobra runs so that root stays non-runnable: this preserves
-	// the existing behavior for bare `pscale` (help) and unknown subcommands
-	// (non-zero "unknown command"). Matches `--skill` and `--skill=true`.
-	for _, arg := range os.Args[1:] {
-		if arg == "--skill" || arg == "--skill=true" {
-			fmt.Print(agentguide.SkillDoc())
-			return nil
-		}
-	}
-
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config",
 		"", "Config file (default is $HOME/.config/planetscale/pscale.yml)")
 	rootCmd.SilenceUsage = true
@@ -192,9 +189,7 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 	rootCmd.Version = v
 	rootCmd.Flags().Bool("version", false, "Show pscale version")
 
-	// Register --skill so it shows in root help/usage. The flag is handled before
-	// cobra runs (top of runCmd); this registration is for discoverability only.
-	rootCmd.Flags().Bool("skill", false, "Print the agent skill file and exit")
+	rootCmd.Flags().BoolVar(&skillFlag, "skill", false, "Print the agent skill file and exit")
 
 	cfg, err := config.New()
 	if err != nil {
