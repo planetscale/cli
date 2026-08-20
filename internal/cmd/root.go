@@ -91,6 +91,9 @@ Agents and automation should start with:
   pscale --skill
   pscale auth check --format json`,
 	TraverseChildren: true,
+	// NoArgs keeps unknown subcommands/typos (e.g. `pscale databse`) failing with
+	// a non-zero "unknown command" error now that RunE makes root runnable.
+	Args: cobra.NoArgs,
 	// RunE lets the root --skill flag work with no subcommand (cobra only runs
 	// root when it has a Run function). Without --skill, bare `pscale` shows help.
 	RunE: func(cmd *cobra.Command, args []string) error {
