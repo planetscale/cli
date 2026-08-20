@@ -1,6 +1,8 @@
 package agentguide
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 
 	clicontent "github.com/planetscale/cli"
@@ -60,7 +62,11 @@ frontmatter plus the guide), suitable for dropping into a skills directory.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if asSkill {
-				ch.Printer.Print(SkillDoc())
+				// --skill dumps a raw skill file (like --version), not a
+				// resource. Write straight to stdout: Printer.Print routes
+				// non-human formats to io.Discard, which would exit 0 with an
+				// empty file when combined with --format json.
+				fmt.Print(SkillDoc())
 				return nil
 			}
 			if ch.Printer.Format() == printer.JSON {

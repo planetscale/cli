@@ -77,6 +77,9 @@ var (
 	replacer = strings.NewReplacer("-", "_", ".", "_")
 )
 
+// skillFlag is set by the root --skill flag (registered in runCmd).
+var skillFlag bool
+
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "pscale",
@@ -88,6 +91,15 @@ Agents and automation should start with:
   pscale --skill
   pscale auth check --format json`,
 	TraverseChildren: true,
+	// RunE lets the root --skill flag work with no subcommand (cobra only runs
+	// root when it has a Run function). Without --skill, bare `pscale` shows help.
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if skillFlag {
+			fmt.Print(agentguide.SkillDoc())
+			return nil
+		}
+		return cmd.Help()
+	},
 }
 
 // Execute executes the command and returns the exit status of the finished
@@ -180,17 +192,10 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 	rootCmd.Version = v
 	rootCmd.Flags().Bool("version", false, "Show pscale version")
 
-	// `pscale --skill` prints the agent guide as an installable skill file and
-	// exits, mirroring `herdr --skill` (an alias for `pscale agent-guide --skill`).
-	// Scan os.Args directly: cobra shows root help instead of running a PreRun when
-	// no subcommand is given, so the flag must short-circuit before Execute.
-	for _, arg := range os.Args[1:] {
-		if arg == "--skill" {
-			fmt.Print(agentguide.SkillDoc())
-			return nil
-		}
-	}
-	rootCmd.Flags().Bool("skill", false, "Print the agent skill file and exit")
+	// `pscale --skill` prints the agent guide as an installable skill file,
+	// mirroring `herdr --skill` (an alias for `pscale agent-guide --skill`). It is
+	// a normal root flag; rootCmd.RunE handles it so it works with no subcommand.
+	rootCmd.Flags().BoolVar(&skillFlag, "skill", false, "Print the agent skill file and exit")
 
 	cfg, err := config.New()
 	if err != nil {
