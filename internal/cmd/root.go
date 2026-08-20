@@ -77,9 +77,6 @@ var (
 	replacer = strings.NewReplacer("-", "_", ".", "_")
 )
 
-// skillFlag is set by the root --skill flag (registered in runCmd).
-var skillFlag bool
-
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "pscale",
@@ -91,18 +88,6 @@ Agents and automation should start with:
   pscale --skill
   pscale auth check --format json`,
 	TraverseChildren: true,
-	// NoArgs keeps unknown subcommands/typos (e.g. `pscale databse`) failing with
-	// a non-zero "unknown command" error now that RunE makes root runnable.
-	Args: cobra.NoArgs,
-	// RunE lets the root --skill flag work with no subcommand (cobra only runs
-	// root when it has a Run function). Without --skill, bare `pscale` shows help.
-	RunE: func(cmd *cobra.Command, args []string) error {
-		if skillFlag {
-			fmt.Print(agentguide.SkillDoc())
-			return nil
-		}
-		return cmd.Help()
-	},
 }
 
 // Execute executes the command and returns the exit status of the finished
@@ -185,6 +170,18 @@ func isRootOrgFlagError(err error) bool {
 func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.Format, debug *bool, sigc chan os.Signal, signals []os.Signal) error {
 	cobra.OnInitialize(initConfig)
 
+	// `pscale --skill` prints the agent guide as an installable skill file,
+	// mirroring `herdr --skill` (an alias for `pscale agent-guide --skill`). It is
+	// handled before cobra runs so that root stays non-runnable: this preserves
+	// the existing behavior for bare `pscale` (help) and unknown subcommands
+	// (non-zero "unknown command"). Matches `--skill` and `--skill=true`.
+	for _, arg := range os.Args[1:] {
+		if arg == "--skill" || arg == "--skill=true" {
+			fmt.Print(agentguide.SkillDoc())
+			return nil
+		}
+	}
+
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config",
 		"", "Config file (default is $HOME/.config/planetscale/pscale.yml)")
 	rootCmd.SilenceUsage = true
@@ -195,10 +192,9 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 	rootCmd.Version = v
 	rootCmd.Flags().Bool("version", false, "Show pscale version")
 
-	// `pscale --skill` prints the agent guide as an installable skill file,
-	// mirroring `herdr --skill` (an alias for `pscale agent-guide --skill`). It is
-	// a normal root flag; rootCmd.RunE handles it so it works with no subcommand.
-	rootCmd.Flags().BoolVar(&skillFlag, "skill", false, "Print the agent skill file and exit")
+	// Register --skill so it shows in root help/usage. The flag is handled before
+	// cobra runs (top of runCmd); this registration is for discoverability only.
+	rootCmd.Flags().Bool("skill", false, "Print the agent skill file and exit")
 
 	cfg, err := config.New()
 	if err != nil {
