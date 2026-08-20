@@ -113,6 +113,9 @@ func TestPostgresRoles_List(t *testing.T) {
             "access_host_url": "test.planetscale.com",
             "database_name": "test-db",
             "username": "test-user",
+            "disabled_at": "2021-01-15T10:19:23.000Z",
+            "expires_at": null,
+            "expired": false,
             "created_at": "2021-01-14T10:19:23.000Z"
         }
     ]
@@ -135,6 +138,7 @@ func TestPostgresRoles_List(t *testing.T) {
 		Branch:       branch,
 	})
 
+	disabledAt := time.Date(2021, time.January, 15, 10, 19, 23, 0, time.UTC)
 	want := []*PostgresRole{
 		{
 			ID:            testRoleID,
@@ -143,6 +147,7 @@ func TestPostgresRoles_List(t *testing.T) {
 			DatabaseName:  "test-db",
 			Username:      "test-user",
 			CreatedAt:     time.Date(2021, time.January, 14, 10, 19, 23, 0, time.UTC),
+			DisabledAt:    &disabledAt,
 		},
 	}
 
@@ -274,6 +279,9 @@ func TestPostgresRoles_Get(t *testing.T) {
     "password": "secret-password",
     "username": "test-user",
     "with_replication": true,
+    "disabled_at": null,
+    "expires_at": "2021-02-14T10:19:23.000Z",
+    "expired": true,
     "created_at": "2021-01-14T10:19:23.000Z"
 }`, testRoleID)
 		_, err := w.Write([]byte(out))
@@ -295,6 +303,7 @@ func TestPostgresRoles_Get(t *testing.T) {
 		RoleId:       testRoleID,
 	})
 
+	expiresAt := time.Date(2021, time.February, 14, 10, 19, 23, 0, time.UTC)
 	want := &PostgresRole{
 		ID:              testRoleID,
 		Name:            "test-role",
@@ -304,6 +313,8 @@ func TestPostgresRoles_Get(t *testing.T) {
 		Username:        "test-user",
 		WithReplication: true,
 		CreatedAt:       time.Date(2021, time.January, 14, 10, 19, 23, 0, time.UTC),
+		ExpiresAt:       &expiresAt,
+		Expired:         true,
 	}
 
 	c.Assert(err, qt.IsNil)
