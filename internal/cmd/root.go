@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"log"
 	"os"
@@ -73,8 +74,9 @@ import (
 )
 
 var (
-	cfgFile  string
-	replacer = strings.NewReplacer("-", "_", ".", "_")
+	cfgFile   string
+	skillFlag bool
+	replacer  = strings.NewReplacer("-", "_", ".", "_")
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -85,9 +87,16 @@ var rootCmd = &cobra.Command{
 
 Agents and automation should start with:
 
-  pscale agent-guide --format json
+  pscale --skill
   pscale auth check --format json`,
 	TraverseChildren: true,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if skillFlag && len(args) == 0 {
+			_, err := io.WriteString(cmd.OutOrStdout(), agentguide.SkillDoc())
+			return err
+		}
+		return cmd.Help()
+	},
 }
 
 // Execute executes the command and returns the exit status of the finished
@@ -180,6 +189,8 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 	rootCmd.Version = v
 	rootCmd.Flags().Bool("version", false, "Show pscale version")
 
+	rootCmd.Flags().BoolVar(&skillFlag, "skill", false, "Print the agent skill file and exit")
+
 	cfg, err := config.New()
 	if err != nil {
 		return err
@@ -242,7 +253,7 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 	// agent guide, so agents that discover pscale via --help (rather than a
 	// repo AGENTS.md) find the machine-readable guidance.
 	rootCmd.SetUsageTemplate(rootCmd.UsageTemplate() +
-		"\nAgents: run \"pscale agent-guide --format json\" for machine-readable guidance, or \"pscale help agents\" to read the full guide.\n")
+		"\nAgents: run \"pscale --skill\" to print the installable agent skill, \"pscale agent-guide --format json\" for machine-readable guidance, or \"pscale help agents\" to read the full guide.\n")
 
 	// Additional help topic (no Run function): `pscale help agents` prints
 	// the embedded agent guide.
