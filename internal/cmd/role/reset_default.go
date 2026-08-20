@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"time"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/terminal"
@@ -110,13 +111,15 @@ func ResetDefaultCmd(ch *cmdutil.Helper) *cobra.Command {
 }
 
 type PostgresRole struct {
-	PublicID        string `header:"id" json:"id"`
-	Name            string `header:"name" json:"name"`
-	Username        string `header:"username" json:"username"`
-	Password        string `header:"password" json:"password"`
-	AccessHostURL   string `header:"access_host_url" json:"access_host_url"`
-	DatabaseURL     string `header:"database_url" json:"database_url"`
-	WithReplication bool   `header:"with_replication" json:"with_replication"`
+	PublicID        string  `header:"id" json:"id"`
+	Name            string  `header:"name" json:"name"`
+	Username        string  `header:"username" json:"username"`
+	Status          string  `header:"status" json:"status"`
+	ExpiresAt       *string `header:"expires_at" json:"expires_at"`
+	Password        string  `header:"password" json:"password"`
+	AccessHostURL   string  `header:"access_host_url" json:"access_host_url"`
+	DatabaseURL     string  `header:"database_url" json:"database_url"`
+	WithReplication bool    `header:"with_replication" json:"with_replication"`
 
 	orig *ps.PostgresRole
 }
@@ -126,12 +129,33 @@ func toPostgresRole(role *ps.PostgresRole) *PostgresRole {
 		PublicID:        role.ID,
 		Name:            role.Name,
 		Username:        role.Username,
+		Status:          postgresRoleStatus(role),
+		ExpiresAt:       postgresRoleExpiresAt(role),
 		Password:        role.Password,
 		AccessHostURL:   role.AccessHostURL,
 		DatabaseURL:     buildPostgresConnectionURL(role.Username, role.Password, role.AccessHostURL),
 		WithReplication: role.WithReplication,
 		orig:            role,
 	}
+}
+
+func postgresRoleStatus(role *ps.PostgresRole) string {
+	if role.DisabledAt != nil {
+		return "disabled"
+	}
+	if role.Expired {
+		return "expired"
+	}
+	return "active"
+}
+
+func postgresRoleExpiresAt(role *ps.PostgresRole) *string {
+	if role.ExpiresAt == nil {
+		return nil
+	}
+
+	expiresAt := role.ExpiresAt.UTC().Format(time.RFC3339)
+	return &expiresAt
 }
 
 // printPostgresRoleCredentials prints role credentials in a vertical layout.

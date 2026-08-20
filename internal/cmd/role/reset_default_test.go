@@ -66,6 +66,8 @@ func TestResetDefaultCmd(t *testing.T) {
 		"id":               "role-123",
 		"name":             "postgres",
 		"username":         "postgres",
+		"status":           "active",
+		"expires_at":       nil,
 		"password":         "new-password-123",
 		"access_host_url":  "pg.psdb.cloud",
 		"database_url":     "postgresql://postgres:new-password-123@pg.psdb.cloud:5432/postgres?sslmode=verify-full",

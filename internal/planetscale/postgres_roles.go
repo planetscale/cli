@@ -10,15 +10,18 @@ import (
 
 // PostgresRole represents a PostgreSQL role in PlanetScale.
 type PostgresRole struct {
-	ID              string    `json:"id"`
-	Name            string    `json:"name"`
-	AccessHostURL   string    `json:"access_host_url"`
-	DatabaseName    string    `json:"database_name"`
-	Password        string    `json:"password"`
-	Actor           Actor     `json:"actor"`
-	Username        string    `json:"username"`
-	WithReplication bool      `json:"with_replication"`
-	CreatedAt       time.Time `json:"created_at"`
+	ID              string     `json:"id"`
+	Name            string     `json:"name"`
+	AccessHostURL   string     `json:"access_host_url"`
+	DatabaseName    string     `json:"database_name"`
+	Password        string     `json:"password"`
+	Actor           Actor      `json:"actor"`
+	Username        string     `json:"username"`
+	WithReplication bool       `json:"with_replication"`
+	CreatedAt       time.Time  `json:"created_at"`
+	DisabledAt      *time.Time `json:"disabled_at"`
+	ExpiresAt       *time.Time `json:"expires_at"`
+	Expired         bool       `json:"expired"`
 }
 
 type postgresRolesResponse struct {
