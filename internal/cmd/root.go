@@ -85,7 +85,7 @@ var rootCmd = &cobra.Command{
 
 Agents and automation should start with:
 
-  pscale agent-guide --format json
+  pscale --skill
   pscale auth check --format json`,
 	TraverseChildren: true,
 }
@@ -180,6 +180,18 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 	rootCmd.Version = v
 	rootCmd.Flags().Bool("version", false, "Show pscale version")
 
+	// `pscale --skill` prints the agent guide as an installable skill file and
+	// exits, mirroring `herdr --skill` (an alias for `pscale agent-guide --skill`).
+	// Scan os.Args directly: cobra shows root help instead of running a PreRun when
+	// no subcommand is given, so the flag must short-circuit before Execute.
+	for _, arg := range os.Args[1:] {
+		if arg == "--skill" {
+			fmt.Print(agentguide.SkillDoc())
+			return nil
+		}
+	}
+	rootCmd.Flags().Bool("skill", false, "Print the agent skill file and exit")
+
 	cfg, err := config.New()
 	if err != nil {
 		return err
@@ -242,7 +254,7 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 	// agent guide, so agents that discover pscale via --help (rather than a
 	// repo AGENTS.md) find the machine-readable guidance.
 	rootCmd.SetUsageTemplate(rootCmd.UsageTemplate() +
-		"\nAgents: run \"pscale agent-guide --format json\" for machine-readable guidance, or \"pscale help agents\" to read the full guide.\n")
+		"\nAgents: run \"pscale --skill\" to print the installable agent skill, \"pscale agent-guide --format json\" for machine-readable guidance, or \"pscale help agents\" to read the full guide.\n")
 
 	// Additional help topic (no Run function): `pscale help agents` prints
 	// the embedded agent guide.

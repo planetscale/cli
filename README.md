@@ -121,10 +121,15 @@ And then use the `pscale` binary built in `cmd/pscale/` for testing:
 ./cmd/pscale/pscale <command>
 ```
 
+The API client is vendored at `internal/planetscale/`; this repo **no longer depends on
+`planetscale-go`**. Read [`doc/api-client.md`](./doc/api-client.md) before touching
+API-facing code.
+
 ## Documentation
 
 Please checkout our Documentation page: [planetscale.com/docs](https://planetscale.com/docs/reference/planetscale-cli)
 
-For AI agents and automation, run `pscale agent-guide` or see [AGENTS.md](./AGENTS.md).
+For AI agents and automation, run `pscale agent-guide` (or `pscale --skill` for an
+installable skill file) — see [AGENTS.md](./AGENTS.md).
 For operational workflows (inventory, safety review, schema recommendations), install
 [planetscale/skills](https://github.com/planetscale/skills).

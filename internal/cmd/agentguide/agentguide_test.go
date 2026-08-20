@@ -3,6 +3,7 @@ package agentguide
 import (
 	"bytes"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/planetscale/cli/internal/cmdutil"
@@ -50,4 +51,42 @@ func TestAgentGuideJSONBootstrap(t *testing.T) {
 	if resp.Guide == "" {
 		t.Fatal("expected embedded guide")
 	}
+}
+
+func TestSkillDoc(t *testing.T) {
+	doc := SkillDoc()
+	if !strings.HasPrefix(doc, "---\nname: pscale-cli\n") {
+		t.Fatalf("skill doc missing frontmatter, got prefix: %q", doc[:min(40, len(doc))])
+	}
+	if !strings.Contains(doc, "description:") {
+		t.Fatal("skill doc missing description trigger")
+	}
+	if !strings.Contains(doc, "# PlanetScale CLI") {
+		t.Fatal("skill doc missing embedded guide body")
+	}
+}
+
+func TestAgentGuideSkillFlag(t *testing.T) {
+	format := printer.Human
+	var out bytes.Buffer
+	ch := &cmdutil.Helper{
+		Printer: printer.NewPrinter(&format),
+	}
+	ch.Printer.SetHumanOutput(&out)
+
+	cmd := AgentGuideCmd(ch)
+	cmd.SetArgs([]string{"--skill"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("execute: %v", err)
+	}
+	if got := out.String(); !strings.HasPrefix(got, "---\nname: pscale-cli\n") {
+		t.Fatalf("--skill output missing frontmatter, got prefix: %q", got[:min(40, len(got))])
+	}
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
