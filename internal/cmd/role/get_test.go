@@ -65,3 +65,103 @@ func TestRole_GetCmdIncludesStatusAndExpiration(t *testing.T) {
 		"with_replication": false,
 	})
 }
+
+func TestRole_GetCmdConnectionTargets(t *testing.T) {
+	tests := []struct {
+		name    string
+		args    []string
+		request ps.GetPostgresRoleRequest
+	}{
+		{
+			name: "replica",
+			args: []string{"mydb", "main", "role-id", "--replica"},
+			request: ps.GetPostgresRoleRequest{
+				Replica: true,
+			},
+		},
+		{
+			name: "read-only replica",
+			args: []string{"mydb", "main", "role-id", "--read-only-replica", "us-west"},
+			request: ps.GetPostgresRoleRequest{
+				ReadOnlyReplica: "us-west",
+			},
+		},
+		{
+			name: "bouncer",
+			args: []string{"mydb", "main", "role-id", "--bouncer", "pool"},
+			request: ps.GetPostgresRoleRequest{
+				Bouncer: "pool",
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := qt.New(t)
+
+			var buf bytes.Buffer
+			format := printer.JSON
+			p := printer.NewPrinter(&format)
+			p.SetResourceOutput(&buf)
+
+			svc := &mock.PostgresRolesService{
+				GetFn: func(ctx context.Context, req *ps.GetPostgresRoleRequest) (*ps.PostgresRole, error) {
+					test.request.Organization = "planetscale"
+					test.request.Database = "mydb"
+					test.request.Branch = "main"
+					test.request.RoleId = "role-id"
+					c.Assert(req, qt.DeepEquals, &test.request)
+
+					return &ps.PostgresRole{
+						ID:            "role-id",
+						Name:          "app",
+						Username:      "app.branch|replica",
+						AccessHostURL: "us-west.pg.psdb.cloud",
+					}, nil
+				},
+			}
+
+			ch := &cmdutil.Helper{
+				Printer: p,
+				Config:  &config.Config{Organization: "planetscale"},
+				Client: func() (*ps.Client, error) {
+					return &ps.Client{PostgresRoles: svc}, nil
+				},
+			}
+
+			cmd := GetCmd(ch)
+			cmd.SetArgs(test.args)
+			c.Assert(cmd.Execute(), qt.IsNil)
+
+			c.Assert(buf.String(), qt.JSONEquals, map[string]any{
+				"id":               "role-id",
+				"name":             "app",
+				"username":         "app.branch|replica",
+				"status":           "active",
+				"expires_at":       nil,
+				"password":         "",
+				"access_host_url":  "us-west.pg.psdb.cloud",
+				"database_url":     "postgresql://app.branch%7Creplica:@us-west.pg.psdb.cloud:5432/postgres?sslmode=verify-full",
+				"with_replication": false,
+			})
+		})
+	}
+}
+
+func TestRole_GetCmdRejectsMultipleConnectionTargets(t *testing.T) {
+	c := qt.New(t)
+
+	svc := &mock.PostgresRolesService{}
+	ch := &cmdutil.Helper{
+		Config: &config.Config{Organization: "planetscale"},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{PostgresRoles: svc}, nil
+		},
+	}
+
+	cmd := GetCmd(ch)
+	cmd.SetArgs([]string{"mydb", "main", "role-id", "--replica", "--bouncer", "pool"})
+
+	c.Assert(cmd.Execute(), qt.IsNotNil)
+	c.Assert(svc.GetFnInvoked, qt.IsFalse)
+}

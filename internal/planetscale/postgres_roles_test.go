@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 	"time"
 
@@ -319,6 +320,74 @@ func TestPostgresRoles_Get(t *testing.T) {
 
 	c.Assert(err, qt.IsNil)
 	c.Assert(role, qt.DeepEquals, want)
+}
+
+func TestPostgresRoles_GetConnectionTargets(t *testing.T) {
+	tests := []struct {
+		name       string
+		request    GetPostgresRoleRequest
+		query      url.Values
+		username   string
+		accessHost string
+	}{
+		{
+			name:       "replica",
+			request:    GetPostgresRoleRequest{Replica: true},
+			query:      url.Values{"replica": []string{"true"}},
+			username:   "test-user.branch-id|replica",
+			accessHost: "primary.planetscale.com",
+		},
+		{
+			name:       "read-only replica",
+			request:    GetPostgresRoleRequest{ReadOnlyReplica: "us-west"},
+			query:      url.Values{"read_only_replica": []string{"us-west"}},
+			username:   "test-user.replica-id|replica",
+			accessHost: "us-west.planetscale.com",
+		},
+		{
+			name:       "bouncer",
+			request:    GetPostgresRoleRequest{Bouncer: "pool"},
+			query:      url.Values{"bouncer": []string{"pool"}},
+			username:   "test-user.branch-id|pool",
+			accessHost: "primary.planetscale.com",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := qt.New(t)
+
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				c.Assert(r.Method, qt.Equals, http.MethodGet)
+				c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/my-db/branches/my-branch/roles/AbC123xYz")
+				c.Assert(r.URL.Query(), qt.DeepEquals, test.query)
+
+				_, err := fmt.Fprintf(w, `{
+					"id": "%s",
+					"name": "test-role",
+					"access_host_url": "%s",
+					"database_name": "postgres",
+					"username": "%s"
+				}`, testRoleID, test.accessHost, test.username)
+				c.Assert(err, qt.IsNil)
+			}))
+			t.Cleanup(ts.Close)
+
+			client, err := NewClient(WithBaseURL(ts.URL))
+			c.Assert(err, qt.IsNil)
+
+			test.request.Organization = "my-org"
+			test.request.Database = "my-db"
+			test.request.Branch = "my-branch"
+			test.request.RoleId = testRoleID
+
+			role, err := client.PostgresRoles.Get(context.Background(), &test.request)
+
+			c.Assert(err, qt.IsNil)
+			c.Assert(role.Username, qt.Equals, test.username)
+			c.Assert(role.AccessHostURL, qt.Equals, test.accessHost)
+		})
+	}
 }
 
 func TestPostgresRoles_Create(t *testing.T) {

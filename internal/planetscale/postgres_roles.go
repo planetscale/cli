@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 	"path"
 	"time"
 )
@@ -37,10 +38,13 @@ type ListPostgresRolesRequest struct {
 
 // GetPostgresRoleRequest encapsulates the request for getting a specific role for a given database branch.
 type GetPostgresRoleRequest struct {
-	Organization string `json:"-"`
-	Database     string `json:"-"`
-	Branch       string `json:"-"`
-	RoleId       string
+	Organization    string
+	Database        string
+	Branch          string
+	RoleId          string
+	Replica         bool
+	ReadOnlyReplica string
+	Bouncer         string
 }
 
 // CreatePostgresRoleRequest encapsulates the request for creating role credentials for a database branch.
@@ -197,7 +201,18 @@ func (p *postgresRolesService) List(ctx context.Context, listReq *ListPostgresRo
 // Get an existing role for a database branch.
 func (p *postgresRolesService) Get(ctx context.Context, getReq *GetPostgresRoleRequest) (*PostgresRole, error) {
 	pathStr := postgresBranchRoleAPIPath(getReq.Organization, getReq.Database, getReq.Branch, getReq.RoleId)
-	req, err := p.client.newRequest(http.MethodGet, pathStr, nil)
+	query := url.Values{}
+	if getReq.Replica {
+		query.Set("replica", "true")
+	}
+	if getReq.ReadOnlyReplica != "" {
+		query.Set("read_only_replica", getReq.ReadOnlyReplica)
+	}
+	if getReq.Bouncer != "" {
+		query.Set("bouncer", getReq.Bouncer)
+	}
+
+	req, err := p.client.newRequest(http.MethodGet, pathStr, nil, WithQueryParams(query))
 	if err != nil {
 		return nil, fmt.Errorf("error creating http request: %w", err)
 	}

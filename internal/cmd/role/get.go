@@ -11,6 +11,12 @@ import (
 )
 
 func GetCmd(ch *cmdutil.Helper) *cobra.Command {
+	var flags struct {
+		replica         bool
+		readOnlyReplica string
+		bouncer         string
+	}
+
 	cmd := &cobra.Command{
 		Use:   "get <database> <branch> <role-id>",
 		Short: "Retrieve information about a specific role",
@@ -30,10 +36,13 @@ func GetCmd(ch *cmdutil.Helper) *cobra.Command {
 			defer end()
 
 			role, err := client.PostgresRoles.Get(ctx, &ps.GetPostgresRoleRequest{
-				Organization: ch.Config.Organization,
-				Database:     database,
-				Branch:       branch,
-				RoleId:       roleID,
+				Organization:    ch.Config.Organization,
+				Database:        database,
+				Branch:          branch,
+				RoleId:          roleID,
+				Replica:         flags.replica,
+				ReadOnlyReplica: flags.readOnlyReplica,
+				Bouncer:         flags.bouncer,
 			})
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
@@ -52,6 +61,11 @@ func GetCmd(ch *cmdutil.Helper) *cobra.Command {
 			return ch.Printer.PrintResource(toPostgresRole(role))
 		},
 	}
+
+	cmd.Flags().BoolVar(&flags.replica, "replica", false, "Return connection details for a branch replica.")
+	cmd.Flags().StringVar(&flags.readOnlyReplica, "read-only-replica", "", "Return connection details for a regional read-only replica (region slug).")
+	cmd.Flags().StringVar(&flags.bouncer, "bouncer", "", "Return connection details for a PgBouncer (name).")
+	cmd.MarkFlagsMutuallyExclusive("replica", "read-only-replica", "bouncer")
 
 	return cmd
 }

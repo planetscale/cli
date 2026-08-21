@@ -375,6 +375,11 @@ pscale branch extensions list <database> <branch> --org <org> --format json
 pscale role default <database> <branch> --org <org> --format json
 pscale role reset-default <database> <branch> --org <org> --format json --force
 
+# Role connection details for a branch replica, regional read-only replica, or PgBouncer
+pscale role get <database> <branch> <role-id> --org <org> --format json --replica
+pscale role get <database> <branch> <role-id> --org <org> --format json --read-only-replica <region-slug>
+pscale role get <database> <branch> <role-id> --org <org> --format json --bouncer <bouncer-name>
+
 # Change parameters (repeat --parameters; keys are namespace.name)
 pscale branch resize <database> <branch> --org <org> --format json --parameters pgconf.max_connections=200
 
@@ -391,6 +396,7 @@ pscale branch resize cancel <database> <branch> --org <org> --format json
 ```
 
 - At least one of `--cluster-size`, `--replicas`, or `--parameters` is required.
+- The `role get` connection target flags are mutually exclusive. Targeted role responses keep the same shape while changing `username`, `access_host_url`, and `database_url` as needed.
 - `--parameters` values are validated against the catalog before submission; unknown or immutable parameters fail fast. Parameters with `"restart": true` in the catalog restart the database when applied — surface this to the user before changing them.
 - Change request `state` is one of `queued`, `pending`, `resizing`, `completed`, `canceled`. Only `completed` and `canceled` are terminal. Without `--wait`, poll `resize status` instead of assuming completion.
 - A no-op (branch already matches the requested configuration) prints `{"result": "no_change", "branch": "<branch>"}` in JSON mode instead of a change request.
