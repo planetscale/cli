@@ -428,6 +428,66 @@ pscale branch maintenance run <database> <branch> --org <org> --format json --up
 - Postgres only; Vitess/MySQL databases are rejected before any API call.
 - See https://planetscale.com/docs/postgres/operations-philosophy
 
+## Billing payment methods
+
+Update the organization's card through Stripe-hosted Checkout. The CLI never collects PAN; the human must finish Checkout in a browser. There is only one current card.
+
+```bash
+pscale billing payment-method update --org <org> --format json
+pscale billing payment-method status <setup-id> --org <org> --format json
+pscale billing payment-method show --org <org> --format json
+pscale billing payment-method delete --org <org> --format json --force
+```
+
+`--org` is required (same as other resource commands). `status <setup-id>` takes the `id` returned by `update` (pending JSON on stderr, or the setup object on stdout). That id is a **setup** id, not the saved card id. `show` and `delete` operate on the organization's current card.
+
+**Happy path — leave `update` running.** It creates a setup, opens Checkout when possible, and **polls until a terminal state**. Do not poll `status` yourself unless `update` was interrupted.
+
+Same JSON shape as `auth login`: pending object on **stderr** immediately; a single setup object on **stdout** when polling finishes.
+
+```json
+{
+  "status": "pending",
+  "id": "<setup-id>",
+  "checkout_url": "https://checkout.stripe.com/...",
+  "browser_opened": true,
+  "message": "Complete Stripe Checkout in the browser to continue",
+  "next_steps": [
+    "Complete Stripe Checkout",
+    "pscale billing payment-method status <setup-id> --org <org> --format json"
+  ]
+}
+```
+
+1. Surface `checkout_url` to the user. If `browser_opened` is false, tell them to open it. You cannot complete Checkout.
+2. Keep `update` running. Do not start a second `update` while the first is waiting — that creates a new Checkout session.
+3. When `update` exits, read **stdout**. Branch on `state`: `completed`, `failed`, or `expired`. `failed` includes a user-facing `error`.
+
+A non-`completed` terminal state exits non-zero and prints an error envelope on **stdout** carrying `id`, `state`, and the recovery command:
+
+| Code | Meaning |
+|------|---------|
+| `PAYMENT_METHOD_SETUP_FAILED` | Verification failed; `error` has the user-facing reason. The Checkout session is spent — run `update` again. |
+| `PAYMENT_METHOD_SETUP_EXPIRED` | Checkout was not completed in time; run `update` again. |
+| `PAYMENT_METHOD_SETUP_INTERRUPTED` | Polling stopped while the setup was still pending. `action_required`; resume with `status <setup-id>`, do not run `update` again. |
+
+Follow `next_steps`. Only `PAYMENT_METHOD_SETUP_INTERRUPTED` is resumable; for the other two, `status` will keep returning the same terminal state.
+
+**If `update` is killed or times out**, take `id` from the pending stderr object (do not call `update` again) and GET once:
+
+```bash
+pscale billing payment-method status <setup-id> --org <org> --format json
+```
+
+`status` does **not** poll. If `state` is still `pending`, wait and call `status` again with the same setup id. Same terminal states as `update`.
+
+**Current card.** `show` returns the saved card. `delete` requires user approval, then `--force` in JSON (`CONFIRMATION_REQUIRED` without it). Failures print the same envelope as other agent commands (`status`, `error`, `issues`, `next_steps`):
+
+| Code | Meaning |
+|------|---------|
+| `NOT_FOUND` | No current card. Next step is `pscale billing payment-method update --org <org> --format json`. |
+| `UNPAID_INVOICES` | `delete` rejected because the organization has unpaid invoices. Pay them, then retry. |
+
 ## Imports (Cloudflare D1)
 
 `pscale import d1` migrates a Cloudflare D1 (SQLite) export into a PlanetScale Postgres branch. Every subcommand supports `--format json` and returns `status`, `issues`, and `next_steps`; stateful steps return a `migration_id` — pass it back with `--migration-id` to resume.
