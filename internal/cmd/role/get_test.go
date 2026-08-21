@@ -69,9 +69,12 @@ func TestRole_GetCmdIncludesStatusAndExpiration(t *testing.T) {
 
 func TestRole_GetCmdConnectionTargets(t *testing.T) {
 	tests := []struct {
-		name    string
-		args    []string
-		request ps.GetPostgresRoleRequest
+		name          string
+		args          []string
+		request       ps.GetPostgresRoleRequest
+		username      string
+		accessHostURL string
+		databaseURL   string
 	}{
 		{
 			name: "replica",
@@ -79,6 +82,9 @@ func TestRole_GetCmdConnectionTargets(t *testing.T) {
 			request: ps.GetPostgresRoleRequest{
 				Replica: true,
 			},
+			username:      "app.branch|replica",
+			accessHostURL: "primary.pg.psdb.cloud",
+			databaseURL:   "postgresql://app.branch%7Creplica:@primary.pg.psdb.cloud:5432/postgres?sslmode=verify-full",
 		},
 		{
 			name: "read-only replica",
@@ -86,6 +92,9 @@ func TestRole_GetCmdConnectionTargets(t *testing.T) {
 			request: ps.GetPostgresRoleRequest{
 				ReadOnlyReplica: "us-west",
 			},
+			username:      "app.read-only|replica",
+			accessHostURL: "us-west.pg.psdb.cloud",
+			databaseURL:   "postgresql://app.read-only%7Creplica:@us-west.pg.psdb.cloud:5432/postgres?sslmode=verify-full",
 		},
 		{
 			name: "bouncer",
@@ -93,6 +102,9 @@ func TestRole_GetCmdConnectionTargets(t *testing.T) {
 			request: ps.GetPostgresRoleRequest{
 				Bouncer: "pool",
 			},
+			username:      "app.branch|pool",
+			accessHostURL: "primary.pg.psdb.cloud",
+			databaseURL:   "postgresql://app.branch%7Cpool:@primary.pg.psdb.cloud:6432/postgres?sslmode=verify-full",
 		},
 	}
 
@@ -116,8 +128,8 @@ func TestRole_GetCmdConnectionTargets(t *testing.T) {
 					return &ps.PostgresRole{
 						ID:            "role-id",
 						Name:          "app",
-						Username:      "app.branch|replica",
-						AccessHostURL: "us-west.pg.psdb.cloud",
+						Username:      test.username,
+						AccessHostURL: test.accessHostURL,
 					}, nil
 				},
 			}
@@ -137,12 +149,12 @@ func TestRole_GetCmdConnectionTargets(t *testing.T) {
 			c.Assert(buf.String(), qt.JSONEquals, map[string]any{
 				"id":               "role-id",
 				"name":             "app",
-				"username":         "app.branch|replica",
+				"username":         test.username,
 				"status":           "active",
 				"expires_at":       nil,
 				"password":         "",
-				"access_host_url":  "us-west.pg.psdb.cloud",
-				"database_url":     "postgresql://app.branch%7Creplica:@us-west.pg.psdb.cloud:5432/postgres?sslmode=verify-full",
+				"access_host_url":  test.accessHostURL,
+				"database_url":     test.databaseURL,
 				"with_replication": false,
 			})
 		})
