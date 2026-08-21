@@ -13,6 +13,10 @@ Use direct CLI automation for shell commands and scripts. Use the hosted PlanetS
 
 This file documents **how to invoke `pscale`**. For database assessment, safety review, and operational workflows, install the [PlanetScale skills pack](https://github.com/planetscale/skills) (`14-pscale-cli-automation` covers CLI automation; `00-safe-orchestrator` runs the full review). In application repositories, add a separate **project** `AGENTS.md` with org, database, branch, and approval rules (see skill `09-mcp-agent-operating-model` in that repo).
 
+## Public repository safety
+
+This repository is public. Do not include internal or sensitive information in commits, commit messages, pull request titles, or pull request descriptions. Do not name or link private repositories, internal issues or pull requests, Slack conversations, customer details, credentials, or private infrastructure. Include references only when the referenced resource is public.
+
 ## Concepts
 
 PlanetScale is a serverless database platform for **MySQL** (via Vitess) and **PostgreSQL**. Resources are namespaced: an **organization** (org) owns **databases**, and each database contains **branches** — isolated copies of schema (and, for Postgres, data) that work like git branches. The default branch is typically `main` (production). Most commands target a database + branch and take `--org` to say which organization they belong to. Throughout this guide, `<org>`, `<database>`, and `<branch>` are placeholders for those names — pick a branch with `"ready": true` from `branch list`.
