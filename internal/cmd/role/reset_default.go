@@ -178,11 +178,14 @@ func roleAttributes(role *PostgresRole) string {
 
 // buildPostgresConnectionURL constructs a PostgreSQL connection URL from role credentials.
 func buildPostgresConnectionURL(username, password, accessHostURL string) string {
+	return buildPostgresConnectionURLWithDefaultPort(username, password, accessHostURL, "5432")
+}
+
+func buildPostgresConnectionURLWithDefaultPort(username, password, accessHostURL, defaultPort string) string {
 	host, port, err := net.SplitHostPort(accessHostURL)
 	if err != nil {
-		// If no port specified, use the host as-is and default to 5432
 		host = accessHostURL
-		port = "5432"
+		port = defaultPort
 	}
 
 	return fmt.Sprintf("postgresql://%s:%s@%s:%s/postgres?sslmode=verify-full",
