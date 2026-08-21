@@ -3,6 +3,7 @@ package role
 import (
 	"bytes"
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -164,4 +165,57 @@ func TestRole_GetCmdRejectsMultipleConnectionTargets(t *testing.T) {
 
 	c.Assert(cmd.Execute(), qt.IsNotNil)
 	c.Assert(svc.GetFnInvoked, qt.IsFalse)
+}
+
+func TestRole_GetCmdConnectionTargetNotFound(t *testing.T) {
+	tests := []struct {
+		name       string
+		args       []string
+		targetType string
+		target     string
+	}{
+		{
+			name:       "read-only replica",
+			args:       []string{"mydb", "main", "role-id", "--read-only-replica", "missing-region"},
+			targetType: "read-only replica in region",
+			target:     "missing-region",
+		},
+		{
+			name:       "bouncer",
+			args:       []string{"mydb", "main", "role-id", "--bouncer", "missing-bouncer"},
+			targetType: "PgBouncer",
+			target:     "missing-bouncer",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := qt.New(t)
+
+			format := printer.Human
+			p := printer.NewPrinter(&format)
+			svc := &mock.PostgresRolesService{
+				GetFn: func(ctx context.Context, req *ps.GetPostgresRoleRequest) (*ps.PostgresRole, error) {
+					return nil, &ps.Error{Code: ps.ErrNotFound}
+				},
+			}
+			ch := &cmdutil.Helper{
+				Printer: p,
+				Config:  &config.Config{Organization: "planetscale"},
+				Client: func() (*ps.Client, error) {
+					return &ps.Client{PostgresRoles: svc}, nil
+				},
+			}
+
+			cmd := GetCmd(ch)
+			cmd.SetArgs(test.args)
+			err := cmd.Execute()
+
+			c.Assert(err, qt.IsNotNil)
+			c.Assert(strings.Contains(err.Error(), "role"), qt.IsTrue)
+			c.Assert(strings.Contains(err.Error(), "role-id"), qt.IsTrue)
+			c.Assert(strings.Contains(err.Error(), test.targetType), qt.IsTrue)
+			c.Assert(strings.Contains(err.Error(), test.target), qt.IsTrue)
+		})
+	}
 }

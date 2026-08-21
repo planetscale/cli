@@ -47,11 +47,38 @@ func GetCmd(ch *cmdutil.Helper) *cobra.Command {
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case ps.ErrNotFound:
+					notFoundFormat := "role %s does not exist in branch %s of database %s (organization: %s)"
+					notFoundArgs := []any{
+						printer.BoldBlue(roleID),
+						printer.BoldBlue(branch),
+						printer.BoldBlue(database),
+						printer.BoldBlue(ch.Config.Organization),
+					}
+					if flags.readOnlyReplica != "" {
+						notFoundFormat = "role %s or a read-only replica in region %s was not found in branch %s of database %s (organization: %s)"
+						notFoundArgs = []any{
+							printer.BoldBlue(roleID),
+							printer.BoldBlue(flags.readOnlyReplica),
+							printer.BoldBlue(branch),
+							printer.BoldBlue(database),
+							printer.BoldBlue(ch.Config.Organization),
+						}
+					} else if flags.bouncer != "" {
+						notFoundFormat = "role %s or PgBouncer %s was not found in branch %s of database %s (organization: %s)"
+						notFoundArgs = []any{
+							printer.BoldBlue(roleID),
+							printer.BoldBlue(flags.bouncer),
+							printer.BoldBlue(branch),
+							printer.BoldBlue(database),
+							printer.BoldBlue(ch.Config.Organization),
+						}
+					}
+
 					return cmdutil.HandleNotFoundWithServiceTokenCheck(
 						ctx, cmd, ch.Config, ch.Client, err,
 						"read_branch",
-						"role %s does not exist in branch %s of database %s (organization: %s)",
-						printer.BoldBlue(roleID), printer.BoldBlue(branch), printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
+						notFoundFormat,
+						notFoundArgs...)
 				default:
 					return cmdutil.HandleError(err)
 				}
