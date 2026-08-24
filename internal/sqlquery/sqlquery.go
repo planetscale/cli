@@ -292,7 +292,7 @@ func openPostgres(ctx context.Context, ch *cmdutil.Helper, opts Options, pgDB st
 		remotePort = "5432"
 	}
 
-	connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=require",
+	connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=verify-full",
 		remoteHost, remotePort, username, pgRole.Role.Password, pgDB)
 
 	db, err := sql.Open("postgres", connStr)
@@ -339,9 +339,14 @@ func queryReturnsRows(query string) bool {
 }
 
 func queryAfterCTEs(query string) (string, bool) {
+	_, after, ok := walkCTEs(query)
+	return after, ok
+}
+
+func walkCTEs(query string) (bodies []string, after string, ok bool) {
 	rest := strings.TrimSpace(query)
 	if !hasKeywordPrefix(strings.ToUpper(rest), "WITH") {
-		return rest, true
+		return nil, rest, true
 	}
 	rest = strings.TrimSpace(rest[len("WITH"):])
 	if hasKeywordPrefix(strings.ToUpper(rest), "RECURSIVE") {
@@ -351,23 +356,24 @@ func queryAfterCTEs(query string) (string, bool) {
 	for {
 		asIdx := topLevelKeywordIndex(rest, "AS")
 		if asIdx < 0 {
-			return "", false
+			return nil, "", false
 		}
 		rest = strings.TrimSpace(rest[asIdx+len("AS"):])
 		rest = skipCTEMaterializedModifier(rest)
 		if !strings.HasPrefix(rest, "(") {
-			return "", false
+			return nil, "", false
 		}
 		end := matchingParenIndex(rest)
 		if end < 0 {
-			return "", false
+			return nil, "", false
 		}
+		bodies = append(bodies, rest[1:end])
 		rest = strings.TrimSpace(rest[end+1:])
 		if strings.HasPrefix(rest, ",") {
 			rest = strings.TrimSpace(rest[1:])
 			continue
 		}
-		return rest, true
+		return bodies, rest, true
 	}
 }
 

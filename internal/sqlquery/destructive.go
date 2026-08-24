@@ -29,10 +29,6 @@ func splitSQLStatements(query string) []string {
 	for i := 0; i < len(query); i++ {
 		c := query[i]
 		if quote != 0 {
-			if c == '\\' && quote == '\'' && i+1 < len(query) {
-				i++
-				continue
-			}
 			if c == quote {
 				if i+1 < len(query) && query[i+1] == quote {
 					i++
@@ -102,6 +98,9 @@ func isDestructiveSegment(stmt string) bool {
 	upper := strings.ToUpper(trimmed)
 
 	if hasKeywordPrefix(upper, "WITH") {
+		if cteContainsDestructive(trimmed) {
+			return true
+		}
 		after, ok := queryAfterCTEs(trimmed)
 		if !ok {
 			return false
@@ -112,6 +111,12 @@ func isDestructiveSegment(stmt string) bool {
 	switch leadingStatementKeyword(trimmed) {
 	case "DELETE", "DROP", "TRUNCATE":
 		return true
+	case "EXPLAIN":
+		inner, analyze := parseExplainAnalyze(trimmed)
+		if !analyze || inner == "" {
+			return false
+		}
+		return isDestructiveSegment(inner)
 	case "ALTER":
 		upperNorm := strings.NewReplacer("\n", " ", "\r", " ", "\t", " ").Replace(upper)
 		return containsWord(upperNorm, "DROP")
@@ -173,11 +178,6 @@ func stripSQLGuardIgnoredText(stmt string) string {
 		}
 		if quote != 0 {
 			out.WriteByte(' ')
-			if c == '\\' && quote == '\'' && i+1 < len(stmt) {
-				i++
-				out.WriteByte(' ')
-				continue
-			}
 			if c == quote {
 				if i+1 < len(stmt) && stmt[i+1] == quote {
 					i++
@@ -239,6 +239,51 @@ func stripSQLGuardIgnoredText(stmt string) string {
 		}
 	}
 	return out.String()
+}
+
+func cteContainsDestructive(query string) bool {
+	bodies, _, ok := walkCTEs(query)
+	if !ok {
+		return false
+	}
+	return slices.ContainsFunc(bodies, isDestructiveSegment)
+}
+
+func parseExplainAnalyze(stmt string) (inner string, analyze bool) {
+	rest := strings.TrimSpace(stmt)
+	if leadingStatementKeyword(rest) != "EXPLAIN" {
+		return "", false
+	}
+	i := 0
+	for i < len(rest) && isIdentifierChar(rest[i]) {
+		i++
+	}
+	rest = strings.TrimSpace(rest[i:])
+	if strings.HasPrefix(rest, "(") {
+		end := matchingParenIndex(rest)
+		if end < 0 {
+			return "", false
+		}
+		opts := strings.ToUpper(rest[1:end])
+		opts = strings.Join(strings.Fields(strings.NewReplacer(",", " ", "(", " ", ")", " ").Replace(opts)), " ")
+		analyze = containsWord(opts, "ANALYZE") || containsWord(opts, "ANALYSE")
+		return strings.TrimSpace(rest[end+1:]), analyze
+	}
+	for {
+		upper := strings.ToUpper(rest)
+		switch {
+		case hasKeywordPrefix(upper, "ANALYZE"):
+			analyze = true
+			rest = strings.TrimSpace(rest[len("ANALYZE"):])
+		case hasKeywordPrefix(upper, "ANALYSE"):
+			analyze = true
+			rest = strings.TrimSpace(rest[len("ANALYSE"):])
+		case hasKeywordPrefix(upper, "VERBOSE"):
+			rest = strings.TrimSpace(rest[len("VERBOSE"):])
+		default:
+			return rest, analyze
+		}
+	}
 }
 
 func containsWord(q, word string) bool {

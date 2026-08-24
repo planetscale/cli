@@ -1,15 +1,11 @@
 # PlanetScale CLI — agent guide
 
-> **Developing the CLI?** The API client is vendored at `internal/planetscale/`;
-> this repo **no longer depends on `planetscale-go`**. Read `doc/api-client.md`
-> before touching API-facing code. The rest of this file is about *using* `pscale`.
-
 For **any** automated agent or script using `pscale`. Always pass **`--format json`**. Substitute placeholders from the user's request or from prior command output (`org list`, `database list`, `branch list`).
 
-If you only have the installed `pscale` binary, start here:
+If you only have the installed `pscale` binary and this guide is not already in your context, load it and check auth:
 
 ```bash
-pscale agent-guide --format json
+pscale --skill
 pscale auth check --format json
 ```
 
@@ -17,11 +13,25 @@ Use direct CLI automation for shell commands and scripts. Use the hosted PlanetS
 
 This file documents **how to invoke `pscale`**. For database assessment, safety review, and operational workflows, install the [PlanetScale skills pack](https://github.com/planetscale/skills) (`14-pscale-cli-automation` covers CLI automation; `00-safe-orchestrator` runs the full review). In application repositories, add a separate **project** `AGENTS.md` with org, database, branch, and approval rules (see skill `09-mcp-agent-operating-model` in that repo).
 
-| Placeholder | Meaning |
-|-------------|---------|
-| `<org>` | Organization name |
-| `<database>` | Database name |
-| `<branch>` | Branch name (pick one with `"ready": true` from `branch list`) |
+## Public repository safety
+
+This repository is public. Do not include internal or sensitive information in commits, commit messages, pull request titles, or pull request descriptions. Do not name or link private repositories, internal issues or pull requests, Slack conversations, customer details, credentials, or private infrastructure. Include references only when the referenced resource is public.
+
+## Concepts
+
+PlanetScale is a serverless database platform for **MySQL** (via Vitess) and **PostgreSQL**. Resources are namespaced: an **organization** (org) owns **databases**, and each database contains **branches** — isolated copies of schema (and, for Postgres, data) that work like git branches. The default branch is typically `main` (production). Most commands target a database + branch and take `--org` to say which organization they belong to. Throughout this guide, `<org>`, `<database>`, and `<branch>` are placeholders for those names — pick a branch with `"ready": true` from `branch list`.
+
+On Vitess/MySQL, schema changes ship via **deploy requests**: online, non-blocking migrations you review and then deploy.
+
+Many commands are engine-specific, and some operations use different commands per engine. Schema changes: Vitess/MySQL uses `deploy-request`; Postgres branches apply DDL directly. Access: Vitess/MySQL uses `password`; Postgres uses `role`. Resize: Vitess/MySQL uses `keyspace resize`; Postgres uses `branch resize`. Vitess/MySQL-only: `deploy-request`, `keyspace`, `workflow`, `connect`, `password`. Postgres-only: `role`, `traffic-control`, branch `switchover`/`maintenance`/`parameters`, and `import d1`. The rest (`database`, `branch`, `sql`, `shell`, `insights`, `metrics`, `backup`, `org`, `auth`, `api`) work on both.
+
+When a database is "weird" (slow, erroring, locked, bloated):
+
+- **`insights`** — historical analysis computed from production traffic. Start here.
+- **`inspect`** — live, point-in-time state over a direct connection (locks, in-flight queries, sizes).
+- **`metrics`** — time-series for latency, throughput, connections.
+
+See "Diagnostics: insights + inspect" below for the full commands.
 
 ## Flag placement
 
@@ -46,10 +56,10 @@ pscale --org <org> database list --format json
 
 ## Workflow
 
-1. **Guide** — discover machine-readable conventions when you do not have this file:
+1. **Guide** — if this file is not already in your context, load the skill:
 
    ```bash
-   pscale agent-guide --format json
+   pscale --skill
    ```
 
 2. **Auth** — check before anything else:
@@ -353,7 +363,7 @@ pscale maintenance windows <database> <schedule-id> --org <org> --format json
 
 `--org` is required. Schedules include next/last window times, frequency, and any pending Vitess/MySQL version updates. Vitess Enterprise only.
 
-## Postgres branch changes (size, replicas, parameters)
+## Postgres branch changes (size, replicas, parameters) — Postgres only
 
 `pscale branch resize` queues a single asynchronous **change request** for a Postgres branch covering cluster size, replica count, and configuration parameters in any combination. Track it with `resize status`; cancel it with `resize cancel` while queued.
 
@@ -368,6 +378,11 @@ pscale branch extensions list <database> <branch> --org <org> --format json
 # Default postgres role (read-only; reset-default rotates the password)
 pscale role default <database> <branch> --org <org> --format json
 pscale role reset-default <database> <branch> --org <org> --format json --force
+
+# Role connection details for a branch replica, regional read-only replica, or PgBouncer
+pscale role get <database> <branch> <role-id> --org <org> --format json --replica
+pscale role get <database> <branch> <role-id> --org <org> --format json --read-only-replica <region-slug>
+pscale role get <database> <branch> <role-id> --org <org> --format json --bouncer <bouncer-name>
 
 # Change parameters (repeat --parameters; keys are namespace.name)
 pscale branch resize <database> <branch> --org <org> --format json --parameters pgconf.max_connections=200
@@ -385,6 +400,7 @@ pscale branch resize cancel <database> <branch> --org <org> --format json
 ```
 
 - At least one of `--cluster-size`, `--replicas`, or `--parameters` is required.
+- The `role get` connection target flags are mutually exclusive. Targeted role responses keep the same shape while changing `username`, `access_host_url`, and `database_url` as needed.
 - `--parameters` values are validated against the catalog before submission; unknown or immutable parameters fail fast. Parameters with `"restart": true` in the catalog restart the database when applied — surface this to the user before changing them.
 - Change request `state` is one of `queued`, `pending`, `resizing`, `completed`, `canceled`. Only `completed` and `canceled` are terminal. Without `--wait`, poll `resize status` instead of assuming completion.
 - A no-op (branch already matches the requested configuration) prints `{"result": "no_change", "branch": "<branch>"}` in JSON mode instead of a change request.
@@ -488,7 +504,7 @@ pscale billing payment-method status <setup-id> --org <org> --format json
 | `NOT_FOUND` | No current card. Next step is `pscale billing payment-method update --org <org> --format json`. |
 | `UNPAID_INVOICES` | `delete` rejected because the organization has unpaid invoices. Pay them, then retry. |
 
-## Imports (Cloudflare D1)
+## Imports (Cloudflare D1) — Postgres only
 
 `pscale import d1` migrates a Cloudflare D1 (SQLite) export into a PlanetScale Postgres branch. Every subcommand supports `--format json` and returns `status`, `issues`, and `next_steps`; stateful steps return a `migration_id` — pass it back with `--migration-id` to resume.
 
@@ -530,4 +546,4 @@ git clone https://github.com/planetscale/skills.git && cd skills && script/setup
 # or: npx skills add planetscale/skills -g -y
 ```
 
-After installing skills, load `14-pscale-cli-automation` for CLI conventions (or re-run `pscale agent-guide --format json` from any `pscale` binary that includes agent onboarding). Use `00-safe-orchestrator` when the user asks for a full PlanetScale assessment.
+After installing skills, load `14-pscale-cli-automation` for CLI conventions (or run `pscale --skill` from any `pscale` binary to print this reference). Use `00-safe-orchestrator` when the user asks for a full PlanetScale assessment.

@@ -1,6 +1,8 @@
 package agentguide
 
 import (
+	"io"
+
 	"github.com/spf13/cobra"
 
 	clicontent "github.com/planetscale/cli"
@@ -33,17 +35,40 @@ type response struct {
 	NextSteps           []string `json:"next_steps"`
 }
 
+// SkillDoc renders the embedded agent guide as an installable skill file:
+// YAML frontmatter (name/description trigger) followed by the guide body.
+// AGENTS.md stays the single source of truth for the body.
+func SkillDoc() string {
+	return "---\n" +
+		"name: pscale-cli\n" +
+		"description: \"Automate PlanetScale with the pscale CLI. Use when the user asks to run pscale commands or manage PlanetScale databases, branches, deploy requests, or SQL from scripts or agents. Always pass --format json.\"\n" +
+		"---\n\n" +
+		clicontent.AgentGuide
+}
+
 // AgentGuideCmd prints the embedded guide for agents and automation.
 func AgentGuideCmd(ch *cmdutil.Helper) *cobra.Command {
+	var asSkill bool
 	cmd := &cobra.Command{
 		Use:   "agent-guide",
 		Short: "Show guidance for AI agents and automation",
 		Long: `Show guidance for AI agents and automation using pscale.
 
 Use --format json for a machine-readable bootstrap response with first commands,
-supported engines, hosted MCP details, and PlanetScale skills install hints.`,
+supported engines, hosted MCP details, and PlanetScale skills install hints.
+
+Use --skill to print the guide as an installable agent skill file (YAML
+frontmatter plus the guide), suitable for dropping into a skills directory.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if asSkill {
+				// --skill dumps a raw skill file (like --version), not a
+				// resource. Write straight to stdout: Printer.Print routes
+				// non-human formats to io.Discard, which would exit 0 with an
+				// empty file when combined with --format json.
+				_, err := io.WriteString(cmd.OutOrStdout(), SkillDoc())
+				return err
+			}
 			if ch.Printer.Format() == printer.JSON {
 				return ch.Printer.PrintJSON(response{
 					Status:              "ok",
@@ -76,6 +101,8 @@ supported engines, hosted MCP details, and PlanetScale skills install hints.`,
 			return nil
 		},
 	}
+
+	cmd.Flags().BoolVar(&asSkill, "skill", false, "Print the guide as an installable agent skill file and exit")
 
 	return cmd
 }

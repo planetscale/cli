@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 	"time"
 
@@ -113,6 +114,9 @@ func TestPostgresRoles_List(t *testing.T) {
             "access_host_url": "test.planetscale.com",
             "database_name": "test-db",
             "username": "test-user",
+            "disabled_at": "2021-01-15T10:19:23.000Z",
+            "expires_at": null,
+            "expired": false,
             "created_at": "2021-01-14T10:19:23.000Z"
         }
     ]
@@ -135,6 +139,7 @@ func TestPostgresRoles_List(t *testing.T) {
 		Branch:       branch,
 	})
 
+	disabledAt := time.Date(2021, time.January, 15, 10, 19, 23, 0, time.UTC)
 	want := []*PostgresRole{
 		{
 			ID:            testRoleID,
@@ -143,6 +148,7 @@ func TestPostgresRoles_List(t *testing.T) {
 			DatabaseName:  "test-db",
 			Username:      "test-user",
 			CreatedAt:     time.Date(2021, time.January, 14, 10, 19, 23, 0, time.UTC),
+			DisabledAt:    &disabledAt,
 		},
 	}
 
@@ -274,6 +280,9 @@ func TestPostgresRoles_Get(t *testing.T) {
     "password": "secret-password",
     "username": "test-user",
     "with_replication": true,
+    "disabled_at": null,
+    "expires_at": "2021-02-14T10:19:23.000Z",
+    "expired": true,
     "created_at": "2021-01-14T10:19:23.000Z"
 }`, testRoleID)
 		_, err := w.Write([]byte(out))
@@ -295,6 +304,7 @@ func TestPostgresRoles_Get(t *testing.T) {
 		RoleId:       testRoleID,
 	})
 
+	expiresAt := time.Date(2021, time.February, 14, 10, 19, 23, 0, time.UTC)
 	want := &PostgresRole{
 		ID:              testRoleID,
 		Name:            "test-role",
@@ -304,10 +314,80 @@ func TestPostgresRoles_Get(t *testing.T) {
 		Username:        "test-user",
 		WithReplication: true,
 		CreatedAt:       time.Date(2021, time.January, 14, 10, 19, 23, 0, time.UTC),
+		ExpiresAt:       &expiresAt,
+		Expired:         true,
 	}
 
 	c.Assert(err, qt.IsNil)
 	c.Assert(role, qt.DeepEquals, want)
+}
+
+func TestPostgresRoles_GetConnectionTargets(t *testing.T) {
+	tests := []struct {
+		name       string
+		request    GetPostgresRoleRequest
+		query      url.Values
+		username   string
+		accessHost string
+	}{
+		{
+			name:       "replica",
+			request:    GetPostgresRoleRequest{Replica: true},
+			query:      url.Values{"replica": []string{"true"}},
+			username:   "test-user.branch-id|replica",
+			accessHost: "primary.planetscale.com",
+		},
+		{
+			name:       "read-only replica",
+			request:    GetPostgresRoleRequest{ReadOnlyReplica: "us-west"},
+			query:      url.Values{"read_only_replica": []string{"us-west"}},
+			username:   "test-user.replica-id|replica",
+			accessHost: "us-west.planetscale.com",
+		},
+		{
+			name:       "bouncer",
+			request:    GetPostgresRoleRequest{Bouncer: "pool"},
+			query:      url.Values{"bouncer": []string{"pool"}},
+			username:   "test-user.branch-id|pool",
+			accessHost: "primary.planetscale.com",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := qt.New(t)
+
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				c.Assert(r.Method, qt.Equals, http.MethodGet)
+				c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/my-db/branches/my-branch/roles/AbC123xYz")
+				c.Assert(r.URL.Query(), qt.DeepEquals, test.query)
+
+				_, err := fmt.Fprintf(w, `{
+					"id": "%s",
+					"name": "test-role",
+					"access_host_url": "%s",
+					"database_name": "postgres",
+					"username": "%s"
+				}`, testRoleID, test.accessHost, test.username)
+				c.Assert(err, qt.IsNil)
+			}))
+			t.Cleanup(ts.Close)
+
+			client, err := NewClient(WithBaseURL(ts.URL))
+			c.Assert(err, qt.IsNil)
+
+			test.request.Organization = "my-org"
+			test.request.Database = "my-db"
+			test.request.Branch = "my-branch"
+			test.request.RoleId = testRoleID
+
+			role, err := client.PostgresRoles.Get(context.Background(), &test.request)
+
+			c.Assert(err, qt.IsNil)
+			c.Assert(role.Username, qt.Equals, test.username)
+			c.Assert(role.AccessHostURL, qt.Equals, test.accessHost)
+		})
+	}
 }
 
 func TestPostgresRoles_Create(t *testing.T) {

@@ -20,6 +20,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 		parentBranch  string
 		clusterSize   string
 		backupID      string
+		restorePoint  string
 		majorVersion  string
 		minStorage    int64
 		maxStorage    int64
@@ -105,7 +106,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			clusterSize := flags.clusterSize
 			if clusterSize == "" {
-				if flags.backupID != "" || flags.dataBranching {
+				if flags.backupID != "" || flags.restorePoint != "" || flags.dataBranching {
 					clusterSize = "PS-10"
 				} else {
 					clusterSize = "PS_DEV"
@@ -115,6 +116,9 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			if db.Kind == "mysql" {
 				if cmd.Flags().Changed("min-storage") || cmd.Flags().Changed("max-storage") {
 					return fmt.Errorf("--min-storage and --max-storage are only supported for PostgreSQL databases")
+				}
+				if flags.restorePoint != "" {
+					return fmt.Errorf("--restore-point is only supported for PostgreSQL databases")
 				}
 
 				createReq := &ps.CreateDatabaseBranchRequest{
@@ -183,6 +187,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 					ClusterName:  clusterSize,
 					ParentBranch: flags.parentBranch,
 					BackupID:     flags.backupID,
+					RestorePoint: flags.restorePoint,
 					MajorVersion: flags.majorVersion,
 				}
 
@@ -246,6 +251,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().StringVar(&flags.parentBranch, "from", "", "Parent branch to create the new branch from. Cannot be used with --restore")
 	cmd.Flags().StringVar(&flags.region, "region", "", "Region for the branch to be created in.")
 	cmd.Flags().StringVar(&flags.backupID, "restore", "", "ID of Backup to restore into branch.")
+	cmd.Flags().StringVar(&flags.restorePoint, "restore-point", "", "For PostgreSQL databases, restore from a point-in-time recovery timestamp (e.g. 2023-01-01T00:00:00Z).")
 	cmd.Flags().StringVar(&flags.clusterSize, "cluster-size", "", "Cluster size for the branch. Defaults to PS_DEV for regular branches, or PS-10 for branches created from a backup or with seed-data. Use 'pscale size cluster list' to see the valid sizes.")
 	cmd.Flags().BoolVar(&flags.dataBranching, "seed-data", false, "Add seed data using the Data Branching™ feature. This branch will be created with the same resources as the base branch.")
 	cmd.Flags().BoolVar(&flags.wait, "wait", false, "Wait until the branch is ready")
@@ -255,6 +261,8 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	cmd.MarkFlagsMutuallyExclusive("from", "restore")
 	cmd.MarkFlagsMutuallyExclusive("restore", "seed-data")
+	cmd.MarkFlagsMutuallyExclusive("restore", "restore-point")
+	cmd.MarkFlagsMutuallyExclusive("restore-point", "seed-data")
 
 	cmd.RegisterFlagCompletionFunc("region", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return cmdutil.RegionsCompletionFunc(ch, cmd, args, toComplete)

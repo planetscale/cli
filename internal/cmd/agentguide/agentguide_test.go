@@ -3,6 +3,7 @@ package agentguide
 import (
 	"bytes"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/planetscale/cli/internal/cmdutil"
@@ -50,4 +51,50 @@ func TestAgentGuideJSONBootstrap(t *testing.T) {
 	if resp.Guide == "" {
 		t.Fatal("expected embedded guide")
 	}
+}
+
+func TestSkillDoc(t *testing.T) {
+	doc := SkillDoc()
+	if !strings.HasPrefix(doc, "---\nname: pscale-cli\n") {
+		t.Fatalf("skill doc missing frontmatter, got prefix: %q", doc[:min(40, len(doc))])
+	}
+	if !strings.Contains(doc, "description:") {
+		t.Fatal("skill doc missing description trigger")
+	}
+	if !strings.Contains(doc, "# PlanetScale CLI") {
+		t.Fatal("skill doc missing embedded guide body")
+	}
+}
+
+// --skill writes to stdout regardless of --format (it is a raw file dump, not a
+// resource), so verify it is not discarded in JSON mode.
+func TestAgentGuideSkillFlag(t *testing.T) {
+	for _, format := range []printer.Format{printer.Human, printer.JSON} {
+		t.Run(format.String(), func(t *testing.T) {
+			f := format
+			ch := &cmdutil.Helper{
+				Printer: printer.NewPrinter(&f),
+			}
+
+			var out bytes.Buffer
+			cmd := AgentGuideCmd(ch)
+			cmd.SetOut(&out)
+			cmd.SetArgs([]string{"--skill"})
+			if err := cmd.Execute(); err != nil {
+				t.Fatalf("execute: %v", err)
+			}
+
+			got := out.String()
+			if !strings.HasPrefix(got, "---\nname: pscale-cli\n") {
+				t.Fatalf("--skill output missing frontmatter (format=%s), got prefix: %q", format, got[:min(40, len(got))])
+			}
+		})
+	}
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }

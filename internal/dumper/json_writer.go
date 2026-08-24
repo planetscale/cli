@@ -55,8 +55,11 @@ func (w *jsonWriter) ShouldFlush() bool {
 }
 
 func (w *jsonWriter) Flush(outdir, database, table string, fileNo int) error {
-	file := fmt.Sprintf("%s/%s.%s.%05d.json", outdir, database, table, fileNo)
-	err := writeFile(file, strings.Join(w.jsonLines, ""))
+	file, err := dumpOutputPath(outdir, database, table, fmt.Sprintf(".%05d.json", fileNo))
+	if err != nil {
+		return err
+	}
+	err = writeFile(file, strings.Join(w.jsonLines, ""))
 	if err != nil {
 		return err
 	}

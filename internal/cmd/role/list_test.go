@@ -3,8 +3,10 @@ package role
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"net/url"
 	"testing"
+	"time"
 
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/config"
@@ -35,9 +37,12 @@ func TestRole_ListCmd(t *testing.T) {
 	db := "planetscale"
 	branch := "development"
 
+	expiresAt := time.Date(2026, time.August, 20, 12, 0, 0, 0, time.UTC)
+	disabledAt := time.Date(2026, time.August, 19, 12, 0, 0, 0, time.UTC)
 	roles := []*ps.PostgresRole{
-		{Name: "reader"},
-		{Name: "writer"},
+		{Name: "reader", ExpiresAt: &expiresAt},
+		{Name: "writer", DisabledAt: &disabledAt, Expired: true},
+		{Name: "old-reader", Expired: true},
 	}
 
 	listCalls := 0
@@ -72,6 +77,39 @@ func TestRole_ListCmd(t *testing.T) {
 	c.Assert(err, qt.IsNil)
 	c.Assert(listCalls, qt.Equals, 1)
 	c.Assert(svc.ListFnInvoked, qt.IsTrue)
+
+	var output []struct {
+		Status    string  `json:"status"`
+		ExpiresAt *string `json:"expires_at"`
+	}
+	c.Assert(json.Unmarshal(buf.Bytes(), &output), qt.IsNil)
+	c.Assert(output, qt.HasLen, 3)
+	c.Assert(output[0].Status, qt.Equals, "active")
+	wantExpiresAt := "2026-08-20T12:00:00Z"
+	c.Assert(output[0].ExpiresAt, qt.DeepEquals, &wantExpiresAt)
+	c.Assert(output[1].Status, qt.Equals, "disabled")
+	c.Assert(output[1].ExpiresAt, qt.IsNil)
+	c.Assert(output[2].Status, qt.Equals, "expired")
+	c.Assert(output[2].ExpiresAt, qt.IsNil)
+}
+
+func TestRole_ListHumanOutputIncludesStatusAndExpiration(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.Human
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	expiresAt := time.Date(2026, time.August, 20, 12, 0, 0, 0, time.UTC)
+	err := p.PrintResource(toPostgresRoles([]*ps.PostgresRole{
+		{Name: "reader", ExpiresAt: &expiresAt},
+	}))
+	c.Assert(err, qt.IsNil)
+	c.Assert(buf.String(), qt.Contains, "STATUS")
+	c.Assert(buf.String(), qt.Contains, "EXPIRES AT")
+	c.Assert(buf.String(), qt.Contains, "active")
+	c.Assert(buf.String(), qt.Contains, "2026-08-20T12:00:00Z")
 }
 
 func TestRole_ListCmdFilteredEmpty(t *testing.T) {
