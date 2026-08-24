@@ -146,6 +146,31 @@ jobs:
             --title "Sync API client from cli@${source_sha}" \
             --body-file /tmp/pr-body.md
 
+      # Cursor Approval Agent never runs on the "PR opened" event here: the
+      # author is planetscale-cli[bot] and the dashboard's user filter does not
+      # match bot accounts. Its "PR pushed" trigger does match, so amend the
+      # commit to republish the same tree under a new SHA. The amend can land in
+      # the same second as the original commit and produce an identical SHA, so
+      # retry until it differs.
+      - name: Re-push sync commit to trigger review automation
+        if: steps.changes.outputs.changed == 'true' && steps.commit.outputs.exists == 'false'
+        working-directory: planetscale-go
+        run: |
+          branch="${{ steps.commit.outputs.branch }}"
+          before=$(git rev-parse HEAD)
+          for _ in 1 2 3; do
+            git commit --amend --no-edit --date=now
+            if [ "$(git rev-parse HEAD)" != "$before" ]; then
+              break
+            fi
+            sleep 1
+          done
+          if [ "$(git rev-parse HEAD)" = "$before" ]; then
+            echo "Could not produce a new commit SHA; the approval agent may not run"
+            exit 0
+          fi
+          git push --force-with-lease="$branch:$before" origin "$branch"
+
       # Runs for both newly created sync PRs and re-runs where the branch
       # already exists (e.g. create succeeded but enabling auto-merge failed).
       - name: Enable auto-merge
