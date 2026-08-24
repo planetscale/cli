@@ -695,3 +695,49 @@ func TestPostgresBranches_CreateWithStorage(t *testing.T) {
 	c.Assert(err, qt.IsNil)
 	c.Assert(branch, qt.DeepEquals, want)
 }
+
+func TestPostgresBranches_CreateWithRestorePoint(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodPost)
+
+		var body map[string]any
+		err := json.NewDecoder(r.Body).Decode(&body)
+		c.Assert(err, qt.IsNil)
+		c.Assert(body["restore_point"], qt.Equals, "2023-01-01T00:00:00Z")
+		c.Assert(body["parent_branch"], qt.Equals, "main")
+
+		out := `{"id":"postgres-test-branch","name":"postgres-test-branch","created_at":"2021-01-14T10:19:23.000Z","updated_at":"2021-01-14T10:19:23.000Z", "region": {"slug": "us-west", "display_name": "US West"}}`
+		_, err = w.Write([]byte(out))
+		c.Assert(err, qt.IsNil)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	ctx := context.Background()
+
+	branch, err := client.PostgresBranches.Create(ctx, &CreatePostgresBranchRequest{
+		Organization: "my-org",
+		Database:     "postgres-test-db",
+		Region:       "us-west",
+		Name:         testPostgresBranch,
+		ParentBranch: "main",
+		RestorePoint: "2023-01-01T00:00:00Z",
+	})
+
+	want := &PostgresBranch{
+		ID:   "postgres-test-branch",
+		Name: testPostgresBranch,
+		Region: Region{
+			Slug: "us-west",
+			Name: "US West",
+		},
+		CreatedAt: time.Date(2021, time.January, 14, 10, 19, 23, 0, time.UTC),
+		UpdatedAt: time.Date(2021, time.January, 14, 10, 19, 23, 0, time.UTC),
+	}
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(branch, qt.DeepEquals, want)
+}

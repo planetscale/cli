@@ -41,6 +41,7 @@ type CreatePostgresBranchRequest struct {
 	Name         string         `json:"name"`
 	ParentBranch string         `json:"parent_branch"`
 	BackupID     string         `json:"backup_id,omitempty"`
+	RestorePoint string         `json:"restore_point,omitempty"`
 	ClusterName  string         `json:"cluster_name,omitempty"`
 	MajorVersion string         `json:"major_version,omitempty"`
 	Storage      *StorageConfig `json:"storage,omitempty"`
