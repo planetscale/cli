@@ -260,6 +260,55 @@ func TestUpdatePaymentMethodJSONInterruptedEnvelope(t *testing.T) {
 	}
 }
 
+func TestUpdatePaymentMethodPollAPIErrorIsNotInterrupted(t *testing.T) {
+	oldInterval := paymentMethodSetupPollInterval
+	oldOpenBrowser := openBrowser
+	paymentMethodSetupPollInterval = time.Millisecond
+	openBrowser = func(_ string, _ string) error { return errors.New("headless") }
+	t.Cleanup(func() {
+		paymentMethodSetupPollInterval = oldInterval
+		openBrowser = oldOpenBrowser
+	})
+
+	service := &mock.BillingPaymentMethodSetupsService{
+		CreateFn: func(context.Context, *ps.CreateBillingPaymentMethodSetupRequest) (*ps.BillingPaymentMethodSetup, error) {
+			return &ps.BillingPaymentMethodSetup{
+				ID:          "pmsetup1",
+				State:       "pending",
+				CheckoutURL: "https://checkout.stripe.com/test",
+			}, nil
+		},
+		GetFn: func(context.Context, *ps.GetBillingPaymentMethodSetupRequest) (*ps.BillingPaymentMethodSetup, error) {
+			return nil, errors.New("tls handshake timeout")
+		},
+	}
+
+	var stdout bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&stdout)
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: "my-org"},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{PaymentMethodSetups: service}, nil
+		},
+	}
+
+	cmd := UpdatePaymentMethodCmd(ch)
+	cmd.SetErr(&bytes.Buffer{})
+	err := cmd.Execute()
+	if err == nil || err.Error() != "tls handshake timeout" {
+		t.Fatalf("error = %v", err)
+	}
+	if cmdErr, ok := err.(*cmdutil.Error); ok && cmdErr.ExitCode == cmdutil.ActionRequestedExitCode {
+		t.Fatalf("poll API error labeled as interrupted: %#v", err)
+	}
+	if bytes.Contains(stdout.Bytes(), []byte("PAYMENT_METHOD_SETUP_INTERRUPTED")) {
+		t.Fatalf("stdout = %q", stdout.String())
+	}
+}
+
 func TestPaymentMethodStatus(t *testing.T) {
 	service := &mock.BillingPaymentMethodSetupsService{
 		GetFn: func(_ context.Context, req *ps.GetBillingPaymentMethodSetupRequest) (*ps.BillingPaymentMethodSetup, error) {

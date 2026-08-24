@@ -171,6 +171,9 @@ func UpdatePaymentMethodCmd(ch *cmdutil.Helper) *cobra.Command {
 			if err != nil {
 				end()
 				progressStopped = true
+				if !isPaymentMethodSetupInterrupted(err) {
+					return err
+				}
 				// The setup is still live in Stripe, so the recovery is resuming
 				// this ID rather than paying for a second Checkout session.
 				return paymentMethodProblemError(
@@ -319,6 +322,9 @@ func pollPaymentMethodSetup(ctx context.Context, service ps.BillingPaymentMethod
 			Setup:        setupID,
 		})
 		if err != nil {
+			if isPaymentMethodSetupInterrupted(err) {
+				return nil, fmt.Errorf("payment method setup %s interrupted: %w", setupID, err)
+			}
 			return nil, cmdutil.HandleError(err)
 		}
 		if setup.State != "pending" {
@@ -341,6 +347,10 @@ func printPaymentMethodSetup(ch *cmdutil.Helper, setup *ps.BillingPaymentMethodS
 		ch.Printer.Printf("%-16s %s\n", "Error", setup.Error)
 	}
 	return nil
+}
+
+func isPaymentMethodSetupInterrupted(err error) bool {
+	return errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)
 }
 
 func paymentMethodSetupMessage(browserOpened bool) string {
