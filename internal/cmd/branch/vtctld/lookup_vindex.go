@@ -81,9 +81,10 @@ func LookupVindexCreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			if cmd.Flags().Changed("tablet-types-in-preference-order") {
 				req.TabletTypesInPreferenceOrder = &flags.tabletTypesInPreferenceOrder
 			}
-			if cmd.Flags().Changed("continue-after-copy-with-owner") {
-				req.ContinueAfterCopyWithOwner = &flags.continueAfterCopyWithOwner
-			}
+			// Always send this field: the server treats an absent value as
+			// false, which stops an owned vindex's backfill after the copy
+			// phase — the opposite of vtctldclient's default of true.
+			req.ContinueAfterCopyWithOwner = &flags.continueAfterCopyWithOwner
 
 			data, err := client.LookupVindex.Create(ctx, req)
 			if err != nil {
@@ -96,8 +97,8 @@ func LookupVindexCreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&flags.name, "name", "", "Name of the Lookup Vindex")
-	cmd.Flags().StringVar(&flags.tableKeyspace, "table-keyspace", "", "Keyspace of the table to create the vindex on")
-	cmd.Flags().StringVar(&flags.keyspace, "keyspace", "", "Keyspace for the lookup table")
+	cmd.Flags().StringVar(&flags.tableKeyspace, "table-keyspace", "", "Keyspace where the lookup table and its backfill workflow are created")
+	cmd.Flags().StringVar(&flags.keyspace, "keyspace", "", "Keyspace of the owner table, where the lookup vindex is defined")
 	cmd.Flags().StringVar(&flags.vindexType, "type", "", "Type of the vindex")
 	cmd.Flags().StringSliceVar(&flags.cells, "cells", nil, "Cells to replicate from (comma-separated)")
 	cmd.Flags().StringSliceVar(&flags.tabletTypes, "tablet-types", nil, "Tablet types to replicate from (comma-separated)")
@@ -107,7 +108,7 @@ func LookupVindexCreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().StringVar(&flags.tableVindexType, "table-vindex-type", "", "Vindex type on the owner table")
 	cmd.Flags().BoolVar(&flags.ignoreNulls, "ignore-nulls", false, "Ignore null values")
 	cmd.Flags().BoolVar(&flags.tabletTypesInPreferenceOrder, "tablet-types-in-preference-order", false, "Use tablet types in preference order")
-	cmd.Flags().BoolVar(&flags.continueAfterCopyWithOwner, "continue-after-copy-with-owner", false, "Continue after copy with owner")
+	cmd.Flags().BoolVar(&flags.continueAfterCopyWithOwner, "continue-after-copy-with-owner", true, "Keep the backfill workflow running after the copy phase when the vindex has an owner")
 	cmd.MarkFlagRequired("name")           // nolint:errcheck
 	cmd.MarkFlagRequired("table-keyspace") // nolint:errcheck
 
@@ -155,7 +156,7 @@ func LookupVindexShowCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&flags.name, "name", "", "Name of the Lookup Vindex")
-	cmd.Flags().StringVar(&flags.tableKeyspace, "table-keyspace", "", "Keyspace of the table")
+	cmd.Flags().StringVar(&flags.tableKeyspace, "table-keyspace", "", "Keyspace where the lookup table and its workflow live")
 	cmd.MarkFlagRequired("name")           // nolint:errcheck
 	cmd.MarkFlagRequired("table-keyspace") // nolint:errcheck
 
@@ -212,8 +213,8 @@ func LookupVindexExternalizeCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&flags.name, "name", "", "Name of the Lookup Vindex")
-	cmd.Flags().StringVar(&flags.tableKeyspace, "table-keyspace", "", "Keyspace of the table")
-	cmd.Flags().StringVar(&flags.keyspace, "keyspace", "", "Keyspace for the lookup table")
+	cmd.Flags().StringVar(&flags.tableKeyspace, "table-keyspace", "", "Keyspace where the lookup table and its workflow live")
+	cmd.Flags().StringVar(&flags.keyspace, "keyspace", "", "Keyspace of the owner table, where the lookup vindex is defined")
 	cmd.Flags().BoolVar(&flags.delete, "delete", false, "Delete the workflow after externalizing")
 	cmd.MarkFlagRequired("name")           // nolint:errcheck
 	cmd.MarkFlagRequired("table-keyspace") // nolint:errcheck
@@ -264,8 +265,8 @@ func LookupVindexInternalizeCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&flags.name, "name", "", "Name of the Lookup Vindex")
-	cmd.Flags().StringVar(&flags.tableKeyspace, "table-keyspace", "", "Keyspace of the table")
-	cmd.Flags().StringVar(&flags.keyspace, "keyspace", "", "Keyspace for the lookup table")
+	cmd.Flags().StringVar(&flags.tableKeyspace, "table-keyspace", "", "Keyspace where the lookup table and its workflow live")
+	cmd.Flags().StringVar(&flags.keyspace, "keyspace", "", "Keyspace of the owner table, where the lookup vindex is defined")
 	cmd.MarkFlagRequired("name")           // nolint:errcheck
 	cmd.MarkFlagRequired("table-keyspace") // nolint:errcheck
 
@@ -313,7 +314,7 @@ func LookupVindexCancelCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&flags.name, "name", "", "Name of the Lookup Vindex")
-	cmd.Flags().StringVar(&flags.tableKeyspace, "table-keyspace", "", "Keyspace of the table")
+	cmd.Flags().StringVar(&flags.tableKeyspace, "table-keyspace", "", "Keyspace where the lookup table and its workflow live")
 	cmd.MarkFlagRequired("name")           // nolint:errcheck
 	cmd.MarkFlagRequired("table-keyspace") // nolint:errcheck
 
@@ -363,8 +364,8 @@ func LookupVindexCompleteCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&flags.name, "name", "", "Name of the Lookup Vindex")
-	cmd.Flags().StringVar(&flags.tableKeyspace, "table-keyspace", "", "Keyspace of the table")
-	cmd.Flags().StringVar(&flags.keyspace, "keyspace", "", "Keyspace for the lookup table")
+	cmd.Flags().StringVar(&flags.tableKeyspace, "table-keyspace", "", "Keyspace where the lookup table and its workflow live")
+	cmd.Flags().StringVar(&flags.keyspace, "keyspace", "", "Keyspace of the owner table, where the lookup vindex is defined")
 	cmd.MarkFlagRequired("name")           // nolint:errcheck
 	cmd.MarkFlagRequired("table-keyspace") // nolint:errcheck
 

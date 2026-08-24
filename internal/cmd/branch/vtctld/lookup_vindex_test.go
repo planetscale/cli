@@ -31,7 +31,11 @@ func TestLookupVindexCreate(t *testing.T) {
 			c.Assert(req.TableKeyspace, qt.Equals, "my-keyspace")
 			c.Assert(req.IgnoreNulls, qt.IsNil)
 			c.Assert(req.TabletTypesInPreferenceOrder, qt.IsNil)
-			c.Assert(req.ContinueAfterCopyWithOwner, qt.IsNil)
+			// Always sent, defaulting to true to match vtctldclient: an
+			// absent value is treated as false by the server, which would
+			// silently stop an owned backfill after the copy phase.
+			c.Assert(req.ContinueAfterCopyWithOwner, qt.IsNotNil)
+			c.Assert(*req.ContinueAfterCopyWithOwner, qt.IsTrue)
 			return json.RawMessage(`{"name":"my-vindex"}`), nil
 		},
 	}
