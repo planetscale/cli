@@ -39,6 +39,7 @@ import (
 	"github.com/planetscale/cli/internal/cmd/auditlog"
 	"github.com/planetscale/cli/internal/cmd/auth"
 	"github.com/planetscale/cli/internal/cmd/backup"
+	"github.com/planetscale/cli/internal/cmd/billing"
 	"github.com/planetscale/cli/internal/cmd/branch"
 	"github.com/planetscale/cli/internal/cmd/connect"
 	"github.com/planetscale/cli/internal/cmd/database"
@@ -292,6 +293,10 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 	authCmd := auth.AuthCmd(ch)
 	authCmd.GroupID = "platform"
 	rootCmd.AddCommand(authCmd)
+
+	billingCmd := billing.BillingCmd(ch)
+	billingCmd.GroupID = "platform"
+	rootCmd.AddCommand(billingCmd)
 
 	completionCmd := CompletionCmd()
 	completionCmd.GroupID = "platform"

@@ -53,6 +53,8 @@ type Client struct {
 	AuthAttemptExports    AuthAttemptExportsService
 	BackupPolicies        BackupPoliciesService
 	Backups               BackupsService
+	PaymentMethods        BillingPaymentMethodsService
+	PaymentMethodSetups   BillingPaymentMethodSetupsService
 	BranchInfrastructure  BranchInfrastructureService
 	BranchMaintenance     BranchMaintenanceService
 	D1ImportNotifications D1ImportNotificationsService
@@ -330,6 +332,8 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 	c.AuthAttemptExports = &authAttemptExportsService{client: c}
 	c.BackupPolicies = &backupPoliciesService{client: c}
 	c.Backups = &backupsService{client: c}
+	c.PaymentMethods = &billingPaymentMethodsService{client: c}
+	c.PaymentMethodSetups = &billingPaymentMethodSetupsService{client: c}
 	c.BranchInfrastructure = &branchInfrastructureService{client: c}
 	c.BranchMaintenance = &branchMaintenanceService{client: c}
 	c.D1ImportNotifications = &d1ImportNotificationsService{client: c}
