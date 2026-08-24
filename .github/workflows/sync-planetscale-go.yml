@@ -146,12 +146,11 @@ jobs:
             --title "Sync API client from cli@${source_sha}" \
             --body-file /tmp/pr-body.md
 
-      # Cursor Approval Agent never runs on the "PR opened" event here: the
-      # author is planetscale-cli[bot] and the dashboard's user filter does not
-      # match bot accounts. Its "PR pushed" trigger does match, so amend the
-      # commit to republish the same tree under a new SHA. The amend can land in
-      # the same second as the original commit and produce an identical SHA, so
-      # retry until it differs.
+      # Cursor Approval Agent has never started from the "PR opened" event in
+      # planetscale-go; every run there began within seconds of a push to an
+      # already-open PR. Amending republishes the same tree under a new SHA so
+      # the push trigger fires. The amend can land in the same second as the
+      # original commit and produce an identical SHA, so retry until it differs.
       - name: Re-push sync commit to trigger review automation
         if: steps.changes.outputs.changed == 'true' && steps.commit.outputs.exists == 'false'
         working-directory: planetscale-go
