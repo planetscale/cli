@@ -91,14 +91,16 @@ jobs:
           source_sha=$(git -C ../cli rev-parse --short HEAD)
           branch="sync-cli-${source_sha}"
           echo "branch=$branch" >> "$GITHUB_OUTPUT"
+          # Set before the early exit: the re-push step amends a commit and so
+          # needs an identity on re-runs where the branch already exists.
+          git config user.name "planetscale-cli[bot]"
+          git config user.email "272331943+planetscale-cli[bot]@users.noreply.github.com"
           if git ls-remote --exit-code origin "refs/heads/$branch" > /dev/null 2>&1; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
             echo "Branch $branch already exists, nothing to do"
             exit 0
           fi
           echo "exists=false" >> "$GITHUB_OUTPUT"
-          git config user.name "planetscale-cli[bot]"
-          git config user.email "272331943+planetscale-cli[bot]@users.noreply.github.com"
           git checkout -b "$branch"
           git add -A
           git commit -m "Sync API client from planetscale/cli@${source_sha}"
@@ -149,14 +151,33 @@ jobs:
       # Cursor Approval Agent has never started from the "PR opened" event in
       # planetscale-go; every run there began within seconds of a push to an
       # already-open PR. Amending republishes the same tree under a new SHA so
-      # the push trigger fires. The amend can land in the same second as the
-      # original commit and produce an identical SHA, so retry until it differs.
+      # the push trigger fires. This works from the remote branch tip rather
+      # than the local HEAD, so re-runs where the branch already exists (and the
+      # commit step exited early) still emit a push.
       - name: Re-push sync commit to trigger review automation
-        if: steps.changes.outputs.changed == 'true' && steps.commit.outputs.exists == 'false'
+        if: steps.changes.outputs.changed == 'true'
         working-directory: planetscale-go
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           branch="${{ steps.commit.outputs.branch }}"
-          before=$(git rev-parse HEAD)
+          pr_json=$(gh pr view --repo planetscale/planetscale-go "$branch" \
+            --json state,reviews 2>/dev/null || echo '{}')
+          state=$(printf '%s' "$pr_json" | jq -r '.state // "NONE"')
+          if [ "$state" != "OPEN" ]; then
+            echo "PR for $branch is $state; nothing to re-push"
+            exit 0
+          fi
+          approvals=$(printf '%s' "$pr_json" | jq '[(.reviews // [])[] | select(.state == "APPROVED")] | length')
+          if [ "$approvals" -gt 0 ]; then
+            echo "PR for $branch is already approved; nothing to re-push"
+            exit 0
+          fi
+          git fetch origin "$branch"
+          before=$(git rev-parse FETCH_HEAD)
+          git checkout -f -B "$branch" "$before"
+          # An amend landing in the same second as the original commit yields an
+          # identical SHA, which would make the push a no-op.
           for _ in 1 2 3; do
             git commit --amend --no-edit --date=now
             if [ "$(git rev-parse HEAD)" != "$before" ]; then
