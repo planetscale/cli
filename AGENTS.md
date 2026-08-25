@@ -250,11 +250,11 @@ pscale metrics tables <database> <branch> --org <org> --format json
 pscale metrics keyspace-tables <database> <branch> --org <org> --format json
 pscale metrics tablets <database> <branch> --org <org> --format json --metric replication_lag --period 1h
 pscale metrics tablets instant <database> <branch> --org <org> --format json --metric replication_lag
-pscale metrics tags <database> <branch> --org <org> --format json --metric queries --tag-set <tag-set> --period 1h
+pscale metrics tags <database> <branch> --org <org> --format json --metric queries --tag-set Busername=alice --tag-set Busername=bob --period 1h
 ```
 
 - For `metrics show` and `metrics instant`, `--metric` is required and may be repeated or comma-separated.
-- Specialized query, tablet, and tag metrics accept the filters exposed by their API endpoints. `--metric`, `--query-id`, and `--tag-set` may be repeated or comma-separated.
+- Specialized query, tablet, and tag metrics accept the filters exposed by their API endpoints. `--metric` and `--query-id` may be repeated or comma-separated. `--tag-set` is repeated for independent series; comma-separate keys inside one set (`Busername=alice,Senv=production`). Tag keys need the Insights type prefix from `insights tags`.
 - `metrics tables` and `metrics keyspace-tables` preserve the untyped storage-metrics API response in JSON.
 - `metrics report` detects whether the database uses MySQL or PostgreSQL and queries a curated set of performance sections. It supports `--period`, custom `--from`/`--to` ranges, and `--steps`; JSON returns a composite report and CSV includes the section name on each row.
 - Historical queries support `--period`, or a custom `--from`/`--to` ISO 8601 range, plus `--steps` and dimension filters such as `--tablet-type`, `--keyspace`, `--shard`, `--role`, `--pod`, and `--pods`.

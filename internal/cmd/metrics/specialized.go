@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -232,6 +233,11 @@ func TagsCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			database, branch := args[0], args[1]
+			tagSets, err := parseTagSets(flags.tagSets)
+			if err != nil {
+				return err
+			}
+
 			end := specializedMetricsProgress(ch, database, branch, "query tag")
 			defer end()
 
@@ -240,7 +246,7 @@ func TagsCmd(ch *cmdutil.Helper) *cobra.Command {
 				Database:     database,
 				Branch:       branch,
 				Metrics:      flags.metrics,
-				TagSets:      flags.tagSets,
+				TagSets:      tagSets,
 				Period:       flags.period,
 				From:         flags.from,
 				To:           flags.to,
@@ -261,9 +267,35 @@ func TagsCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	addSpecializedSeriesFlags(cmd, &flags.specializedSeriesFlags)
 	addQueryDimensionFlags(cmd, &flags.queryDimensionFlags)
-	cmd.Flags().StringSliceVar(&flags.tagSets, "tag-set", nil, "Filter by tag set (repeat or comma-separate)")
+	cmd.Flags().StringArrayVar(&flags.tagSets, "tag-set", nil, "Tag set as key=value pairs. Repeat for independent series; comma-separate keys in one set (for example Busername=alice,Senv=production)")
 
 	return cmd
+}
+
+func parseTagSets(raw []string) ([]map[string]string, error) {
+	sets := make([]map[string]string, 0, len(raw))
+	for _, item := range raw {
+		item = strings.TrimSpace(item)
+		if item == "" {
+			return nil, fmt.Errorf("--tag-set must be key=value pairs, for example Busername=alice")
+		}
+
+		set := map[string]string{}
+		for _, pair := range strings.Split(item, ",") {
+			pair = strings.TrimSpace(pair)
+			if pair == "" {
+				return nil, fmt.Errorf("--tag-set must be key=value pairs, for example Busername=alice")
+			}
+			key, value, ok := strings.Cut(pair, "=")
+			key = strings.TrimSpace(key)
+			if !ok || key == "" {
+				return nil, fmt.Errorf("invalid --tag-set %q; use key=value pairs with an Insights type prefix, for example Busername=alice", item)
+			}
+			set[key] = value
+		}
+		sets = append(sets, set)
+	}
+	return sets, nil
 }
 
 func addSpecializedSeriesFlags(cmd *cobra.Command, flags *specializedSeriesFlags) {

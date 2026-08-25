@@ -377,7 +377,10 @@ func TestTagsCmd_ForwardsSupportedFilters(t *testing.T) {
 	service := &mock.MetricsService{
 		GetTagSeriesFn: func(ctx context.Context, req *ps.GetTagMetricSeriesRequest) (*ps.MetricSeries, error) {
 			c.Assert(req.Metrics, qt.DeepEquals, []string{"queries", "latency_p99"})
-			c.Assert(req.TagSets, qt.DeepEquals, []string{"service=checkout", "region=us-east"})
+			c.Assert(req.TagSets, qt.DeepEquals, []map[string]string{
+				{"Busername": "alice", "Senv": "production"},
+				{"Busername": "bob"},
+			})
 			c.Assert(req.Period, qt.Equals, "1d")
 			c.Assert(req.TabletType, qt.Equals, "primary")
 			c.Assert(req.BudgetID, qt.Equals, "budget-1")
@@ -392,7 +395,8 @@ func TestTagsCmd_ForwardsSupportedFilters(t *testing.T) {
 	cmd.SetArgs([]string{
 		"mydb", "main",
 		"--metric", "queries,latency_p99",
-		"--tag-set", "service=checkout,region=us-east",
+		"--tag-set", "Busername=alice,Senv=production",
+		"--tag-set", "Busername=bob",
 		"--period", "1d",
 		"--tablet-type", "primary",
 		"--budget-id", "budget-1",
@@ -401,4 +405,18 @@ func TestTagsCmd_ForwardsSupportedFilters(t *testing.T) {
 	})
 	c.Assert(cmd.Execute(), qt.IsNil)
 	c.Assert(service.GetTagSeriesFnInvoked, qt.IsTrue)
+}
+
+func TestParseTagSets(t *testing.T) {
+	c := qt.New(t)
+
+	sets, err := parseTagSets([]string{"Busername=alice,Senv=production", "Busername=bob"})
+	c.Assert(err, qt.IsNil)
+	c.Assert(sets, qt.DeepEquals, []map[string]string{
+		{"Busername": "alice", "Senv": "production"},
+		{"Busername": "bob"},
+	})
+
+	_, err = parseTagSets([]string{"alice"})
+	c.Assert(err, qt.ErrorMatches, `invalid --tag-set "alice"; use key=value pairs with an Insights type prefix, for example Busername=alice`)
 }

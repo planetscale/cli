@@ -262,7 +262,9 @@ func TestMetrics_GetTagSeries(t *testing.T) {
 		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/my-db/branches/main/metrics/tag")
 		query := r.URL.Query()
 		c.Assert(query["metrics[]"], qt.DeepEquals, []string{"queries", "latency_p99"})
-		c.Assert(query["tag_sets[]"], qt.DeepEquals, []string{"service=checkout", "region=us-east"})
+		c.Assert(query.Get("tag_sets[0][tags][Busername]"), qt.Equals, "alice")
+		c.Assert(query.Get("tag_sets[0][tags][Senv]"), qt.Equals, "production")
+		c.Assert(query.Get("tag_sets[1][tags][Busername]"), qt.Equals, "bob")
 		c.Assert(query.Get("period"), qt.Equals, "1d")
 		c.Assert(query.Get("tablet_type"), qt.Equals, "primary")
 		c.Assert(query.Get("budget_id"), qt.Equals, "budget-1")
@@ -279,12 +281,15 @@ func TestMetrics_GetTagSeries(t *testing.T) {
 		Database:     "my-db",
 		Branch:       "main",
 		Metrics:      []string{"queries", "latency_p99"},
-		TagSets:      []string{"service=checkout", "region=us-east"},
-		Period:       "1d",
-		TabletType:   "primary",
-		BudgetID:     "budget-1",
-		RuleID:       "rule-1",
-		Search:       "checkout",
+		TagSets: []map[string]string{
+			{"Busername": "alice", "Senv": "production"},
+			{"Busername": "bob"},
+		},
+		Period:     "1d",
+		TabletType: "primary",
+		BudgetID:   "budget-1",
+		RuleID:     "rule-1",
+		Search:     "checkout",
 	})
 	c.Assert(err, qt.IsNil)
 }

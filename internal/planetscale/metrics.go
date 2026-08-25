@@ -150,7 +150,7 @@ type GetTagMetricSeriesRequest struct {
 	Database     string
 	Branch       string
 	Metrics      []string
-	TagSets      []string
+	TagSets      []map[string]string
 	Period       string
 	From         string
 	To           string
@@ -274,7 +274,7 @@ func (s *metricsService) GetInstantTablets(ctx context.Context, getReq *GetInsta
 func (s *metricsService) GetTagSeries(ctx context.Context, getReq *GetTagMetricSeriesRequest) (*MetricSeries, error) {
 	query := url.Values{}
 	addQueryValues(query, "metrics[]", getReq.Metrics)
-	addQueryValues(query, "tag_sets[]", getReq.TagSets)
+	addTagSetQueryValues(query, getReq.TagSets)
 	setSeriesRange(query, getReq.Period, getReq.From, getReq.To, getReq.Steps)
 	setQueryValue(query, "tablet_type", getReq.TabletType)
 	setQueryValue(query, "budget_id", getReq.BudgetID)
@@ -328,6 +328,17 @@ func setSeriesRange(query url.Values, period, from, to string, steps int) {
 func setQueryValue(query url.Values, key, value string) {
 	if value != "" {
 		query.Set(key, value)
+	}
+}
+
+func addTagSetQueryValues(query url.Values, sets []map[string]string) {
+	for i, set := range sets {
+		for key, value := range set {
+			if key == "" {
+				continue
+			}
+			query.Add(fmt.Sprintf("tag_sets[%d][tags][%s]", i, key), value)
+		}
 	}
 }
 
