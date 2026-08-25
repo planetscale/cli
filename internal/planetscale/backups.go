@@ -2,10 +2,12 @@ package planetscale
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
 	"path"
+	"strconv"
 	"time"
 )
 
@@ -66,6 +68,14 @@ type UpdateBackupRequest struct {
 	Branch       string `json:"-"`
 	Backup       string `json:"-"`
 	Protected    bool   `json:"protected"`
+}
+
+// MarshalJSON encodes protected as a string because the API ignores a JSON
+// false, which would silently leave the backup protected.
+func (r *UpdateBackupRequest) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]string{
+		"protected": strconv.FormatBool(r.Protected),
+	})
 }
 
 type BackupsService interface {

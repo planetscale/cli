@@ -162,7 +162,7 @@ func TestBackups_Update(t *testing.T) {
 		var body map[string]any
 		c.Assert(json.NewDecoder(r.Body).Decode(&body), qt.IsNil)
 		c.Assert(body, qt.DeepEquals, map[string]any{
-			"protected": true,
+			"protected": "true",
 		})
 
 		w.WriteHeader(200)
@@ -197,4 +197,33 @@ func TestBackups_Update(t *testing.T) {
 
 	c.Assert(err, qt.IsNil)
 	c.Assert(backup, qt.DeepEquals, want)
+}
+
+func TestBackups_UpdateUnprotects(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]any
+		c.Assert(json.NewDecoder(r.Body).Decode(&body), qt.IsNil)
+		c.Assert(body, qt.DeepEquals, map[string]any{
+			"protected": "false",
+		})
+
+		_, err := w.Write([]byte(`{"id":"planetscale-go-test-backup","name":"planetscale-go-test-backup","protected":false}`))
+		c.Assert(err, qt.IsNil)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	backup, err := client.Backups.Update(context.Background(), &UpdateBackupRequest{
+		Organization: "my-org",
+		Database:     "planetscale-go-test-db",
+		Branch:       "my-branch",
+		Backup:       testBackup,
+		Protected:    false,
+	})
+	c.Assert(err, qt.IsNil)
+	c.Assert(backup.Protected, qt.IsFalse)
 }
