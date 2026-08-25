@@ -18,6 +18,7 @@ func TestReadOnlyRegions_List(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c.Assert(r.Method, qt.Equals, http.MethodGet)
 		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/my-db/read-only-regions")
+		c.Assert(r.URL.Query().Get("per_page"), qt.Equals, "100")
 		w.WriteHeader(200)
 		out := `{
   "data": [

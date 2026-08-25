@@ -33,6 +33,8 @@ func DatabaseCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.AddCommand(ThrottlerCmd(ch))
 	cmd.AddCommand(AggressiveCutoverCmd(ch))
 	cmd.AddCommand(IPRestrictionCmd(ch))
+	cmd.AddCommand(RegionsCmd(ch))
+	cmd.AddCommand(ReadOnlyRegionsCmd(ch))
 	cmd.AddCommand(DumpCmd(ch))
 	cmd.AddCommand(RestoreCmd(ch))
 
