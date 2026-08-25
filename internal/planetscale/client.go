@@ -53,9 +53,6 @@ type Client struct {
 	AuthAttemptExports    AuthAttemptExportsService
 	BackupPolicies        BackupPoliciesService
 	Backups               BackupsService
-	PaymentMethods        BillingPaymentMethodsService
-	PaymentMethodSetups   BillingPaymentMethodSetupsService
-	Invoices              InvoicesService
 	BranchInfrastructure  BranchInfrastructureService
 	BranchMaintenance     BranchMaintenanceService
 	D1ImportNotifications D1ImportNotificationsService
@@ -63,6 +60,7 @@ type Client struct {
 	Databases             DatabasesService
 	DataImports           DataImportsService
 	DeployRequests        DeployRequestsService
+	Invoices              InvoicesService
 	Keyspaces             KeyspacesService
 	LookupVindex          LookupVindexService
 	MaintenanceSchedules  MaintenanceSchedulesService
@@ -71,6 +69,8 @@ type Client struct {
 	MoveTables            MoveTablesService
 	Organizations         OrganizationsService
 	Passwords             PasswordsService
+	PaymentMethods        BillingPaymentMethodsService
+	PaymentMethodSetups   BillingPaymentMethodSetupsService
 	PlannedReparentShard  PlannedReparentShardService
 	PostgresBranches      PostgresBranchesService
 	PostgresBouncers      PostgresBouncersService
@@ -333,9 +333,6 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 	c.AuthAttemptExports = &authAttemptExportsService{client: c}
 	c.BackupPolicies = &backupPoliciesService{client: c}
 	c.Backups = &backupsService{client: c}
-	c.PaymentMethods = &billingPaymentMethodsService{client: c}
-	c.PaymentMethodSetups = &billingPaymentMethodSetupsService{client: c}
-	c.Invoices = &invoicesService{client: c}
 	c.BranchInfrastructure = &branchInfrastructureService{client: c}
 	c.BranchMaintenance = &branchMaintenanceService{client: c}
 	c.D1ImportNotifications = &d1ImportNotificationsService{client: c}
@@ -343,6 +340,7 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 	c.Databases = &databasesService{client: c}
 	c.DataImports = &dataImportsService{client: c}
 	c.DeployRequests = &deployRequestsService{client: c}
+	c.Invoices = &invoicesService{client: c}
 	c.Keyspaces = &keyspacesService{client: c}
 	c.LookupVindex = &lookupVindexService{client: c}
 	c.MaintenanceSchedules = &maintenanceSchedulesService{client: c}
@@ -351,13 +349,15 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 	c.MoveTables = &moveTablesService{client: c}
 	c.Organizations = &organizationsService{client: c}
 	c.Passwords = &passwordsService{client: c}
+	c.PaymentMethods = &billingPaymentMethodsService{client: c}
+	c.PaymentMethodSetups = &billingPaymentMethodSetupsService{client: c}
 	c.PlannedReparentShard = &plannedReparentShardService{client: c}
-	c.Processlist = &processlistService{client: c}
 	c.PostgresBranches = &postgresBranchesService{client: c}
 	c.PostgresBouncers = &postgresBouncersService{client: c}
 	c.PostgresCIDRs = &postgresCIDRsService{client: c}
 	c.PostgresRoles = &postgresRolesService{client: c}
 	c.PostgresSwitchovers = &postgresSwitchoversService{client: c}
+	c.Processlist = &processlistService{client: c}
 	c.QueryInsights = &queryInsightsService{client: c}
 	c.QueryPatterns = &queryPatternsService{client: c}
 	c.ReadOnlyRegions = &readOnlyRegionsService{client: c}
