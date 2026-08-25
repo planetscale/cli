@@ -14,7 +14,7 @@ func UpdateCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
 		billingEmail        string
 		idpManagedRoles     bool
-		invoiceBudgetAmount float64
+		invoiceBudgetAmount int64
 	}
 
 	cmd := &cobra.Command{
@@ -70,16 +70,16 @@ func UpdateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.MarkFlagRequired("org")
 	cmd.Flags().StringVar(&flags.billingEmail, "billing-email", "", "The billing email for the organization")
 	cmd.Flags().BoolVar(&flags.idpManagedRoles, "idp-managed-roles", false, "Whether the identity provider manages organization roles")
-	cmd.Flags().Float64Var(&flags.invoiceBudgetAmount, "invoice-budget-amount", 0, "The expected monthly budget for the organization")
+	cmd.Flags().Int64Var(&flags.invoiceBudgetAmount, "invoice-budget-amount", 0, "The expected monthly budget for the organization")
 
 	return cmd
 }
 
 type organizationUpdate struct {
-	Name                string  `header:"name" json:"name"`
-	BillingEmail        string  `header:"billing_email" json:"billing_email"`
-	IDPManagedRoles     bool    `header:"idp_managed_roles" json:"idp_managed_roles"`
-	InvoiceBudgetAmount float64 `header:"invoice_budget_amount" json:"invoice_budget_amount"`
+	Name                string `header:"name" json:"name"`
+	BillingEmail        string `header:"billing_email" json:"billing_email"`
+	IDPManagedRoles     bool   `header:"idp_managed_roles" json:"idp_managed_roles"`
+	InvoiceBudgetAmount string `header:"invoice_budget_amount" json:"invoice_budget_amount"`
 
 	orig *ps.Organization
 }
@@ -89,7 +89,7 @@ func toOrganizationUpdate(org *ps.Organization) *organizationUpdate {
 		Name:                org.Name,
 		BillingEmail:        org.BillingEmail,
 		IDPManagedRoles:     org.IDPManagedRoles,
-		InvoiceBudgetAmount: org.InvoiceBudgetAmount,
+		InvoiceBudgetAmount: string(org.InvoiceBudgetAmount),
 		orig:                org,
 	}
 }

@@ -107,7 +107,7 @@ func TestOrganizations_Update(t *testing.T) {
 			"name": "my-cool-org",
 			"billing_email": "billing@example.com",
 			"idp_managed_roles": false,
-			"invoice_budget_amount": 2500,
+			"invoice_budget_amount": "2500",
 			"created_at": "2021-01-14T10:19:23.000Z",
 			"updated_at": "2021-01-15T10:19:23.000Z"
 		}`))
@@ -122,17 +122,33 @@ func TestOrganizations_Update(t *testing.T) {
 		Organization:        "my-cool-org",
 		BillingEmail:        Pointer("billing@example.com"),
 		IDPManagedRoles:     Pointer(false),
-		InvoiceBudgetAmount: Pointer(float64(2500)),
+		InvoiceBudgetAmount: Pointer(int64(2500)),
 	})
 	c.Assert(err, qt.IsNil)
 	c.Assert(org, qt.DeepEquals, &Organization{
 		Name:                "my-cool-org",
 		BillingEmail:        "billing@example.com",
 		IDPManagedRoles:     false,
-		InvoiceBudgetAmount: 2500,
+		InvoiceBudgetAmount: "2500",
 		CreatedAt:           time.Date(2021, time.January, 14, 10, 19, 23, 0, time.UTC),
 		UpdatedAt:           time.Date(2021, time.January, 15, 10, 19, 23, 0, time.UTC),
 	})
+}
+
+func TestInvoiceBudgetAmount_UnmarshalJSON(t *testing.T) {
+	c := qt.New(t)
+
+	var fromString InvoiceBudgetAmount
+	c.Assert(json.Unmarshal([]byte(`"2500.50"`), &fromString), qt.IsNil)
+	c.Assert(fromString, qt.Equals, InvoiceBudgetAmount("2500.50"))
+
+	var fromNumber InvoiceBudgetAmount
+	c.Assert(json.Unmarshal([]byte(`2500`), &fromNumber), qt.IsNil)
+	c.Assert(fromNumber, qt.Equals, InvoiceBudgetAmount("2500"))
+
+	var fromNull InvoiceBudgetAmount
+	c.Assert(json.Unmarshal([]byte(`null`), &fromNull), qt.IsNil)
+	c.Assert(fromNull, qt.Equals, InvoiceBudgetAmount(""))
 }
 
 func TestOrganizations_ListRegions(t *testing.T) {

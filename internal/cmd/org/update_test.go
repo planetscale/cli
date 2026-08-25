@@ -29,12 +29,12 @@ func TestOrganization_UpdateCmd(t *testing.T) {
 			c.Assert(req.IDPManagedRoles, qt.IsNotNil)
 			c.Assert(*req.IDPManagedRoles, qt.IsFalse)
 			c.Assert(req.InvoiceBudgetAmount, qt.IsNotNil)
-			c.Assert(*req.InvoiceBudgetAmount, qt.Equals, float64(2500))
+			c.Assert(*req.InvoiceBudgetAmount, qt.Equals, int64(2500))
 			return &ps.Organization{
 				Name:                req.Organization,
 				BillingEmail:        *req.BillingEmail,
 				IDPManagedRoles:     *req.IDPManagedRoles,
-				InvoiceBudgetAmount: *req.InvoiceBudgetAmount,
+				InvoiceBudgetAmount: "2500",
 			}, nil
 		},
 	}
@@ -60,7 +60,7 @@ func TestOrganization_UpdateCmd(t *testing.T) {
 		Name:                "planetscale",
 		BillingEmail:        "billing@example.com",
 		IDPManagedRoles:     false,
-		InvoiceBudgetAmount: 2500,
+		InvoiceBudgetAmount: "2500",
 	})
 }
 
@@ -106,7 +106,7 @@ func TestOrganization_UpdateCmdHuman(t *testing.T) {
 				Name:                req.Organization,
 				BillingEmail:        "billing@example.com",
 				IDPManagedRoles:     true,
-				InvoiceBudgetAmount: 2500,
+				InvoiceBudgetAmount: "2500",
 			}, nil
 		},
 	}
