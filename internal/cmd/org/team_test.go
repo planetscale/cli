@@ -80,6 +80,21 @@ func TestOrg_TeamListCmd(t *testing.T) {
 	c.Assert(buf.String(), qt.Contains, `"slug": "platform"`)
 }
 
+func TestOrg_TeamListCmd_EmptyPage(t *testing.T) {
+	c := qt.New(t)
+	var buf bytes.Buffer
+	svc := &mock.OrganizationsService{
+		ListTeamsFn: func(ctx context.Context, req *ps.ListOrganizationTeamsRequest, opts ...ps.ListOption) ([]*ps.OrganizationTeam, error) {
+			return nil, nil
+		},
+	}
+	cmd := TeamListCmd(teamHelper(svc, printer.Human, &buf))
+	cmd.SetArgs([]string{"--page", "4"})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(buf.String(), qt.Contains, "No teams found on this page.")
+	c.Assert(buf.String(), qt.Not(qt.Contains), "No teams in")
+}
+
 func TestOrg_TeamShowCmd_ResolvesName(t *testing.T) {
 	c := qt.New(t)
 	var buf bytes.Buffer
@@ -169,6 +184,22 @@ func TestOrg_TeamMemberListCmd(t *testing.T) {
 	cmd.SetArgs([]string{"platform", "--page", "3", "--per-page", "50"})
 	c.Assert(cmd.Execute(), qt.IsNil)
 	c.Assert(buf.String(), qt.Contains, `"email": "ada@example.com"`)
+}
+
+func TestOrg_TeamMemberListCmd_EmptyPage(t *testing.T) {
+	c := qt.New(t)
+	var buf bytes.Buffer
+	svc := &mock.OrganizationsService{
+		GetTeamFn: getTestTeam,
+		ListTeamMembersFn: func(ctx context.Context, req *ps.ListOrganizationTeamMembersRequest, opts ...ps.ListOption) ([]*ps.OrganizationTeamMembership, error) {
+			return nil, nil
+		},
+	}
+	cmd := TeamMemberListCmd(teamHelper(svc, printer.Human, &buf))
+	cmd.SetArgs([]string{"platform", "--page", "4"})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(buf.String(), qt.Contains, "No team members found on this page.")
+	c.Assert(buf.String(), qt.Not(qt.Contains), "No members in team")
 }
 
 func TestOrg_TeamMemberAddCmd(t *testing.T) {

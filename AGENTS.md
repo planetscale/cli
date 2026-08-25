@@ -90,6 +90,7 @@ pscale --org <org> database list --format json
 
    ```bash
    pscale org member list --org <org> --format json
+   pscale org member list --org <org> --format json --page 2 --per-page 25
    pscale org member show user@example.com --org <org> --format json
    pscale org member update user@example.com --org <org> --format json --role member
    pscale org member remove user@example.com --org <org> --format json --force
@@ -101,11 +102,13 @@ Organization teams and team members:
 
 ```bash
 pscale org team list --org <org> --format json
+pscale org team list --org <org> --format json --page 2 --per-page 25
 pscale org team show <team-id-or-name> --org <org> --format json
 pscale org team create --name <name> --description <description> --org <org> --format json
 pscale org team update <team> --name <name> --description <description> --org <org> --format json
 pscale org team delete <team> --org <org> --format json --force
 pscale org team member list <team> --org <org> --format json
+pscale org team member list <team> --org <org> --format json --page 2 --per-page 25
 pscale org team member add <team> <email-or-id> --org <org> --format json
 pscale org team member remove <team> <email-or-id> --org <org> --format json --force
 ```

@@ -150,42 +150,6 @@ func resolveTeam(ctx context.Context, ch *cmdutil.Helper, client *ps.Client, id 
 	return nil, teamNotFound(org, id)
 }
 
-func TeamListCmd(ch *cmdutil.Helper) *cobra.Command {
-	var flags struct {
-		query   string
-		page    int
-		perPage int
-	}
-	cmd := &cobra.Command{
-		Use:     "list",
-		Short:   "List organization teams",
-		Aliases: []string{"ls"},
-		Args:    cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := ch.Client()
-			if err != nil {
-				return err
-			}
-			teams, err := client.Organizations.ListTeams(cmd.Context(), &ps.ListOrganizationTeamsRequest{
-				Organization: ch.Config.Organization,
-				Query:        flags.query,
-			}, ps.WithPage(flags.page), ps.WithPerPage(flags.perPage))
-			if err != nil {
-				return cmdutil.HandleError(err)
-			}
-			if len(teams) == 0 && ch.Printer.Format() == printer.Human {
-				ch.Printer.Println("No teams found.")
-				return nil
-			}
-			return ch.Printer.PrintResource(toOrganizationTeams(teams))
-		},
-	}
-	cmd.Flags().StringVar(&flags.query, "query", "", "Filter teams by name")
-	cmd.Flags().IntVar(&flags.page, "page", 0, "Page number to fetch")
-	cmd.Flags().IntVar(&flags.perPage, "per-page", 100, "Number of results per page")
-	return cmd
-}
-
 func TeamShowCmd(ch *cmdutil.Helper) *cobra.Command {
 	return &cobra.Command{
 		Use:   "show <team-id-or-name>",
@@ -350,28 +314,45 @@ func TeamMemberListCmd(ch *cmdutil.Helper) *cobra.Command {
 		perPage int
 	}
 	cmd := &cobra.Command{
-		Use:     "list <team>",
-		Short:   "List members of an organization team",
+		Use:   "list <team>",
+		Short: "List members of an organization team",
+		Long: `List members of an organization team.
+
+Results are paginated: 100 members per page by default. Use --page and
+--per-page to walk teams with more members than one page holds.`,
 		Aliases: []string{"ls"},
 		Args:    cmdutil.RequiredArgs("team"),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			org := ch.Config.Organization
+
 			client, err := ch.Client()
 			if err != nil {
 				return err
 			}
-			team, err := resolveTeam(cmd.Context(), ch, client, args[0])
+			team, err := resolveTeam(ctx, ch, client, args[0])
 			if err != nil {
 				return err
 			}
-			members, err := client.Organizations.ListTeamMembers(cmd.Context(), &ps.ListOrganizationTeamMembersRequest{
-				Organization: ch.Config.Organization,
+
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Fetching members of team %s...", printer.BoldBlue(team.Name)))
+			defer end()
+
+			members, err := client.Organizations.ListTeamMembers(ctx, &ps.ListOrganizationTeamMembersRequest{
+				Organization: org,
 				Team:         team.Slug,
 			}, ps.WithPage(flags.page), ps.WithPerPage(flags.perPage))
 			if err != nil {
 				return cmdutil.HandleError(err)
 			}
+			end()
+
 			if len(members) == 0 && ch.Printer.Format() == printer.Human {
-				ch.Printer.Println("No team members found.")
+				if flags.page > 0 {
+					ch.Printer.Println("No team members found on this page.")
+				} else {
+					ch.Printer.Printf("No members in team %s.\n", printer.BoldBlue(team.Name))
+				}
 				return nil
 			}
 			return ch.Printer.PrintResource(toOrganizationTeamMembers(members))
