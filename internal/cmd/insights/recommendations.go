@@ -30,7 +30,8 @@ indexes, duplicate indexes, bloated tables and indexes, missing indexes
 derived from production query patterns, and sequence overflow risks. Each
 recommendation includes ready-to-apply DDL (shown with --format json).
 
-Use "pscale insights recommendations dismiss" to dismiss a recommendation.`,
+Use "pscale insights recommendations show" to print a recommendation and its
+full DDL. Use "pscale insights recommendations dismiss" to dismiss one.`,
 		Aliases: []string{"recommendation"},
 		Args:    cmdutil.RequiredArgs("database"),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -80,6 +81,7 @@ Use "pscale insights recommendations dismiss" to dismiss a recommendation.`,
 		},
 	}
 
+	cmd.AddCommand(RecommendationShowCmd(ch))
 	cmd.AddCommand(RecommendationDismissCmd(ch))
 
 	return cmd
