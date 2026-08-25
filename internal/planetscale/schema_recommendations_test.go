@@ -116,7 +116,7 @@ func TestSchemaRecommendations_Get(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(200)
 		c.Assert(r.Method, qt.Equals, http.MethodGet)
-		c.Assert(r.URL.String(), qt.Equals, "/v1/organizations/my-org/databases/planetscale-go-test-db/schema-recommendations/recommendation-123")
+		c.Assert(r.URL.String(), qt.Equals, "/v1/organizations/my-org/databases/planetscale-go-test-db/schema-recommendations/1")
 
 		out := `{
 			"id": "recommendation-123",
@@ -143,11 +143,12 @@ func TestSchemaRecommendations_Get(t *testing.T) {
 	recommendation, err := client.SchemaRecommendations.Get(ctx, &GetSchemaRecommendationRequest{
 		Organization: testOrg,
 		Database:     testDatabase,
-		ID:           "recommendation-123",
+		ID:           "1",
 	})
 
 	c.Assert(err, qt.IsNil)
 	c.Assert(recommendation.ID, qt.Equals, "recommendation-123")
+	c.Assert(recommendation.Number, qt.Equals, 1)
 	c.Assert(recommendation.Title, qt.Equals, "Add index on users.email")
 	c.Assert(recommendation.DDLStatement, qt.Equals, "ALTER TABLE users ADD INDEX idx_email (email)")
 	c.Assert(recommendation.State, qt.Equals, "open")
