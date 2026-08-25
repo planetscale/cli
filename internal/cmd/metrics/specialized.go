@@ -149,7 +149,7 @@ func TabletsCmd(ch *cmdutil.Helper) *cobra.Command {
 
 				found := false
 				for _, workflow := range workflows {
-					if workflow.ID == flags.workflow && workflow.Branch.Name == branch {
+					if workflow.Name == flags.workflow && workflow.Branch.Name == branch {
 						found = true
 						break
 					}

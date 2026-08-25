@@ -321,7 +321,8 @@ func TestTabletsCmd_ForwardsSupportedFilters(t *testing.T) {
 		ListFn: func(ctx context.Context, req *ps.ListWorkflowsRequest) ([]*ps.Workflow, error) {
 			c.Assert(req.Database, qt.Equals, "mydb")
 			return []*ps.Workflow{{
-				ID:     "move-tables",
+				ID:     "opaque-workflow-id",
+				Name:   "move-tables",
 				Branch: ps.DatabaseBranch{Name: "main"},
 			}}, nil
 		},
