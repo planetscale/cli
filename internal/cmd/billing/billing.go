@@ -17,6 +17,7 @@ func BillingCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
 
 	cmd.AddCommand(PaymentMethodCmd(ch))
+	cmd.AddCommand(InvoiceCmd(ch))
 	return cmd
 }
 

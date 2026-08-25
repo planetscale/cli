@@ -55,6 +55,7 @@ type Client struct {
 	Backups               BackupsService
 	PaymentMethods        BillingPaymentMethodsService
 	PaymentMethodSetups   BillingPaymentMethodSetupsService
+	Invoices              InvoicesService
 	BranchInfrastructure  BranchInfrastructureService
 	BranchMaintenance     BranchMaintenanceService
 	D1ImportNotifications D1ImportNotificationsService
@@ -334,6 +335,7 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 	c.Backups = &backupsService{client: c}
 	c.PaymentMethods = &billingPaymentMethodsService{client: c}
 	c.PaymentMethodSetups = &billingPaymentMethodSetupsService{client: c}
+	c.Invoices = &invoicesService{client: c}
 	c.BranchInfrastructure = &branchInfrastructureService{client: c}
 	c.BranchMaintenance = &branchMaintenanceService{client: c}
 	c.D1ImportNotifications = &d1ImportNotificationsService{client: c}

@@ -561,6 +561,20 @@ pscale billing payment-method status <setup-id> --org <org> --format json
 | `NOT_FOUND` | No current card. Next step is `pscale billing payment-method update --org <org> --format json`. |
 | `UNPAID_INVOICES` | `delete` rejected because the organization has unpaid invoices. Pay them, then retry. |
 
+## Billing invoices
+
+Read-only invoice history for an organization. `--org` is required.
+
+```bash
+pscale billing invoice list --org <org> --format json
+pscale billing invoice show <invoice-id> --org <org> --format json
+pscale billing invoice line-items <invoice-id> --org <org> --format json
+```
+
+- `list` and `line-items` walk every page by default. Pass `--page` to fetch one page. `--per-page` defaults to 100. Invoice ids come from `list`.
+- JSON preserves the API objects. Line items include the billed database and nested resource (usually a branch).
+- Requires `read_invoices` on a service token.
+
 ## Imports (Cloudflare D1) — Postgres only
 
 `pscale import d1` migrates a Cloudflare D1 (SQLite) export into a PlanetScale Postgres branch. Every subcommand supports `--format json` and returns `status`, `issues`, and `next_steps`; stateful steps return a `migration_id` — pass it back with `--migration-id` to resume.
