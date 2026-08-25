@@ -86,6 +86,13 @@ pscale --org <org> database list --format json
 
    Pass `--org <org>` on resource commands (`database`, `branch`, `sql`, `api`, …). Not on `org list`.
 
+   Organization settings:
+
+   ```bash
+   pscale org update --org <org> --format json --billing-email billing@example.com
+   pscale org update --org <org> --format json --idp-managed-roles=false --invoice-budget-amount 2500
+   ```
+
    Organization members (email or the USER_ID from list):
 
    ```bash

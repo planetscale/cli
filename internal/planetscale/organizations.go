@@ -16,10 +16,18 @@ type GetOrganizationRequest struct {
 	Organization string
 }
 
+type UpdateOrganizationRequest struct {
+	Organization        string   `json:"-"`
+	BillingEmail        *string  `json:"billing_email,omitempty"`
+	IDPManagedRoles     *bool    `json:"idp_managed_roles,omitempty"`
+	InvoiceBudgetAmount *float64 `json:"invoice_budget_amount,omitempty"`
+}
+
 // OrganizationsService is an interface for communicating with the PlanetScale
 // Organizations API endpoints.
 type OrganizationsService interface {
 	Get(context.Context, *GetOrganizationRequest) (*Organization, error)
+	Update(context.Context, *UpdateOrganizationRequest) (*Organization, error)
 	List(context.Context) ([]*Organization, error)
 	ListRegions(context.Context, *ListOrganizationRegionsRequest) ([]*Region, error)
 	ListClusterSKUs(context.Context, *ListOrganizationClusterSKUsRequest, ...ListOption) ([]*ClusterSKU, error)
@@ -65,6 +73,9 @@ type ClusterSKU struct {
 // Organization represents a PlanetScale organization.
 type Organization struct {
 	Name                   string    `json:"name"`
+	BillingEmail           string    `json:"billing_email"`
+	IDPManagedRoles        bool      `json:"idp_managed_roles"`
+	InvoiceBudgetAmount    float64   `json:"invoice_budget_amount"`
 	CreatedAt              time.Time `json:"created_at"`
 	UpdatedAt              time.Time `json:"updated_at"`
 	RemainingFreeDatabases int       `json:"free_databases_remaining"`
@@ -91,6 +102,20 @@ func (o *organizationsService) Get(ctx context.Context, getReq *GetOrganizationR
 	req, err := o.client.newRequest(http.MethodGet, path.Join(organizationsAPIPath, getReq.Organization), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request for get organization: %w", err)
+	}
+
+	org := &Organization{}
+	if err := o.client.do(ctx, req, &org); err != nil {
+		return nil, err
+	}
+
+	return org, nil
+}
+
+func (o *organizationsService) Update(ctx context.Context, updateReq *UpdateOrganizationRequest) (*Organization, error) {
+	req, err := o.client.newRequest(http.MethodPatch, path.Join(organizationsAPIPath, updateReq.Organization), updateReq)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request for update organization: %w", err)
 	}
 
 	org := &Organization{}
