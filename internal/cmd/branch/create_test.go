@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"testing"
+	"time"
 
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/config"
@@ -747,6 +748,7 @@ func TestBranch_CreateCmdWithRestorePoint(t *testing.T) {
 	db := "planetscale"
 	branch := "development"
 	restorePoint := "2023-01-01T00:00:00Z"
+	backupID := "backup-123"
 
 	res := &ps.PostgresBranch{Name: branch}
 
@@ -759,8 +761,23 @@ func TestBranch_CreateCmdWithRestorePoint(t *testing.T) {
 			c.Assert(req.RestorePoint, qt.Equals, restorePoint)
 			c.Assert(req.ParentBranch, qt.Equals, "main")
 			c.Assert(req.ClusterName, qt.Equals, "PS-10")
+			c.Assert(req.BackupID, qt.Equals, backupID)
 
 			return res, nil
+		},
+	}
+
+	backupsSvc := &mock.BackupsService{
+		ListFn: func(ctx context.Context, req *ps.ListBackupsRequest) ([]*ps.Backup, error) {
+			c.Assert(req.Organization, qt.Equals, org)
+			c.Assert(req.Database, qt.Equals, db)
+			c.Assert(req.Branch, qt.Equals, "main")
+
+			return []*ps.Backup{{
+				PublicID:    backupID,
+				State:       "success",
+				CompletedAt: time.Date(2022, 12, 31, 23, 0, 0, 0, time.UTC),
+			}}, nil
 		},
 	}
 
@@ -781,6 +798,7 @@ func TestBranch_CreateCmdWithRestorePoint(t *testing.T) {
 			return &ps.Client{
 				PostgresBranches: svc,
 				Databases:        dbSvc,
+				Backups:          backupsSvc,
 			}, nil
 		},
 	}
@@ -791,6 +809,69 @@ func TestBranch_CreateCmdWithRestorePoint(t *testing.T) {
 
 	c.Assert(err, qt.IsNil)
 	c.Assert(svc.CreateFnInvoked, qt.IsTrue)
+	c.Assert(backupsSvc.ListFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.JSONEquals, res)
+}
+
+func TestBranch_CreateCmdWithRestoreAndRestorePoint(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	db := "planetscale"
+	branch := "development"
+	restorePoint := "2023-01-01T00:00:00Z"
+	backupID := "backup-123"
+
+	res := &ps.PostgresBranch{Name: branch}
+
+	svc := &mock.PostgresBranchesService{
+		CreateFn: func(ctx context.Context, req *ps.CreatePostgresBranchRequest) (*ps.PostgresBranch, error) {
+			c.Assert(req.BackupID, qt.Equals, backupID)
+			c.Assert(req.RestorePoint, qt.Equals, restorePoint)
+
+			return res, nil
+		},
+	}
+
+	backupsSvc := &mock.BackupsService{
+		ListFn: func(ctx context.Context, req *ps.ListBackupsRequest) ([]*ps.Backup, error) {
+			c.Fatal("List should not be called when --restore is provided")
+			return nil, nil
+		},
+	}
+
+	dbSvc := &mock.DatabaseService{
+		GetFn: func(ctx context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
+			return &ps.Database{Kind: "postgresql"}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: org,
+		},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{
+				PostgresBranches: svc,
+				Databases:        dbSvc,
+				Backups:          backupsSvc,
+			}, nil
+		},
+	}
+
+	cmd := CreateCmd(ch)
+	cmd.SetArgs([]string{db, branch, "--restore", backupID, "--restore-point", restorePoint})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.CreateFnInvoked, qt.IsTrue)
+	c.Assert(backupsSvc.ListFnInvoked, qt.IsFalse)
 	c.Assert(buf.String(), qt.JSONEquals, res)
 }
 

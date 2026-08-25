@@ -179,6 +179,34 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 
 				return ch.Printer.PrintResource(ToDatabaseBranch(dbBranch))
 			} else {
+				if flags.restorePoint != "" && flags.backupID == "" {
+					restorePoint, err := time.Parse(time.RFC3339, flags.restorePoint)
+					if err != nil {
+						return fmt.Errorf("invalid restore point %q: %w", flags.restorePoint, err)
+					}
+
+					backupBranch := flags.parentBranch
+					if backupBranch == "" {
+						backupBranch = db.DefaultBranch
+					}
+
+					backups, err := client.Backups.List(ctx, &ps.ListBackupsRequest{
+						Organization: ch.Config.Organization,
+						Database:     source,
+						Branch:       backupBranch,
+					})
+					if err != nil {
+						return cmdutil.HandleError(err)
+					}
+
+					backup, err := backupForRestorePoint(backups, restorePoint)
+					if err != nil {
+						return err
+					}
+
+					flags.backupID = backup.PublicID
+				}
+
 				createReq := &ps.CreatePostgresBranchRequest{
 					Organization: ch.Config.Organization,
 					Database:     source,
@@ -261,7 +289,6 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	cmd.MarkFlagsMutuallyExclusive("from", "restore")
 	cmd.MarkFlagsMutuallyExclusive("restore", "seed-data")
-	cmd.MarkFlagsMutuallyExclusive("restore", "restore-point")
 	cmd.MarkFlagsMutuallyExclusive("restore-point", "seed-data")
 
 	cmd.RegisterFlagCompletionFunc("region", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
