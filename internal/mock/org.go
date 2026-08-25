@@ -10,6 +10,9 @@ type OrganizationsService struct {
 	GetFn        func(context.Context, *ps.GetOrganizationRequest) (*ps.Organization, error)
 	GetFnInvoked bool
 
+	UpdateFn        func(context.Context, *ps.UpdateOrganizationRequest) (*ps.Organization, error)
+	UpdateFnInvoked bool
+
 	ListFn        func(context.Context) ([]*ps.Organization, error)
 	ListFnInvoked bool
 
@@ -59,6 +62,11 @@ type OrganizationsService struct {
 func (o *OrganizationsService) Get(ctx context.Context, req *ps.GetOrganizationRequest) (*ps.Organization, error) {
 	o.GetFnInvoked = true
 	return o.GetFn(ctx, req)
+}
+
+func (o *OrganizationsService) Update(ctx context.Context, req *ps.UpdateOrganizationRequest) (*ps.Organization, error) {
+	o.UpdateFnInvoked = true
+	return o.UpdateFn(ctx, req)
 }
 
 func (o *OrganizationsService) List(ctx context.Context) ([]*ps.Organization, error) {

@@ -2,6 +2,7 @@ package planetscale
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"path"
@@ -16,10 +17,36 @@ type GetOrganizationRequest struct {
 	Organization string
 }
 
+type UpdateOrganizationRequest struct {
+	Organization        string  `json:"-"`
+	BillingEmail        *string `json:"billing_email,omitempty"`
+	IDPManagedRoles     *bool   `json:"idp_managed_roles,omitempty"`
+	InvoiceBudgetAlerts *bool   `json:"invoice_budget_alerts,omitempty"`
+	InvoiceBudgetAmount *int64  `json:"invoice_budget_amount,omitempty"`
+}
+
+func (r *UpdateOrganizationRequest) MarshalJSON() ([]byte, error) {
+	body := map[string]any{}
+	if r.BillingEmail != nil {
+		body["billing_email"] = *r.BillingEmail
+	}
+	if r.IDPManagedRoles != nil {
+		body["idp_managed_roles"] = *r.IDPManagedRoles
+	}
+	if r.InvoiceBudgetAlerts != nil {
+		body["invoice_budget_alerts"] = *r.InvoiceBudgetAlerts
+	}
+	if r.InvoiceBudgetAmount != nil {
+		body["invoice_budget_amount"] = *r.InvoiceBudgetAmount
+	}
+	return json.Marshal(body)
+}
+
 // OrganizationsService is an interface for communicating with the PlanetScale
 // Organizations API endpoints.
 type OrganizationsService interface {
 	Get(context.Context, *GetOrganizationRequest) (*Organization, error)
+	Update(context.Context, *UpdateOrganizationRequest) (*Organization, error)
 	List(context.Context) ([]*Organization, error)
 	ListRegions(context.Context, *ListOrganizationRegionsRequest) ([]*Region, error)
 	ListClusterSKUs(context.Context, *ListOrganizationClusterSKUsRequest, ...ListOption) ([]*ClusterSKU, error)
@@ -70,12 +97,41 @@ type ClusterSKU struct {
 	Metal bool `json:"metal"`
 }
 
+// InvoiceBudgetAmount is the organization's expected monthly budget.
+// Responses encode this as a JSON string; PATCH accepts an integer.
+type InvoiceBudgetAmount string
+
+func (a *InvoiceBudgetAmount) UnmarshalJSON(b []byte) error {
+	if string(b) == "null" {
+		*a = ""
+		return nil
+	}
+
+	var s string
+	if err := json.Unmarshal(b, &s); err == nil {
+		*a = InvoiceBudgetAmount(s)
+		return nil
+	}
+
+	var n json.Number
+	if err := json.Unmarshal(b, &n); err != nil {
+		return err
+	}
+	*a = InvoiceBudgetAmount(n.String())
+	return nil
+}
+
 // Organization represents a PlanetScale organization.
 type Organization struct {
-	Name                   string    `json:"name"`
-	CreatedAt              time.Time `json:"created_at"`
-	UpdatedAt              time.Time `json:"updated_at"`
-	RemainingFreeDatabases int       `json:"free_databases_remaining"`
+	Name                         string              `json:"name"`
+	BillingEmail                 string              `json:"billing_email"`
+	IDPManagedRoles              bool                `json:"idp_managed_roles"`
+	InvoiceBudgetAlerts          bool                `json:"invoice_budget_alerts"`
+	InvoiceBudgetAmount          InvoiceBudgetAmount `json:"invoice_budget_amount"`
+	SuggestedInvoiceBudgetAmount InvoiceBudgetAmount `json:"suggested_invoice_budget_amount"`
+	CreatedAt                    time.Time           `json:"created_at"`
+	UpdatedAt                    time.Time           `json:"updated_at"`
+	RemainingFreeDatabases       int                 `json:"free_databases_remaining"`
 }
 
 type organizationsResponse struct {
@@ -99,6 +155,20 @@ func (o *organizationsService) Get(ctx context.Context, getReq *GetOrganizationR
 	req, err := o.client.newRequest(http.MethodGet, path.Join(organizationsAPIPath, getReq.Organization), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request for get organization: %w", err)
+	}
+
+	org := &Organization{}
+	if err := o.client.do(ctx, req, &org); err != nil {
+		return nil, err
+	}
+
+	return org, nil
+}
+
+func (o *organizationsService) Update(ctx context.Context, updateReq *UpdateOrganizationRequest) (*Organization, error) {
+	req, err := o.client.newRequest(http.MethodPatch, path.Join(organizationsAPIPath, updateReq.Organization), updateReq)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request for update organization: %w", err)
 	}
 
 	org := &Organization{}

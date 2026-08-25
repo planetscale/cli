@@ -11,13 +11,14 @@ import (
 func OrgCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "org <command>",
-		Short:             "List, show, and switch organizations",
+		Short:             "Manage organizations",
 		PersistentPreRunE: cmdutil.CheckAuthentication(ch.Config),
 	}
 
 	cmd.AddCommand(SwitchCmd(ch))
 	cmd.AddCommand(ShowCmd(ch))
 	cmd.AddCommand(ListCmd(ch))
+	cmd.AddCommand(UpdateCmd(ch))
 	cmd.AddCommand(MemberCmd(ch))
 	cmd.AddCommand(TeamCmd(ch))
 

@@ -2,6 +2,7 @@ package planetscale
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -84,6 +85,102 @@ func TestOrganizations_Get(t *testing.T) {
 	}
 
 	c.Assert(org, qt.DeepEquals, want)
+}
+
+func TestOrganizations_Update(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodPatch)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-cool-org")
+
+		var body map[string]interface{}
+		c.Assert(json.NewDecoder(r.Body).Decode(&body), qt.IsNil)
+		c.Assert(body, qt.DeepEquals, map[string]interface{}{
+			"billing_email":         "billing@example.com",
+			"idp_managed_roles":     false,
+			"invoice_budget_amount": float64(2500),
+		})
+
+		w.WriteHeader(http.StatusOK)
+		_, err := w.Write([]byte(`{
+			"name": "my-cool-org",
+			"billing_email": "billing@example.com",
+			"idp_managed_roles": false,
+			"invoice_budget_amount": "2500",
+			"created_at": "2021-01-14T10:19:23.000Z",
+			"updated_at": "2021-01-15T10:19:23.000Z"
+		}`))
+		c.Assert(err, qt.IsNil)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	org, err := client.Organizations.Update(context.Background(), &UpdateOrganizationRequest{
+		Organization:        "my-cool-org",
+		BillingEmail:        Pointer("billing@example.com"),
+		IDPManagedRoles:     Pointer(false),
+		InvoiceBudgetAmount: Pointer(int64(2500)),
+	})
+	c.Assert(err, qt.IsNil)
+	c.Assert(org, qt.DeepEquals, &Organization{
+		Name:                "my-cool-org",
+		BillingEmail:        "billing@example.com",
+		IDPManagedRoles:     false,
+		InvoiceBudgetAmount: "2500",
+		CreatedAt:           time.Date(2021, time.January, 14, 10, 19, 23, 0, time.UTC),
+		UpdatedAt:           time.Date(2021, time.January, 15, 10, 19, 23, 0, time.UTC),
+	})
+}
+
+func TestOrganizations_UpdateClearsSpendAlertAmount(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]interface{}
+		c.Assert(json.NewDecoder(r.Body).Decode(&body), qt.IsNil)
+		c.Assert(body, qt.DeepEquals, map[string]interface{}{
+			"invoice_budget_alerts": false,
+		})
+
+		w.WriteHeader(http.StatusOK)
+		_, err := w.Write([]byte(`{
+			"name": "my-cool-org",
+			"invoice_budget_alerts": false,
+			"invoice_budget_amount": "0.0"
+		}`))
+		c.Assert(err, qt.IsNil)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	org, err := client.Organizations.Update(context.Background(), &UpdateOrganizationRequest{
+		Organization:        "my-cool-org",
+		InvoiceBudgetAlerts: Pointer(false),
+	})
+	c.Assert(err, qt.IsNil)
+	c.Assert(org.InvoiceBudgetAlerts, qt.IsFalse)
+	c.Assert(org.InvoiceBudgetAmount, qt.Equals, InvoiceBudgetAmount("0.0"))
+}
+
+func TestInvoiceBudgetAmount_UnmarshalJSON(t *testing.T) {
+	c := qt.New(t)
+
+	var fromString InvoiceBudgetAmount
+	c.Assert(json.Unmarshal([]byte(`"2500.50"`), &fromString), qt.IsNil)
+	c.Assert(fromString, qt.Equals, InvoiceBudgetAmount("2500.50"))
+
+	var fromNumber InvoiceBudgetAmount
+	c.Assert(json.Unmarshal([]byte(`2500`), &fromNumber), qt.IsNil)
+	c.Assert(fromNumber, qt.Equals, InvoiceBudgetAmount("2500"))
+
+	var fromNull InvoiceBudgetAmount
+	c.Assert(json.Unmarshal([]byte(`null`), &fromNull), qt.IsNil)
+	c.Assert(fromNull, qt.Equals, InvoiceBudgetAmount(""))
 }
 
 func TestOrganizations_ListRegions(t *testing.T) {
