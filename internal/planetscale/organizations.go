@@ -21,7 +21,29 @@ type UpdateOrganizationRequest struct {
 	Organization        string  `json:"-"`
 	BillingEmail        *string `json:"billing_email,omitempty"`
 	IDPManagedRoles     *bool   `json:"idp_managed_roles,omitempty"`
+	InvoiceBudgetAlerts *bool   `json:"invoice_budget_alerts,omitempty"`
 	InvoiceBudgetAmount *int64  `json:"invoice_budget_amount,omitempty"`
+	ClearInvoiceBudget  bool    `json:"-"`
+}
+
+func (r *UpdateOrganizationRequest) MarshalJSON() ([]byte, error) {
+	body := map[string]any{}
+	if r.BillingEmail != nil {
+		body["billing_email"] = *r.BillingEmail
+	}
+	if r.IDPManagedRoles != nil {
+		body["idp_managed_roles"] = *r.IDPManagedRoles
+	}
+	if r.InvoiceBudgetAlerts != nil {
+		body["invoice_budget_alerts"] = *r.InvoiceBudgetAlerts
+	}
+	switch {
+	case r.ClearInvoiceBudget:
+		body["invoice_budget_amount"] = nil
+	case r.InvoiceBudgetAmount != nil:
+		body["invoice_budget_amount"] = *r.InvoiceBudgetAmount
+	}
+	return json.Marshal(body)
 }
 
 // OrganizationsService is an interface for communicating with the PlanetScale
@@ -97,13 +119,15 @@ func (a *InvoiceBudgetAmount) UnmarshalJSON(b []byte) error {
 
 // Organization represents a PlanetScale organization.
 type Organization struct {
-	Name                   string              `json:"name"`
-	BillingEmail           string              `json:"billing_email"`
-	IDPManagedRoles        bool                `json:"idp_managed_roles"`
-	InvoiceBudgetAmount    InvoiceBudgetAmount `json:"invoice_budget_amount"`
-	CreatedAt              time.Time           `json:"created_at"`
-	UpdatedAt              time.Time           `json:"updated_at"`
-	RemainingFreeDatabases int                 `json:"free_databases_remaining"`
+	Name                         string              `json:"name"`
+	BillingEmail                 string              `json:"billing_email"`
+	IDPManagedRoles              bool                `json:"idp_managed_roles"`
+	InvoiceBudgetAlerts          bool                `json:"invoice_budget_alerts"`
+	InvoiceBudgetAmount          InvoiceBudgetAmount `json:"invoice_budget_amount"`
+	SuggestedInvoiceBudgetAmount InvoiceBudgetAmount `json:"suggested_invoice_budget_amount"`
+	CreatedAt                    time.Time           `json:"created_at"`
+	UpdatedAt                    time.Time           `json:"updated_at"`
+	RemainingFreeDatabases       int                 `json:"free_databases_remaining"`
 }
 
 type organizationsResponse struct {

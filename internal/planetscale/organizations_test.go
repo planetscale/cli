@@ -135,6 +135,40 @@ func TestOrganizations_Update(t *testing.T) {
 	})
 }
 
+func TestOrganizations_UpdateClearsSpendAlertAmount(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]interface{}
+		c.Assert(json.NewDecoder(r.Body).Decode(&body), qt.IsNil)
+		c.Assert(body, qt.DeepEquals, map[string]interface{}{
+			"invoice_budget_alerts": false,
+			"invoice_budget_amount": nil,
+		})
+
+		w.WriteHeader(http.StatusOK)
+		_, err := w.Write([]byte(`{
+			"name": "my-cool-org",
+			"invoice_budget_alerts": false,
+			"invoice_budget_amount": "0.0"
+		}`))
+		c.Assert(err, qt.IsNil)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	org, err := client.Organizations.Update(context.Background(), &UpdateOrganizationRequest{
+		Organization:        "my-cool-org",
+		InvoiceBudgetAlerts: Pointer(false),
+		ClearInvoiceBudget:  true,
+	})
+	c.Assert(err, qt.IsNil)
+	c.Assert(org.InvoiceBudgetAlerts, qt.IsFalse)
+	c.Assert(org.InvoiceBudgetAmount, qt.Equals, InvoiceBudgetAmount("0.0"))
+}
+
 func TestInvoiceBudgetAmount_UnmarshalJSON(t *testing.T) {
 	c := qt.New(t)
 

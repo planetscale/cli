@@ -90,7 +90,9 @@ pscale --org <org> database list --format json
 
    ```bash
    pscale org update --org <org> --format json --billing-email billing@example.com
-   pscale org update --org <org> --format json --idp-managed-roles=false --invoice-budget-amount 2500
+   pscale org update --org <org> --format json --idp-managed-roles=false
+   pscale org update --org <org> --format json --spend-alert=true --spend-alert-amount 2500
+   pscale org update --org <org> --format json --spend-alert=false
    ```
 
    Organization members (email or the USER_ID from list):
