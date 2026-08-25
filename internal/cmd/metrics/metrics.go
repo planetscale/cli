@@ -26,6 +26,11 @@ or current value for use in scripts and analysis tools.`,
 	cmd.AddCommand(ShowCmd(ch))
 	cmd.AddCommand(InstantCmd(ch))
 	cmd.AddCommand(ReportCmd(ch))
+	cmd.AddCommand(QueriesCmd(ch))
+	cmd.AddCommand(TablesCmd(ch))
+	cmd.AddCommand(KeyspaceTablesCmd(ch))
+	cmd.AddCommand(TabletsCmd(ch))
+	cmd.AddCommand(TagsCmd(ch))
 
 	return cmd
 }

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	qt "github.com/frankban/quicktest"
+	"github.com/spf13/cobra"
 
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/config"
@@ -235,4 +236,169 @@ func TestInstantCmd_CSVFlattensValues(t *testing.T) {
 	c.Assert(lines[0], qt.Equals, "metric,label,dimensions,value")
 	c.Assert(lines[1], qt.Contains, "planetscale_volume_usage_percentage,volume_usage")
 	c.Assert(lines[1], qt.Contains, "71.4")
+}
+
+func TestQueriesCmd_ForwardsSupportedFilters(t *testing.T) {
+	c := qt.New(t)
+	service := &mock.MetricsService{
+		GetQuerySeriesFn: func(ctx context.Context, req *ps.GetQueryMetricSeriesRequest) (*ps.MetricSeries, error) {
+			c.Assert(req.Metrics, qt.DeepEquals, []string{"queries", "latency_p99"})
+			c.Assert(req.QueryIDs, qt.DeepEquals, []string{"query-1", "query-2"})
+			c.Assert(req.Fingerprint, qt.Equals, "fingerprint-1")
+			c.Assert(req.Keyspace, qt.Equals, "commerce")
+			c.Assert(req.Period, qt.Equals, "1h")
+			c.Assert(req.TabletType, qt.Equals, "replica")
+			c.Assert(req.BudgetID, qt.Equals, "budget-1")
+			c.Assert(req.RuleID, qt.Equals, "rule-1")
+			c.Assert(req.Search, qt.Equals, "checkout")
+			return sampleSeries(), nil
+		},
+	}
+
+	var buf bytes.Buffer
+	cmd := QueriesCmd(metricsTestHelper(&buf, printer.JSON, &ps.Client{Metrics: service}))
+	cmd.SetArgs([]string{
+		"mydb", "main",
+		"--metric", "queries,latency_p99",
+		"--query-id", "query-1,query-2",
+		"--fingerprint", "fingerprint-1",
+		"--keyspace", "commerce",
+		"--period", "1h",
+		"--tablet-type", "replica",
+		"--budget-id", "budget-1",
+		"--rule-id", "rule-1",
+		"--search", "checkout",
+	})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(service.GetQuerySeriesFnInvoked, qt.IsTrue)
+
+	var response ps.MetricSeries
+	c.Assert(json.Unmarshal(buf.Bytes(), &response), qt.IsNil)
+	c.Assert(response.Series, qt.HasLen, 1)
+}
+
+func TestStorageMetricsCommands_PreserveResponse(t *testing.T) {
+	c := qt.New(t)
+	tests := []struct {
+		name    string
+		command func(*cmdutil.Helper) *cobra.Command
+		service *mock.MetricsService
+	}{
+		{
+			name:    "tables",
+			command: TablesCmd,
+			service: &mock.MetricsService{
+				GetTablesFn: func(context.Context, *ps.GetBranchMetricsRequest) (json.RawMessage, error) {
+					return json.RawMessage(`{"users":{"bytes":1048576}}`), nil
+				},
+			},
+		},
+		{
+			name:    "keyspace tables",
+			command: KeyspaceTablesCmd,
+			service: &mock.MetricsService{
+				GetKeyspaceTablesFn: func(context.Context, *ps.GetBranchMetricsRequest) (json.RawMessage, error) {
+					return json.RawMessage(`{"commerce":{"users":{"bytes":1048576}}}`), nil
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		c.Run(test.name, func(c *qt.C) {
+			var buf bytes.Buffer
+			cmd := test.command(metricsTestHelper(&buf, printer.JSON, &ps.Client{Metrics: test.service}))
+			cmd.SetArgs([]string{"mydb", "main"})
+			c.Assert(cmd.Execute(), qt.IsNil)
+			c.Assert(json.Valid(buf.Bytes()), qt.IsTrue)
+			c.Assert(buf.String(), qt.Contains, "1048576")
+		})
+	}
+}
+
+func TestTabletsCmd_ForwardsSupportedFilters(t *testing.T) {
+	c := qt.New(t)
+	service := &mock.MetricsService{
+		GetTabletSeriesFn: func(ctx context.Context, req *ps.GetTabletMetricSeriesRequest) (*ps.MetricSeries, error) {
+			c.Assert(req.Metrics, qt.DeepEquals, []string{"replication_lag", "pod_cpu_usage"})
+			c.Assert(req.From, qt.Equals, "2026-08-18T16:00:00Z")
+			c.Assert(req.To, qt.Equals, "2026-08-18T17:00:00Z")
+			c.Assert(req.Steps, qt.Equals, 60)
+			c.Assert(req.Keyspace, qt.Equals, "commerce")
+			c.Assert(req.Shard, qt.Equals, "-80")
+			c.Assert(req.Pod, qt.Equals, "zone-a-0")
+			c.Assert(req.Workflow, qt.Equals, "move-tables")
+			return sampleSeries(), nil
+		},
+	}
+
+	var buf bytes.Buffer
+	cmd := TabletsCmd(metricsTestHelper(&buf, printer.JSON, &ps.Client{Metrics: service}))
+	cmd.SetArgs([]string{
+		"mydb", "main",
+		"--metric", "replication_lag,pod_cpu_usage",
+		"--from", "2026-08-18T16:00:00Z",
+		"--to", "2026-08-18T17:00:00Z",
+		"--steps", "60",
+		"--keyspace", "commerce",
+		"--shard", "-80",
+		"--pod", "zone-a-0",
+		"--workflow", "move-tables",
+	})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(service.GetTabletSeriesFnInvoked, qt.IsTrue)
+}
+
+func TestTabletsInstantCmd_UsesNestedUX(t *testing.T) {
+	c := qt.New(t)
+	service := &mock.MetricsService{
+		GetInstantTabletsFn: func(ctx context.Context, req *ps.GetInstantTabletMetricsRequest) (*ps.InstantMetrics, error) {
+			c.Assert(req.Metrics, qt.DeepEquals, []string{"replication_lag", "primary_cpu_usage"})
+			c.Assert(req.Keyspace, qt.Equals, "commerce")
+			c.Assert(req.Shard, qt.Equals, "-80")
+			return sampleInstantMetrics(), nil
+		},
+	}
+
+	var buf bytes.Buffer
+	cmd := TabletsCmd(metricsTestHelper(&buf, printer.JSON, &ps.Client{Metrics: service}))
+	cmd.SetArgs([]string{
+		"instant", "mydb", "main",
+		"--metric", "replication_lag,primary_cpu_usage",
+		"--keyspace", "commerce",
+		"--shard", "-80",
+	})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(service.GetInstantTabletsFnInvoked, qt.IsTrue)
+}
+
+func TestTagsCmd_ForwardsSupportedFilters(t *testing.T) {
+	c := qt.New(t)
+	service := &mock.MetricsService{
+		GetTagSeriesFn: func(ctx context.Context, req *ps.GetTagMetricSeriesRequest) (*ps.MetricSeries, error) {
+			c.Assert(req.Metrics, qt.DeepEquals, []string{"queries", "latency_p99"})
+			c.Assert(req.TagSets, qt.DeepEquals, []string{"service=checkout", "region=us-east"})
+			c.Assert(req.Period, qt.Equals, "1d")
+			c.Assert(req.TabletType, qt.Equals, "primary")
+			c.Assert(req.BudgetID, qt.Equals, "budget-1")
+			c.Assert(req.RuleID, qt.Equals, "rule-1")
+			c.Assert(req.Search, qt.Equals, "checkout")
+			return sampleSeries(), nil
+		},
+	}
+
+	var buf bytes.Buffer
+	cmd := TagsCmd(metricsTestHelper(&buf, printer.JSON, &ps.Client{Metrics: service}))
+	cmd.SetArgs([]string{
+		"mydb", "main",
+		"--metric", "queries,latency_p99",
+		"--tag-set", "service=checkout,region=us-east",
+		"--period", "1d",
+		"--tablet-type", "primary",
+		"--budget-id", "budget-1",
+		"--rule-id", "rule-1",
+		"--search", "checkout",
+	})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(service.GetTagSeriesFnInvoked, qt.IsTrue)
 }
