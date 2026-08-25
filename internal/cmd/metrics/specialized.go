@@ -47,6 +47,12 @@ func QueriesCmd(ch *cmdutil.Helper) *cobra.Command {
 			if err := validateQueryIDs(flags.queryIDs); err != nil {
 				return err
 			}
+			if err := validateQuerySelector(flags.queryIDs, flags.fingerprint, flags.keyspace); err != nil {
+				return err
+			}
+			if err := validateTrafficControlMetricFilters(flags.metrics, flags.budgetID, flags.ruleID); err != nil {
+				return err
+			}
 
 			client, err := ch.Client()
 			if err != nil {
@@ -88,6 +94,7 @@ func QueriesCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().StringSliceVar(&flags.queryIDs, "query-id", nil, "Filter by query pattern ID as <fingerprint>-<keyspace> (repeat or comma-separate)")
 	cmd.Flags().StringVar(&flags.fingerprint, "fingerprint", "", "Filter by query fingerprint")
 	cmd.Flags().StringVar(&flags.keyspace, "keyspace", "", "Keyspace for the query fingerprint")
+	cmd.MarkFlagRequired("metric") // nolint:errcheck
 
 	return cmd
 }
@@ -120,6 +127,9 @@ func TabletsCmd(ch *cmdutil.Helper) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := validateSpecializedSeriesFlags(cmd, flags.specializedSeriesFlags); err != nil {
 				return err
+			}
+			if flags.workflow != "" && !containsString(flags.metrics, "vreplication_lag") {
+				return fmt.Errorf("--workflow only applies to --metric vreplication_lag")
 			}
 
 			client, err := ch.Client()
@@ -159,6 +169,7 @@ func TabletsCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().StringVar(&flags.shard, "shard", "", "Filter by shard")
 	cmd.Flags().StringVar(&flags.pod, "pod", "", "Filter by pod")
 	cmd.Flags().StringVar(&flags.workflow, "workflow", "", "Filter by VReplication workflow")
+	cmd.MarkFlagRequired("metric") // nolint:errcheck
 	cmd.AddCommand(InstantTabletsCmd(ch))
 
 	return cmd
@@ -211,6 +222,7 @@ func InstantTabletsCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().StringSliceVar(&flags.metrics, "metric", nil, "Metric to query (repeat or comma-separate)")
 	cmd.Flags().StringVar(&flags.keyspace, "keyspace", "", "Filter by keyspace")
 	cmd.Flags().StringVar(&flags.shard, "shard", "", "Filter by shard")
+	cmd.MarkFlagRequired("metric") // nolint:errcheck
 
 	return cmd
 }
@@ -228,6 +240,12 @@ func TagsCmd(ch *cmdutil.Helper) *cobra.Command {
 		Args:  cmdutil.RequiredArgs("database", "branch"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := validateSpecializedSeriesFlags(cmd, flags.specializedSeriesFlags); err != nil {
+				return err
+			}
+			if len(flags.tagSets) == 0 {
+				return fmt.Errorf("at least one --tag-set must be provided")
+			}
+			if err := validateTrafficControlMetricFilters(flags.metrics, flags.budgetID, flags.ruleID); err != nil {
 				return err
 			}
 
@@ -272,6 +290,7 @@ func TagsCmd(ch *cmdutil.Helper) *cobra.Command {
 	addSpecializedSeriesFlags(cmd, &flags.specializedSeriesFlags)
 	addQueryDimensionFlags(cmd, &flags.queryDimensionFlags)
 	cmd.Flags().StringArrayVar(&flags.tagSets, "tag-set", nil, "Tag set as key=value pairs. Repeat for independent series; comma-separate keys in one set (for example Busername=alice,Senv=production)")
+	cmd.MarkFlagRequired("metric") // nolint:errcheck
 
 	return cmd
 }
@@ -288,6 +307,42 @@ func validateQueryIDs(ids []string) error {
 		}
 	}
 	return nil
+}
+
+func validateQuerySelector(ids []string, fingerprint, keyspace string) error {
+	hasIDs := len(ids) > 0
+	hasFingerprint := fingerprint != ""
+	hasKeyspace := keyspace != ""
+
+	if hasIDs && (hasFingerprint || hasKeyspace) {
+		return fmt.Errorf("--query-id cannot be combined with --fingerprint or --keyspace")
+	}
+	if hasFingerprint != hasKeyspace {
+		return fmt.Errorf("--fingerprint and --keyspace must be used together")
+	}
+	if !hasIDs && !hasFingerprint {
+		return fmt.Errorf("select at least one query with --query-id or with --fingerprint and --keyspace")
+	}
+	return nil
+}
+
+func validateTrafficControlMetricFilters(metrics []string, budgetID, ruleID string) error {
+	if budgetID == "" && ruleID == "" {
+		return nil
+	}
+	if containsString(metrics, "traffic_control_warnings") || containsString(metrics, "traffic_control_throttled") {
+		return nil
+	}
+	return fmt.Errorf("--budget-id and --rule-id only apply to --metric traffic_control_warnings or traffic_control_throttled")
+}
+
+func containsString(values []string, target string) bool {
+	for _, value := range values {
+		if value == target {
+			return true
+		}
+	}
+	return false
 }
 
 func parseTagSets(raw []string) ([]map[string]string, error) {
@@ -308,6 +363,9 @@ func parseTagSets(raw []string) ([]map[string]string, error) {
 			key = strings.TrimSpace(key)
 			if !ok || key == "" {
 				return nil, fmt.Errorf("invalid --tag-set %q; use key=value pairs with an Insights type prefix, for example Busername=alice", item)
+			}
+			if len(key) < 2 || (key[0] != 'B' && key[0] != 'S') {
+				return nil, fmt.Errorf("invalid tag key %q; keys must start with B (built-in) or S (custom), for example Busername or Sapplication", key)
 			}
 			set[key] = value
 		}

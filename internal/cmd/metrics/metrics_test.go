@@ -242,11 +242,8 @@ func TestQueriesCmd_ForwardsSupportedFilters(t *testing.T) {
 	c := qt.New(t)
 	service := &mock.MetricsService{
 		GetQuerySeriesFn: func(ctx context.Context, req *ps.GetQueryMetricSeriesRequest) (*ps.MetricSeries, error) {
-			c.Assert(req.Metrics, qt.DeepEquals, []string{"queries", "latency_p99"})
-			c.Assert(req.QueryIDs, qt.DeepEquals, []string{
-				strings.Repeat("a", 64) + "-commerce",
-				strings.Repeat("b", 64) + "-commerce",
-			})
+			c.Assert(req.Metrics, qt.DeepEquals, []string{"queries", "latency_p99", "traffic_control_warnings"})
+			c.Assert(req.QueryIDs, qt.HasLen, 0)
 			c.Assert(req.Fingerprint, qt.Equals, "fingerprint-1")
 			c.Assert(req.Keyspace, qt.Equals, "commerce")
 			c.Assert(req.Period, qt.Equals, "1h")
@@ -262,8 +259,7 @@ func TestQueriesCmd_ForwardsSupportedFilters(t *testing.T) {
 	cmd := QueriesCmd(metricsTestHelper(&buf, printer.JSON, &ps.Client{Metrics: service}))
 	cmd.SetArgs([]string{
 		"mydb", "main",
-		"--metric", "queries,latency_p99",
-		"--query-id", strings.Repeat("a", 64) + "-commerce," + strings.Repeat("b", 64) + "-commerce",
+		"--metric", "queries,latency_p99,traffic_control_warnings",
 		"--fingerprint", "fingerprint-1",
 		"--keyspace", "commerce",
 		"--period", "1h",
@@ -323,7 +319,7 @@ func TestTabletsCmd_ForwardsSupportedFilters(t *testing.T) {
 	c := qt.New(t)
 	service := &mock.MetricsService{
 		GetTabletSeriesFn: func(ctx context.Context, req *ps.GetTabletMetricSeriesRequest) (*ps.MetricSeries, error) {
-			c.Assert(req.Metrics, qt.DeepEquals, []string{"replication_lag", "pod_cpu_usage"})
+			c.Assert(req.Metrics, qt.DeepEquals, []string{"replication_lag", "pod_cpu_usage", "vreplication_lag"})
 			c.Assert(req.From, qt.Equals, "2026-08-18T16:00:00Z")
 			c.Assert(req.To, qt.Equals, "2026-08-18T17:00:00Z")
 			c.Assert(req.Steps, qt.Equals, 60)
@@ -339,7 +335,7 @@ func TestTabletsCmd_ForwardsSupportedFilters(t *testing.T) {
 	cmd := TabletsCmd(metricsTestHelper(&buf, printer.JSON, &ps.Client{Metrics: service}))
 	cmd.SetArgs([]string{
 		"mydb", "main",
-		"--metric", "replication_lag,pod_cpu_usage",
+		"--metric", "replication_lag,pod_cpu_usage,vreplication_lag",
 		"--from", "2026-08-18T16:00:00Z",
 		"--to", "2026-08-18T17:00:00Z",
 		"--steps", "60",
@@ -379,7 +375,7 @@ func TestTagsCmd_ForwardsSupportedFilters(t *testing.T) {
 	c := qt.New(t)
 	service := &mock.MetricsService{
 		GetTagSeriesFn: func(ctx context.Context, req *ps.GetTagMetricSeriesRequest) (*ps.MetricSeries, error) {
-			c.Assert(req.Metrics, qt.DeepEquals, []string{"queries", "latency_p99"})
+			c.Assert(req.Metrics, qt.DeepEquals, []string{"queries", "latency_p99", "traffic_control_warnings"})
 			c.Assert(req.TagSets, qt.DeepEquals, []map[string]string{
 				{"Busername": "alice", "Senv": "production"},
 				{"Busername": "bob"},
@@ -397,7 +393,7 @@ func TestTagsCmd_ForwardsSupportedFilters(t *testing.T) {
 	cmd := TagsCmd(metricsTestHelper(&buf, printer.JSON, &ps.Client{Metrics: service}))
 	cmd.SetArgs([]string{
 		"mydb", "main",
-		"--metric", "queries,latency_p99",
+		"--metric", "queries,latency_p99,traffic_control_warnings",
 		"--tag-set", "Busername=alice,Senv=production",
 		"--tag-set", "Busername=bob",
 		"--period", "1d",
@@ -439,4 +435,31 @@ func TestParseTagSets(t *testing.T) {
 
 	_, err = parseTagSets([]string{"alice"})
 	c.Assert(err, qt.ErrorMatches, `invalid --tag-set "alice"; use key=value pairs with an Insights type prefix, for example Busername=alice`)
+
+	_, err = parseTagSets([]string{"username=alice"})
+	c.Assert(err, qt.ErrorMatches, `invalid tag key "username"; keys must start with B \(built-in\) or S \(custom\), for example Busername or Sapplication`)
+}
+
+func TestValidateQuerySelector(t *testing.T) {
+	c := qt.New(t)
+	validID := strings.Repeat("a", 64) + "-commerce"
+
+	c.Assert(validateQuerySelector([]string{validID}, "", ""), qt.IsNil)
+	c.Assert(validateQuerySelector(nil, "fingerprint", "commerce"), qt.IsNil)
+	c.Assert(validateQuerySelector(nil, "", ""), qt.ErrorMatches, "select at least one query with --query-id or with --fingerprint and --keyspace")
+	c.Assert(validateQuerySelector(nil, "fingerprint", ""), qt.ErrorMatches, "--fingerprint and --keyspace must be used together")
+	c.Assert(validateQuerySelector([]string{validID}, "fingerprint", "commerce"), qt.ErrorMatches, "--query-id cannot be combined with --fingerprint or --keyspace")
+}
+
+func TestValidateTrafficControlMetricFilters(t *testing.T) {
+	c := qt.New(t)
+
+	c.Assert(validateTrafficControlMetricFilters([]string{"queries"}, "", ""), qt.IsNil)
+	c.Assert(validateTrafficControlMetricFilters([]string{"traffic_control_warnings"}, "budget", ""), qt.IsNil)
+	c.Assert(validateTrafficControlMetricFilters([]string{"traffic_control_throttled"}, "", "rule"), qt.IsNil)
+	c.Assert(
+		validateTrafficControlMetricFilters([]string{"queries"}, "budget", ""),
+		qt.ErrorMatches,
+		"--budget-id and --rule-id only apply to --metric traffic_control_warnings or traffic_control_throttled",
+	)
 }

@@ -253,9 +253,11 @@ pscale metrics tablets instant <database> <branch> --org <org> --format json --m
 pscale metrics tags <database> <branch> --org <org> --format json --metric queries --tag-set Busername=alice --tag-set Busername=bob --period 1h
 ```
 
-- For `metrics show` and `metrics instant`, `--metric` is required and may be repeated or comma-separated.
+- `--metric` is required for series and instant commands and may be repeated or comma-separated.
 - Specialized query, tablet, and tag metrics accept the filters exposed by their API endpoints. `--metric` and `--query-id` may be repeated or comma-separated. `--tag-set` is repeated for independent series; comma-separate keys inside one set (`Busername=alice,Senv=production`). Tag keys need the Insights type prefix from `insights tags`.
-- `metrics queries` returns series only for queries you select. Use `--fingerprint` with `--keyspace`, or `--query-id` as `<fingerprint>-<keyspace>`. The short `id` from `insights queries` is not a query pattern ID. Without a selector the response is an empty `series` array.
+- `metrics queries` requires a query selector. Use `--fingerprint` with `--keyspace`, or `--query-id` as `<fingerprint>-<keyspace>`. The short `id` from `insights queries` is not a query pattern ID.
+- `metrics tags` requires at least one `--tag-set`. `--budget-id` and `--rule-id` apply only to the `traffic_control_warnings` and `traffic_control_throttled` metrics.
+- `metrics tablets --workflow` applies only to `--metric vreplication_lag`.
 - Filters that match nothing return zero-filled series rather than an empty response, so check the point values, not the series count.
 - `metrics tables` and `metrics keyspace-tables` preserve the untyped storage-metrics API response in JSON.
 - `metrics report` detects whether the database uses MySQL or PostgreSQL and queries a curated set of performance sections. It supports `--period`, custom `--from`/`--to` ranges, and `--steps`; JSON returns a composite report and CSV includes the section name on each row.
