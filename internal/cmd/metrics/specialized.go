@@ -138,6 +138,27 @@ func TabletsCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			database, branch := args[0], args[1]
+			if flags.workflow != "" {
+				workflows, err := client.Workflows.List(cmd.Context(), &ps.ListWorkflowsRequest{
+					Organization: ch.Config.Organization,
+					Database:     database,
+				})
+				if err != nil {
+					return cmdutil.HandleError(err)
+				}
+
+				found := false
+				for _, workflow := range workflows {
+					if workflow.ID == flags.workflow && workflow.Branch.Name == branch {
+						found = true
+						break
+					}
+				}
+				if !found {
+					return fmt.Errorf("workflow %s does not exist on branch %s", printer.BoldBlue(flags.workflow), printer.BoldBlue(branch))
+				}
+			}
+
 			end := specializedMetricsProgress(ch, database, branch, "tablet")
 			defer end()
 

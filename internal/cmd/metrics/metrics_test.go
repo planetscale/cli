@@ -317,6 +317,15 @@ func TestStorageMetricsCommands_PreserveResponse(t *testing.T) {
 
 func TestTabletsCmd_ForwardsSupportedFilters(t *testing.T) {
 	c := qt.New(t)
+	workflows := &mock.WorkflowsService{
+		ListFn: func(ctx context.Context, req *ps.ListWorkflowsRequest) ([]*ps.Workflow, error) {
+			c.Assert(req.Database, qt.Equals, "mydb")
+			return []*ps.Workflow{{
+				ID:     "move-tables",
+				Branch: ps.DatabaseBranch{Name: "main"},
+			}}, nil
+		},
+	}
 	service := &mock.MetricsService{
 		GetTabletSeriesFn: func(ctx context.Context, req *ps.GetTabletMetricSeriesRequest) (*ps.MetricSeries, error) {
 			c.Assert(req.Metrics, qt.DeepEquals, []string{"replication_lag", "pod_cpu_usage", "vreplication_lag"})
@@ -332,7 +341,7 @@ func TestTabletsCmd_ForwardsSupportedFilters(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	cmd := TabletsCmd(metricsTestHelper(&buf, printer.JSON, &ps.Client{Metrics: service}))
+	cmd := TabletsCmd(metricsTestHelper(&buf, printer.JSON, &ps.Client{Metrics: service, Workflows: workflows}))
 	cmd.SetArgs([]string{
 		"mydb", "main",
 		"--metric", "replication_lag,pod_cpu_usage,vreplication_lag",
@@ -346,6 +355,7 @@ func TestTabletsCmd_ForwardsSupportedFilters(t *testing.T) {
 	})
 	c.Assert(cmd.Execute(), qt.IsNil)
 	c.Assert(service.GetTabletSeriesFnInvoked, qt.IsTrue)
+	c.Assert(workflows.ListFnInvoked, qt.IsTrue)
 }
 
 func TestTabletsInstantCmd_UsesNestedUX(t *testing.T) {
@@ -369,6 +379,33 @@ func TestTabletsInstantCmd_UsesNestedUX(t *testing.T) {
 	})
 	c.Assert(cmd.Execute(), qt.IsNil)
 	c.Assert(service.GetInstantTabletsFnInvoked, qt.IsTrue)
+}
+
+func TestTabletsCmd_RejectsUnknownWorkflow(t *testing.T) {
+	c := qt.New(t)
+	workflows := &mock.WorkflowsService{
+		ListFn: func(context.Context, *ps.ListWorkflowsRequest) ([]*ps.Workflow, error) {
+			return []*ps.Workflow{}, nil
+		},
+	}
+	service := &mock.MetricsService{
+		GetTabletSeriesFn: func(context.Context, *ps.GetTabletMetricSeriesRequest) (*ps.MetricSeries, error) {
+			c.Fatal("Metrics.GetTabletSeries should not be called")
+			return nil, nil
+		},
+	}
+
+	cmd := TabletsCmd(metricsTestHelper(&bytes.Buffer{}, printer.JSON, &ps.Client{
+		Metrics:   service,
+		Workflows: workflows,
+	}))
+	cmd.SetArgs([]string{
+		"mydb", "main",
+		"--metric", "vreplication_lag",
+		"--workflow", "missing",
+	})
+	c.Assert(cmd.Execute(), qt.ErrorMatches, "workflow missing does not exist on branch main")
+	c.Assert(service.GetTabletSeriesFnInvoked, qt.IsFalse)
 }
 
 func TestTagsCmd_ForwardsSupportedFilters(t *testing.T) {
