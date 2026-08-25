@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"testing"
+	"time"
 
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/config"
@@ -746,9 +747,27 @@ func TestBranch_CreateCmdWithRestorePoint(t *testing.T) {
 	org := "planetscale"
 	db := "planetscale"
 	branch := "development"
+	parentBranch := "main"
 	restorePoint := "2023-01-01T00:00:00Z"
+	backupID := "backup-id"
 
 	res := &ps.PostgresBranch{Name: branch}
+
+	backupSvc := &mock.BackupsService{
+		ListFn: func(ctx context.Context, req *ps.ListBackupsRequest) ([]*ps.Backup, error) {
+			c.Assert(req.Organization, qt.Equals, org)
+			c.Assert(req.Database, qt.Equals, db)
+			c.Assert(req.Branch, qt.Equals, parentBranch)
+			c.Assert(req.State, qt.Equals, "success")
+			c.Assert(req.To, qt.Equals, "2023-01-01T00:00:59.999Z")
+
+			return []*ps.Backup{{
+				PublicID:    backupID,
+				State:       "success",
+				CompletedAt: time.Date(2022, time.December, 31, 23, 0, 0, 0, time.UTC),
+			}}, nil
+		},
+	}
 
 	svc := &mock.PostgresBranchesService{
 		CreateFn: func(ctx context.Context, req *ps.CreatePostgresBranchRequest) (*ps.PostgresBranch, error) {
@@ -757,7 +776,8 @@ func TestBranch_CreateCmdWithRestorePoint(t *testing.T) {
 			c.Assert(req.Region, qt.Equals, "us-east")
 			c.Assert(req.Organization, qt.Equals, org)
 			c.Assert(req.RestorePoint, qt.Equals, restorePoint)
-			c.Assert(req.ParentBranch, qt.Equals, "main")
+			c.Assert(req.ParentBranch, qt.Equals, parentBranch)
+			c.Assert(req.BackupID, qt.Equals, backupID)
 			c.Assert(req.ClusterName, qt.Equals, "PS-10")
 
 			return res, nil
@@ -781,17 +801,103 @@ func TestBranch_CreateCmdWithRestorePoint(t *testing.T) {
 			return &ps.Client{
 				PostgresBranches: svc,
 				Databases:        dbSvc,
+				Backups:          backupSvc,
 			}, nil
 		},
 	}
 
 	cmd := CreateCmd(ch)
-	cmd.SetArgs([]string{db, branch, "--region", "us-east", "--from", "main", "--restore-point", restorePoint})
+	cmd.SetArgs([]string{db, branch, "--region", "us-east", "--from", parentBranch, "--restore-point", restorePoint})
 	err := cmd.Execute()
 
 	c.Assert(err, qt.IsNil)
+	c.Assert(backupSvc.ListFnInvoked, qt.IsTrue)
 	c.Assert(svc.CreateFnInvoked, qt.IsTrue)
 	c.Assert(buf.String(), qt.JSONEquals, res)
+}
+
+func TestBranch_CreateCmdWithRestorePointRequiresFrom(t *testing.T) {
+	c := qt.New(t)
+
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+
+	dbSvc := &mock.DatabaseService{
+		GetFn: func(ctx context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
+			return &ps.Database{Kind: "postgresql"}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: "planetscale"},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{Databases: dbSvc}, nil
+		},
+	}
+
+	cmd := CreateCmd(ch)
+	cmd.SetArgs([]string{"planetscale", "development", "--restore-point", "2023-01-01T00:00:00Z"})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.ErrorMatches, ".*--from is required.*")
+}
+
+func TestBranch_CreateCmdWithRestoreAndRestorePoint(t *testing.T) {
+	c := qt.New(t)
+
+	org := "planetscale"
+	db := "planetscale"
+	branch := "development"
+	parentBranch := "main"
+	restorePoint := "2023-01-01T00:00:00Z"
+	backupID := "explicit-backup"
+
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+
+	svc := &mock.PostgresBranchesService{
+		CreateFn: func(ctx context.Context, req *ps.CreatePostgresBranchRequest) (*ps.PostgresBranch, error) {
+			c.Assert(req.RestorePoint, qt.Equals, restorePoint)
+			c.Assert(req.ParentBranch, qt.Equals, parentBranch)
+			c.Assert(req.BackupID, qt.Equals, backupID)
+
+			return &ps.PostgresBranch{Name: branch}, nil
+		},
+	}
+
+	backupSvc := &mock.BackupsService{
+		ListFn: func(ctx context.Context, req *ps.ListBackupsRequest) ([]*ps.Backup, error) {
+			c.Fatal("List should not be called when --restore is provided with --restore-point")
+			return nil, nil
+		},
+	}
+
+	dbSvc := &mock.DatabaseService{
+		GetFn: func(ctx context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
+			return &ps.Database{Kind: "postgresql"}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: org},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{
+				PostgresBranches: svc,
+				Databases:        dbSvc,
+				Backups:          backupSvc,
+			}, nil
+		},
+	}
+
+	cmd := CreateCmd(ch)
+	cmd.SetArgs([]string{db, branch, "--from", parentBranch, "--restore", backupID, "--restore-point", restorePoint})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(backupSvc.ListFnInvoked, qt.IsFalse)
+	c.Assert(svc.CreateFnInvoked, qt.IsTrue)
 }
 
 func TestBranch_CreateCmdWithRestorePointMySQLError(t *testing.T) {

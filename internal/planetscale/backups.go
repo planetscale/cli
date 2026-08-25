@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 	"path"
 	"time"
 )
@@ -40,6 +41,8 @@ type ListBackupsRequest struct {
 	Organization string
 	Database     string
 	Branch       string
+	To           string
+	State        string
 }
 
 type GetBackupRequest struct {
@@ -111,7 +114,20 @@ func (d *backupsService) Get(ctx context.Context, getReq *GetBackupRequest) (*Ba
 
 // Returns all of the backups for a branch.
 func (d *backupsService) List(ctx context.Context, listReq *ListBackupsRequest) ([]*Backup, error) {
-	req, err := d.client.newRequest(http.MethodGet, backupsAPIPath(listReq.Organization, listReq.Database, listReq.Branch), nil)
+	query := url.Values{}
+	if listReq.To != "" {
+		query.Set("to", listReq.To)
+	}
+	if listReq.State != "" {
+		query.Set("state", listReq.State)
+	}
+
+	var opts []RequestOption
+	if len(query) > 0 {
+		opts = append(opts, WithQueryParams(query))
+	}
+
+	req, err := d.client.newRequest(http.MethodGet, backupsAPIPath(listReq.Organization, listReq.Database, listReq.Branch), nil, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating http request: %w", err)
 	}
