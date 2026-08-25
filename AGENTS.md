@@ -262,6 +262,7 @@ Two complementary read-only surfaces. When diagnosing database health or perform
 ```bash
 pscale insights queries <database> <branch> --org <org> --format json --sort totalTime   # top queries; sorts: totalTime, count, p99Latency, rowsRead, rowsReadPerReturned, errorCount, ...
 pscale insights queries samples <database> <branch> <fingerprint> --org <org> --format json --keyspace <keyspace>  # recent executions; keyspace from queries list
+pscale insights queries traffic-budgets <database> <branch> <fingerprint> --org <org> --format json --keyspace <keyspace>  # traffic budgets affecting a query fingerprint
 pscale insights errors <database> <branch> --org <org> --format json                     # failing queries with error messages
 pscale insights errors show <database> <branch> <fingerprint> --org <org> --format json  # individual queries behind one error fingerprint (use error_fingerprint from the errors list)
 pscale insights anomalies <database> <branch> --org <org> --format json                  # detected resource anomalies (CPU, memory, IOPS, rows)

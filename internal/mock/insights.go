@@ -13,6 +13,9 @@ type QueryInsightsService struct {
 	ListQuerySamplesFn        func(context.Context, *ps.ListQuerySamplesRequest, ...ps.ListOption) ([]*ps.QuerySample, error)
 	ListQuerySamplesFnInvoked bool
 
+	ListQueryTrafficBudgetsFn        func(context.Context, *ps.ListQueryTrafficBudgetsRequest, ...ps.ListOption) ([]*ps.TrafficBudget, error)
+	ListQueryTrafficBudgetsFnInvoked bool
+
 	ListErrorsFn        func(context.Context, *ps.ListQueryInsightsErrorsRequest, ...ps.ListOption) ([]*ps.QueryInsightError, error)
 	ListErrorsFnInvoked bool
 
@@ -53,6 +56,11 @@ func (s *QueryInsightsService) GetAnomaly(ctx context.Context, req *ps.GetAnomal
 func (s *QueryInsightsService) ListQuerySamples(ctx context.Context, req *ps.ListQuerySamplesRequest, opts ...ps.ListOption) ([]*ps.QuerySample, error) {
 	s.ListQuerySamplesFnInvoked = true
 	return s.ListQuerySamplesFn(ctx, req, opts...)
+}
+
+func (s *QueryInsightsService) ListQueryTrafficBudgets(ctx context.Context, req *ps.ListQueryTrafficBudgetsRequest, opts ...ps.ListOption) ([]*ps.TrafficBudget, error) {
+	s.ListQueryTrafficBudgetsFnInvoked = true
+	return s.ListQueryTrafficBudgetsFn(ctx, req, opts...)
 }
 
 func (s *QueryInsightsService) ListErrors(ctx context.Context, req *ps.ListQueryInsightsErrorsRequest, opts ...ps.ListOption) ([]*ps.QueryInsightError, error) {

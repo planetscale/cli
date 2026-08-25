@@ -120,6 +120,7 @@ func QueriesCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().StringVar(&flags.period, "period", "", "Time period to aggregate over (e.g. 1h, 1d)")
 
 	cmd.AddCommand(QuerySamplesCmd(ch))
+	cmd.AddCommand(QueryTrafficBudgetsCmd(ch))
 
 	return cmd
 }

@@ -15,6 +15,7 @@ var _ QueryInsightsService = &queryInsightsService{}
 type QueryInsightsService interface {
 	ListQueries(context.Context, *ListQueryInsightsRequest, ...ListOption) ([]*QueryInsight, error)
 	ListQuerySamples(context.Context, *ListQuerySamplesRequest, ...ListOption) ([]*QuerySample, error)
+	ListQueryTrafficBudgets(context.Context, *ListQueryTrafficBudgetsRequest, ...ListOption) ([]*TrafficBudget, error)
 	ListErrors(context.Context, *ListQueryInsightsErrorsRequest, ...ListOption) ([]*QueryInsightError, error)
 	ListErrorQueries(context.Context, *ListErrorQueriesRequest, ...ListOption) ([]*QuerySample, error)
 	ListAnomalies(context.Context, *ListAnomaliesRequest, ...ListOption) ([]*Anomaly, error)
@@ -167,6 +168,13 @@ type ListQuerySamplesRequest struct {
 	Fingerprint  string
 }
 
+type ListQueryTrafficBudgetsRequest struct {
+	Organization string
+	Database     string
+	Branch       string
+	Fingerprint  string
+}
+
 // WithSort returns a ListOption that sets the "sort" and "dir" URL parameters.
 func WithSort(sort, dir string) ListOption {
 	return func(opt *ListOptions) error {
@@ -301,6 +309,23 @@ func (s *queryInsightsService) ListQuerySamples(ctx context.Context, request *Li
 
 	resp := &querySamplesResponse{}
 	if err := s.client.do(ctx, req, &resp); err != nil {
+		return nil, err
+	}
+
+	return resp.Data, nil
+}
+
+func (s *queryInsightsService) ListQueryTrafficBudgets(ctx context.Context, request *ListQueryTrafficBudgetsRequest, opts ...ListOption) ([]*TrafficBudget, error) {
+	listOpts := defaultListOptions(opts...)
+
+	pathStr := path.Join(insightsFingerprintAPIPath(request.Organization, request.Database, request.Branch, request.Fingerprint), "traffic", "budgets")
+	req, err := s.client.newRequest(http.MethodGet, pathStr, nil, WithQueryParams(*listOpts.URLValues))
+	if err != nil {
+		return nil, err
+	}
+
+	resp := &trafficBudgetsResponse{}
+	if err := s.client.do(ctx, req, resp); err != nil {
 		return nil, err
 	}
 

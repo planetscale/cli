@@ -62,7 +62,7 @@ func BudgetListCmd(ch *cmdutil.Helper) *cobra.Command {
 				return nil
 			}
 
-			return ch.Printer.PrintResource(toTrafficBudgets(budgets))
+			return ch.Printer.PrintResource(ToTrafficBudgets(budgets))
 		},
 	}
 
