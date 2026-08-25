@@ -143,7 +143,6 @@ func TestOrganizations_UpdateClearsSpendAlertAmount(t *testing.T) {
 		c.Assert(json.NewDecoder(r.Body).Decode(&body), qt.IsNil)
 		c.Assert(body, qt.DeepEquals, map[string]interface{}{
 			"invoice_budget_alerts": false,
-			"invoice_budget_amount": nil,
 		})
 
 		w.WriteHeader(http.StatusOK)
@@ -162,7 +161,6 @@ func TestOrganizations_UpdateClearsSpendAlertAmount(t *testing.T) {
 	org, err := client.Organizations.Update(context.Background(), &UpdateOrganizationRequest{
 		Organization:        "my-cool-org",
 		InvoiceBudgetAlerts: Pointer(false),
-		ClearInvoiceBudget:  true,
 	})
 	c.Assert(err, qt.IsNil)
 	c.Assert(org.InvoiceBudgetAlerts, qt.IsFalse)

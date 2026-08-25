@@ -79,8 +79,8 @@ func UpdateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.MarkFlagRequired("org")
 	cmd.Flags().StringVar(&flags.billingEmail, "billing-email", "", "The billing email for the organization")
 	cmd.Flags().BoolVar(&flags.idpManagedRoles, "idp-managed-roles", false, "Whether the identity provider manages organization roles")
-	cmd.Flags().BoolVar(&flags.spendAlert, "spend-alert", false, "Enable or disable billing spend alerts")
-	cmd.Flags().Int64Var(&flags.spendAlertAmount, "spend-alert-amount", 0, "Monthly spend amount that triggers spend alerts")
+	cmd.Flags().BoolVar(&flags.spendAlert, "spend-alert", false, "Enable or disable billing spend alerts. Disabling keeps the current amount")
+	cmd.Flags().Int64Var(&flags.spendAlertAmount, "spend-alert-amount", 0, "Monthly spend amount that triggers spend alerts. Implies --spend-alert=true")
 
 	return cmd
 }
@@ -90,12 +90,17 @@ func applySpendAlert(cmd *cobra.Command, client *ps.Client, req *ps.UpdateOrgani
 	amountChanged := cmd.Flags().Changed("spend-alert-amount")
 
 	if alertChanged && !enabled {
+		if amountChanged {
+			return fmt.Errorf("--spend-alert-amount cannot be combined with --spend-alert=false")
+		}
 		req.InvoiceBudgetAlerts = boolPtr(false)
-		req.ClearInvoiceBudget = true
 		return nil
 	}
 
 	if amountChanged {
+		if amount < 1 || amount >= 100_000_000_000 {
+			return fmt.Errorf("--spend-alert-amount must be between 1 and 99999999999")
+		}
 		req.InvoiceBudgetAmount = &amount
 		req.InvoiceBudgetAlerts = boolPtr(true)
 		return nil

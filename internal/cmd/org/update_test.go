@@ -32,7 +32,6 @@ func TestOrganization_UpdateCmd(t *testing.T) {
 			c.Assert(*req.InvoiceBudgetAlerts, qt.IsTrue)
 			c.Assert(req.InvoiceBudgetAmount, qt.IsNotNil)
 			c.Assert(*req.InvoiceBudgetAmount, qt.Equals, int64(2500))
-			c.Assert(req.ClearInvoiceBudget, qt.IsFalse)
 			return &ps.Organization{
 				Name:                req.Organization,
 				BillingEmail:        *req.BillingEmail,
@@ -76,7 +75,6 @@ func TestOrganization_UpdateCmdDisablesSpendAlert(t *testing.T) {
 		UpdateFn: func(ctx context.Context, req *ps.UpdateOrganizationRequest) (*ps.Organization, error) {
 			c.Assert(req.InvoiceBudgetAlerts, qt.IsNotNil)
 			c.Assert(*req.InvoiceBudgetAlerts, qt.IsFalse)
-			c.Assert(req.ClearInvoiceBudget, qt.IsTrue)
 			c.Assert(req.InvoiceBudgetAmount, qt.IsNil)
 			return &ps.Organization{Name: req.Organization, InvoiceBudgetAlerts: false, InvoiceBudgetAmount: "0.0"}, nil
 		},
@@ -154,6 +152,54 @@ func TestOrganization_UpdateCmdRequiresUpdateFlag(t *testing.T) {
 	cmd := UpdateCmd(ch)
 	cmd.SetArgs([]string{"--org", "planetscale"})
 	c.Assert(cmd.Execute(), qt.ErrorMatches, "at least one of --billing-email, --idp-managed-roles, --spend-alert, or --spend-alert-amount must be provided")
+}
+
+func TestOrganization_UpdateCmdRejectsAmountWithDisabledSpendAlert(t *testing.T) {
+	c := qt.New(t)
+
+	svc := &mock.OrganizationsService{
+		UpdateFn: func(ctx context.Context, req *ps.UpdateOrganizationRequest) (*ps.Organization, error) {
+			c.Fatal("Organizations.Update should not be called")
+			return nil, nil
+		},
+	}
+
+	format := printer.JSON
+	ch := &cmdutil.Helper{
+		Printer: printer.NewPrinter(&format),
+		Config:  &config.Config{},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{Organizations: svc}, nil
+		},
+	}
+
+	cmd := UpdateCmd(ch)
+	cmd.SetArgs([]string{"--org", "planetscale", "--spend-alert=false", "--spend-alert-amount", "2500"})
+	c.Assert(cmd.Execute(), qt.ErrorMatches, "--spend-alert-amount cannot be combined with --spend-alert=false")
+}
+
+func TestOrganization_UpdateCmdRejectsOutOfRangeSpendAlertAmount(t *testing.T) {
+	c := qt.New(t)
+
+	svc := &mock.OrganizationsService{
+		UpdateFn: func(ctx context.Context, req *ps.UpdateOrganizationRequest) (*ps.Organization, error) {
+			c.Fatal("Organizations.Update should not be called")
+			return nil, nil
+		},
+	}
+
+	format := printer.JSON
+	ch := &cmdutil.Helper{
+		Printer: printer.NewPrinter(&format),
+		Config:  &config.Config{},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{Organizations: svc}, nil
+		},
+	}
+
+	cmd := UpdateCmd(ch)
+	cmd.SetArgs([]string{"--org", "planetscale", "--spend-alert-amount", "0"})
+	c.Assert(cmd.Execute(), qt.ErrorMatches, "--spend-alert-amount must be between 1 and 99999999999")
 }
 
 func TestOrganization_UpdateCmdRequiresOrganization(t *testing.T) {

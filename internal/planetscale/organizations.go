@@ -23,7 +23,6 @@ type UpdateOrganizationRequest struct {
 	IDPManagedRoles     *bool   `json:"idp_managed_roles,omitempty"`
 	InvoiceBudgetAlerts *bool   `json:"invoice_budget_alerts,omitempty"`
 	InvoiceBudgetAmount *int64  `json:"invoice_budget_amount,omitempty"`
-	ClearInvoiceBudget  bool    `json:"-"`
 }
 
 func (r *UpdateOrganizationRequest) MarshalJSON() ([]byte, error) {
@@ -37,10 +36,7 @@ func (r *UpdateOrganizationRequest) MarshalJSON() ([]byte, error) {
 	if r.InvoiceBudgetAlerts != nil {
 		body["invoice_budget_alerts"] = *r.InvoiceBudgetAlerts
 	}
-	switch {
-	case r.ClearInvoiceBudget:
-		body["invoice_budget_amount"] = nil
-	case r.InvoiceBudgetAmount != nil:
+	if r.InvoiceBudgetAmount != nil {
 		body["invoice_budget_amount"] = *r.InvoiceBudgetAmount
 	}
 	return json.Marshal(body)
