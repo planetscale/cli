@@ -13,6 +13,7 @@ var _ ServiceTokenService = &serviceTokenService{}
 // Service Token API.
 type ServiceTokenService interface {
 	Create(context.Context, *CreateServiceTokenRequest) (*ServiceToken, error)
+	Get(context.Context, *GetServiceTokenRequest) (*ServiceToken, error)
 	List(context.Context, *ListServiceTokensRequest) ([]*ServiceToken, error)
 	ListGrants(context.Context, *ListServiceTokenGrantsRequest) ([]*ServiceTokenGrant, error)
 	Delete(context.Context, *DeleteServiceTokenRequest) error
@@ -33,6 +34,20 @@ func (s *serviceTokenService) Create(ctx context.Context, createReq *CreateServi
 
 	st := &ServiceToken{}
 	if err := s.client.do(ctx, req, &st); err != nil {
+		return nil, err
+	}
+
+	return st, nil
+}
+
+func (s *serviceTokenService) Get(ctx context.Context, getReq *GetServiceTokenRequest) (*ServiceToken, error) {
+	req, err := s.client.newRequest(http.MethodGet, serviceTokenAPIPath(getReq.Organization, getReq.ID), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	st := &ServiceToken{}
+	if err := s.client.do(ctx, req, st); err != nil {
 		return nil, err
 	}
 
@@ -116,6 +131,11 @@ type CreateServiceTokenRequest struct {
 	Organization string  `json:"-"`
 	Name         *string `json:"name,omitempty"`
 	TTL          *int    `json:"ttl,omitempty"`
+}
+
+type GetServiceTokenRequest struct {
+	Organization string `json:"-"`
+	ID           string `json:"-"`
 }
 
 type ListServiceTokenGrantsRequest struct {
