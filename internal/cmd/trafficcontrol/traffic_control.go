@@ -88,7 +88,7 @@ func toTrafficBudget(b *ps.TrafficBudget) *TrafficBudget {
 	}
 }
 
-func toTrafficBudgets(budgets []*ps.TrafficBudget) []*TrafficBudget {
+func ToTrafficBudgets(budgets []*ps.TrafficBudget) []*TrafficBudget {
 	out := make([]*TrafficBudget, 0, len(budgets))
 	for _, b := range budgets {
 		out = append(out, toTrafficBudget(b))

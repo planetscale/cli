@@ -307,6 +307,56 @@ func TestQueryInsights_ListQuerySamples(t *testing.T) {
 	})
 }
 
+func TestQueryInsights_ListQueryTrafficBudgets(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		c.Assert(r.Method, qt.Equals, http.MethodGet)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/planetscale-go-test-db/branches/main/insights/b129e8fa/traffic/budgets")
+		c.Assert(r.URL.Query().Get("page"), qt.Equals, "2")
+		c.Assert(r.URL.Query().Get("per_page"), qt.Equals, "10")
+		c.Assert(r.URL.Query().Get("keyspace"), qt.Equals, "public")
+
+		out := `{
+			"type": "list",
+			"data": [{
+				"id": "budget-1",
+				"name": "App queries",
+				"mode": "enforce",
+				"capacity": 100,
+				"rate": 50,
+				"burst": null,
+				"concurrency": null,
+				"warning_threshold": 80,
+				"rules": [],
+				"actor": {"id": "actor-1", "display_name": "User", "avatar_url": ""},
+				"created_at": "2026-08-11T18:00:00.000Z",
+				"updated_at": "2026-08-11T18:00:00.000Z"
+			}]
+		}`
+		_, err := w.Write([]byte(out))
+		c.Assert(err, qt.IsNil)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	budgets, err := client.QueryInsights.ListQueryTrafficBudgets(context.Background(), &ListQueryTrafficBudgetsRequest{
+		Organization: testOrg,
+		Database:     testDatabase,
+		Branch:       "main",
+		Fingerprint:  "b129e8fa",
+	}, WithPage(2), WithPerPage(10), WithKeyspace("public"))
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(budgets, qt.HasLen, 1)
+	c.Assert(budgets[0].ID, qt.Equals, "budget-1")
+	c.Assert(budgets[0].Name, qt.Equals, "App queries")
+	c.Assert(*budgets[0].Capacity, qt.Equals, 100)
+}
+
 func TestQueryInsights_GetQuery(t *testing.T) {
 	c := qt.New(t)
 
