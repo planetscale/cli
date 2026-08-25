@@ -63,7 +63,7 @@ func DumpCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.PersistentFlags().BoolVar(&f.replica, "replica", false, "Dump from a replica tablet in the primary region (if available; will fail if not).")
 	cmd.PersistentFlags().BoolVar(&f.rdonly, "rdonly", false, "Dump from a rdonly tablet in the primary region (if available; will fail if not). Not for separate read-only regions — use --read-only-region instead.")
 	cmd.PersistentFlags().StringVar(&f.readOnlyRegion, "read-only-region", "",
-		"Dump from a Vitess read-only region (region slug, display name, or id). List regions with: pscale keyspace read-only-regions <database> <branch> <keyspace>.")
+		"Dump from a Vitess read-only region (region slug, display name, or id). List regions with: pscale database read-only-regions list <database>.")
 	cmd.PersistentFlags().StringVar(&f.tables, "tables", "",
 		"Comma separated string of tables to dump. By default all tables are dumped.")
 	cmd.PersistentFlags().StringVar(&f.wheres, "wheres", "",

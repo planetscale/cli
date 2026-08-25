@@ -3,6 +3,7 @@ package token
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/planetscale/cli/internal/cmdutil"
 	ps "github.com/planetscale/cli/internal/planetscale"
@@ -38,6 +39,7 @@ func TokenCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	cmd.AddCommand(CreateCmd(ch))
 	cmd.AddCommand(ListCmd(ch))
+	cmd.AddCommand(ShowCmd(ch))
 	cmd.AddCommand(ShowAccessCmd(ch))
 	cmd.AddCommand(AddAccessCmd(ch))
 	cmd.AddCommand(DeleteAccessCmd(ch))
@@ -86,6 +88,45 @@ func toServiceToken(st *ps.ServiceToken) *ServiceToken {
 		LastUsedAt: lastUsedAt,
 		ExpiresAt:  expiresAt,
 		CreatedAt:  printer.GetMilliseconds(st.CreatedAt),
+		orig:       st,
+	}
+}
+
+type ServiceTokenDetails struct {
+	ID         string `header:"id"`
+	Name       string `header:"name"`
+	LastUsedAt int64  `header:"last_used_at,timestamp(ms|utc|human)"`
+	ExpiresAt  int64  `header:"expires_at,timestamp(ms|utc|human)"`
+	CreatedAt  int64  `header:"created_at,timestamp(ms|utc|human)"`
+
+	orig *ps.ServiceToken
+}
+
+func (s *ServiceTokenDetails) MarshalJSON() ([]byte, error) {
+	return json.MarshalIndent(struct {
+		ID         string     `json:"id"`
+		Name       *string    `json:"name"`
+		CreatedAt  time.Time  `json:"created_at"`
+		LastUsedAt *time.Time `json:"last_used_at"`
+		ExpiresAt  *time.Time `json:"expires_at"`
+	}{
+		ID:         s.orig.ID,
+		Name:       s.orig.Name,
+		CreatedAt:  s.orig.CreatedAt,
+		LastUsedAt: s.orig.LastUsedAt,
+		ExpiresAt:  s.orig.ExpiresAt,
+	}, "", "  ")
+}
+
+func toServiceTokenDetails(st *ps.ServiceToken) *ServiceTokenDetails {
+	token := toServiceToken(st)
+
+	return &ServiceTokenDetails{
+		ID:         token.ID,
+		Name:       token.Name,
+		LastUsedAt: token.LastUsedAt,
+		ExpiresAt:  token.ExpiresAt,
+		CreatedAt:  token.CreatedAt,
 		orig:       st,
 	}
 }

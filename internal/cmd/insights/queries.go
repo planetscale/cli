@@ -121,6 +121,8 @@ func QueriesCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	cmd.AddCommand(QuerySamplesCmd(ch))
 	cmd.AddCommand(QueryTrafficBudgetsCmd(ch))
+	cmd.AddCommand(QueryShowCmd(ch))
+	cmd.AddCommand(QuerySummaryCmd(ch))
 
 	return cmd
 }

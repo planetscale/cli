@@ -357,6 +357,117 @@ func TestQueryInsights_ListQueryTrafficBudgets(t *testing.T) {
 	c.Assert(*budgets[0].Capacity, qt.Equals, 100)
 }
 
+func TestQueryInsights_GetQuery(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodGet)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/planetscale-go-test-db/branches/main/insights/queries/exec-1")
+
+		w.WriteHeader(200)
+		out := `{
+			"id": "exec-1",
+			"password": {"id": "password-1"},
+			"tags": [{"name": "Sapp", "value": "web"}],
+			"fingerprint": "b129e8fa",
+			"started_at": "2026-08-25T18:00:00.000Z",
+			"statement_type": "SELECT",
+			"keyspace": "main",
+			"tables": ["users"],
+			"username": "app",
+			"remote_address": "192.0.2.10",
+			"shard_queries": 1,
+			"rows_read": 2,
+			"rows_affected": 0,
+			"rows_returned": 1,
+			"total_duration_millis": 2.5,
+			"error_message": "",
+			"normalized_sql": "select * from users where id = ?",
+			"syntax_highlighted_sql": "select * from users where id = ?",
+			"created_at": "2026-08-25T18:00:01.000Z",
+			"updated_at": "2026-08-25T18:00:01.000Z",
+			"explainable": true,
+			"truncated": false
+		}`
+		_, err := w.Write([]byte(out))
+		c.Assert(err, qt.IsNil)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	query, err := client.QueryInsights.GetQuery(context.Background(), &GetQueryRequest{
+		Organization: testOrg,
+		Database:     testDatabase,
+		Branch:       "main",
+		QueryID:      "exec-1",
+	})
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(query.ID, qt.Equals, "exec-1")
+	c.Assert(query.Fingerprint, qt.Equals, "b129e8fa")
+	c.Assert(query.TotalDurationMillis, qt.Equals, 2.5)
+	c.Assert(query.StartedAt.IsZero(), qt.IsFalse)
+	c.Assert(query.Password["id"], qt.Equals, "password-1")
+	c.Assert(query.Tags[0]["value"], qt.Equals, "web")
+}
+
+func TestQueryInsights_GetQuerySummary(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodGet)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/planetscale-go-test-db/branches/main/insights/b129e8fa/summary")
+		c.Assert(r.URL.Query().Get("keyspace"), qt.Equals, "main")
+		c.Assert(r.URL.Query().Get("from"), qt.Equals, "2026-08-25T17:00:00Z")
+		c.Assert(r.URL.Query().Get("to"), qt.Equals, "2026-08-25T18:00:00Z")
+
+		w.WriteHeader(200)
+		out := `{
+			"id": "summary-1",
+			"fingerprint": "b129e8fa",
+			"statement_type": "SELECT",
+			"keyspace": "main",
+			"normalized_sql": "select * from users where id = ?",
+			"query_count": 20,
+			"error_count": 1,
+			"tables": ["users"],
+			"index_usages": [{"name": "PRIMARY", "count": 20}],
+			"sum_rows_read": 40,
+			"sum_rows_returned": 20,
+			"rows_read_per_returned": 2,
+			"sum_total_duration_millis": 50.5,
+			"last_run_at": "2026-08-25T18:00:00.000Z",
+			"time_per_query": 2.525,
+			"p50_latency": 2.1,
+			"p99_latency": 4.8,
+			"max_latency": 5.2
+		}`
+		_, err := w.Write([]byte(out))
+		c.Assert(err, qt.IsNil)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	summary, err := client.QueryInsights.GetQuerySummary(context.Background(), &GetQuerySummaryRequest{
+		Organization: testOrg,
+		Database:     testDatabase,
+		Branch:       "main",
+		Fingerprint:  "b129e8fa",
+	}, WithKeyspace("main"), WithTimeRange("2026-08-25T17:00:00Z", "2026-08-25T18:00:00Z"))
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(summary.ID, qt.Equals, "summary-1")
+	c.Assert(summary.Fingerprint, qt.Equals, "b129e8fa")
+	c.Assert(summary.QueryCount, qt.Equals, int64(20))
+	c.Assert(summary.SumTotalDurationMillis, qt.Equals, 50.5)
+	c.Assert(summary.IndexUsages[0]["name"], qt.Equals, "PRIMARY")
+	c.Assert(summary.LastRunAt.IsZero(), qt.IsFalse)
+}
+
 func TestQueryInsights_ListTags(t *testing.T) {
 	c := qt.New(t)
 

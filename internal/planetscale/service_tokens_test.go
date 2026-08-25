@@ -95,6 +95,41 @@ func TestServiceTokens_CreateWithTTL(t *testing.T) {
 	c.Assert(snapshot, qt.DeepEquals, want)
 }
 
+func TestServiceTokens_Get(t *testing.T) {
+	c := qt.New(t)
+
+	wantURL := "/v1/organizations/my-org/service-tokens/1234"
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodGet)
+		c.Assert(r.URL.String(), qt.Equals, wantURL)
+
+		out := `{"id":"1234","name":"my-token","token":null,"created_at":"2021-01-14T10:19:23.000Z","last_used_at":"2021-01-15T12:30:00.000Z","service_token_accesses":[{"access":"read_branch"}]}`
+		_, err := w.Write([]byte(out))
+		c.Assert(err, qt.IsNil)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	token, err := client.ServiceTokens.Get(context.Background(), &GetServiceTokenRequest{
+		Organization: testOrg,
+		ID:           "1234",
+	})
+
+	tokenName := "my-token"
+	lastUsedAt := time.Date(2021, 1, 15, 12, 30, 0, 0, time.UTC)
+	want := &ServiceToken{
+		ID:         "1234",
+		Name:       &tokenName,
+		CreatedAt:  time.Date(2021, 1, 14, 10, 19, 23, 0, time.UTC),
+		LastUsedAt: &lastUsedAt,
+	}
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(token, qt.DeepEquals, want)
+}
+
 func TestServiceTokens_ListGrants(t *testing.T) {
 	c := qt.New(t)
 

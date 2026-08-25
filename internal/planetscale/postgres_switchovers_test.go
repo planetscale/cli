@@ -85,3 +85,66 @@ func TestPostgresSwitchovers_CreateWithoutCandidate(t *testing.T) {
 	c.Assert(err, qt.IsNil)
 	c.Assert(switchover.ID, qt.Equals, "switchover-2")
 }
+
+func TestPostgresSwitchovers_List(t *testing.T) {
+	c := qt.New(t)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodGet)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/my-db/branches/main/switchovers")
+		c.Assert(r.URL.Query().Get("page"), qt.Equals, "2")
+		c.Assert(r.URL.Query().Get("per_page"), qt.Equals, "50")
+		_, err := w.Write([]byte(`{"data":[{"id":"switchover-1","state":"succeeded","method":"switchover","actor":{"id":"user-1","display_name":"Alice","avatar_url":"https://example.com/a.png"},"started_at":"2021-01-14T10:20:00.000Z","completed_at":"2021-01-14T10:21:00.000Z","created_at":"2021-01-14T10:19:23.000Z","updated_at":"2021-01-14T10:21:00.000Z"}]}`))
+		c.Assert(err, qt.IsNil)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+	got, err := client.PostgresSwitchovers.List(context.Background(), &ListPostgresSwitchoversRequest{
+		Organization: testOrg, Database: "my-db", Branch: "main",
+	}, WithPage(2), WithPerPage(50))
+	c.Assert(err, qt.IsNil)
+	c.Assert(got, qt.HasLen, 1)
+	c.Assert(got[0].ID, qt.Equals, "switchover-1")
+	c.Assert(got[0].Actor.Name, qt.Equals, "Alice")
+}
+
+func TestPostgresSwitchovers_ListEmptyUsesDefaultPagination(t *testing.T) {
+	c := qt.New(t)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.URL.Query().Get("per_page"), qt.Equals, "100")
+		_, err := w.Write([]byte(`{"data":[]}`))
+		c.Assert(err, qt.IsNil)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+	got, err := client.PostgresSwitchovers.List(context.Background(), &ListPostgresSwitchoversRequest{
+		Organization: testOrg, Database: "my-db", Branch: "main",
+	})
+	c.Assert(err, qt.IsNil)
+	c.Assert(got, qt.HasLen, 0)
+}
+
+func TestPostgresSwitchovers_Get(t *testing.T) {
+	c := qt.New(t)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodGet)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/my-db/branches/main/switchovers/switchover-1")
+		_, err := w.Write([]byte(`{"id":"switchover-1","state":"failed","method":"restart","error":"The branch is draining","actor":{"id":"user-1","display_name":"Alice","avatar_url":"https://example.com/a.png"},"started_at":"2021-01-14T10:20:00.000Z","completed_at":"2021-01-14T10:21:00.000Z","created_at":"2021-01-14T10:19:23.000Z","updated_at":"2021-01-14T10:21:00.000Z"}`))
+		c.Assert(err, qt.IsNil)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+	got, err := client.PostgresSwitchovers.Get(context.Background(), &GetPostgresSwitchoverRequest{
+		Organization: testOrg, Database: "my-db", Branch: "main", ID: "switchover-1",
+	})
+	c.Assert(err, qt.IsNil)
+	c.Assert(got.ID, qt.Equals, "switchover-1")
+	c.Assert(got.State, qt.Equals, "failed")
+	c.Assert(got.Method, qt.Equals, "restart")
+	c.Assert(got.Error, qt.Equals, "The branch is draining")
+}

@@ -119,6 +119,7 @@ func TestOrganizations_ListRegions(t *testing.T) {
 	c.Assert(err, qt.IsNil)
 	want := []*Region{
 		{
+			ID:      "my-cool-org",
 			Name:    "US East",
 			Slug:    "us-east",
 			Enabled: true,

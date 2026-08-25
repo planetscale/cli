@@ -16,6 +16,8 @@ type QueryInsightsService interface {
 	ListQueries(context.Context, *ListQueryInsightsRequest, ...ListOption) ([]*QueryInsight, error)
 	ListQuerySamples(context.Context, *ListQuerySamplesRequest, ...ListOption) ([]*QuerySample, error)
 	ListQueryTrafficBudgets(context.Context, *ListQueryTrafficBudgetsRequest, ...ListOption) ([]*TrafficBudget, error)
+	GetQuery(context.Context, *GetQueryRequest) (*Query, error)
+	GetQuerySummary(context.Context, *GetQuerySummaryRequest, ...ListOption) (*QuerySummary, error)
 	ListErrors(context.Context, *ListQueryInsightsErrorsRequest, ...ListOption) ([]*QueryInsightError, error)
 	ListErrorQueries(context.Context, *ListErrorQueriesRequest, ...ListOption) ([]*QuerySample, error)
 	ListAnomalies(context.Context, *ListAnomaliesRequest, ...ListOption) ([]*Anomaly, error)
@@ -160,6 +162,84 @@ type QuerySample struct {
 	Tags                []QuerySampleTag `json:"tags"`
 }
 
+type Query struct {
+	ID                   string           `json:"id"`
+	Password             map[string]any   `json:"password"`
+	Tags                 []map[string]any `json:"tags"`
+	Fingerprint          string           `json:"fingerprint"`
+	StartedAt            *time.Time       `json:"started_at"`
+	StatementType        string           `json:"statement_type"`
+	Keyspace             string           `json:"keyspace"`
+	Tables               []string         `json:"tables"`
+	Username             string           `json:"username"`
+	RemoteAddress        string           `json:"remote_address"`
+	ShardQueries         int64            `json:"shard_queries"`
+	RowsRead             int64            `json:"rows_read"`
+	RowsAffected         int64            `json:"rows_affected"`
+	RowsReturned         int64            `json:"rows_returned"`
+	TotalDurationMillis  float64          `json:"total_duration_millis"`
+	ErrorMessage         string           `json:"error_message"`
+	NormalizedSQL        string           `json:"normalized_sql"`
+	SyntaxHighlightedSQL string           `json:"syntax_highlighted_sql"`
+	CreatedAt            time.Time        `json:"created_at"`
+	UpdatedAt            time.Time        `json:"updated_at"`
+	Explainable          bool             `json:"explainable"`
+	Truncated            bool             `json:"truncated"`
+}
+
+type QuerySummary struct {
+	ID                      string           `json:"id"`
+	Fingerprint             string           `json:"fingerprint"`
+	StatementType           string           `json:"statement_type"`
+	Keyspace                string           `json:"keyspace"`
+	NormalizedSQL           string           `json:"normalized_sql"`
+	SyntaxHighlightedSQL    string           `json:"syntax_highlighted_sql"`
+	Multishard              bool             `json:"multishard"`
+	QueryCount              int64            `json:"query_count"`
+	ErrorCount              int64            `json:"error_count"`
+	Tables                  []string         `json:"tables"`
+	QualifiedTables         []string         `json:"qualified_tables"`
+	TableKeyspaces          []map[string]any `json:"table_keyspaces"`
+	IndexUsages             []map[string]any `json:"index_usages"`
+	RoutingIndexUsages      []map[string]any `json:"routing_index_usages"`
+	SumShardQueries         int64            `json:"sum_shard_queries"`
+	MaxShardQueries         int64            `json:"max_shard_queries"`
+	AvgShardQueries         float64          `json:"avg_shard_queries"`
+	AvgParallelWorkers      float64          `json:"avg_parallel_workers"`
+	SumRowsRead             int64            `json:"sum_rows_read"`
+	SumRowsAffected         int64            `json:"sum_rows_affected"`
+	SumRowsReturned         int64            `json:"sum_rows_returned"`
+	RowsReadPerReturned     float64          `json:"rows_read_per_returned"`
+	RowsReadPerQuery        float64          `json:"rows_read_per_query"`
+	RowsReturnedPerQuery    float64          `json:"rows_returned_per_query"`
+	RowsAffectedPerQuery    float64          `json:"rows_affected_per_query"`
+	SumTotalDurationMillis  float64          `json:"sum_total_duration_millis"`
+	SumTotalDurationPercent float64          `json:"sum_total_duration_percent"`
+	SumCPUDurationMillis    float64          `json:"sum_cpu_duration_millis"`
+	SumCPUDurationPercent   float64          `json:"sum_cpu_duration_percent"`
+	SumIODurationMillis     float64          `json:"sum_io_duration_millis"`
+	SumIODurationPercent    float64          `json:"sum_io_duration_percent"`
+	LastRunAt               *time.Time       `json:"last_run_at"`
+	TimePerQuery            float64          `json:"time_per_query"`
+	P50Latency              float64          `json:"p50_latency"`
+	P99Latency              float64          `json:"p99_latency"`
+	MaxLatency              float64          `json:"max_latency"`
+	EgressBytes             int64            `json:"egress_bytes"`
+	EgressBytesPerQuery     float64          `json:"egress_bytes_per_query"`
+	MaxEgressBytes          int64            `json:"max_egress_bytes"`
+	IngressBytes            int64            `json:"ingress_bytes"`
+	IngressBytesPerQuery    float64          `json:"ingress_bytes_per_query"`
+	MaxIngressBytes         int64            `json:"max_ingress_bytes"`
+	BlocksRead              int64            `json:"blocks_read"`
+	BlocksHit               int64            `json:"blocks_hit"`
+	BlockCacheHitRatio      float64          `json:"block_cache_hit_ratio"`
+	BlocksDirtied           int64            `json:"blocks_dirtied"`
+	BlocksWritten           int64            `json:"blocks_written"`
+	TrafficControlWarnings  int64            `json:"traffic_control_warnings"`
+	TrafficControlThrottled int64            `json:"traffic_control_throttled"`
+	TrafficControlChecked   int64            `json:"traffic_control_checked"`
+}
+
 // ListQuerySamplesRequest lists individual executions for a query fingerprint.
 type ListQuerySamplesRequest struct {
 	Organization string
@@ -169,6 +249,20 @@ type ListQuerySamplesRequest struct {
 }
 
 type ListQueryTrafficBudgetsRequest struct {
+	Organization string
+	Database     string
+	Branch       string
+	Fingerprint  string
+}
+
+type GetQueryRequest struct {
+	Organization string
+	Database     string
+	Branch       string
+	QueryID      string
+}
+
+type GetQuerySummaryRequest struct {
 	Organization string
 	Database     string
 	Branch       string
@@ -194,6 +288,18 @@ func WithPeriod(period string) ListOption {
 	return func(opt *ListOptions) error {
 		if period != "" {
 			opt.URLValues.Set("period", period)
+		}
+		return nil
+	}
+}
+
+func WithTimeRange(from, to string) ListOption {
+	return func(opt *ListOptions) error {
+		if from != "" {
+			opt.URLValues.Set("from", from)
+		}
+		if to != "" {
+			opt.URLValues.Set("to", to)
 		}
 		return nil
 	}
@@ -330,6 +436,38 @@ func (s *queryInsightsService) ListQueryTrafficBudgets(ctx context.Context, requ
 	}
 
 	return resp.Data, nil
+}
+
+func (s *queryInsightsService) GetQuery(ctx context.Context, request *GetQueryRequest) (*Query, error) {
+	pathStr := path.Join(insightsAPIPath(request.Organization, request.Database, request.Branch), "queries", request.QueryID)
+	req, err := s.client.newRequest(http.MethodGet, pathStr, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	query := &Query{}
+	if err := s.client.do(ctx, req, query); err != nil {
+		return nil, err
+	}
+
+	return query, nil
+}
+
+func (s *queryInsightsService) GetQuerySummary(ctx context.Context, request *GetQuerySummaryRequest, opts ...ListOption) (*QuerySummary, error) {
+	listOpts := defaultListOptions(opts...)
+
+	pathStr := path.Join(insightsFingerprintAPIPath(request.Organization, request.Database, request.Branch, request.Fingerprint), "summary")
+	req, err := s.client.newRequest(http.MethodGet, pathStr, nil, WithQueryParams(*listOpts.URLValues))
+	if err != nil {
+		return nil, err
+	}
+
+	summary := &QuerySummary{}
+	if err := s.client.do(ctx, req, summary); err != nil {
+		return nil, err
+	}
+
+	return summary, nil
 }
 
 func insightsAPIPath(org, db, branch string) string {

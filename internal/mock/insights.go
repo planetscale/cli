@@ -16,6 +16,12 @@ type QueryInsightsService struct {
 	ListQueryTrafficBudgetsFn        func(context.Context, *ps.ListQueryTrafficBudgetsRequest, ...ps.ListOption) ([]*ps.TrafficBudget, error)
 	ListQueryTrafficBudgetsFnInvoked bool
 
+	GetQueryFn        func(context.Context, *ps.GetQueryRequest) (*ps.Query, error)
+	GetQueryFnInvoked bool
+
+	GetQuerySummaryFn        func(context.Context, *ps.GetQuerySummaryRequest, ...ps.ListOption) (*ps.QuerySummary, error)
+	GetQuerySummaryFnInvoked bool
+
 	ListErrorsFn        func(context.Context, *ps.ListQueryInsightsErrorsRequest, ...ps.ListOption) ([]*ps.QueryInsightError, error)
 	ListErrorsFnInvoked bool
 
@@ -61,6 +67,16 @@ func (s *QueryInsightsService) ListQuerySamples(ctx context.Context, req *ps.Lis
 func (s *QueryInsightsService) ListQueryTrafficBudgets(ctx context.Context, req *ps.ListQueryTrafficBudgetsRequest, opts ...ps.ListOption) ([]*ps.TrafficBudget, error) {
 	s.ListQueryTrafficBudgetsFnInvoked = true
 	return s.ListQueryTrafficBudgetsFn(ctx, req, opts...)
+}
+
+func (s *QueryInsightsService) GetQuery(ctx context.Context, req *ps.GetQueryRequest) (*ps.Query, error) {
+	s.GetQueryFnInvoked = true
+	return s.GetQueryFn(ctx, req)
+}
+
+func (s *QueryInsightsService) GetQuerySummary(ctx context.Context, req *ps.GetQuerySummaryRequest, opts ...ps.ListOption) (*ps.QuerySummary, error) {
+	s.GetQuerySummaryFnInvoked = true
+	return s.GetQuerySummaryFn(ctx, req, opts...)
 }
 
 func (s *QueryInsightsService) ListErrors(ctx context.Context, req *ps.ListQueryInsightsErrorsRequest, opts ...ps.ListOption) ([]*ps.QueryInsightError, error) {

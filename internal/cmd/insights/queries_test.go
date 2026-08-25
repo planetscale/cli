@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"net/url"
 	"testing"
 	"time"
 
@@ -76,6 +77,19 @@ func TestInsights_QueriesCmd_InvalidSort(t *testing.T) {
 
 	c.Assert(err, qt.IsNotNil)
 	c.Assert(err.Error(), qt.Contains, `invalid --sort "bogus"`)
+}
+
+func TestInsights_QueriesCmd_RegistersShowAndSummary(t *testing.T) {
+	c := qt.New(t)
+	cmd := QueriesCmd(testHelper(&bytes.Buffer{}, printer.JSON, &ps.Client{}))
+
+	show, _, err := cmd.Find([]string{"show"})
+	c.Assert(err, qt.IsNil)
+	c.Assert(show.Name(), qt.Equals, "show")
+
+	summary, _, err := cmd.Find([]string{"summary"})
+	c.Assert(err, qt.IsNil)
+	c.Assert(summary.Name(), qt.Equals, "summary")
 }
 
 func TestInsights_ErrorsCmd(t *testing.T) {
@@ -269,6 +283,195 @@ func TestInsights_QuerySamplesCmd_RequiresKeyspace(t *testing.T) {
 	c.Assert(err, qt.IsNotNil)
 	c.Assert(err.Error(), qt.Contains, "keyspace")
 	c.Assert(svc.ListQuerySamplesFnInvoked, qt.IsFalse)
+}
+
+func TestInsights_QueryShowCmd(t *testing.T) {
+	c := qt.New(t)
+	startedAt := time.Date(2026, 8, 25, 18, 0, 0, 0, time.UTC)
+
+	svc := &mock.QueryInsightsService{
+		GetQueryFn: func(ctx context.Context, req *ps.GetQueryRequest) (*ps.Query, error) {
+			c.Assert(req.Organization, qt.Equals, "planetscale")
+			c.Assert(req.Database, qt.Equals, "mydb")
+			c.Assert(req.Branch, qt.Equals, "main")
+			c.Assert(req.QueryID, qt.Equals, "exec-1")
+			return &ps.Query{
+				ID:                  "exec-1",
+				Fingerprint:         "b129e8fa",
+				StartedAt:           &startedAt,
+				StatementType:       "SELECT",
+				Keyspace:            "mydb",
+				Username:            "app",
+				RowsRead:            2,
+				RowsReturned:        1,
+				TotalDurationMillis: 2.5,
+				NormalizedSQL:       "select * from users where id = ?",
+			}, nil
+		},
+	}
+
+	var buf bytes.Buffer
+	ch := testHelper(&buf, printer.JSON, &ps.Client{QueryInsights: svc})
+
+	cmd := QueryShowCmd(ch)
+	cmd.SetArgs([]string{"mydb", "main", "exec-1"})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.GetQueryFnInvoked, qt.IsTrue)
+
+	var out map[string]any
+	c.Assert(json.Unmarshal(buf.Bytes(), &out), qt.IsNil)
+	c.Assert(out["id"], qt.Equals, "exec-1")
+	c.Assert(out["fingerprint"], qt.Equals, "b129e8fa")
+}
+
+func TestInsights_QueryShowCmd_Human(t *testing.T) {
+	c := qt.New(t)
+	svc := &mock.QueryInsightsService{
+		GetQueryFn: func(ctx context.Context, req *ps.GetQueryRequest) (*ps.Query, error) {
+			return &ps.Query{
+				ID:            "exec-1",
+				Fingerprint:   "b129e8fa",
+				StatementType: "SELECT",
+				Keyspace:      "mydb",
+				NormalizedSQL: "select 1",
+			}, nil
+		},
+	}
+
+	var buf bytes.Buffer
+	ch := testHelper(&buf, printer.Human, &ps.Client{QueryInsights: svc})
+
+	cmd := QueryShowCmd(ch)
+	cmd.SetArgs([]string{"mydb", "main", "exec-1"})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(buf.String(), qt.Contains, "exec-1")
+	c.Assert(buf.String(), qt.Contains, "b129e8fa")
+	c.Assert(buf.String(), qt.Contains, "select 1")
+}
+
+func TestInsights_QuerySummaryCmd(t *testing.T) {
+	c := qt.New(t)
+	lastRunAt := time.Date(2026, 8, 25, 18, 0, 0, 0, time.UTC)
+
+	svc := &mock.QueryInsightsService{
+		GetQuerySummaryFn: func(ctx context.Context, req *ps.GetQuerySummaryRequest, opts ...ps.ListOption) (*ps.QuerySummary, error) {
+			c.Assert(req.Organization, qt.Equals, "planetscale")
+			c.Assert(req.Database, qt.Equals, "mydb")
+			c.Assert(req.Branch, qt.Equals, "main")
+			c.Assert(req.Fingerprint, qt.Equals, "b129e8fa")
+
+			values := url.Values{}
+			listOpts := &ps.ListOptions{URLValues: &values}
+			for _, opt := range opts {
+				c.Assert(opt(listOpts), qt.IsNil)
+			}
+			c.Assert(values.Get("keyspace"), qt.Equals, "mydb")
+			c.Assert(values.Get("period"), qt.Equals, "1h")
+
+			return &ps.QuerySummary{
+				ID:                     "summary-1",
+				Fingerprint:            "b129e8fa",
+				Keyspace:               "mydb",
+				StatementType:          "SELECT",
+				QueryCount:             20,
+				SumRowsRead:            40,
+				SumRowsReturned:        20,
+				SumTotalDurationMillis: 50.5,
+				LastRunAt:              &lastRunAt,
+				NormalizedSQL:          "select * from users where id = ?",
+			}, nil
+		},
+	}
+
+	var buf bytes.Buffer
+	ch := testHelper(&buf, printer.JSON, &ps.Client{QueryInsights: svc})
+
+	cmd := QuerySummaryCmd(ch)
+	cmd.SetArgs([]string{"mydb", "main", "b129e8fa", "--keyspace", "mydb", "--period", "1h"})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.GetQuerySummaryFnInvoked, qt.IsTrue)
+
+	var out map[string]any
+	c.Assert(json.Unmarshal(buf.Bytes(), &out), qt.IsNil)
+	c.Assert(out["fingerprint"], qt.Equals, "b129e8fa")
+	c.Assert(out["query_count"], qt.Equals, float64(20))
+}
+
+func TestInsights_QuerySummaryCmd_Human(t *testing.T) {
+	c := qt.New(t)
+	svc := &mock.QueryInsightsService{
+		GetQuerySummaryFn: func(ctx context.Context, req *ps.GetQuerySummaryRequest, opts ...ps.ListOption) (*ps.QuerySummary, error) {
+			return &ps.QuerySummary{
+				Fingerprint:   "b129e8fa",
+				Keyspace:      "mydb",
+				StatementType: "SELECT",
+				QueryCount:    20,
+				NormalizedSQL: "select 1",
+			}, nil
+		},
+	}
+
+	var buf bytes.Buffer
+	ch := testHelper(&buf, printer.Human, &ps.Client{QueryInsights: svc})
+
+	cmd := QuerySummaryCmd(ch)
+	cmd.SetArgs([]string{"mydb", "main", "b129e8fa", "--keyspace", "mydb"})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(buf.String(), qt.Contains, "b129e8fa")
+	c.Assert(buf.String(), qt.Contains, "20")
+	c.Assert(buf.String(), qt.Contains, "select 1")
+}
+
+func TestInsights_QuerySummaryCmd_RequiresKeyspace(t *testing.T) {
+	c := qt.New(t)
+	svc := &mock.QueryInsightsService{}
+	ch := testHelper(&bytes.Buffer{}, printer.JSON, &ps.Client{QueryInsights: svc})
+
+	cmd := QuerySummaryCmd(ch)
+	cmd.SetArgs([]string{"mydb", "main", "b129e8fa"})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNotNil)
+	c.Assert(err.Error(), qt.Contains, "keyspace")
+	c.Assert(svc.GetQuerySummaryFnInvoked, qt.IsFalse)
+}
+
+func TestInsights_QuerySummaryCmd_ValidatesTimeRange(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{
+			name: "from requires to",
+			args: []string{"mydb", "main", "b129e8fa", "--keyspace", "mydb", "--from", "2026-08-25T17:00:00Z"},
+			want: "--from and --to must be used together",
+		},
+		{
+			name: "period conflicts with range",
+			args: []string{"mydb", "main", "b129e8fa", "--keyspace", "mydb", "--period", "1h", "--from", "2026-08-25T17:00:00Z", "--to", "2026-08-25T18:00:00Z"},
+			want: "--period cannot be combined with --from and --to",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := qt.New(t)
+			svc := &mock.QueryInsightsService{}
+			ch := testHelper(&bytes.Buffer{}, printer.JSON, &ps.Client{QueryInsights: svc})
+
+			cmd := QuerySummaryCmd(ch)
+			cmd.SetArgs(tt.args)
+			err := cmd.Execute()
+
+			c.Assert(err, qt.ErrorMatches, tt.want)
+			c.Assert(svc.GetQuerySummaryFnInvoked, qt.IsFalse)
+		})
+	}
 }
 
 func TestInsights_TagsCmd(t *testing.T) {

@@ -49,6 +49,11 @@ type ListDatabasesRequest struct {
 	Organization string
 }
 
+type ListDatabaseRegionsRequest struct {
+	Organization string
+	Database     string
+}
+
 // DeleteDatabaseRequest encapsulates the request for deleting a database from
 // an organization.
 type DeleteDatabaseRequest struct {
@@ -116,6 +121,7 @@ type DatabasesService interface {
 	Create(context.Context, *CreateDatabaseRequest) (*Database, error)
 	Get(context.Context, *GetDatabaseRequest) (*Database, error)
 	List(context.Context, *ListDatabasesRequest, ...ListOption) ([]*Database, error)
+	ListRegions(context.Context, *ListDatabaseRegionsRequest, ...ListOption) ([]*Region, error)
 	Delete(context.Context, *DeleteDatabaseRequest) (*DatabaseDeletionRequest, error)
 	UpdateSettings(context.Context, *UpdateDatabaseSettingsRequest) (*Database, error)
 	GetThrottler(context.Context, *GetDatabaseThrottlerRequest) (*DatabaseThrottler, error)
@@ -207,6 +213,29 @@ func (ds *databasesService) List(ctx context.Context, listReq *ListDatabasesRequ
 	}
 
 	return dbResponse.Databases, nil
+}
+
+func (ds *databasesService) ListRegions(ctx context.Context, listReq *ListDatabaseRegionsRequest, opts ...ListOption) ([]*Region, error) {
+	pathStr := path.Join(databasesAPIPath(listReq.Organization), listReq.Database, "regions")
+
+	defaultOpts := defaultListOptions(WithPerPage(100))
+	for _, opt := range opts {
+		if err := opt(defaultOpts); err != nil {
+			return nil, err
+		}
+	}
+
+	req, err := ds.client.newRequest(http.MethodGet, pathStr, nil, WithQueryParams(*defaultOpts.URLValues))
+	if err != nil {
+		return nil, fmt.Errorf("error creating request for list database regions: %w", err)
+	}
+
+	resp := &regionsResponse{}
+	if err := ds.client.do(ctx, req, resp); err != nil {
+		return nil, err
+	}
+
+	return resp.Regions, nil
 }
 
 func (ds *databasesService) Create(ctx context.Context, createReq *CreateDatabaseRequest) (*Database, error) {

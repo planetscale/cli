@@ -27,3 +27,17 @@ func TestServiceToken_TokenCmd_ServiceTokenAuth(t *testing.T) {
 	c.Assert(err, qt.IsNotNil)
 	c.Assert(err.Error(), qt.Equals, " is unavailable when authenticated with a service token")
 }
+
+func TestServiceToken_TokenCmdRegistersShowSeparatelyFromShowAccess(t *testing.T) {
+	c := qt.New(t)
+
+	cmd := TokenCmd(&cmdutil.Helper{Config: &config.Config{}})
+
+	show, _, err := cmd.Find([]string{"show"})
+	c.Assert(err, qt.IsNil)
+	c.Assert(show.Name(), qt.Equals, "show")
+
+	showAccess, _, err := cmd.Find([]string{"show-access"})
+	c.Assert(err, qt.IsNil)
+	c.Assert(showAccess.Name(), qt.Equals, "show-access")
+}

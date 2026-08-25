@@ -9,12 +9,16 @@ import (
 const regionsAPIPath = "v1/regions"
 
 type Region struct {
-	Slug      string `json:"slug"`
-	Provider  string `json:"provider"`
-	Name      string `json:"display_name"`
-	Location  string `json:"location"`
-	Enabled   bool   `json:"enabled"`
-	IsDefault bool   `json:"current_default"`
+	ID                  string   `json:"id"`
+	Slug                string   `json:"slug"`
+	Provider            string   `json:"provider"`
+	Name                string   `json:"display_name"`
+	Location            string   `json:"location"`
+	Enabled             bool     `json:"enabled"`
+	IsDefault           bool     `json:"current_default"`
+	PublicIPAddresses   []string `json:"public_ip_addresses"`
+	MySQLSupported      bool     `json:"mysql_supported"`
+	PostgreSQLSupported bool     `json:"postgresql_supported"`
 }
 
 type regionsResponse struct {

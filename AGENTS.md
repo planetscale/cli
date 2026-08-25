@@ -101,8 +101,14 @@ pscale --org <org> database list --format json
 
    ```bash
    pscale database list --org <org> --format json
+   pscale database regions list <database> --org <org> --format json
+   pscale database read-only-regions list <database> --org <org> --format json
    pscale branch list <database> --org <org> --format json
    ```
+
+   `database regions list` returns the regions available to that database for
+   its engine. `database read-only-regions list` returns configured Vitess
+   read-only regions for the database's default branch.
 
 6. **Query** (read-only default):
 
@@ -263,6 +269,8 @@ Two complementary read-only surfaces. When diagnosing database health or perform
 pscale insights queries <database> <branch> --org <org> --format json --sort totalTime   # top queries; sorts: totalTime, count, p99Latency, rowsRead, rowsReadPerReturned, errorCount, ...
 pscale insights queries samples <database> <branch> <fingerprint> --org <org> --format json --keyspace <keyspace>  # recent executions; keyspace from queries list
 pscale insights queries traffic-budgets <database> <branch> <fingerprint> --org <org> --format json --keyspace <keyspace>  # traffic budgets affecting a query fingerprint
+pscale insights queries show <database> <branch> <query-id> --org <org> --format json     # one execution; query-id comes from the samples list
+pscale insights queries summary <database> <branch> <fingerprint> --org <org> --format json --keyspace <keyspace>  # aggregate stats for one query pattern
 pscale insights errors <database> <branch> --org <org> --format json                     # failing queries with error messages
 pscale insights errors show <database> <branch> <fingerprint> --org <org> --format json  # individual queries behind one error fingerprint (use error_fingerprint from the errors list)
 pscale insights anomalies <database> <branch> --org <org> --format json                  # detected resource anomalies (CPU, memory, IOPS, rows)
@@ -270,11 +278,14 @@ pscale insights anomalies show <database> <branch> <id> --org <org> --format jso
 pscale insights tags <database> <branch> --org <org> --format json                       # query tag keys (sqlcommenter / system); use names with summaries
 pscale insights tags summaries <database> <branch> --org <org> --format json --tags username  # stats grouped by tag; names match the Insights UI Key picker
 pscale insights recommendations <database> --org <org> --format json                     # schema recommendations with ready-to-apply DDL
+pscale insights recommendations show <database> <number> --org <org> --format json        # one recommendation plus full DDL (number from list)
 pscale insights recommendations dismiss <database> <number> --org <org> --format json --force  # dismiss a recommendation
 pscale branch query-patterns list <database> <branch> --org <org> --format json
 pscale branch query-patterns show <database> <branch> <report-id> --org <org> --format json
 pscale branch query-patterns delete <database> <branch> <report-id> --org <org> --format json --force
 ```
+
+`queries show` takes an individual execution/sample `id`; `queries samples` and `queries summary` take a query `fingerprint`. These identifiers are not interchangeable. `queries summary` requires the keyspace from the queries list and accepts `--period`, or a paired `--from`/`--to` ISO 8601 range.
 
 `branch query-patterns download` generates a new report, waits, and writes CSV. Use list/show/delete for reports that already exist.
 
@@ -418,13 +429,19 @@ pscale branch switchover <database> <branch> --org <org> --format json
 
 # Promote a specific replica (names from `pscale branch infra`)
 pscale branch switchover <database> <branch> --org <org> --format json --candidate <replica-name>
+
+# List switchovers for a branch (supports --page and --per-page)
+pscale branch switchover list <database> <branch> --org <org> --format json
+
+# Show current status and details for one switchover
+pscale branch switchover show <database> <branch> <id> --org <org> --format json
 ```
 
 - The command returns the created switchover (`id`, `state`, `method`) and exits; it does not wait. A fresh switchover is `pending` and `method` is empty until the operator picks one.
 - `method` is `switchover` (replica promoted) for branches with replicas, or `restart` for single-node branches, which are restarted in place and unreachable while they come back. Warn the user before running this against a single-node branch.
 - Writes are briefly interrupted while the switch completes. A branch accepts one switchover at a time.
 - A switchover that ends in `failed` has an unconfirmed outcome: the primary may still have moved and nothing is rolled back. Check the current primary with `pscale branch infra <database> <branch> --org <org> --format json` before retrying.
-- `--candidate` is rejected for branches without replicas. Poll status with `pscale api organizations/<org>/databases/<database>/branches/<branch>/switchovers/<id>`.
+- `--candidate` is rejected for branches without replicas. Poll status with `pscale branch switchover show <database> <branch> <id> --org <org> --format json`.
 
 ## Postgres branch maintenance
 
