@@ -184,11 +184,11 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 				return ch.Printer.PrintResource(ToDatabaseBranch(dbBranch))
 			} else {
 				if flags.restorePoint != "" {
-					if flags.parentBranch == "" {
-						return fmt.Errorf("--from is required when using --restore-point")
-					}
-
 					if flags.backupID == "" {
+						if flags.parentBranch == "" {
+							return fmt.Errorf("--from is required when using --restore-point without --restore")
+						}
+
 						backupID, err := cmdutil.BackupIDForRestorePoint(ctx, client, ch.Config.Organization, source, flags.parentBranch, flags.restorePoint)
 						if err != nil {
 							return err
@@ -266,10 +266,10 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&flags.parentBranch, "from", "", "Parent branch to create the new branch from. Required with --restore-point. Cannot be used with --restore unless --restore-point is also set.")
+	cmd.Flags().StringVar(&flags.parentBranch, "from", "", "Parent branch to create the new branch from. Cannot be used with --restore unless --restore-point is set.")
 	cmd.Flags().StringVar(&flags.region, "region", "", "Region for the branch to be created in.")
 	cmd.Flags().StringVar(&flags.backupID, "restore", "", "ID of Backup to restore into branch.")
-	cmd.Flags().StringVar(&flags.restorePoint, "restore-point", "", "For PostgreSQL databases, restore from a point-in-time recovery timestamp (e.g. 2023-01-01T00:00:00Z). Requires --from. The CLI selects a backup at or before the restore point and sends it with the restore point to the API.")
+	cmd.Flags().StringVar(&flags.restorePoint, "restore-point", "", "For PostgreSQL databases, restore from a point-in-time recovery timestamp (e.g. 2023-01-01T00:00:00Z). Requires --restore or --from.")
 	cmd.Flags().StringVar(&flags.clusterSize, "cluster-size", "", "Cluster size for the branch. Defaults to PS_DEV for regular branches, or PS-10 for branches created from a backup or with seed-data. Use 'pscale size cluster list' to see the valid sizes.")
 	cmd.Flags().BoolVar(&flags.dataBranching, "seed-data", false, "Add seed data using the Data Branching™ feature. This branch will be created with the same resources as the base branch.")
 	cmd.Flags().BoolVar(&flags.wait, "wait", false, "Wait until the branch is ready")
