@@ -62,13 +62,13 @@ func toInvoice(inv *ps.Invoice) *invoice {
 }
 
 type invoiceLineItem struct {
-	ID               string  `header:"id" json:"id"`
-	Description      string  `header:"description" json:"description"`
-	MetricName       string  `header:"metric_name" json:"metric_name"`
-	Subtotal         float64 `header:"subtotal" json:"subtotal"`
-	DatabaseName     string  `header:"database" json:"database_name"`
-	ResourceName     string  `header:"resource" json:"resource_name"`
-	CloudflareBilled bool    `header:"cloudflare_billed" json:"cloudflare_billed"`
+	ID               string `header:"id" json:"id"`
+	Description      string `header:"description" json:"description"`
+	MetricName       string `header:"metric_name" json:"metric_name"`
+	Subtotal         string `header:"subtotal" json:"subtotal"`
+	DatabaseName     string `header:"database" json:"database_name"`
+	ResourceName     string `header:"resource" json:"resource_name"`
+	CloudflareBilled bool   `header:"cloudflare_billed" json:"cloudflare_billed"`
 
 	orig *ps.InvoiceLineItem
 }
@@ -94,7 +94,7 @@ func toInvoiceLineItem(item *ps.InvoiceLineItem) *invoiceLineItem {
 		ID:               item.ID,
 		Description:      item.Description,
 		MetricName:       item.MetricName,
-		Subtotal:         item.Subtotal,
+		Subtotal:         string(item.Subtotal),
 		DatabaseName:     item.DatabaseName,
 		ResourceName:     item.Resource.Name,
 		CloudflareBilled: item.CloudflareBilled,

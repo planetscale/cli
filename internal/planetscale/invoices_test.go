@@ -2,6 +2,7 @@ package planetscale
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -49,7 +50,7 @@ func TestInvoices_ListGetAndLineItems(t *testing.T) {
 				"next_page": 4,
 				"data": [{
 					"id": "li_1",
-					"subtotal": 12.34,
+					"subtotal": "12.34",
 					"description": "PS_10",
 					"metric_name": "ps_10",
 					"cloudflare_billed": false,
@@ -98,8 +99,20 @@ func TestInvoices_ListGetAndLineItems(t *testing.T) {
 	c.Assert(err, qt.IsNil)
 	c.Assert(items.Data, qt.HasLen, 1)
 	c.Assert(items.Data[0].ID, qt.Equals, "li_1")
-	c.Assert(items.Data[0].Subtotal, qt.Equals, 12.34)
+	c.Assert(items.Data[0].Subtotal, qt.Equals, InvoiceAmount("12.34"))
 	c.Assert(items.Data[0].DatabaseName, qt.Equals, "mydb")
 	c.Assert(items.Data[0].Resource.Name, qt.Equals, "main")
 	c.Assert(*items.NextPage, qt.Equals, 4)
+}
+
+func TestInvoiceAmount_UnmarshalJSON(t *testing.T) {
+	c := qt.New(t)
+
+	var fromString InvoiceAmount
+	c.Assert(json.Unmarshal([]byte(`"12.34"`), &fromString), qt.IsNil)
+	c.Assert(fromString, qt.Equals, InvoiceAmount("12.34"))
+
+	var fromNumber InvoiceAmount
+	c.Assert(json.Unmarshal([]byte(`12.34`), &fromNumber), qt.IsNil)
+	c.Assert(fromNumber, qt.Equals, InvoiceAmount("12.34"))
 }

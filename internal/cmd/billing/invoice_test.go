@@ -28,7 +28,7 @@ func testInvoice() *ps.Invoice {
 func testInvoiceLineItem() *ps.InvoiceLineItem {
 	return &ps.InvoiceLineItem{
 		ID:               "li_1",
-		Subtotal:         12.34,
+		Subtotal:         "12.34",
 		Description:      "PS_10",
 		MetricName:       "ps_10",
 		CloudflareBilled: false,

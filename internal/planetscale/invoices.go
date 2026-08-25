@@ -2,10 +2,33 @@ package planetscale
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"path"
 )
+
+type InvoiceAmount string
+
+func (a *InvoiceAmount) UnmarshalJSON(b []byte) error {
+	if string(b) == "null" {
+		*a = ""
+		return nil
+	}
+
+	var s string
+	if err := json.Unmarshal(b, &s); err == nil {
+		*a = InvoiceAmount(s)
+		return nil
+	}
+
+	var n json.Number
+	if err := json.Unmarshal(b, &n); err != nil {
+		return err
+	}
+	*a = InvoiceAmount(n.String())
+	return nil
+}
 
 type Invoice struct {
 	ID                 string `json:"id"`
@@ -26,7 +49,7 @@ type InvoiceLineItemResource struct {
 
 type InvoiceLineItem struct {
 	ID               string                  `json:"id"`
-	Subtotal         float64                 `json:"subtotal"`
+	Subtotal         InvoiceAmount           `json:"subtotal"`
 	Description      string                  `json:"description"`
 	MetricName       string                  `json:"metric_name"`
 	CloudflareBilled bool                    `json:"cloudflare_billed"`
