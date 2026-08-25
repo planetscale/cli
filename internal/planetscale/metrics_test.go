@@ -109,8 +109,8 @@ func TestMetrics_GetQuerySeries(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/my-db/branches/main/metrics/query")
 		query := r.URL.Query()
-		c.Assert(query.Get("metrics"), qt.Equals, "queries,latency_p99")
-		c.Assert(query.Get("query_ids"), qt.Equals, "query-1,query-2")
+		c.Assert(query["metrics[]"], qt.DeepEquals, []string{"queries", "latency_p99"})
+		c.Assert(query["query_ids[]"], qt.DeepEquals, []string{"query-1", "query-2"})
 		c.Assert(query.Get("fingerprint"), qt.Equals, "select-from-users")
 		c.Assert(query.Get("keyspace"), qt.Equals, "commerce")
 		c.Assert(query.Get("period"), qt.Equals, "1h")
@@ -195,7 +195,7 @@ func TestMetrics_GetTabletSeries(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/my-db/branches/main/metrics/tablets")
 		query := r.URL.Query()
-		c.Assert(query.Get("metrics"), qt.Equals, "replication_lag,pod_cpu_usage")
+		c.Assert(query["metrics[]"], qt.DeepEquals, []string{"replication_lag", "pod_cpu_usage"})
 		c.Assert(query.Get("from"), qt.Equals, "2026-08-18T16:00:00Z")
 		c.Assert(query.Get("to"), qt.Equals, "2026-08-18T17:00:00Z")
 		c.Assert(query.Get("keyspace"), qt.Equals, "commerce")
@@ -229,7 +229,7 @@ func TestMetrics_GetInstantTablets(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/my-db/branches/main/metrics/tablets-instant")
 		query := r.URL.Query()
-		c.Assert(query.Get("metrics"), qt.Equals, "replication_lag,primary_cpu_usage")
+		c.Assert(query["metrics[]"], qt.DeepEquals, []string{"replication_lag", "primary_cpu_usage"})
 		c.Assert(query.Get("keyspace"), qt.Equals, "commerce")
 		c.Assert(query.Get("shard"), qt.Equals, "-80")
 		_, err := w.Write([]byte(`{
@@ -261,8 +261,8 @@ func TestMetrics_GetTagSeries(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/my-db/branches/main/metrics/tag")
 		query := r.URL.Query()
-		c.Assert(query.Get("metrics"), qt.Equals, "queries,latency_p99")
-		c.Assert(query.Get("tag_sets"), qt.Equals, "service=checkout,region=us-east")
+		c.Assert(query["metrics[]"], qt.DeepEquals, []string{"queries", "latency_p99"})
+		c.Assert(query["tag_sets[]"], qt.DeepEquals, []string{"service=checkout", "region=us-east"})
 		c.Assert(query.Get("period"), qt.Equals, "1d")
 		c.Assert(query.Get("tablet_type"), qt.Equals, "primary")
 		c.Assert(query.Get("budget_id"), qt.Equals, "budget-1")

@@ -8,7 +8,6 @@ import (
 	"net/url"
 	"path"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -220,8 +219,8 @@ func (s *metricsService) GetInstant(ctx context.Context, getReq *GetInstantMetri
 
 func (s *metricsService) GetQuerySeries(ctx context.Context, getReq *GetQueryMetricSeriesRequest) (*MetricSeries, error) {
 	query := url.Values{}
-	setQueryValues(query, "metrics", getReq.Metrics)
-	setQueryValues(query, "query_ids", getReq.QueryIDs)
+	addQueryValues(query, "metrics[]", getReq.Metrics)
+	addQueryValues(query, "query_ids[]", getReq.QueryIDs)
 	setQueryValue(query, "fingerprint", getReq.Fingerprint)
 	setQueryValue(query, "keyspace", getReq.Keyspace)
 	setSeriesRange(query, getReq.Period, getReq.From, getReq.To, getReq.Steps)
@@ -243,7 +242,7 @@ func (s *metricsService) GetKeyspaceTables(ctx context.Context, getReq *GetBranc
 
 func (s *metricsService) GetTabletSeries(ctx context.Context, getReq *GetTabletMetricSeriesRequest) (*MetricSeries, error) {
 	query := url.Values{}
-	setQueryValues(query, "metrics", getReq.Metrics)
+	addQueryValues(query, "metrics[]", getReq.Metrics)
 	setSeriesRange(query, getReq.Period, getReq.From, getReq.To, getReq.Steps)
 	setQueryValue(query, "keyspace", getReq.Keyspace)
 	setQueryValue(query, "shard", getReq.Shard)
@@ -255,7 +254,7 @@ func (s *metricsService) GetTabletSeries(ctx context.Context, getReq *GetTabletM
 
 func (s *metricsService) GetInstantTablets(ctx context.Context, getReq *GetInstantTabletMetricsRequest) (*InstantMetrics, error) {
 	query := url.Values{}
-	setQueryValues(query, "metrics", getReq.Metrics)
+	addQueryValues(query, "metrics[]", getReq.Metrics)
 	setQueryValue(query, "keyspace", getReq.Keyspace)
 	setQueryValue(query, "shard", getReq.Shard)
 
@@ -274,8 +273,8 @@ func (s *metricsService) GetInstantTablets(ctx context.Context, getReq *GetInsta
 
 func (s *metricsService) GetTagSeries(ctx context.Context, getReq *GetTagMetricSeriesRequest) (*MetricSeries, error) {
 	query := url.Values{}
-	setQueryValues(query, "metrics", getReq.Metrics)
-	setQueryValues(query, "tag_sets", getReq.TagSets)
+	addQueryValues(query, "metrics[]", getReq.Metrics)
+	addQueryValues(query, "tag_sets[]", getReq.TagSets)
 	setSeriesRange(query, getReq.Period, getReq.From, getReq.To, getReq.Steps)
 	setQueryValue(query, "tablet_type", getReq.TabletType)
 	setQueryValue(query, "budget_id", getReq.BudgetID)
@@ -329,12 +328,6 @@ func setSeriesRange(query url.Values, period, from, to string, steps int) {
 func setQueryValue(query url.Values, key, value string) {
 	if value != "" {
 		query.Set(key, value)
-	}
-}
-
-func setQueryValues(query url.Values, key string, values []string) {
-	if len(values) > 0 {
-		query.Set(key, strings.Join(values, ","))
 	}
 }
 
