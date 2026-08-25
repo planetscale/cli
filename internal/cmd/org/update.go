@@ -79,8 +79,8 @@ func UpdateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.MarkFlagRequired("org")
 	cmd.Flags().StringVar(&flags.billingEmail, "billing-email", "", "The billing email for the organization")
 	cmd.Flags().BoolVar(&flags.idpManagedRoles, "idp-managed-roles", false, "Whether the identity provider manages organization roles")
-	cmd.Flags().BoolVar(&flags.spendAlert, "spend-alert", false, "Enable or disable billing spend alerts. Disabling keeps the current amount")
-	cmd.Flags().Int64Var(&flags.spendAlertAmount, "spend-alert-amount", 0, "Monthly spend amount that triggers spend alerts. Implies --spend-alert=true")
+	cmd.Flags().BoolVar(&flags.spendAlert, "spend-alert", false, "Enable or disable billing spend alerts")
+	cmd.Flags().Int64Var(&flags.spendAlertAmount, "spend-alert-amount", 0, "Monthly spend amount that triggers spend alerts")
 
 	return cmd
 }
