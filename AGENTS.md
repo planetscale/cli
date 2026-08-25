@@ -262,6 +262,8 @@ Two complementary read-only surfaces. When diagnosing database health or perform
 ```bash
 pscale insights queries <database> <branch> --org <org> --format json --sort totalTime   # top queries; sorts: totalTime, count, p99Latency, rowsRead, rowsReadPerReturned, errorCount, ...
 pscale insights queries samples <database> <branch> <fingerprint> --org <org> --format json --keyspace <keyspace>  # recent executions; keyspace from queries list
+pscale insights queries show <database> <branch> <query-id> --org <org> --format json     # one execution; query-id comes from the samples list
+pscale insights queries summary <database> <branch> <fingerprint> --org <org> --format json --keyspace <keyspace>  # aggregate stats for one query pattern
 pscale insights errors <database> <branch> --org <org> --format json                     # failing queries with error messages
 pscale insights errors show <database> <branch> <fingerprint> --org <org> --format json  # individual queries behind one error fingerprint (use error_fingerprint from the errors list)
 pscale insights anomalies <database> <branch> --org <org> --format json                  # detected resource anomalies (CPU, memory, IOPS, rows)
@@ -275,6 +277,8 @@ pscale branch query-patterns list <database> <branch> --org <org> --format json
 pscale branch query-patterns show <database> <branch> <report-id> --org <org> --format json
 pscale branch query-patterns delete <database> <branch> <report-id> --org <org> --format json --force
 ```
+
+`queries show` takes an individual execution/sample `id`; `queries samples` and `queries summary` take a query `fingerprint`. These identifiers are not interchangeable. `queries summary` requires the keyspace from the queries list and accepts `--period`, or a paired `--from`/`--to` ISO 8601 range.
 
 `branch query-patterns download` generates a new report, waits, and writes CSV. Use list/show/delete for reports that already exist.
 

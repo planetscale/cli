@@ -13,6 +13,12 @@ type QueryInsightsService struct {
 	ListQuerySamplesFn        func(context.Context, *ps.ListQuerySamplesRequest, ...ps.ListOption) ([]*ps.QuerySample, error)
 	ListQuerySamplesFnInvoked bool
 
+	GetQueryFn        func(context.Context, *ps.GetQueryRequest) (*ps.Query, error)
+	GetQueryFnInvoked bool
+
+	GetQuerySummaryFn        func(context.Context, *ps.GetQuerySummaryRequest, ...ps.ListOption) (*ps.QuerySummary, error)
+	GetQuerySummaryFnInvoked bool
+
 	ListErrorsFn        func(context.Context, *ps.ListQueryInsightsErrorsRequest, ...ps.ListOption) ([]*ps.QueryInsightError, error)
 	ListErrorsFnInvoked bool
 
@@ -53,6 +59,16 @@ func (s *QueryInsightsService) GetAnomaly(ctx context.Context, req *ps.GetAnomal
 func (s *QueryInsightsService) ListQuerySamples(ctx context.Context, req *ps.ListQuerySamplesRequest, opts ...ps.ListOption) ([]*ps.QuerySample, error) {
 	s.ListQuerySamplesFnInvoked = true
 	return s.ListQuerySamplesFn(ctx, req, opts...)
+}
+
+func (s *QueryInsightsService) GetQuery(ctx context.Context, req *ps.GetQueryRequest) (*ps.Query, error) {
+	s.GetQueryFnInvoked = true
+	return s.GetQueryFn(ctx, req)
+}
+
+func (s *QueryInsightsService) GetQuerySummary(ctx context.Context, req *ps.GetQuerySummaryRequest, opts ...ps.ListOption) (*ps.QuerySummary, error) {
+	s.GetQuerySummaryFnInvoked = true
+	return s.GetQuerySummaryFn(ctx, req, opts...)
 }
 
 func (s *QueryInsightsService) ListErrors(ctx context.Context, req *ps.ListQueryInsightsErrorsRequest, opts ...ps.ListOption) ([]*ps.QueryInsightError, error) {
