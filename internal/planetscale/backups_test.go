@@ -51,6 +51,8 @@ func TestBackups_List(t *testing.T) {
 	c := qt.New(t)
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.URL.Query().Get("to"), qt.Equals, "2023-01-01T00:00:59.999Z")
+		c.Assert(r.URL.Query().Get("state"), qt.Equals, "success")
 		w.WriteHeader(200)
 		out := `{"data":[{"id":"planetscale-go-test-backup","type":"backup","name":"planetscale-go-test-backup","created_at":"2021-01-14T10:19:23.000Z","updated_at":"2021-01-14T10:19:23.000Z"}]}`
 		_, err := w.Write([]byte(out))
@@ -69,6 +71,8 @@ func TestBackups_List(t *testing.T) {
 		Organization: org,
 		Database:     db,
 		Branch:       branch,
+		To:           "2023-01-01T00:00:59.999Z",
+		State:        "success",
 	})
 
 	want := []*Backup{{
