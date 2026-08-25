@@ -2,10 +2,12 @@ package planetscale
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
 	"path"
+	"strconv"
 	"time"
 )
 
@@ -14,6 +16,7 @@ type Backup struct {
 	Name        string    `json:"name"`
 	State       string    `json:"state"`
 	Size        int64     `json:"size"`
+	Protected   bool      `json:"protected"`
 	Actor       *Actor    `json:"actor"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
@@ -59,12 +62,27 @@ type DeleteBackupRequest struct {
 	Backup       string
 }
 
-// BackupsService is an interface for communicating with the PlanetScale
-// backup API endpoint.
+type UpdateBackupRequest struct {
+	Organization string `json:"-"`
+	Database     string `json:"-"`
+	Branch       string `json:"-"`
+	Backup       string `json:"-"`
+	Protected    bool   `json:"protected"`
+}
+
+// MarshalJSON encodes protected as a string because the API ignores a JSON
+// false, which would silently leave the backup protected.
+func (r *UpdateBackupRequest) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]string{
+		"protected": strconv.FormatBool(r.Protected),
+	})
+}
+
 type BackupsService interface {
 	Create(context.Context, *CreateBackupRequest) (*Backup, error)
 	List(context.Context, *ListBackupsRequest) ([]*Backup, error)
 	Get(context.Context, *GetBackupRequest) (*Backup, error)
+	Update(context.Context, *UpdateBackupRequest) (*Backup, error)
 	Delete(context.Context, *DeleteBackupRequest) error
 }
 
@@ -100,6 +118,21 @@ func (d *backupsService) Create(ctx context.Context, createReq *CreateBackupRequ
 func (d *backupsService) Get(ctx context.Context, getReq *GetBackupRequest) (*Backup, error) {
 	path := backupAPIPath(getReq.Organization, getReq.Database, getReq.Branch, getReq.Backup)
 	req, err := d.client.newRequest(http.MethodGet, path, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating http request: %w", err)
+	}
+
+	backup := &Backup{}
+	if err := d.client.do(ctx, req, &backup); err != nil {
+		return nil, err
+	}
+
+	return backup, nil
+}
+
+func (d *backupsService) Update(ctx context.Context, updateReq *UpdateBackupRequest) (*Backup, error) {
+	path := backupAPIPath(updateReq.Organization, updateReq.Database, updateReq.Branch, updateReq.Backup)
+	req, err := d.client.newRequest(http.MethodPatch, path, updateReq)
 	if err != nil {
 		return nil, fmt.Errorf("error creating http request: %w", err)
 	}

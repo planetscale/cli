@@ -25,6 +25,7 @@ func BackupCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	cmd.AddCommand(CreateCmd(ch))
 	cmd.AddCommand(ListCmd(ch))
+	cmd.AddCommand(UpdateCmd(ch))
 	cmd.AddCommand(DeleteCmd(ch))
 	cmd.AddCommand(ShowCmd(ch))
 	cmd.AddCommand(RestoreCmd(ch))
@@ -40,6 +41,7 @@ type Backup struct {
 	Name        string `header:"name" json:"name"`
 	State       string `header:"state" json:"state"`
 	Size        int64  `header:"size" json:"size"`
+	Protected   bool   `header:"protected" json:"protected"`
 	CreatedAt   int64  `header:"created_at,timestamp(ms|utc|human)" json:"created_at"`
 	UpdatedAt   int64  `header:"updated_at,timestamp(ms|utc|human)" json:"updated_at"`
 	StartedAt   int64  `header:"started_at,timestamp(ms|utc|human)" json:"started_at"`
@@ -70,6 +72,7 @@ func toBackup(backup *ps.Backup) *Backup {
 		Name:        backup.Name,
 		State:       backup.State,
 		Size:        backup.Size,
+		Protected:   backup.Protected,
 		CreatedAt:   backup.CreatedAt.UTC().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond)),
 		UpdatedAt:   backup.UpdatedAt.UTC().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond)),
 		StartedAt:   backup.StartedAt.UTC().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond)),

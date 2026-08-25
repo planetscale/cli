@@ -2,6 +2,7 @@ package planetscale
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -148,4 +149,81 @@ func TestBackups_Get(t *testing.T) {
 
 	c.Assert(err, qt.IsNil)
 	c.Assert(backup, qt.DeepEquals, want)
+}
+
+func TestBackups_Update(t *testing.T) {
+	c := qt.New(t)
+
+	wantURL := "/v1/organizations/my-org/databases/planetscale-go-test-db/branches/my-branch/backups/planetscale-go-test-backup"
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodPatch)
+		c.Assert(r.URL.String(), qt.DeepEquals, wantURL)
+
+		var body map[string]any
+		c.Assert(json.NewDecoder(r.Body).Decode(&body), qt.IsNil)
+		c.Assert(body, qt.DeepEquals, map[string]any{
+			"protected": "true",
+		})
+
+		w.WriteHeader(200)
+		out := `{"id":"planetscale-go-test-backup","type":"backup","name":"planetscale-go-test-backup","protected":true,"created_at":"2021-01-14T10:19:23.000Z","updated_at":"2021-01-14T10:19:23.000Z"}`
+		_, err := w.Write([]byte(out))
+		c.Assert(err, qt.IsNil)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	ctx := context.Background()
+	org := "my-org"
+	db := "planetscale-go-test-db"
+	branch := "my-branch"
+
+	backup, err := client.Backups.Update(ctx, &UpdateBackupRequest{
+		Organization: org,
+		Database:     db,
+		Branch:       branch,
+		Backup:       testBackup,
+		Protected:    true,
+	})
+
+	want := &Backup{
+		PublicID:  "planetscale-go-test-backup",
+		Name:      testBackup,
+		Protected: true,
+		CreatedAt: time.Date(2021, time.January, 14, 10, 19, 23, 0, time.UTC),
+		UpdatedAt: time.Date(2021, time.January, 14, 10, 19, 23, 0, time.UTC),
+	}
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(backup, qt.DeepEquals, want)
+}
+
+func TestBackups_UpdateUnprotects(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]any
+		c.Assert(json.NewDecoder(r.Body).Decode(&body), qt.IsNil)
+		c.Assert(body, qt.DeepEquals, map[string]any{
+			"protected": "false",
+		})
+
+		_, err := w.Write([]byte(`{"id":"planetscale-go-test-backup","name":"planetscale-go-test-backup","protected":false}`))
+		c.Assert(err, qt.IsNil)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	backup, err := client.Backups.Update(context.Background(), &UpdateBackupRequest{
+		Organization: "my-org",
+		Database:     "planetscale-go-test-db",
+		Branch:       "my-branch",
+		Backup:       testBackup,
+		Protected:    false,
+	})
+	c.Assert(err, qt.IsNil)
+	c.Assert(backup.Protected, qt.IsFalse)
 }
