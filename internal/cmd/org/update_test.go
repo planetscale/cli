@@ -95,7 +95,7 @@ func TestOrganization_UpdateCmdDisablesSpendAlert(t *testing.T) {
 	}
 
 	cmd := UpdateCmd(ch)
-	cmd.SetArgs([]string{"--org", "planetscale", "--spend-alerts=false"})
+	cmd.SetArgs([]string{"--org", "planetscale", "--spend-alert=false"})
 	c.Assert(cmd.Execute(), qt.IsNil)
 	c.Assert(svc.UpdateFnInvoked, qt.IsTrue)
 }
@@ -136,7 +136,7 @@ func TestOrganization_UpdateCmdEnablesSpendAlertFromCurrentAmount(t *testing.T) 
 	}
 
 	cmd := UpdateCmd(ch)
-	cmd.SetArgs([]string{"--org", "planetscale", "--spend-alerts=true"})
+	cmd.SetArgs([]string{"--org", "planetscale", "--spend-alert=true"})
 	c.Assert(cmd.Execute(), qt.IsNil)
 	c.Assert(svc.GetFnInvoked, qt.IsTrue)
 	c.Assert(svc.UpdateFnInvoked, qt.IsTrue)
@@ -153,7 +153,7 @@ func TestOrganization_UpdateCmdRequiresUpdateFlag(t *testing.T) {
 
 	cmd := UpdateCmd(ch)
 	cmd.SetArgs([]string{"--org", "planetscale"})
-	c.Assert(cmd.Execute(), qt.ErrorMatches, "at least one of --billing-email, --idp-managed-roles, --spend-alerts, or --spend-alert-amount must be provided")
+	c.Assert(cmd.Execute(), qt.ErrorMatches, "at least one of --billing-email, --idp-managed-roles, --spend-alert, or --spend-alert-amount must be provided")
 }
 
 func TestOrganization_UpdateCmdRequiresOrganization(t *testing.T) {

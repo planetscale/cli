@@ -16,7 +16,7 @@ func UpdateCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
 		billingEmail     string
 		idpManagedRoles  bool
-		spendAlerts      bool
+		spendAlert       bool
 		spendAlertAmount int64
 	}
 
@@ -39,11 +39,11 @@ func UpdateCmd(ch *cmdutil.Helper) *cobra.Command {
 				changed = true
 			}
 
-			if cmd.Flags().Changed("spend-alerts") || cmd.Flags().Changed("spend-alert-amount") {
+			if cmd.Flags().Changed("spend-alert") || cmd.Flags().Changed("spend-alert-amount") {
 				changed = true
 			}
 			if !changed {
-				return fmt.Errorf("at least one of --billing-email, --idp-managed-roles, --spend-alerts, or --spend-alert-amount must be provided")
+				return fmt.Errorf("at least one of --billing-email, --idp-managed-roles, --spend-alert, or --spend-alert-amount must be provided")
 			}
 
 			client, err := ch.Client()
@@ -51,8 +51,8 @@ func UpdateCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
-			if cmd.Flags().Changed("spend-alerts") || cmd.Flags().Changed("spend-alert-amount") {
-				if err := applySpendAlert(cmd, client, req, flags.spendAlerts, flags.spendAlertAmount); err != nil {
+			if cmd.Flags().Changed("spend-alert") || cmd.Flags().Changed("spend-alert-amount") {
+				if err := applySpendAlert(cmd, client, req, flags.spendAlert, flags.spendAlertAmount); err != nil {
 					return err
 				}
 			}
@@ -79,14 +79,14 @@ func UpdateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.MarkFlagRequired("org")
 	cmd.Flags().StringVar(&flags.billingEmail, "billing-email", "", "The billing email for the organization")
 	cmd.Flags().BoolVar(&flags.idpManagedRoles, "idp-managed-roles", false, "Whether the identity provider manages organization roles")
-	cmd.Flags().BoolVar(&flags.spendAlerts, "spend-alerts", false, "Enable or disable billing spend alerts")
+	cmd.Flags().BoolVar(&flags.spendAlert, "spend-alert", false, "Enable or disable billing spend alerts")
 	cmd.Flags().Int64Var(&flags.spendAlertAmount, "spend-alert-amount", 0, "Monthly spend amount that triggers spend alerts")
 
 	return cmd
 }
 
 func applySpendAlert(cmd *cobra.Command, client *ps.Client, req *ps.UpdateOrganizationRequest, enabled bool, amount int64) error {
-	alertChanged := cmd.Flags().Changed("spend-alerts")
+	alertChanged := cmd.Flags().Changed("spend-alert")
 	amountChanged := cmd.Flags().Changed("spend-alert-amount")
 
 	if alertChanged && !enabled {
@@ -138,7 +138,7 @@ type organizationUpdate struct {
 	Name             string `header:"name" json:"name"`
 	BillingEmail     string `header:"billing_email" json:"billing_email"`
 	IDPManagedRoles  bool   `header:"idp_managed_roles" json:"idp_managed_roles"`
-	SpendAlerts      bool   `header:"spend_alerts" json:"spend_alerts"`
+	SpendAlert       bool   `header:"spend_alert" json:"spend_alert"`
 	SpendAlertAmount string `header:"spend_alert_amount" json:"spend_alert_amount"`
 
 	orig *ps.Organization
@@ -149,7 +149,7 @@ func toOrganizationUpdate(org *ps.Organization) *organizationUpdate {
 		Name:             org.Name,
 		BillingEmail:     org.BillingEmail,
 		IDPManagedRoles:  org.IDPManagedRoles,
-		SpendAlerts:      org.InvoiceBudgetAlerts,
+		SpendAlert:       org.InvoiceBudgetAlerts,
 		SpendAlertAmount: string(org.InvoiceBudgetAmount),
 		orig:             org,
 	}
