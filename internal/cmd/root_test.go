@@ -6,11 +6,13 @@ import (
 	"errors"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/planetscale/cli/internal/cmd/agentguide"
 	"github.com/planetscale/cli/internal/cmdutil"
+	"github.com/spf13/cobra"
 )
 
 const rootCLIHelperEnv = "PSCALE_ROOT_CLI_HELPER"
@@ -79,6 +81,71 @@ func TestRootSkillFlagIsNotInheritedBySubcommands(t *testing.T) {
 	}
 }
 
+func TestFlagValueWinsOverConfigFile(t *testing.T) {
+	home := writeHomeConfig(t, "org: config-org\n")
+
+	result := runRootCLIWithHome(t, home,
+		"database", "list",
+		"--org", "flag-org",
+		"--format", "json",
+		"--api-url", "http://127.0.0.1:1/",
+		"--service-token-id", "id",
+		"--service-token", "secret",
+	)
+
+	if !strings.Contains(result.stdout, "organizations/flag-org") {
+		t.Fatalf("--org did not reach the API request, stdout = %q, stderr = %q", result.stdout, result.stderr)
+	}
+}
+
+func TestConfigFileFillsUnsetFlag(t *testing.T) {
+	home := writeHomeConfig(t, "org: config-org\n")
+
+	result := runRootCLIWithHome(t, home,
+		"database", "list",
+		"--format", "json",
+		"--api-url", "http://127.0.0.1:1/",
+		"--service-token-id", "id",
+		"--service-token", "secret",
+	)
+
+	if !strings.Contains(result.stdout, "organizations/config-org") {
+		t.Fatalf("config org was not used, stdout = %q, stderr = %q", result.stdout, result.stderr)
+	}
+}
+
+func writeHomeConfig(t *testing.T, contents string) string {
+	t.Helper()
+
+	home := t.TempDir()
+	configDir := filepath.Join(home, ".config", "planetscale")
+	if err := os.MkdirAll(configDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(configDir, "pscale.yml"), []byte(contents), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return home
+}
+
+func TestTargetCommand(t *testing.T) {
+	root := &cobra.Command{Use: "pscale"}
+	parent := &cobra.Command{Use: "database"}
+	child := &cobra.Command{Use: "list", Run: func(*cobra.Command, []string) {}}
+	parent.AddCommand(child)
+	root.AddCommand(parent)
+
+	if got := targetCommand(root, []string{"database", "list", "--org", "acme"}); got != child {
+		t.Fatalf("target = %q, want database list", got.Name())
+	}
+	if got := targetCommand(root, nil); got != root {
+		t.Fatalf("target = %q, want root", got.Name())
+	}
+	if got := targetCommand(root, []string{"nope"}); got != root {
+		t.Fatalf("target = %q, want root for an unknown command", got.Name())
+	}
+}
+
 func TestRootCLIHelperProcess(t *testing.T) {
 	if os.Getenv(rootCLIHelperEnv) != "1" {
 		return
@@ -106,7 +173,16 @@ type rootCLIResult struct {
 	stderr   string
 }
 
+// runRootCLI runs the CLI against an empty home directory, so the developer's
+// own config and credentials stay out of the test.
 func runRootCLI(t *testing.T, args ...string) rootCLIResult {
+	t.Helper()
+	return runRootCLIWithHome(t, t.TempDir(), args...)
+}
+
+// runRootCLIWithHome runs the CLI with $HOME pointed at dir, so a test can
+// control the config file the CLI reads.
+func runRootCLIWithHome(t *testing.T, home string, args ...string) rootCLIResult {
 	t.Helper()
 
 	testArgs := append([]string{"-test.run=^TestRootCLIHelperProcess$", "--"}, args...)
@@ -117,6 +193,9 @@ func runRootCLI(t *testing.T, args ...string) rootCLIResult {
 		"PSCALE_NO_UPDATE_NOTIFIER=1",
 		"XDG_CONFIG_HOME="+t.TempDir(),
 	)
+	if home != "" {
+		command.Env = append(command.Env, "HOME="+home)
+	}
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer

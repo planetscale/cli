@@ -488,20 +488,25 @@ func initConfig() {
 		}
 	}
 
-	postInitCommands(rootCmd.Commands())
+	presetRequiredFlags(targetCommand(rootCmd, os.Args[1:]))
+}
+
+// targetCommand returns the command cobra is about to run, falling back to the
+// root command when the arguments don't resolve (unknown command, no args).
+func targetCommand(root *cobra.Command, args []string) *cobra.Command {
+	cmd, _, err := root.Find(args)
+	if err != nil || cmd == nil {
+		return root
+	}
+	return cmd
 }
 
 // Hacky fix for getting Cobra required flags and Viper playing well together.
 // See: https://github.com/spf13/viper/issues/397
-func postInitCommands(commands []*cobra.Command) {
-	for _, cmd := range commands {
-		presetRequiredFlags(cmd)
-		if cmd.HasSubCommands() {
-			postInitCommands(cmd.Commands())
-		}
-	}
-}
-
+//
+// Only the command being run is preset. Commands bind flags such as --org to
+// shared config fields, so presetting an unrelated command's flags overwrites
+// the value the user passed on the command line.
 func presetRequiredFlags(cmd *cobra.Command) {
 	err := viper.BindPFlags(cmd.Flags())
 	if err != nil {
@@ -509,6 +514,9 @@ func presetRequiredFlags(cmd *cobra.Command) {
 	}
 
 	cmd.Flags().VisitAll(func(f *pflag.Flag) {
+		if f.Changed {
+			return
+		}
 		if viper.IsSet(f.Name) && viper.GetString(f.Name) != "" {
 			err = cmd.Flags().Set(f.Name, viper.GetString(f.Name))
 			if err != nil {
