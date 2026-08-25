@@ -1,7 +1,6 @@
 package billing
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 
@@ -123,7 +122,9 @@ func ListInvoicesCmd(ch *cmdutil.Helper) *cobra.Command {
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Fetching invoices for %s...", printer.BoldBlue(org)))
 			defer end()
 
-			invoices, err := listAllInvoices(cmd.Context(), client.Invoices, org, flags.page, flags.perPage)
+			page, err := client.Invoices.List(cmd.Context(), &ps.ListInvoicesRequest{
+				Organization: org,
+			}, ps.WithPage(flags.page), ps.WithPerPage(flags.perPage))
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case ps.ErrNotFound:
@@ -134,21 +135,21 @@ func ListInvoicesCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 			end()
 
-			if len(invoices) == 0 && ch.Printer.Format() == printer.Human {
-				if flags.page > 0 {
-					ch.Printer.Println("No invoices found on this page.")
-				} else {
-					ch.Printer.Printf("No invoices in %s.\n", printer.BoldBlue(org))
-				}
+			if len(page.Data) == 0 && ch.Printer.Format() == printer.Human {
+				ch.Printer.Println("No invoices found on this page.")
 				return nil
 			}
 
-			return ch.Printer.PrintResource(toInvoices(invoices))
+			if err := ch.Printer.PrintResource(toInvoices(page.Data)); err != nil {
+				return err
+			}
+			printNextPageHint(ch, page.NextPage)
+			return nil
 		},
 	}
 
-	cmd.Flags().IntVar(&flags.page, "page", 0, "Fetch a single page instead of walking every page")
-	cmd.Flags().IntVar(&flags.perPage, "per-page", 100, "Number of results per page")
+	cmd.Flags().IntVar(&flags.page, "page", 1, "Page number to fetch")
+	cmd.Flags().IntVar(&flags.perPage, "per-page", 25, "Number of results per page")
 	return cmd
 }
 
@@ -210,7 +211,10 @@ func InvoiceLineItemsCmd(ch *cmdutil.Helper) *cobra.Command {
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Fetching line items for invoice %s in %s...", printer.BoldBlue(id), printer.BoldBlue(org)))
 			defer end()
 
-			items, err := listAllInvoiceLineItems(cmd.Context(), client.Invoices, org, id, flags.page, flags.perPage)
+			page, err := client.Invoices.ListLineItems(cmd.Context(), &ps.ListInvoiceLineItemsRequest{
+				Organization: org,
+				Invoice:      id,
+			}, ps.WithPage(flags.page), ps.WithPerPage(flags.perPage))
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case ps.ErrNotFound:
@@ -221,66 +225,29 @@ func InvoiceLineItemsCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 			end()
 
-			if len(items) == 0 && ch.Printer.Format() == printer.Human {
-				if flags.page > 0 {
-					ch.Printer.Println("No line items found on this page.")
-				} else {
-					ch.Printer.Printf("No line items for invoice %s.\n", printer.BoldBlue(id))
-				}
+			if len(page.Data) == 0 && ch.Printer.Format() == printer.Human {
+				ch.Printer.Println("No line items found on this page.")
 				return nil
 			}
 
-			return ch.Printer.PrintResource(toInvoiceLineItems(items))
+			if err := ch.Printer.PrintResource(toInvoiceLineItems(page.Data)); err != nil {
+				return err
+			}
+			printNextPageHint(ch, page.NextPage)
+			return nil
 		},
 	}
 
-	cmd.Flags().IntVar(&flags.page, "page", 0, "Fetch a single page instead of walking every page")
-	cmd.Flags().IntVar(&flags.perPage, "per-page", 100, "Number of results per page")
+	cmd.Flags().IntVar(&flags.page, "page", 1, "Page number to fetch")
+	cmd.Flags().IntVar(&flags.perPage, "per-page", 25, "Number of results per page")
 	return cmd
 }
 
-func listAllInvoices(ctx context.Context, svc ps.InvoicesService, org string, page, perPage int) ([]*ps.Invoice, error) {
-	req := &ps.ListInvoicesRequest{Organization: org}
-	if page > 0 {
-		result, err := svc.List(ctx, req, ps.WithPage(page), ps.WithPerPage(perPage))
-		if err != nil {
-			return nil, err
-		}
-		return result.Data, nil
+// printNextPageHint tells a human there is another page. JSON and CSV output
+// stay machine-readable, so callers there compare the row count to --per-page.
+func printNextPageHint(ch *cmdutil.Helper, nextPage *int) {
+	if nextPage == nil || ch.Printer.Format() != printer.Human {
+		return
 	}
-
-	var all []*ps.Invoice
-	for p := 1; ; p++ {
-		result, err := svc.List(ctx, req, ps.WithPage(p), ps.WithPerPage(perPage))
-		if err != nil {
-			return nil, err
-		}
-		all = append(all, result.Data...)
-		if result.NextPage == nil {
-			return all, nil
-		}
-	}
-}
-
-func listAllInvoiceLineItems(ctx context.Context, svc ps.InvoicesService, org, invoice string, page, perPage int) ([]*ps.InvoiceLineItem, error) {
-	req := &ps.ListInvoiceLineItemsRequest{Organization: org, Invoice: invoice}
-	if page > 0 {
-		result, err := svc.ListLineItems(ctx, req, ps.WithPage(page), ps.WithPerPage(perPage))
-		if err != nil {
-			return nil, err
-		}
-		return result.Data, nil
-	}
-
-	var all []*ps.InvoiceLineItem
-	for p := 1; ; p++ {
-		result, err := svc.ListLineItems(ctx, req, ps.WithPage(p), ps.WithPerPage(perPage))
-		if err != nil {
-			return nil, err
-		}
-		all = append(all, result.Data...)
-		if result.NextPage == nil {
-			return all, nil
-		}
-	}
+	ch.Printer.Printf("\nMore results available. Fetch the next page with --page %d.\n", *nextPage)
 }

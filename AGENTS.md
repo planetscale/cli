@@ -571,7 +571,7 @@ pscale billing invoice show <invoice-id> --org <org> --format json
 pscale billing invoice line-items <invoice-id> --org <org> --format json
 ```
 
-- `list` and `line-items` walk every page by default. Pass `--page` to fetch one page. `--per-page` defaults to 100. Invoice ids come from `list`.
+- `list` and `line-items` are paginated and return **one page per call**: `--page` (default 1) and `--per-page` (default 25). Invoices with thousands of line items are common, so walk pages deliberately. Human output prints the next page number; in JSON compare the row count to `--per-page` to decide whether to fetch again.
 - JSON preserves the API objects. Line items include the billed database and nested resource (usually a branch).
 - Requires `read_invoices` on a service token.
 

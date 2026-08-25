@@ -38,37 +38,33 @@ func testInvoiceLineItem() *ps.InvoiceLineItem {
 	}
 }
 
-func TestInvoiceListCmd_WalksPages(t *testing.T) {
+func TestInvoiceListCmd_FetchesOnePage(t *testing.T) {
 	c := qt.New(t)
 
 	var buf bytes.Buffer
-	pages := []string{}
+	calls := 0
 	next2 := 2
 	svc := &mock.InvoicesService{
 		ListFn: func(ctx context.Context, req *ps.ListInvoicesRequest, opts ...ps.ListOption) (*ps.InvoicePage, error) {
+			calls++
 			c.Assert(req.Organization, qt.Equals, "my-org")
 			page, perPage := listOpts(c, opts)
-			pages = append(pages, page)
-			c.Assert(perPage, qt.Equals, "100")
-			if page == "1" {
-				return &ps.InvoicePage{
-					Data:     []*ps.Invoice{{ID: "inv_1", Total: "1.00"}},
-					NextPage: &next2,
-				}, nil
-			}
-			c.Assert(page, qt.Equals, "2")
-			return &ps.InvoicePage{Data: []*ps.Invoice{testInvoice()}}, nil
+			c.Assert(page, qt.Equals, "1")
+			c.Assert(perPage, qt.Equals, "25")
+			return &ps.InvoicePage{
+				Data:     []*ps.Invoice{testInvoice()},
+				NextPage: &next2,
+			}, nil
 		},
 	}
 
 	cmd := ListInvoicesCmd(invoiceTestHelper(&buf, printer.JSON, svc))
 	c.Assert(cmd.Execute(), qt.IsNil)
-	c.Assert(pages, qt.DeepEquals, []string{"1", "2"})
-	c.Assert(buf.String(), qt.Contains, "inv_1")
+	c.Assert(calls, qt.Equals, 1)
 	c.Assert(buf.String(), qt.Contains, "inv_123")
 }
 
-func TestInvoiceListCmd_SinglePage(t *testing.T) {
+func TestInvoiceListCmd_HonorsPageFlags(t *testing.T) {
 	c := qt.New(t)
 
 	calls := 0
@@ -107,38 +103,36 @@ func TestInvoiceShowCmd(t *testing.T) {
 	c.Assert(buf.String(), qt.Contains, "inv_123")
 }
 
-func TestInvoiceLineItemsCmd_WalksPages(t *testing.T) {
+func TestInvoiceLineItemsCmd_FetchesOnePage(t *testing.T) {
 	c := qt.New(t)
 
 	var buf bytes.Buffer
-	pages := []string{}
+	calls := 0
 	next2 := 2
 	svc := &mock.InvoicesService{
 		ListLineItemsFn: func(ctx context.Context, req *ps.ListInvoiceLineItemsRequest, opts ...ps.ListOption) (*ps.InvoiceLineItemPage, error) {
+			calls++
 			c.Assert(req.Organization, qt.Equals, "my-org")
 			c.Assert(req.Invoice, qt.Equals, "inv_123")
 			page, perPage := listOpts(c, opts)
-			pages = append(pages, page)
-			c.Assert(perPage, qt.Equals, "100")
-			if page == "1" {
-				return &ps.InvoiceLineItemPage{
-					Data:     []*ps.InvoiceLineItem{{ID: "li_0", DatabaseName: "other"}},
-					NextPage: &next2,
-				}, nil
-			}
-			return &ps.InvoiceLineItemPage{Data: []*ps.InvoiceLineItem{testInvoiceLineItem()}}, nil
+			c.Assert(page, qt.Equals, "1")
+			c.Assert(perPage, qt.Equals, "25")
+			return &ps.InvoiceLineItemPage{
+				Data:     []*ps.InvoiceLineItem{testInvoiceLineItem()},
+				NextPage: &next2,
+			}, nil
 		},
 	}
 
 	cmd := InvoiceLineItemsCmd(invoiceTestHelper(&buf, printer.JSON, svc))
 	cmd.SetArgs([]string{"inv_123"})
 	c.Assert(cmd.Execute(), qt.IsNil)
-	c.Assert(pages, qt.DeepEquals, []string{"1", "2"})
-	c.Assert(buf.String(), qt.Contains, "li_0")
+	c.Assert(calls, qt.Equals, 1)
 	c.Assert(buf.String(), qt.Contains, "li_1")
+	c.Assert(buf.String(), qt.Contains, "mydb")
 }
 
-func TestInvoiceLineItemsCmd_SinglePage(t *testing.T) {
+func TestInvoiceLineItemsCmd_HonorsPageFlags(t *testing.T) {
 	c := qt.New(t)
 
 	calls := 0
@@ -147,15 +141,37 @@ func TestInvoiceLineItemsCmd_SinglePage(t *testing.T) {
 			calls++
 			page, perPage := listOpts(c, opts)
 			c.Assert(page, qt.Equals, "3")
-			c.Assert(perPage, qt.Equals, "25")
+			c.Assert(perPage, qt.Equals, "100")
 			return &ps.InvoiceLineItemPage{Data: []*ps.InvoiceLineItem{testInvoiceLineItem()}}, nil
 		},
 	}
 
 	cmd := InvoiceLineItemsCmd(invoiceTestHelper(&bytes.Buffer{}, printer.JSON, svc))
-	cmd.SetArgs([]string{"inv_123", "--page", "3", "--per-page", "25"})
+	cmd.SetArgs([]string{"inv_123", "--page", "3", "--per-page", "100"})
 	c.Assert(cmd.Execute(), qt.IsNil)
 	c.Assert(calls, qt.Equals, 1)
+}
+
+func TestInvoiceLineItemsCmd_HumanPrintsNextPage(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	next7 := 7
+	svc := &mock.InvoicesService{
+		ListLineItemsFn: func(ctx context.Context, req *ps.ListInvoiceLineItemsRequest, opts ...ps.ListOption) (*ps.InvoiceLineItemPage, error) {
+			return &ps.InvoiceLineItemPage{
+				Data:     []*ps.InvoiceLineItem{testInvoiceLineItem()},
+				NextPage: &next7,
+			}, nil
+		},
+	}
+
+	ch := invoiceTestHelper(&buf, printer.Human, svc)
+	ch.Printer.SetHumanOutput(&buf)
+	cmd := InvoiceLineItemsCmd(ch)
+	cmd.SetArgs([]string{"inv_123"})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(buf.String(), qt.Contains, "--page 7")
 }
 
 func listOpts(c *qt.C, opts []ps.ListOption) (page, perPage string) {
