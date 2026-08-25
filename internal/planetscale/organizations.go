@@ -27,6 +27,14 @@ type OrganizationsService interface {
 	GetMember(context.Context, *GetOrganizationMemberRequest) (*OrganizationMembership, error)
 	UpdateMember(context.Context, *UpdateOrganizationMemberRequest) (*OrganizationMembership, error)
 	RemoveMember(context.Context, *RemoveOrganizationMemberRequest) error
+	ListTeams(context.Context, *ListOrganizationTeamsRequest, ...ListOption) ([]*OrganizationTeam, error)
+	GetTeam(context.Context, *GetOrganizationTeamRequest) (*OrganizationTeam, error)
+	CreateTeam(context.Context, *CreateOrganizationTeamRequest) (*OrganizationTeam, error)
+	UpdateTeam(context.Context, *UpdateOrganizationTeamRequest) (*OrganizationTeam, error)
+	DeleteTeam(context.Context, *DeleteOrganizationTeamRequest) error
+	ListTeamMembers(context.Context, *ListOrganizationTeamMembersRequest, ...ListOption) ([]*OrganizationTeamMembership, error)
+	AddTeamMember(context.Context, *AddOrganizationTeamMemberRequest) (*OrganizationTeamMembership, error)
+	RemoveTeamMember(context.Context, *RemoveOrganizationTeamMemberRequest) error
 }
 
 // ListRegionsRequest encapsulates the request for getting a list of regions for

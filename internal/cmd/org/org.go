@@ -19,6 +19,7 @@ func OrgCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.AddCommand(ShowCmd(ch))
 	cmd.AddCommand(ListCmd(ch))
 	cmd.AddCommand(MemberCmd(ch))
+	cmd.AddCommand(TeamCmd(ch))
 
 	return cmd
 }

@@ -90,12 +90,30 @@ pscale --org <org> database list --format json
 
    ```bash
    pscale org member list --org <org> --format json
+   pscale org member list --org <org> --format json --page 2 --per-page 25
    pscale org member show user@example.com --org <org> --format json
    pscale org member update user@example.com --org <org> --format json --role member
    pscale org member remove user@example.com --org <org> --format json --force
    ```
 
    Only org admins can change another member's role or remove someone else. Nobody can change their own role. `--role` is `admin`, `member`, or `analyst`.
+
+Organization teams and team members:
+
+```bash
+pscale org team list --org <org> --format json
+pscale org team list --org <org> --format json --page 2 --per-page 25
+pscale org team show <team-id-or-name> --org <org> --format json
+pscale org team create --name <name> --description <description> --org <org> --format json
+pscale org team update <team> --name <name> --description <description> --org <org> --format json
+pscale org team delete <team> --org <org> --format json --force
+pscale org team member list <team> --org <org> --format json
+pscale org team member list <team> --org <org> --format json --page 2 --per-page 25
+pscale org team member add <team> <email-or-id> --org <org> --format json
+pscale org team member remove <team> <email-or-id> --org <org> --format json --force
+```
+
+Team identifiers may be IDs, names, or slugs. Team and membership deletion requires approval before using `--force`. SSO/directory-managed teams cannot be updated, deleted, or have members added or removed through the API.
 
 5. **Discover resources** before SQL:
 
