@@ -2,6 +2,7 @@ package planetscale
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -14,6 +15,12 @@ import (
 type MetricsService interface {
 	GetSeries(context.Context, *GetMetricSeriesRequest) (*MetricSeries, error)
 	GetInstant(context.Context, *GetInstantMetricsRequest) (*InstantMetrics, error)
+	GetQuerySeries(context.Context, *GetQueryMetricSeriesRequest) (*MetricSeries, error)
+	GetTables(context.Context, *GetBranchMetricsRequest) (json.RawMessage, error)
+	GetKeyspaceTables(context.Context, *GetBranchMetricsRequest) (json.RawMessage, error)
+	GetTabletSeries(context.Context, *GetTabletMetricSeriesRequest) (*MetricSeries, error)
+	GetInstantTablets(context.Context, *GetInstantTabletMetricsRequest) (*InstantMetrics, error)
+	GetTagSeries(context.Context, *GetTagMetricSeriesRequest) (*MetricSeries, error)
 }
 
 type metricsService struct {
@@ -90,6 +97,70 @@ type GetInstantMetricsRequest struct {
 	Pod          string
 }
 
+type GetBranchMetricsRequest struct {
+	Organization string
+	Database     string
+	Branch       string
+}
+
+type GetQueryMetricSeriesRequest struct {
+	Organization string
+	Database     string
+	Branch       string
+	Metrics      []string
+	QueryIDs     []string
+	Fingerprint  string
+	Keyspace     string
+	Period       string
+	From         string
+	To           string
+	Steps        int
+	TabletType   string
+	BudgetID     string
+	RuleID       string
+	Search       string
+}
+
+type GetTabletMetricSeriesRequest struct {
+	Organization string
+	Database     string
+	Branch       string
+	Metrics      []string
+	Period       string
+	From         string
+	To           string
+	Steps        int
+	Keyspace     string
+	Shard        string
+	Pod          string
+	Workflow     string
+}
+
+type GetInstantTabletMetricsRequest struct {
+	Organization string
+	Database     string
+	Branch       string
+	Metrics      []string
+	Keyspace     string
+	Shard        string
+}
+
+type GetTagMetricSeriesRequest struct {
+	Organization string
+	Database     string
+	Branch       string
+	Metrics      []string
+	TagSets      []map[string]string
+	Period       string
+	From         string
+	To           string
+	Steps        int
+	TabletType   string
+	BudgetID     string
+	RuleID       string
+	Search       string
+}
+
 func (s *metricsService) GetSeries(ctx context.Context, getReq *GetMetricSeriesRequest) (*MetricSeries, error) {
 	query := url.Values{}
 	addQueryValues(query, "metrics[]", getReq.Metrics)
@@ -146,13 +217,128 @@ func (s *metricsService) GetInstant(ctx context.Context, getReq *GetInstantMetri
 	return metrics, nil
 }
 
+func (s *metricsService) GetQuerySeries(ctx context.Context, getReq *GetQueryMetricSeriesRequest) (*MetricSeries, error) {
+	query := url.Values{}
+	addQueryValues(query, "metrics[]", getReq.Metrics)
+	addQueryValues(query, "query_ids[]", getReq.QueryIDs)
+	setQueryValue(query, "fingerprint", getReq.Fingerprint)
+	setQueryValue(query, "keyspace", getReq.Keyspace)
+	setSeriesRange(query, getReq.Period, getReq.From, getReq.To, getReq.Steps)
+	setQueryValue(query, "tablet_type", getReq.TabletType)
+	setQueryValue(query, "budget_id", getReq.BudgetID)
+	setQueryValue(query, "rule_id", getReq.RuleID)
+	setQueryValue(query, "q", getReq.Search)
+
+	return s.getSpecializedSeries(ctx, getReq.Organization, getReq.Database, getReq.Branch, "query", query)
+}
+
+func (s *metricsService) GetTables(ctx context.Context, getReq *GetBranchMetricsRequest) (json.RawMessage, error) {
+	return s.getRawMetrics(ctx, getReq, "tables")
+}
+
+func (s *metricsService) GetKeyspaceTables(ctx context.Context, getReq *GetBranchMetricsRequest) (json.RawMessage, error) {
+	return s.getRawMetrics(ctx, getReq, "keyspace-tables")
+}
+
+func (s *metricsService) GetTabletSeries(ctx context.Context, getReq *GetTabletMetricSeriesRequest) (*MetricSeries, error) {
+	query := url.Values{}
+	addQueryValues(query, "metrics[]", getReq.Metrics)
+	setSeriesRange(query, getReq.Period, getReq.From, getReq.To, getReq.Steps)
+	setQueryValue(query, "keyspace", getReq.Keyspace)
+	setQueryValue(query, "shard", getReq.Shard)
+	setQueryValue(query, "pod", getReq.Pod)
+	setQueryValue(query, "workflow", getReq.Workflow)
+
+	return s.getSpecializedSeries(ctx, getReq.Organization, getReq.Database, getReq.Branch, "tablets", query)
+}
+
+func (s *metricsService) GetInstantTablets(ctx context.Context, getReq *GetInstantTabletMetricsRequest) (*InstantMetrics, error) {
+	query := url.Values{}
+	addQueryValues(query, "metrics[]", getReq.Metrics)
+	setQueryValue(query, "keyspace", getReq.Keyspace)
+	setQueryValue(query, "shard", getReq.Shard)
+
+	req, err := s.client.newRequest(http.MethodGet, path.Join(metricsAPIPath(getReq.Organization, getReq.Database, getReq.Branch), "tablets-instant"), nil, WithQueryParams(query))
+	if err != nil {
+		return nil, fmt.Errorf("error creating request for instant tablet metrics: %w", err)
+	}
+
+	metrics := &InstantMetrics{}
+	if err := s.client.do(ctx, req, metrics); err != nil {
+		return nil, err
+	}
+
+	return metrics, nil
+}
+
+func (s *metricsService) GetTagSeries(ctx context.Context, getReq *GetTagMetricSeriesRequest) (*MetricSeries, error) {
+	query := url.Values{}
+	addQueryValues(query, "metrics[]", getReq.Metrics)
+	addTagSetQueryValues(query, getReq.TagSets)
+	setSeriesRange(query, getReq.Period, getReq.From, getReq.To, getReq.Steps)
+	setQueryValue(query, "tablet_type", getReq.TabletType)
+	setQueryValue(query, "budget_id", getReq.BudgetID)
+	setQueryValue(query, "rule_id", getReq.RuleID)
+	setQueryValue(query, "q", getReq.Search)
+
+	return s.getSpecializedSeries(ctx, getReq.Organization, getReq.Database, getReq.Branch, "tag", query)
+}
+
+func (s *metricsService) getSpecializedSeries(ctx context.Context, org, database, branch, endpoint string, query url.Values) (*MetricSeries, error) {
+	req, err := s.client.newRequest(http.MethodGet, path.Join(metricsAPIPath(org, database, branch), endpoint), nil, WithQueryParams(query))
+	if err != nil {
+		return nil, fmt.Errorf("error creating request for branch %s metrics: %w", endpoint, err)
+	}
+
+	series := &MetricSeries{}
+	if err := s.client.do(ctx, req, series); err != nil {
+		return nil, err
+	}
+
+	return series, nil
+}
+
+func (s *metricsService) getRawMetrics(ctx context.Context, getReq *GetBranchMetricsRequest, endpoint string) (json.RawMessage, error) {
+	req, err := s.client.newRequest(http.MethodGet, path.Join(metricsAPIPath(getReq.Organization, getReq.Database, getReq.Branch), endpoint), nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request for branch %s metrics: %w", endpoint, err)
+	}
+
+	var response json.RawMessage
+	if err := s.client.do(ctx, req, &response); err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
 func metricsAPIPath(org, db, branch string) string {
 	return path.Join("v1/organizations", org, "databases", db, "branches", branch, "metrics")
+}
+
+func setSeriesRange(query url.Values, period, from, to string, steps int) {
+	setQueryValue(query, "period", period)
+	setQueryValue(query, "from", from)
+	setQueryValue(query, "to", to)
+	if steps > 0 {
+		query.Set("steps", strconv.Itoa(steps))
+	}
 }
 
 func setQueryValue(query url.Values, key, value string) {
 	if value != "" {
 		query.Set(key, value)
+	}
+}
+
+func addTagSetQueryValues(query url.Values, sets []map[string]string) {
+	for i, set := range sets {
+		for key, value := range set {
+			if key == "" {
+				continue
+			}
+			query.Add(fmt.Sprintf("tag_sets[%d][tags][%s]", i, key), value)
+		}
 	}
 }
 

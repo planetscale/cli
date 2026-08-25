@@ -9,6 +9,7 @@ import (
 	"time"
 
 	qt "github.com/frankban/quicktest"
+	"github.com/spf13/cobra"
 
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/config"
@@ -235,4 +236,268 @@ func TestInstantCmd_CSVFlattensValues(t *testing.T) {
 	c.Assert(lines[0], qt.Equals, "metric,label,dimensions,value")
 	c.Assert(lines[1], qt.Contains, "planetscale_volume_usage_percentage,volume_usage")
 	c.Assert(lines[1], qt.Contains, "71.4")
+}
+
+func TestQueriesCmd_ForwardsSupportedFilters(t *testing.T) {
+	c := qt.New(t)
+	service := &mock.MetricsService{
+		GetQuerySeriesFn: func(ctx context.Context, req *ps.GetQueryMetricSeriesRequest) (*ps.MetricSeries, error) {
+			c.Assert(req.Metrics, qt.DeepEquals, []string{"queries", "latency_p99", "traffic_control_warnings"})
+			c.Assert(req.QueryIDs, qt.HasLen, 0)
+			c.Assert(req.Fingerprint, qt.Equals, "fingerprint-1")
+			c.Assert(req.Keyspace, qt.Equals, "commerce")
+			c.Assert(req.Period, qt.Equals, "1h")
+			c.Assert(req.TabletType, qt.Equals, "replica")
+			c.Assert(req.BudgetID, qt.Equals, "budget-1")
+			c.Assert(req.RuleID, qt.Equals, "rule-1")
+			c.Assert(req.Search, qt.Equals, "checkout")
+			return sampleSeries(), nil
+		},
+	}
+
+	var buf bytes.Buffer
+	cmd := QueriesCmd(metricsTestHelper(&buf, printer.JSON, &ps.Client{Metrics: service}))
+	cmd.SetArgs([]string{
+		"mydb", "main",
+		"--metric", "queries,latency_p99,traffic_control_warnings",
+		"--fingerprint", "fingerprint-1",
+		"--keyspace", "commerce",
+		"--period", "1h",
+		"--tablet-type", "replica",
+		"--budget-id", "budget-1",
+		"--rule-id", "rule-1",
+		"--search", "checkout",
+	})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(service.GetQuerySeriesFnInvoked, qt.IsTrue)
+
+	var response ps.MetricSeries
+	c.Assert(json.Unmarshal(buf.Bytes(), &response), qt.IsNil)
+	c.Assert(response.Series, qt.HasLen, 1)
+}
+
+func TestStorageMetricsCommands_PreserveResponse(t *testing.T) {
+	c := qt.New(t)
+	tests := []struct {
+		name    string
+		command func(*cmdutil.Helper) *cobra.Command
+		service *mock.MetricsService
+	}{
+		{
+			name:    "tables",
+			command: TablesCmd,
+			service: &mock.MetricsService{
+				GetTablesFn: func(context.Context, *ps.GetBranchMetricsRequest) (json.RawMessage, error) {
+					return json.RawMessage(`{"users":{"bytes":1048576}}`), nil
+				},
+			},
+		},
+		{
+			name:    "keyspace tables",
+			command: KeyspaceTablesCmd,
+			service: &mock.MetricsService{
+				GetKeyspaceTablesFn: func(context.Context, *ps.GetBranchMetricsRequest) (json.RawMessage, error) {
+					return json.RawMessage(`{"commerce":{"users":{"bytes":1048576}}}`), nil
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		c.Run(test.name, func(c *qt.C) {
+			var buf bytes.Buffer
+			cmd := test.command(metricsTestHelper(&buf, printer.JSON, &ps.Client{Metrics: test.service}))
+			cmd.SetArgs([]string{"mydb", "main"})
+			c.Assert(cmd.Execute(), qt.IsNil)
+			c.Assert(json.Valid(buf.Bytes()), qt.IsTrue)
+			c.Assert(buf.String(), qt.Contains, "1048576")
+		})
+	}
+}
+
+func TestTabletsCmd_ForwardsSupportedFilters(t *testing.T) {
+	c := qt.New(t)
+	workflows := &mock.WorkflowsService{
+		ListFn: func(ctx context.Context, req *ps.ListWorkflowsRequest) ([]*ps.Workflow, error) {
+			c.Assert(req.Database, qt.Equals, "mydb")
+			return []*ps.Workflow{{
+				ID:     "opaque-workflow-id",
+				Name:   "move-tables",
+				Branch: ps.DatabaseBranch{Name: "main"},
+			}}, nil
+		},
+	}
+	service := &mock.MetricsService{
+		GetTabletSeriesFn: func(ctx context.Context, req *ps.GetTabletMetricSeriesRequest) (*ps.MetricSeries, error) {
+			c.Assert(req.Metrics, qt.DeepEquals, []string{"replication_lag", "pod_cpu_usage", "vreplication_lag"})
+			c.Assert(req.From, qt.Equals, "2026-08-18T16:00:00Z")
+			c.Assert(req.To, qt.Equals, "2026-08-18T17:00:00Z")
+			c.Assert(req.Steps, qt.Equals, 60)
+			c.Assert(req.Keyspace, qt.Equals, "commerce")
+			c.Assert(req.Shard, qt.Equals, "-80")
+			c.Assert(req.Pod, qt.Equals, "zone-a-0")
+			c.Assert(req.Workflow, qt.Equals, "move-tables")
+			return sampleSeries(), nil
+		},
+	}
+
+	var buf bytes.Buffer
+	cmd := TabletsCmd(metricsTestHelper(&buf, printer.JSON, &ps.Client{Metrics: service, Workflows: workflows}))
+	cmd.SetArgs([]string{
+		"mydb", "main",
+		"--metric", "replication_lag,pod_cpu_usage,vreplication_lag",
+		"--from", "2026-08-18T16:00:00Z",
+		"--to", "2026-08-18T17:00:00Z",
+		"--steps", "60",
+		"--keyspace", "commerce",
+		"--shard", "-80",
+		"--pod", "zone-a-0",
+		"--workflow", "move-tables",
+	})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(service.GetTabletSeriesFnInvoked, qt.IsTrue)
+	c.Assert(workflows.ListFnInvoked, qt.IsTrue)
+}
+
+func TestTabletsInstantCmd_UsesNestedUX(t *testing.T) {
+	c := qt.New(t)
+	service := &mock.MetricsService{
+		GetInstantTabletsFn: func(ctx context.Context, req *ps.GetInstantTabletMetricsRequest) (*ps.InstantMetrics, error) {
+			c.Assert(req.Metrics, qt.DeepEquals, []string{"replication_lag", "primary_cpu_usage"})
+			c.Assert(req.Keyspace, qt.Equals, "commerce")
+			c.Assert(req.Shard, qt.Equals, "-80")
+			return sampleInstantMetrics(), nil
+		},
+	}
+
+	var buf bytes.Buffer
+	cmd := TabletsCmd(metricsTestHelper(&buf, printer.JSON, &ps.Client{Metrics: service}))
+	cmd.SetArgs([]string{
+		"instant", "mydb", "main",
+		"--metric", "replication_lag,primary_cpu_usage",
+		"--keyspace", "commerce",
+		"--shard", "-80",
+	})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(service.GetInstantTabletsFnInvoked, qt.IsTrue)
+}
+
+func TestTabletsCmd_RejectsUnknownWorkflow(t *testing.T) {
+	c := qt.New(t)
+	workflows := &mock.WorkflowsService{
+		ListFn: func(context.Context, *ps.ListWorkflowsRequest) ([]*ps.Workflow, error) {
+			return []*ps.Workflow{}, nil
+		},
+	}
+	service := &mock.MetricsService{
+		GetTabletSeriesFn: func(context.Context, *ps.GetTabletMetricSeriesRequest) (*ps.MetricSeries, error) {
+			c.Fatal("Metrics.GetTabletSeries should not be called")
+			return nil, nil
+		},
+	}
+
+	cmd := TabletsCmd(metricsTestHelper(&bytes.Buffer{}, printer.JSON, &ps.Client{
+		Metrics:   service,
+		Workflows: workflows,
+	}))
+	cmd.SetArgs([]string{
+		"mydb", "main",
+		"--metric", "vreplication_lag",
+		"--workflow", "missing",
+	})
+	c.Assert(cmd.Execute(), qt.ErrorMatches, "workflow missing does not exist on branch main")
+	c.Assert(service.GetTabletSeriesFnInvoked, qt.IsFalse)
+}
+
+func TestTagsCmd_ForwardsSupportedFilters(t *testing.T) {
+	c := qt.New(t)
+	service := &mock.MetricsService{
+		GetTagSeriesFn: func(ctx context.Context, req *ps.GetTagMetricSeriesRequest) (*ps.MetricSeries, error) {
+			c.Assert(req.Metrics, qt.DeepEquals, []string{"queries", "latency_p99", "traffic_control_warnings"})
+			c.Assert(req.TagSets, qt.DeepEquals, []map[string]string{
+				{"Busername": "alice", "Senv": "production"},
+				{"Busername": "bob"},
+			})
+			c.Assert(req.Period, qt.Equals, "1d")
+			c.Assert(req.TabletType, qt.Equals, "primary")
+			c.Assert(req.BudgetID, qt.Equals, "budget-1")
+			c.Assert(req.RuleID, qt.Equals, "rule-1")
+			c.Assert(req.Search, qt.Equals, "checkout")
+			return sampleSeries(), nil
+		},
+	}
+
+	var buf bytes.Buffer
+	cmd := TagsCmd(metricsTestHelper(&buf, printer.JSON, &ps.Client{Metrics: service}))
+	cmd.SetArgs([]string{
+		"mydb", "main",
+		"--metric", "queries,latency_p99,traffic_control_warnings",
+		"--tag-set", "Busername=alice,Senv=production",
+		"--tag-set", "Busername=bob",
+		"--period", "1d",
+		"--tablet-type", "primary",
+		"--budget-id", "budget-1",
+		"--rule-id", "rule-1",
+		"--search", "checkout",
+	})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(service.GetTagSeriesFnInvoked, qt.IsTrue)
+}
+
+func TestQueriesCmd_RejectsShortQueryID(t *testing.T) {
+	c := qt.New(t)
+	service := &mock.MetricsService{
+		GetQuerySeriesFn: func(ctx context.Context, req *ps.GetQueryMetricSeriesRequest) (*ps.MetricSeries, error) {
+			c.Fatal("Metrics.GetQuerySeries should not be called")
+			return nil, nil
+		},
+	}
+
+	var buf bytes.Buffer
+	cmd := QueriesCmd(metricsTestHelper(&buf, printer.JSON, &ps.Client{Metrics: service}))
+	cmd.SetArgs([]string{"mydb", "main", "--metric", "queries", "--query-id", "59801dae501c"})
+	err := cmd.Execute()
+	c.Assert(err, qt.IsNotNil)
+	c.Assert(err.Error(), qt.Contains, `invalid --query-id "59801dae501c"; expected <fingerprint>-<keyspace>`)
+}
+
+func TestParseTagSets(t *testing.T) {
+	c := qt.New(t)
+
+	sets, err := parseTagSets([]string{"Busername=alice,Senv=production", "Busername=bob"})
+	c.Assert(err, qt.IsNil)
+	c.Assert(sets, qt.DeepEquals, []map[string]string{
+		{"Busername": "alice", "Senv": "production"},
+		{"Busername": "bob"},
+	})
+
+	_, err = parseTagSets([]string{"alice"})
+	c.Assert(err, qt.ErrorMatches, `invalid --tag-set "alice"; use key=value pairs with an Insights type prefix, for example Busername=alice`)
+
+	_, err = parseTagSets([]string{"username=alice"})
+	c.Assert(err, qt.ErrorMatches, `invalid tag key "username"; keys must start with B \(built-in\) or S \(custom\), for example Busername or Sapplication`)
+}
+
+func TestValidateQuerySelector(t *testing.T) {
+	c := qt.New(t)
+	validID := strings.Repeat("a", 64) + "-commerce"
+
+	c.Assert(validateQuerySelector([]string{validID}, "", ""), qt.IsNil)
+	c.Assert(validateQuerySelector(nil, "fingerprint", "commerce"), qt.IsNil)
+	c.Assert(validateQuerySelector(nil, "", ""), qt.ErrorMatches, "select at least one query with --query-id or with --fingerprint and --keyspace")
+	c.Assert(validateQuerySelector(nil, "fingerprint", ""), qt.ErrorMatches, "--fingerprint and --keyspace must be used together")
+	c.Assert(validateQuerySelector([]string{validID}, "fingerprint", "commerce"), qt.ErrorMatches, "--query-id cannot be combined with --fingerprint or --keyspace")
+}
+
+func TestValidateTrafficControlMetricFilters(t *testing.T) {
+	c := qt.New(t)
+
+	c.Assert(validateTrafficControlMetricFilters([]string{"queries"}, "", ""), qt.IsNil)
+	c.Assert(validateTrafficControlMetricFilters([]string{"traffic_control_warnings"}, "budget", ""), qt.IsNil)
+	c.Assert(validateTrafficControlMetricFilters([]string{"traffic_control_throttled"}, "", "rule"), qt.IsNil)
+	c.Assert(
+		validateTrafficControlMetricFilters([]string{"queries"}, "budget", ""),
+		qt.ErrorMatches,
+		"--budget-id and --rule-id only apply to --metric traffic_control_warnings or traffic_control_throttled",
+	)
 }
