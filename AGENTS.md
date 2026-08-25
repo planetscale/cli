@@ -245,7 +245,7 @@ Query historical or current branch metrics through the public metrics API:
 pscale metrics show <database> <branch> --org <org> --format json --metric queries --metric latency_p99 --period 1h
 pscale metrics instant <database> <branch> --org <org> --format json --metric planetscale_volume_usage_percentage
 pscale metrics report <database> <branch> --org <org> --format json --period 1d
-pscale metrics queries <database> <branch> --org <org> --format json --metric latency_p99 --query-id <query-id> --period 1h
+pscale metrics queries <database> <branch> --org <org> --format json --metric latency_p99 --fingerprint <fingerprint> --keyspace <keyspace> --period 1h
 pscale metrics tables <database> <branch> --org <org> --format json
 pscale metrics keyspace-tables <database> <branch> --org <org> --format json
 pscale metrics tablets <database> <branch> --org <org> --format json --metric replication_lag --period 1h
@@ -255,6 +255,8 @@ pscale metrics tags <database> <branch> --org <org> --format json --metric queri
 
 - For `metrics show` and `metrics instant`, `--metric` is required and may be repeated or comma-separated.
 - Specialized query, tablet, and tag metrics accept the filters exposed by their API endpoints. `--metric` and `--query-id` may be repeated or comma-separated. `--tag-set` is repeated for independent series; comma-separate keys inside one set (`Busername=alice,Senv=production`). Tag keys need the Insights type prefix from `insights tags`.
+- `metrics queries` returns series only for queries you select. Use `--fingerprint` with `--keyspace`, or `--query-id` as `<fingerprint>-<keyspace>`. The short `id` from `insights queries` is not a query pattern ID. Without a selector the response is an empty `series` array.
+- Filters that match nothing return zero-filled series rather than an empty response, so check the point values, not the series count.
 - `metrics tables` and `metrics keyspace-tables` preserve the untyped storage-metrics API response in JSON.
 - `metrics report` detects whether the database uses MySQL or PostgreSQL and queries a curated set of performance sections. It supports `--period`, custom `--from`/`--to` ranges, and `--steps`; JSON returns a composite report and CSV includes the section name on each row.
 - Historical queries support `--period`, or a custom `--from`/`--to` ISO 8601 range, plus `--steps` and dimension filters such as `--tablet-type`, `--keyspace`, `--shard`, `--role`, `--pod`, and `--pods`.

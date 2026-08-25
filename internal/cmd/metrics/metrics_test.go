@@ -243,7 +243,10 @@ func TestQueriesCmd_ForwardsSupportedFilters(t *testing.T) {
 	service := &mock.MetricsService{
 		GetQuerySeriesFn: func(ctx context.Context, req *ps.GetQueryMetricSeriesRequest) (*ps.MetricSeries, error) {
 			c.Assert(req.Metrics, qt.DeepEquals, []string{"queries", "latency_p99"})
-			c.Assert(req.QueryIDs, qt.DeepEquals, []string{"query-1", "query-2"})
+			c.Assert(req.QueryIDs, qt.DeepEquals, []string{
+				strings.Repeat("a", 64) + "-commerce",
+				strings.Repeat("b", 64) + "-commerce",
+			})
 			c.Assert(req.Fingerprint, qt.Equals, "fingerprint-1")
 			c.Assert(req.Keyspace, qt.Equals, "commerce")
 			c.Assert(req.Period, qt.Equals, "1h")
@@ -260,7 +263,7 @@ func TestQueriesCmd_ForwardsSupportedFilters(t *testing.T) {
 	cmd.SetArgs([]string{
 		"mydb", "main",
 		"--metric", "queries,latency_p99",
-		"--query-id", "query-1,query-2",
+		"--query-id", strings.Repeat("a", 64) + "-commerce," + strings.Repeat("b", 64) + "-commerce",
 		"--fingerprint", "fingerprint-1",
 		"--keyspace", "commerce",
 		"--period", "1h",
@@ -405,6 +408,23 @@ func TestTagsCmd_ForwardsSupportedFilters(t *testing.T) {
 	})
 	c.Assert(cmd.Execute(), qt.IsNil)
 	c.Assert(service.GetTagSeriesFnInvoked, qt.IsTrue)
+}
+
+func TestQueriesCmd_RejectsShortQueryID(t *testing.T) {
+	c := qt.New(t)
+	service := &mock.MetricsService{
+		GetQuerySeriesFn: func(ctx context.Context, req *ps.GetQueryMetricSeriesRequest) (*ps.MetricSeries, error) {
+			c.Fatal("Metrics.GetQuerySeries should not be called")
+			return nil, nil
+		},
+	}
+
+	var buf bytes.Buffer
+	cmd := QueriesCmd(metricsTestHelper(&buf, printer.JSON, &ps.Client{Metrics: service}))
+	cmd.SetArgs([]string{"mydb", "main", "--metric", "queries", "--query-id", "59801dae501c"})
+	err := cmd.Execute()
+	c.Assert(err, qt.IsNotNil)
+	c.Assert(err.Error(), qt.Contains, `invalid --query-id "59801dae501c"; expected <fingerprint>-<keyspace>`)
 }
 
 func TestParseTagSets(t *testing.T) {

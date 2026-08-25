@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -43,6 +44,9 @@ func QueriesCmd(ch *cmdutil.Helper) *cobra.Command {
 			if err := validateSpecializedSeriesFlags(cmd, flags.specializedSeriesFlags); err != nil {
 				return err
 			}
+			if err := validateQueryIDs(flags.queryIDs); err != nil {
+				return err
+			}
 
 			client, err := ch.Client()
 			if err != nil {
@@ -81,7 +85,7 @@ func QueriesCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	addSpecializedSeriesFlags(cmd, &flags.specializedSeriesFlags)
 	addQueryDimensionFlags(cmd, &flags.queryDimensionFlags)
-	cmd.Flags().StringSliceVar(&flags.queryIDs, "query-id", nil, "Filter by query pattern ID (repeat or comma-separate)")
+	cmd.Flags().StringSliceVar(&flags.queryIDs, "query-id", nil, "Filter by query pattern ID as <fingerprint>-<keyspace> (repeat or comma-separate)")
 	cmd.Flags().StringVar(&flags.fingerprint, "fingerprint", "", "Filter by query fingerprint")
 	cmd.Flags().StringVar(&flags.keyspace, "keyspace", "", "Keyspace for the query fingerprint")
 
@@ -270,6 +274,20 @@ func TagsCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().StringArrayVar(&flags.tagSets, "tag-set", nil, "Tag set as key=value pairs. Repeat for independent series; comma-separate keys in one set (for example Busername=alice,Senv=production)")
 
 	return cmd
+}
+
+// queryPatternIDPattern matches the API's query pattern ID: a 64 character
+// fingerprint joined to the keyspace by a dash. Anything else is silently
+// ignored by the API, which returns an empty series instead of an error.
+var queryPatternIDPattern = regexp.MustCompile(`^[0-9a-fA-F]{64}-.+$`)
+
+func validateQueryIDs(ids []string) error {
+	for _, id := range ids {
+		if !queryPatternIDPattern.MatchString(id) {
+			return fmt.Errorf("invalid --query-id %q; expected <fingerprint>-<keyspace>, for example %s-mykeyspace. Use --fingerprint and --keyspace instead, or take both from `pscale insights queries`", id, strings.Repeat("a", 64))
+		}
+	}
+	return nil
 }
 
 func parseTagSets(raw []string) ([]map[string]string, error) {

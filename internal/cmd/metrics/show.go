@@ -51,6 +51,9 @@ func ShowCmd(ch *cmdutil.Helper) *cobra.Command {
 			if cmd.Flags().Changed("steps") && flags.steps <= 0 {
 				return fmt.Errorf("--steps must be greater than zero")
 			}
+			if err := validateQueryIDs(flags.queryIDs); err != nil {
+				return err
+			}
 
 			client, err := ch.Client()
 			if err != nil {
@@ -112,7 +115,7 @@ func ShowCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().StringVar(&flags.container, "container", "", "Filter by container")
 	cmd.Flags().StringVar(&flags.pod, "pod", "", "Filter by one pod")
 	cmd.Flags().StringSliceVar(&flags.pods, "pods", nil, "Filter by pods (repeat or comma-separate)")
-	cmd.Flags().StringSliceVar(&flags.queryIDs, "query-id", nil, "Filter by query pattern ID (repeat or comma-separate)")
+	cmd.Flags().StringSliceVar(&flags.queryIDs, "query-id", nil, "Filter by query pattern ID as <fingerprint>-<keyspace> (repeat or comma-separate)")
 	cmd.Flags().StringVar(&flags.fingerprint, "fingerprint", "", "Filter by query fingerprint")
 	cmd.Flags().StringVar(&flags.budgetID, "budget-id", "", "Filter by traffic budget ID")
 	cmd.Flags().StringVar(&flags.ruleID, "rule-id", "", "Filter by traffic rule ID")
