@@ -390,9 +390,9 @@ pscale branch extensions list <database> <branch> --org <org> --format json
 pscale role default <database> <branch> --org <org> --format json
 pscale role reset-default <database> <branch> --org <org> --format json --force
 
-# Role connection details for a branch replica, regional read-only replica, or PgBouncer
+# Role connection details for a branch replica, read-only replica, or PgBouncer
 pscale role get <database> <branch> <role-id> --org <org> --format json --replica
-pscale role get <database> <branch> <role-id> --org <org> --format json --read-only-replica <region-slug>
+pscale role get <database> <branch> <role-id> --org <org> --format json --read-only-replica <replica-name>
 pscale role get <database> <branch> <role-id> --org <org> --format json --bouncer <bouncer-name>
 
 # Change parameters (repeat --parameters; keys are namespace.name)

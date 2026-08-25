@@ -88,13 +88,13 @@ func TestRole_GetCmdConnectionTargets(t *testing.T) {
 		},
 		{
 			name: "read-only replica",
-			args: []string{"mydb", "main", "role-id", "--read-only-replica", "us-west"},
+			args: []string{"mydb", "main", "role-id", "--read-only-replica", "analytics"},
 			request: ps.GetPostgresRoleRequest{
-				ReadOnlyReplica: "us-west",
+				ReadOnlyReplica: "analytics",
 			},
 			username:      "app.read-only|replica",
-			accessHostURL: "us-west.pg.psdb.cloud",
-			databaseURL:   "postgresql://app.read-only%7Creplica:@us-west.pg.psdb.cloud:5432/postgres?sslmode=verify-full",
+			accessHostURL: "analytics.pg.psdb.cloud",
+			databaseURL:   "postgresql://app.read-only%7Creplica:@analytics.pg.psdb.cloud:5432/postgres?sslmode=verify-full",
 		},
 		{
 			name: "bouncer",
@@ -188,9 +188,9 @@ func TestRole_GetCmdConnectionTargetNotFound(t *testing.T) {
 	}{
 		{
 			name:       "read-only replica",
-			args:       []string{"mydb", "main", "role-id", "--read-only-replica", "missing-region"},
-			targetType: "read-only replica in region",
-			target:     "missing-region",
+			args:       []string{"mydb", "main", "role-id", "--read-only-replica", "missing-replica"},
+			targetType: "read-only replica",
+			target:     "missing-replica",
 		},
 		{
 			name:       "bouncer",
