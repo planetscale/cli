@@ -422,13 +422,19 @@ pscale branch switchover <database> <branch> --org <org> --format json
 
 # Promote a specific replica (names from `pscale branch infra`)
 pscale branch switchover <database> <branch> --org <org> --format json --candidate <replica-name>
+
+# List switchovers for a branch (supports --page and --per-page)
+pscale branch switchover list <database> <branch> --org <org> --format json
+
+# Show current status and details for one switchover
+pscale branch switchover show <database> <branch> <id> --org <org> --format json
 ```
 
 - The command returns the created switchover (`id`, `state`, `method`) and exits; it does not wait. A fresh switchover is `pending` and `method` is empty until the operator picks one.
 - `method` is `switchover` (replica promoted) for branches with replicas, or `restart` for single-node branches, which are restarted in place and unreachable while they come back. Warn the user before running this against a single-node branch.
 - Writes are briefly interrupted while the switch completes. A branch accepts one switchover at a time.
 - A switchover that ends in `failed` has an unconfirmed outcome: the primary may still have moved and nothing is rolled back. Check the current primary with `pscale branch infra <database> <branch> --org <org> --format json` before retrying.
-- `--candidate` is rejected for branches without replicas. Poll status with `pscale api organizations/<org>/databases/<database>/branches/<branch>/switchovers/<id>`.
+- `--candidate` is rejected for branches without replicas. Poll status with `pscale branch switchover show <database> <branch> <id> --org <org> --format json`.
 
 ## Postgres branch maintenance
 
