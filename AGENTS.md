@@ -101,8 +101,14 @@ pscale --org <org> database list --format json
 
    ```bash
    pscale database list --org <org> --format json
+   pscale database regions list <database> --org <org> --format json
+   pscale database read-only-regions list <database> --org <org> --format json
    pscale branch list <database> --org <org> --format json
    ```
+
+   `database regions list` returns the regions available to that database for
+   its engine. `database read-only-regions list` returns configured Vitess
+   read-only regions for the database's default branch.
 
 6. **Query** (read-only default):
 

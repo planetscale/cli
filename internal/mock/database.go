@@ -16,6 +16,9 @@ type DatabaseService struct {
 	ListFn        func(context.Context, *ps.ListDatabasesRequest, ...ps.ListOption) ([]*ps.Database, error)
 	ListFnInvoked bool
 
+	ListRegionsFn        func(context.Context, *ps.ListDatabaseRegionsRequest, ...ps.ListOption) ([]*ps.Region, error)
+	ListRegionsFnInvoked bool
+
 	DeleteFn        func(context.Context, *ps.DeleteDatabaseRequest) (*ps.DatabaseDeletionRequest, error)
 	DeleteFnInvoked bool
 
@@ -51,6 +54,11 @@ func (d *DatabaseService) Get(ctx context.Context, req *ps.GetDatabaseRequest) (
 func (d *DatabaseService) List(ctx context.Context, req *ps.ListDatabasesRequest, opts ...ps.ListOption) ([]*ps.Database, error) {
 	d.ListFnInvoked = true
 	return d.ListFn(ctx, req, opts...)
+}
+
+func (d *DatabaseService) ListRegions(ctx context.Context, req *ps.ListDatabaseRegionsRequest, opts ...ps.ListOption) ([]*ps.Region, error) {
+	d.ListRegionsFnInvoked = true
+	return d.ListRegionsFn(ctx, req, opts...)
 }
 
 func (d *DatabaseService) Delete(ctx context.Context, req *ps.DeleteDatabaseRequest) (*ps.DatabaseDeletionRequest, error) {
