@@ -47,8 +47,12 @@ func QueryTrafficBudgetsCmd(ch *cmdutil.Helper) *cobra.Command {
 			end()
 
 			if len(budgets) == 0 && ch.Printer.Format() == printer.Human {
-				ch.Printer.Printf("No traffic budgets affect fingerprint %s on %s/%s.\n",
-					printer.BoldBlue(fingerprint), printer.BoldBlue(database), printer.BoldBlue(branch))
+				if flags.page > 0 {
+					ch.Printer.Println("No traffic budgets found on this page.")
+				} else {
+					ch.Printer.Printf("No traffic budgets affect fingerprint %s on %s/%s.\n",
+						printer.BoldBlue(fingerprint), printer.BoldBlue(database), printer.BoldBlue(branch))
+				}
 				return nil
 			}
 
@@ -57,7 +61,7 @@ func QueryTrafficBudgetsCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&flags.keyspace, "keyspace", "", "Keyspace for the fingerprint")
-	cmd.Flags().IntVar(&flags.page, "page", 1, "Page number to fetch")
+	cmd.Flags().IntVar(&flags.page, "page", 0, "Page number to fetch")
 	cmd.Flags().IntVar(&flags.perPage, "per-page", 25, "Number of results per page")
 
 	return cmd
