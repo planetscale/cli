@@ -307,7 +307,7 @@ Two complementary read-only surfaces. When diagnosing database health or perform
 ```bash
 pscale insights queries <database> <branch> --org <org> --format json --sort totalTime   # top queries; sorts: totalTime, count, p99Latency, rowsRead, rowsReadPerReturned, errorCount, ...
 pscale insights queries samples <database> <branch> <fingerprint> --org <org> --format json --keyspace <keyspace>  # recent executions; keyspace from queries list
-pscale insights queries traffic-budgets <database> <branch> <fingerprint> --org <org> --format json --keyspace <keyspace>  # traffic budgets affecting a query fingerprint
+pscale insights queries traffic-budgets <database> <branch> <fingerprint> --org <org> --format json --keyspace <keyspace> --page <n> --per-page <n>  # traffic budgets affecting a query fingerprint
 pscale insights queries show <database> <branch> <query-id> --org <org> --format json     # one execution; query-id comes from the samples list
 pscale insights queries summary <database> <branch> <fingerprint> --org <org> --format json --keyspace <keyspace>  # aggregate stats for one query pattern
 pscale insights errors <database> <branch> --org <org> --format json                     # failing queries with error messages

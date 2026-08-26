@@ -351,6 +351,21 @@ func TestInsights_QueryShowCmd_Human(t *testing.T) {
 	c.Assert(buf.String(), qt.Contains, "select 1")
 }
 
+func TestInsights_QueryShowCmd_NotFoundNamesQueryExecution(t *testing.T) {
+	c := qt.New(t)
+	svc := &mock.QueryInsightsService{
+		GetQueryFn: func(context.Context, *ps.GetQueryRequest) (*ps.Query, error) {
+			return nil, &ps.Error{Code: ps.ErrNotFound}
+		},
+	}
+
+	cmd := QueryShowCmd(testHelper(&bytes.Buffer{}, printer.JSON, &ps.Client{QueryInsights: svc}))
+	cmd.SetArgs([]string{"mydb", "main", "missing-execution"})
+
+	err := cmd.Execute()
+	c.Assert(err, qt.ErrorMatches, "query execution missing-execution does not exist on branch main in database mydb .*")
+}
+
 func TestInsights_QuerySummaryCmd(t *testing.T) {
 	c := qt.New(t)
 	lastRunAt := time.Date(2026, 8, 25, 18, 0, 0, 0, time.UTC)
@@ -424,6 +439,21 @@ func TestInsights_QuerySummaryCmd_Human(t *testing.T) {
 	c.Assert(buf.String(), qt.Contains, "b129e8fa")
 	c.Assert(buf.String(), qt.Contains, "20")
 	c.Assert(buf.String(), qt.Contains, "select 1")
+}
+
+func TestInsights_QuerySummaryCmd_NotFoundNamesFingerprint(t *testing.T) {
+	c := qt.New(t)
+	svc := &mock.QueryInsightsService{
+		GetQuerySummaryFn: func(context.Context, *ps.GetQuerySummaryRequest, ...ps.ListOption) (*ps.QuerySummary, error) {
+			return nil, &ps.Error{Code: ps.ErrNotFound}
+		},
+	}
+
+	cmd := QuerySummaryCmd(testHelper(&bytes.Buffer{}, printer.JSON, &ps.Client{QueryInsights: svc}))
+	cmd.SetArgs([]string{"mydb", "main", "missing-fingerprint", "--keyspace", "commerce"})
+
+	err := cmd.Execute()
+	c.Assert(err, qt.ErrorMatches, "query fingerprint missing-fingerprint does not exist in keyspace commerce on branch main in database mydb .*")
 }
 
 func TestInsights_QuerySummaryCmd_RequiresKeyspace(t *testing.T) {

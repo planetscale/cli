@@ -57,6 +57,10 @@ not the fingerprint used by the samples and summary commands.`,
 				QueryID:      queryID,
 			})
 			if err != nil {
+				if cmdutil.ErrCode(err) == ps.ErrNotFound {
+					return fmt.Errorf("query execution %s does not exist on branch %s in database %s (organization: %s)",
+						printer.BoldBlue(queryID), printer.BoldBlue(branch), printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
+				}
 				return notFoundError(ch, err, database, branch)
 			}
 			end()

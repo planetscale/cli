@@ -38,6 +38,8 @@ func TestQueryTrafficBudgetsCmd(t *testing.T) {
 				c.Assert(opt(listOpts), qt.IsNil)
 			}
 			c.Assert(values.Get("keyspace"), qt.Equals, "mydb")
+			c.Assert(values.Get("page"), qt.Equals, "3")
+			c.Assert(values.Get("per_page"), qt.Equals, "50")
 
 			return budgets, nil
 		},
@@ -47,16 +49,54 @@ func TestQueryTrafficBudgetsCmd(t *testing.T) {
 	ch := testHelper(&buf, printer.JSON, &ps.Client{QueryInsights: svc})
 
 	cmd := QueryTrafficBudgetsCmd(ch)
-	cmd.SetArgs([]string{"mydb", "main", "b129e8fa", "--keyspace", "mydb"})
+	cmd.SetArgs([]string{"mydb", "main", "b129e8fa", "--keyspace", "mydb", "--page", "3", "--per-page", "50"})
 	err := cmd.Execute()
 
 	c.Assert(err, qt.IsNil)
 	c.Assert(svc.ListQueryTrafficBudgetsFnInvoked, qt.IsTrue)
-	c.Assert(cmd.Aliases, qt.DeepEquals, []string{"ls"})
+	c.Assert(cmd.Aliases, qt.HasLen, 0)
 
 	var out []map[string]any
 	c.Assert(json.Unmarshal(buf.Bytes(), &out), qt.IsNil)
 	c.Assert(out, qt.HasLen, 1)
 	c.Assert(out[0]["id"], qt.Equals, "budget-1")
 	c.Assert(out[0]["name"], qt.Equals, "App queries")
+}
+
+func TestQueryTrafficBudgetsCmd_EmptyFirstPage(t *testing.T) {
+	c := qt.New(t)
+	svc := &mock.QueryInsightsService{
+		ListQueryTrafficBudgetsFn: func(context.Context, *ps.ListQueryTrafficBudgetsRequest, ...ps.ListOption) ([]*ps.TrafficBudget, error) {
+			return nil, nil
+		},
+	}
+
+	var buf bytes.Buffer
+	ch := testHelper(&buf, printer.Human, &ps.Client{QueryInsights: svc})
+	ch.Printer.SetHumanOutput(&buf)
+
+	cmd := QueryTrafficBudgetsCmd(ch)
+	cmd.SetArgs([]string{"mydb", "main", "b129e8fa"})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(buf.String(), qt.Contains, "No traffic budgets affect fingerprint")
+	c.Assert(buf.String(), qt.Not(qt.Contains), "on this page")
+}
+
+func TestQueryTrafficBudgetsCmd_EmptyLaterPage(t *testing.T) {
+	c := qt.New(t)
+	svc := &mock.QueryInsightsService{
+		ListQueryTrafficBudgetsFn: func(context.Context, *ps.ListQueryTrafficBudgetsRequest, ...ps.ListOption) ([]*ps.TrafficBudget, error) {
+			return nil, nil
+		},
+	}
+
+	var buf bytes.Buffer
+	ch := testHelper(&buf, printer.Human, &ps.Client{QueryInsights: svc})
+	ch.Printer.SetHumanOutput(&buf)
+
+	cmd := QueryTrafficBudgetsCmd(ch)
+	cmd.SetArgs([]string{"mydb", "main", "b129e8fa", "--page", "4"})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(buf.String(), qt.Contains, "No traffic budgets found on this page.")
+	c.Assert(buf.String(), qt.Not(qt.Contains), "No traffic budgets affect fingerprint")
 }

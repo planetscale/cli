@@ -73,6 +73,11 @@ The fingerprint identifies a query pattern; it is not an execution/sample ID.`,
 				Fingerprint:  fingerprint,
 			}, ps.WithKeyspace(flags.keyspace), ps.WithPeriod(flags.period), ps.WithTimeRange(flags.from, flags.to))
 			if err != nil {
+				if cmdutil.ErrCode(err) == ps.ErrNotFound {
+					return fmt.Errorf("query fingerprint %s does not exist in keyspace %s on branch %s in database %s (organization: %s)",
+						printer.BoldBlue(fingerprint), printer.BoldBlue(flags.keyspace), printer.BoldBlue(branch),
+						printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
+				}
 				return notFoundError(ch, err, database, branch)
 			}
 			end()
