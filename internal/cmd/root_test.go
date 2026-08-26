@@ -98,6 +98,24 @@ func TestFlagValueWinsOverConfigFile(t *testing.T) {
 	}
 }
 
+func TestInterleavedFlagValueWinsOverConfigFile(t *testing.T) {
+	home := writeHomeConfig(t, "org: config-org\n")
+
+	result := runRootCLIWithHome(t, home,
+		"database",
+		"--org", "flag-org",
+		"list",
+		"--format", "json",
+		"--api-url", "http://127.0.0.1:1/",
+		"--service-token-id", "id",
+		"--service-token", "secret",
+	)
+
+	if !strings.Contains(result.stdout, "organizations/flag-org") {
+		t.Fatalf("interleaved --org did not reach the API request, stdout = %q, stderr = %q", result.stdout, result.stderr)
+	}
+}
+
 func TestConfigFileFillsUnsetFlag(t *testing.T) {
 	home := writeHomeConfig(t, "org: config-org\n")
 
@@ -131,12 +149,16 @@ func writeHomeConfig(t *testing.T, contents string) string {
 func TestTargetCommand(t *testing.T) {
 	root := &cobra.Command{Use: "pscale"}
 	parent := &cobra.Command{Use: "database"}
+	parent.PersistentFlags().String("org", "", "")
 	child := &cobra.Command{Use: "list", Run: func(*cobra.Command, []string) {}}
 	parent.AddCommand(child)
 	root.AddCommand(parent)
 
 	if got := targetCommand(root, []string{"database", "list", "--org", "acme"}); got != child {
 		t.Fatalf("target = %q, want database list", got.Name())
+	}
+	if got := targetCommand(root, []string{"database", "--org", "acme", "list"}); got != child {
+		t.Fatalf("target with interleaved flag = %q, want database list", got.Name())
 	}
 	if got := targetCommand(root, nil); got != root {
 		t.Fatalf("target = %q, want root", got.Name())

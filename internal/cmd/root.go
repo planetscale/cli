@@ -493,8 +493,10 @@ func initConfig() {
 
 // targetCommand returns the command cobra is about to run, falling back to the
 // root command when the arguments don't resolve (unknown command, no args).
+// Execute uses Traverse because TraverseChildren is enabled, so use the same
+// resolution path here to handle flags interleaved with subcommands.
 func targetCommand(root *cobra.Command, args []string) *cobra.Command {
-	cmd, _, err := root.Find(args)
+	cmd, _, err := root.Traverse(args)
 	if err != nil || cmd == nil {
 		return root
 	}
