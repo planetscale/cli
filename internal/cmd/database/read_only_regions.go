@@ -39,6 +39,9 @@ func ReadOnlyRegionsListCmd(ch *cmdutil.Helper) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if err := requireVitessDatabase(cmd.Context(), ch, client, database, "read-only regions"); err != nil {
+				return err
+			}
 
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Fetching read-only regions for database %s...", printer.BoldBlue(database)))
 			defer end()

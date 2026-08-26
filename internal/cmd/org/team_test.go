@@ -3,6 +3,7 @@ package org
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"net/url"
 	"testing"
 
@@ -35,6 +36,7 @@ func testTeamMember() *ps.OrganizationTeamMembership {
 			Name:        "Ada",
 			Email:       "ada@example.com",
 		},
+		Passwords: []json.RawMessage{json.RawMessage(`{"id":"password-1","name":"production"}`)},
 	}
 }
 
@@ -184,6 +186,8 @@ func TestOrg_TeamMemberListCmd(t *testing.T) {
 	cmd.SetArgs([]string{"platform", "--page", "3", "--per-page", "50"})
 	c.Assert(cmd.Execute(), qt.IsNil)
 	c.Assert(buf.String(), qt.Contains, `"email": "ada@example.com"`)
+	c.Assert(buf.String(), qt.Not(qt.Contains), `"passwords"`)
+	c.Assert(buf.String(), qt.Not(qt.Contains), `"password-1"`)
 }
 
 func TestOrg_TeamMemberListCmd_EmptyPage(t *testing.T) {

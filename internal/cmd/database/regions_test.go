@@ -80,6 +80,11 @@ func TestDatabase_RegionsListCmdHuman(t *testing.T) {
 func TestDatabase_ReadOnlyRegionsListCmd(t *testing.T) {
 	c := qt.New(t)
 	var out bytes.Buffer
+	databases := &mock.DatabaseService{
+		GetFn: func(context.Context, *ps.GetDatabaseRequest) (*ps.Database, error) {
+			return &ps.Database{Name: "app", Kind: ps.DatabaseEngineMySQL}, nil
+		},
+	}
 	regions := []*ps.ReadOnlyRegion{{
 		ID:          "ror123",
 		DisplayName: "Europe West",
@@ -105,7 +110,7 @@ func TestDatabase_ReadOnlyRegionsListCmd(t *testing.T) {
 		},
 	}
 
-	cmd := ReadOnlyRegionsListCmd(databaseRegionsTestHelper(printer.JSON, &out, nil, svc))
+	cmd := ReadOnlyRegionsListCmd(databaseRegionsTestHelper(printer.JSON, &out, databases, svc))
 	cmd.SetArgs([]string{"app", "--page", "3", "--per-page", "10"})
 	c.Assert(cmd.Execute(), qt.IsNil)
 	c.Assert(svc.ListFnInvoked, qt.IsTrue)
@@ -116,6 +121,11 @@ func TestDatabase_ReadOnlyRegionsListCmd(t *testing.T) {
 func TestDatabase_ReadOnlyRegionsListCmdHuman(t *testing.T) {
 	c := qt.New(t)
 	var out bytes.Buffer
+	databases := &mock.DatabaseService{
+		GetFn: func(context.Context, *ps.GetDatabaseRequest) (*ps.Database, error) {
+			return &ps.Database{Name: "app", Kind: ps.DatabaseEngineMySQL}, nil
+		},
+	}
 	svc := &mock.ReadOnlyRegionsService{
 		ListFn: func(context.Context, *ps.ListReadOnlyRegionsRequest, ...ps.ListOption) ([]*ps.ReadOnlyRegion, error) {
 			return []*ps.ReadOnlyRegion{{
@@ -130,12 +140,28 @@ func TestDatabase_ReadOnlyRegionsListCmdHuman(t *testing.T) {
 		},
 	}
 
-	cmd := ReadOnlyRegionsListCmd(databaseRegionsTestHelper(printer.Human, &out, nil, svc))
+	cmd := ReadOnlyRegionsListCmd(databaseRegionsTestHelper(printer.Human, &out, databases, svc))
 	cmd.SetArgs([]string{"app"})
 	c.Assert(cmd.Execute(), qt.IsNil)
 	c.Assert(out.String(), qt.Contains, "ror123")
 	c.Assert(out.String(), qt.Contains, "eu-west")
 	c.Assert(out.String(), qt.Contains, "Europe West")
+}
+
+func TestDatabase_ReadOnlyRegionsListCmdRejectsPostgres(t *testing.T) {
+	c := qt.New(t)
+	databases := &mock.DatabaseService{
+		GetFn: func(context.Context, *ps.GetDatabaseRequest) (*ps.Database, error) {
+			return &ps.Database{Name: "app", Kind: ps.DatabaseEnginePostgres}, nil
+		},
+	}
+	regions := &mock.ReadOnlyRegionsService{}
+
+	cmd := ReadOnlyRegionsListCmd(databaseRegionsTestHelper(printer.JSON, &bytes.Buffer{}, databases, regions))
+	cmd.SetArgs([]string{"app"})
+
+	c.Assert(cmd.Execute(), qt.ErrorMatches, `.*only available for Vitess .* databases; app is postgresql`)
+	c.Assert(regions.ListFnInvoked, qt.IsFalse)
 }
 
 func TestDatabase_RegionCommandsRegistered(t *testing.T) {
