@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/planetscale/cli/internal/cmdutil"
 	ps "github.com/planetscale/cli/internal/planetscale"
@@ -101,7 +102,19 @@ func toOrganizationTeamMembers(members []*ps.OrganizationTeamMembership) []*orga
 }
 
 func (m *organizationTeamMember) MarshalJSON() ([]byte, error) {
-	return json.MarshalIndent(m.orig, "", "  ")
+	return json.MarshalIndent(struct {
+		ID        string                   `json:"id"`
+		User      ps.OrganizationTeamUser  `json:"user"`
+		Actor     ps.OrganizationTeamActor `json:"actor"`
+		CreatedAt time.Time                `json:"created_at"`
+		UpdatedAt time.Time                `json:"updated_at"`
+	}{
+		ID:        m.orig.ID,
+		User:      m.orig.User,
+		Actor:     m.orig.Actor,
+		CreatedAt: m.orig.CreatedAt,
+		UpdatedAt: m.orig.UpdatedAt,
+	}, "", "  ")
 }
 
 func (m *organizationTeamMember) MarshalCSVValue() interface{} {
