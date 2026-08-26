@@ -12,13 +12,16 @@ import (
 )
 
 func QueryTrafficBudgetsCmd(ch *cmdutil.Helper) *cobra.Command {
-	var keyspace string
+	var flags struct {
+		keyspace string
+		page     int
+		perPage  int
+	}
 
 	cmd := &cobra.Command{
-		Use:     "traffic-budgets <database> <branch> <fingerprint>",
-		Short:   "List traffic budgets affecting a query fingerprint",
-		Aliases: []string{"ls"},
-		Args:    cmdutil.RequiredArgs("database", "branch", "fingerprint"),
+		Use:   "traffic-budgets <database> <branch> <fingerprint>",
+		Short: "List traffic budgets affecting a query fingerprint",
+		Args:  cmdutil.RequiredArgs("database", "branch", "fingerprint"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			database, branch, fingerprint := args[0], args[1], args[2]
@@ -37,7 +40,7 @@ func QueryTrafficBudgetsCmd(ch *cmdutil.Helper) *cobra.Command {
 				Database:     database,
 				Branch:       branch,
 				Fingerprint:  fingerprint,
-			}, ps.WithKeyspace(keyspace))
+			}, ps.WithKeyspace(flags.keyspace), ps.WithPage(flags.page), ps.WithPerPage(flags.perPage))
 			if err != nil {
 				return notFoundError(ch, err, database, branch)
 			}
@@ -53,7 +56,9 @@ func QueryTrafficBudgetsCmd(ch *cmdutil.Helper) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&keyspace, "keyspace", "", "Keyspace for the fingerprint")
+	cmd.Flags().StringVar(&flags.keyspace, "keyspace", "", "Keyspace for the fingerprint")
+	cmd.Flags().IntVar(&flags.page, "page", 1, "Page number to fetch")
+	cmd.Flags().IntVar(&flags.perPage, "per-page", 25, "Number of results per page")
 
 	return cmd
 }

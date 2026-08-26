@@ -38,6 +38,8 @@ func TestQueryTrafficBudgetsCmd(t *testing.T) {
 				c.Assert(opt(listOpts), qt.IsNil)
 			}
 			c.Assert(values.Get("keyspace"), qt.Equals, "mydb")
+			c.Assert(values.Get("page"), qt.Equals, "3")
+			c.Assert(values.Get("per_page"), qt.Equals, "50")
 
 			return budgets, nil
 		},
@@ -47,12 +49,12 @@ func TestQueryTrafficBudgetsCmd(t *testing.T) {
 	ch := testHelper(&buf, printer.JSON, &ps.Client{QueryInsights: svc})
 
 	cmd := QueryTrafficBudgetsCmd(ch)
-	cmd.SetArgs([]string{"mydb", "main", "b129e8fa", "--keyspace", "mydb"})
+	cmd.SetArgs([]string{"mydb", "main", "b129e8fa", "--keyspace", "mydb", "--page", "3", "--per-page", "50"})
 	err := cmd.Execute()
 
 	c.Assert(err, qt.IsNil)
 	c.Assert(svc.ListQueryTrafficBudgetsFnInvoked, qt.IsTrue)
-	c.Assert(cmd.Aliases, qt.DeepEquals, []string{"ls"})
+	c.Assert(cmd.Aliases, qt.HasLen, 0)
 
 	var out []map[string]any
 	c.Assert(json.Unmarshal(buf.Bytes(), &out), qt.IsNil)
