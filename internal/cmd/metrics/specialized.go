@@ -2,7 +2,6 @@ package metrics
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -42,9 +41,6 @@ func QueriesCmd(ch *cmdutil.Helper) *cobra.Command {
 		Args:  cmdutil.RequiredArgs("database", "branch"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := validateSpecializedSeriesFlags(cmd, flags.specializedSeriesFlags); err != nil {
-				return err
-			}
-			if err := validateQueryIDs(flags.queryIDs); err != nil {
 				return err
 			}
 			if err := validateQuerySelector(flags.queryIDs, flags.fingerprint, flags.keyspace); err != nil {
@@ -91,7 +87,7 @@ func QueriesCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	addSpecializedSeriesFlags(cmd, &flags.specializedSeriesFlags)
 	addQueryDimensionFlags(cmd, &flags.queryDimensionFlags)
-	cmd.Flags().StringSliceVar(&flags.queryIDs, "query-id", nil, "Filter by query pattern ID as <fingerprint>-<keyspace> (repeat or comma-separate)")
+	cmd.Flags().StringSliceVar(&flags.queryIDs, "query-id", nil, "Filter by query pattern ID (repeat or comma-separate)")
 	cmd.Flags().StringVar(&flags.fingerprint, "fingerprint", "", "Filter by query fingerprint")
 	cmd.Flags().StringVar(&flags.keyspace, "keyspace", "", "Keyspace for the query fingerprint")
 	cmd.MarkFlagRequired("metric") // nolint:errcheck
@@ -138,27 +134,6 @@ func TabletsCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			database, branch := args[0], args[1]
-			if flags.workflow != "" {
-				workflows, err := client.Workflows.List(cmd.Context(), &ps.ListWorkflowsRequest{
-					Organization: ch.Config.Organization,
-					Database:     database,
-				})
-				if err != nil {
-					return cmdutil.HandleError(err)
-				}
-
-				found := false
-				for _, workflow := range workflows {
-					if workflow.Name == flags.workflow && workflow.Branch.Name == branch {
-						found = true
-						break
-					}
-				}
-				if !found {
-					return fmt.Errorf("workflow %s does not exist on branch %s", printer.BoldBlue(flags.workflow), printer.BoldBlue(branch))
-				}
-			}
-
 			end := specializedMetricsProgress(ch, database, branch, "tablet")
 			defer end()
 
@@ -314,20 +289,6 @@ func TagsCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.MarkFlagRequired("metric") // nolint:errcheck
 
 	return cmd
-}
-
-// queryPatternIDPattern matches the API's query pattern ID: a 64 character
-// fingerprint joined to the keyspace by a dash. Anything else is silently
-// ignored by the API, which returns an empty series instead of an error.
-var queryPatternIDPattern = regexp.MustCompile(`^[0-9a-fA-F]{64}-.+$`)
-
-func validateQueryIDs(ids []string) error {
-	for _, id := range ids {
-		if !queryPatternIDPattern.MatchString(id) {
-			return fmt.Errorf("invalid --query-id %q; expected <fingerprint>-<keyspace>, for example %s-mykeyspace. Use --fingerprint and --keyspace instead, or take both from `pscale insights queries`", id, strings.Repeat("a", 64))
-		}
-	}
-	return nil
 }
 
 func validateQuerySelector(ids []string, fingerprint, keyspace string) error {

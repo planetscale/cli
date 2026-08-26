@@ -75,6 +75,22 @@ func TestShowCmd_JSONPreservesSeries(t *testing.T) {
 	c.Assert(response.Series[0].Points, qt.HasLen, 3)
 }
 
+func TestShowCmd_ForwardsOpaqueQueryID(t *testing.T) {
+	c := qt.New(t)
+	service := &mock.MetricsService{
+		GetSeriesFn: func(ctx context.Context, req *ps.GetMetricSeriesRequest) (*ps.MetricSeries, error) {
+			c.Assert(req.QueryIDs, qt.DeepEquals, []string{"59801dae501c"})
+			return sampleSeries(), nil
+		},
+	}
+
+	var buf bytes.Buffer
+	cmd := ShowCmd(metricsTestHelper(&buf, printer.JSON, &ps.Client{Metrics: service}))
+	cmd.SetArgs([]string{"mydb", "main", "--metric", "queries", "--query-id", "59801dae501c"})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(service.GetSeriesFnInvoked, qt.IsTrue)
+}
+
 func TestShowCmd_HumanSummarizesSeries(t *testing.T) {
 	c := qt.New(t)
 	service := &mock.MetricsService{
@@ -317,16 +333,6 @@ func TestStorageMetricsCommands_PreserveResponse(t *testing.T) {
 
 func TestTabletsCmd_ForwardsSupportedFilters(t *testing.T) {
 	c := qt.New(t)
-	workflows := &mock.WorkflowsService{
-		ListFn: func(ctx context.Context, req *ps.ListWorkflowsRequest) ([]*ps.Workflow, error) {
-			c.Assert(req.Database, qt.Equals, "mydb")
-			return []*ps.Workflow{{
-				ID:     "opaque-workflow-id",
-				Name:   "move-tables",
-				Branch: ps.DatabaseBranch{Name: "main"},
-			}}, nil
-		},
-	}
 	service := &mock.MetricsService{
 		GetTabletSeriesFn: func(ctx context.Context, req *ps.GetTabletMetricSeriesRequest) (*ps.MetricSeries, error) {
 			c.Assert(req.Metrics, qt.DeepEquals, []string{"replication_lag", "pod_cpu_usage", "vreplication_lag"})
@@ -342,7 +348,7 @@ func TestTabletsCmd_ForwardsSupportedFilters(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	cmd := TabletsCmd(metricsTestHelper(&buf, printer.JSON, &ps.Client{Metrics: service, Workflows: workflows}))
+	cmd := TabletsCmd(metricsTestHelper(&buf, printer.JSON, &ps.Client{Metrics: service}))
 	cmd.SetArgs([]string{
 		"mydb", "main",
 		"--metric", "replication_lag,pod_cpu_usage,vreplication_lag",
@@ -356,7 +362,6 @@ func TestTabletsCmd_ForwardsSupportedFilters(t *testing.T) {
 	})
 	c.Assert(cmd.Execute(), qt.IsNil)
 	c.Assert(service.GetTabletSeriesFnInvoked, qt.IsTrue)
-	c.Assert(workflows.ListFnInvoked, qt.IsTrue)
 }
 
 func TestTabletsInstantCmd_UsesNestedUX(t *testing.T) {
@@ -382,31 +387,25 @@ func TestTabletsInstantCmd_UsesNestedUX(t *testing.T) {
 	c.Assert(service.GetInstantTabletsFnInvoked, qt.IsTrue)
 }
 
-func TestTabletsCmd_RejectsUnknownWorkflow(t *testing.T) {
+func TestTabletsCmd_DoesNotPrevalidateWorkflow(t *testing.T) {
 	c := qt.New(t)
-	workflows := &mock.WorkflowsService{
-		ListFn: func(context.Context, *ps.ListWorkflowsRequest) ([]*ps.Workflow, error) {
-			return []*ps.Workflow{}, nil
-		},
-	}
 	service := &mock.MetricsService{
-		GetTabletSeriesFn: func(context.Context, *ps.GetTabletMetricSeriesRequest) (*ps.MetricSeries, error) {
-			c.Fatal("Metrics.GetTabletSeries should not be called")
-			return nil, nil
+		GetTabletSeriesFn: func(_ context.Context, req *ps.GetTabletMetricSeriesRequest) (*ps.MetricSeries, error) {
+			c.Assert(req.Workflow, qt.Equals, "workflow-on-a-later-page")
+			return sampleSeries(), nil
 		},
 	}
 
 	cmd := TabletsCmd(metricsTestHelper(&bytes.Buffer{}, printer.JSON, &ps.Client{
-		Metrics:   service,
-		Workflows: workflows,
+		Metrics: service,
 	}))
 	cmd.SetArgs([]string{
 		"mydb", "main",
 		"--metric", "vreplication_lag",
-		"--workflow", "missing",
+		"--workflow", "workflow-on-a-later-page",
 	})
-	c.Assert(cmd.Execute(), qt.ErrorMatches, "workflow missing does not exist on branch main")
-	c.Assert(service.GetTabletSeriesFnInvoked, qt.IsFalse)
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(service.GetTabletSeriesFnInvoked, qt.IsTrue)
 }
 
 func TestTagsCmd_ForwardsSupportedFilters(t *testing.T) {
@@ -444,21 +443,20 @@ func TestTagsCmd_ForwardsSupportedFilters(t *testing.T) {
 	c.Assert(service.GetTagSeriesFnInvoked, qt.IsTrue)
 }
 
-func TestQueriesCmd_RejectsShortQueryID(t *testing.T) {
+func TestQueriesCmd_ForwardsOpaqueQueryID(t *testing.T) {
 	c := qt.New(t)
 	service := &mock.MetricsService{
 		GetQuerySeriesFn: func(ctx context.Context, req *ps.GetQueryMetricSeriesRequest) (*ps.MetricSeries, error) {
-			c.Fatal("Metrics.GetQuerySeries should not be called")
-			return nil, nil
+			c.Assert(req.QueryIDs, qt.DeepEquals, []string{"59801dae501c"})
+			return sampleSeries(), nil
 		},
 	}
 
 	var buf bytes.Buffer
 	cmd := QueriesCmd(metricsTestHelper(&buf, printer.JSON, &ps.Client{Metrics: service}))
 	cmd.SetArgs([]string{"mydb", "main", "--metric", "queries", "--query-id", "59801dae501c"})
-	err := cmd.Execute()
-	c.Assert(err, qt.IsNotNil)
-	c.Assert(err.Error(), qt.Contains, `invalid --query-id "59801dae501c"; expected <fingerprint>-<keyspace>`)
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(service.GetQuerySeriesFnInvoked, qt.IsTrue)
 }
 
 func TestParseTagSets(t *testing.T) {
@@ -480,7 +478,7 @@ func TestParseTagSets(t *testing.T) {
 
 func TestValidateQuerySelector(t *testing.T) {
 	c := qt.New(t)
-	validID := strings.Repeat("a", 64) + "-commerce"
+	validID := "59801dae501c"
 
 	c.Assert(validateQuerySelector([]string{validID}, "", ""), qt.IsNil)
 	c.Assert(validateQuerySelector(nil, "fingerprint", "commerce"), qt.IsNil)
