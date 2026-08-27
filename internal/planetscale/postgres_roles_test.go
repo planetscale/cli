@@ -339,10 +339,10 @@ func TestPostgresRoles_GetConnectionTargets(t *testing.T) {
 		},
 		{
 			name:       "read-only replica",
-			request:    GetPostgresRoleRequest{ReadOnlyReplica: "us-west"},
-			query:      url.Values{"read_only_replica": []string{"us-west"}},
+			request:    GetPostgresRoleRequest{ReadOnlyReplica: "analytics"},
+			query:      url.Values{"read_only_replica": []string{"analytics"}},
 			username:   "test-user.replica-id|replica",
-			accessHost: "us-west.planetscale.com",
+			accessHost: "analytics.planetscale.com",
 		},
 		{
 			name:       "bouncer",

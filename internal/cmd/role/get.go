@@ -55,7 +55,7 @@ func GetCmd(ch *cmdutil.Helper) *cobra.Command {
 						printer.BoldBlue(ch.Config.Organization),
 					}
 					if flags.readOnlyReplica != "" {
-						notFoundFormat = "role %s or a read-only replica in region %s was not found in branch %s of database %s (organization: %s)"
+						notFoundFormat = "role %s or read-only replica %s was not found in branch %s of database %s (organization: %s)"
 						notFoundArgs = []any{
 							printer.BoldBlue(roleID),
 							printer.BoldBlue(flags.readOnlyReplica),
@@ -95,7 +95,7 @@ func GetCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 
 	cmd.Flags().BoolVar(&flags.replica, "replica", false, "Return connection details for a branch replica.")
-	cmd.Flags().StringVar(&flags.readOnlyReplica, "read-only-replica", "", "Return connection details for a regional read-only replica (region slug).")
+	cmd.Flags().StringVar(&flags.readOnlyReplica, "read-only-replica", "", "Return connection details for a read-only replica (name).")
 	cmd.Flags().StringVar(&flags.bouncer, "bouncer", "", "Return connection details for a PgBouncer (name).")
 	cmd.MarkFlagsMutuallyExclusive("replica", "read-only-replica", "bouncer")
 
