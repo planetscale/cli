@@ -42,7 +42,7 @@ func TestOrganizationSSO_Get(t *testing.T) {
 	client, err := NewClient(WithBaseURL(ts.URL))
 	c.Assert(err, qt.IsNil)
 
-	sso, err := client.OrganizationSSO.Get(context.Background(), &GetOrganizationSSORequest{Organization: "my-org"})
+	sso, err := client.OrganizationSSO.Get(context.Background(), &OrganizationSSORequest{Organization: "my-org"})
 	c.Assert(err, qt.IsNil)
 	c.Assert(sso.Enabled, qt.IsTrue)
 	c.Assert(sso.Configured, qt.IsFalse)
@@ -77,7 +77,7 @@ func TestOrganizationSSO_Enable(t *testing.T) {
 	client, err := NewClient(WithBaseURL(ts.URL))
 	c.Assert(err, qt.IsNil)
 
-	sso, err := client.OrganizationSSO.Enable(context.Background(), &EnableOrganizationSSORequest{Organization: "my-org"})
+	sso, err := client.OrganizationSSO.Enable(context.Background(), &OrganizationSSORequest{Organization: "my-org"})
 	c.Assert(err, qt.IsNil)
 	c.Assert(sso.Enabled, qt.IsTrue)
 	c.Assert(sso.DomainVerificationURL, qt.Not(qt.IsNil))
@@ -98,7 +98,7 @@ func TestOrganizationSSO_Configure(t *testing.T) {
 	client, err := NewClient(WithBaseURL(ts.URL))
 	c.Assert(err, qt.IsNil)
 
-	portal, err := client.OrganizationSSO.Configure(context.Background(), &ConfigureOrganizationSSORequest{Organization: "my-org"})
+	portal, err := client.OrganizationSSO.Configure(context.Background(), &OrganizationSSORequest{Organization: "my-org"})
 	c.Assert(err, qt.IsNil)
 	c.Assert(portal.PortalURL, qt.Equals, "https://portal.example/sso")
 }
@@ -126,11 +126,49 @@ func TestOrganizationSSO_ListDomains(t *testing.T) {
 	client, err := NewClient(WithBaseURL(ts.URL))
 	c.Assert(err, qt.IsNil)
 
-	domains, err := client.OrganizationSSO.ListDomains(context.Background(), &ListOrganizationSSODomainsRequest{Organization: "my-org"})
+	domains, err := client.OrganizationSSO.ListDomains(context.Background(), &OrganizationSSORequest{Organization: "my-org"})
 	c.Assert(err, qt.IsNil)
 	c.Assert(domains, qt.HasLen, 1)
 	c.Assert(domains[0].ID, qt.Equals, "dom_1")
 	c.Assert(domains[0].State, qt.Equals, "pending")
+}
+
+func TestOrganizationSSO_Disable(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodDelete)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/sso")
+		w.WriteHeader(200)
+		_, err := w.Write([]byte(`{"id":"org_1","type":"OrganizationSSO","enabled":false,"configured":false,"directory":false,"has_verified_domain":false,"domains":[],"domain_verification_url":null}`))
+		c.Assert(err, qt.IsNil)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	sso, err := client.OrganizationSSO.Disable(context.Background(), &OrganizationSSORequest{Organization: "my-org"})
+	c.Assert(err, qt.IsNil)
+	c.Assert(sso.Enabled, qt.IsFalse)
+}
+
+func TestOrganizationSSO_EnableDirectory(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodPost)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/sso/directory")
+		w.WriteHeader(200)
+		_, err := w.Write([]byte(`{"portal_url":"https://portal.example/dsync"}`))
+		c.Assert(err, qt.IsNil)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	portal, err := client.OrganizationSSO.EnableDirectory(context.Background(), &OrganizationSSORequest{Organization: "my-org"})
+	c.Assert(err, qt.IsNil)
+	c.Assert(portal.PortalURL, qt.Equals, "https://portal.example/dsync")
 }
 
 func TestOrganizationSSO_DeleteDomain(t *testing.T) {

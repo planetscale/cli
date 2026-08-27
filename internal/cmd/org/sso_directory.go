@@ -24,7 +24,6 @@ func SSODirectoryEnableCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "enable",
 		Short: "Open the directory sync setup portal",
-		Long:  "Return a URL for configuring directory sync. Requires SSO to be enabled.",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -38,7 +37,7 @@ func SSODirectoryEnableCmd(ch *cmdutil.Helper) *cobra.Command {
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Creating a directory sync URL for %s...", printer.BoldBlue(org)))
 			defer end()
 
-			portal, err := client.OrganizationSSO.EnableDirectory(ctx, &ps.EnableOrganizationSSODirectoryRequest{Organization: org})
+			portal, err := client.OrganizationSSO.EnableDirectory(ctx, &ps.OrganizationSSORequest{Organization: org})
 			if err != nil {
 				return handleSSOError(org, err)
 			}
@@ -77,7 +76,7 @@ func SSODirectoryDisableCmd(ch *cmdutil.Helper) *cobra.Command {
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Disabling directory sync for %s...", printer.BoldBlue(org)))
 			defer end()
 
-			sso, err := client.OrganizationSSO.DisableDirectory(ctx, &ps.DisableOrganizationSSODirectoryRequest{Organization: org})
+			sso, err := client.OrganizationSSO.DisableDirectory(ctx, &ps.OrganizationSSORequest{Organization: org})
 			if err != nil {
 				return handleSSOError(org, err)
 			}

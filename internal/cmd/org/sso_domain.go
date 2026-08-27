@@ -39,7 +39,7 @@ func SSODomainListCmd(ch *cmdutil.Helper) *cobra.Command {
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Fetching SSO domains for %s...", printer.BoldBlue(org)))
 			defer end()
 
-			domains, err := client.OrganizationSSO.ListDomains(ctx, &ps.ListOrganizationSSODomainsRequest{Organization: org})
+			domains, err := client.OrganizationSSO.ListDomains(ctx, &ps.OrganizationSSORequest{Organization: org})
 			if err != nil {
 				return handleSSOError(org, err)
 			}
@@ -61,7 +61,6 @@ func SSODomainVerifyCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "verify",
 		Short: "Open the domain verification portal",
-		Long:  "Enable SSO if needed and return a URL for verifying an email domain.",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -75,7 +74,7 @@ func SSODomainVerifyCmd(ch *cmdutil.Helper) *cobra.Command {
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Creating a domain verification URL for %s...", printer.BoldBlue(org)))
 			defer end()
 
-			portal, err := client.OrganizationSSO.VerifyDomain(ctx, &ps.VerifyOrganizationSSODomainRequest{Organization: org})
+			portal, err := client.OrganizationSSO.VerifyDomain(ctx, &ps.OrganizationSSORequest{Organization: org})
 			if err != nil {
 				return handleSSOError(org, err)
 			}

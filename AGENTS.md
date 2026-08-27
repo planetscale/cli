@@ -107,7 +107,7 @@ pscale --org <org> database list --format json
 
    Only org admins can change another member's role or remove someone else. Nobody can change their own role. `--role` is `admin`, `member`, or `analyst`.
 
-   Organization SSO (admin session, or a token with `manage_sso`). Enable, configure, and domain verify return setup URLs and try to open them. Destructive commands need `--force` in JSON:
+   Organization SSO (admin session, or a token with `manage_sso`). Disable, directory disable, and domain delete need `--force` in JSON. Configure, directory enable, and domain verify return `portal_url` and `browser_opened`; if `browser_opened` is false, open `portal_url`. `enable` JSON includes `domain_verification_url` when present.
 
    ```bash
    pscale org sso show --org <org> --format json
@@ -120,8 +120,6 @@ pscale --org <org> database list --format json
    pscale org sso domain verify --org <org> --format json
    pscale org sso domain delete <domain-id> --org <org> --format json --force
    ```
-
-   `show` reports `enabled`, `configured`, `directory`, `has_verified_domain`, and `domains`. Portal commands return `portal_url` and `browser_opened`; if `browser_opened` is false, tell the user to open `portal_url`. `enable` JSON is the SSO object and includes `domain_verification_url` when present.
 
 Organization teams and team members:
 

@@ -16,12 +16,7 @@ var openSSOBrowser = cmdutil.TryOpenBrowser
 func SSOCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "sso <command>",
-		Short: "Enable, configure, and disable organization SSO",
-		Long: `Manage organization single sign-on.
-
-Enabling SSO returns a URL for verifying an email domain. Configuring SSO and
-directory sync opens a setup URL. Requires an org admin session, or a token
-with the manage_sso grant.`,
+		Short: "Manage organization SSO",
 	}
 
 	cmd.PersistentFlags().StringVar(&ch.Config.Organization, "org", ch.Config.Organization, "The organization for the current user")
@@ -152,7 +147,7 @@ func SSOShowCmd(ch *cmdutil.Helper) *cobra.Command {
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Fetching SSO status for %s...", printer.BoldBlue(org)))
 			defer end()
 
-			sso, err := client.OrganizationSSO.Get(ctx, &ps.GetOrganizationSSORequest{Organization: org})
+			sso, err := client.OrganizationSSO.Get(ctx, &ps.OrganizationSSORequest{Organization: org})
 			if err != nil {
 				return handleSSOError(org, err)
 			}
@@ -169,7 +164,6 @@ func SSOEnableCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "enable",
 		Short: "Enable organization SSO",
-		Long:  "Enable the SSO add-on and return a URL for verifying an email domain.",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -183,20 +177,17 @@ func SSOEnableCmd(ch *cmdutil.Helper) *cobra.Command {
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Enabling SSO for %s...", printer.BoldBlue(org)))
 			defer end()
 
-			sso, err := client.OrganizationSSO.Enable(ctx, &ps.EnableOrganizationSSORequest{Organization: org})
+			sso, err := client.OrganizationSSO.Enable(ctx, &ps.OrganizationSSORequest{Organization: org})
 			if err != nil {
 				return handleSSOError(org, err)
 			}
 			end()
 
-			if sso.DomainVerificationURL != nil && *sso.DomainVerificationURL != "" {
-				if ch.Printer.Format() == printer.Human {
-					ch.Printer.Printf("SSO is enabled for %s.\n", printer.BoldBlue(org))
+			if ch.Printer.Format() == printer.Human {
+				ch.Printer.Printf("SSO is enabled for %s.\n", printer.BoldBlue(org))
+				if sso.DomainVerificationURL != nil && *sso.DomainVerificationURL != "" {
 					return printSSOPortal(ch, *sso.DomainVerificationURL, "verify an email domain")
 				}
-				_ = openSSOBrowser(runtime.GOOS, *sso.DomainVerificationURL)
-			} else if ch.Printer.Format() == printer.Human {
-				ch.Printer.Printf("SSO is enabled for %s.\n", printer.BoldBlue(org))
 				return nil
 			}
 
@@ -213,7 +204,6 @@ func SSODisableCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "disable",
 		Short: "Disable organization SSO",
-		Long:  "Disable SSO and directory sync for the organization.",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -233,7 +223,7 @@ func SSODisableCmd(ch *cmdutil.Helper) *cobra.Command {
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Disabling SSO for %s...", printer.BoldBlue(org)))
 			defer end()
 
-			sso, err := client.OrganizationSSO.Disable(ctx, &ps.DisableOrganizationSSORequest{Organization: org})
+			sso, err := client.OrganizationSSO.Disable(ctx, &ps.OrganizationSSORequest{Organization: org})
 			if err != nil {
 				return handleSSOError(org, err)
 			}
@@ -270,7 +260,7 @@ func SSOConfigureCmd(ch *cmdutil.Helper) *cobra.Command {
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Creating an SSO configuration URL for %s...", printer.BoldBlue(org)))
 			defer end()
 
-			portal, err := client.OrganizationSSO.Configure(ctx, &ps.ConfigureOrganizationSSORequest{Organization: org})
+			portal, err := client.OrganizationSSO.Configure(ctx, &ps.OrganizationSSORequest{Organization: org})
 			if err != nil {
 				return handleSSOError(org, err)
 			}

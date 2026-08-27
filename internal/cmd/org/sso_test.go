@@ -42,7 +42,7 @@ func TestOrg_SSOShowCmd(t *testing.T) {
 	p.SetResourceOutput(&buf)
 
 	svc := &mock.OrganizationSSOService{
-		GetFn: func(ctx context.Context, req *ps.GetOrganizationSSORequest) (*ps.OrganizationSSO, error) {
+		GetFn: func(ctx context.Context, req *ps.OrganizationSSORequest) (*ps.OrganizationSSO, error) {
 			c.Assert(req.Organization, qt.Equals, "planetscale")
 			return testSSO(), nil
 		},
@@ -68,9 +68,8 @@ func TestOrg_SSOEnableCmd(t *testing.T) {
 
 	oldOpen := openSSOBrowser
 	c.Cleanup(func() { openSSOBrowser = oldOpen })
-	var opened string
 	openSSOBrowser = func(_ string, url string) error {
-		opened = url
+		t.Fatalf("unexpected browser open in JSON mode: %s", url)
 		return nil
 	}
 
@@ -80,7 +79,7 @@ func TestOrg_SSOEnableCmd(t *testing.T) {
 	p.SetResourceOutput(&buf)
 
 	svc := &mock.OrganizationSSOService{
-		EnableFn: func(ctx context.Context, req *ps.EnableOrganizationSSORequest) (*ps.OrganizationSSO, error) {
+		EnableFn: func(ctx context.Context, req *ps.OrganizationSSORequest) (*ps.OrganizationSSO, error) {
 			c.Assert(req.Organization, qt.Equals, "planetscale")
 			return testSSO(), nil
 		},
@@ -97,7 +96,6 @@ func TestOrg_SSOEnableCmd(t *testing.T) {
 	cmd := SSOEnableCmd(ch)
 	c.Assert(cmd.Execute(), qt.IsNil)
 	c.Assert(svc.EnableFnInvoked, qt.IsTrue)
-	c.Assert(opened, qt.Equals, "https://portal.example/verify")
 	c.Assert(buf.String(), qt.Contains, "domain_verification_url")
 }
 
@@ -110,7 +108,7 @@ func TestOrg_SSODisableCmd(t *testing.T) {
 	p.SetResourceOutput(&buf)
 
 	svc := &mock.OrganizationSSOService{
-		DisableFn: func(ctx context.Context, req *ps.DisableOrganizationSSORequest) (*ps.OrganizationSSO, error) {
+		DisableFn: func(ctx context.Context, req *ps.OrganizationSSORequest) (*ps.OrganizationSSO, error) {
 			c.Assert(req.Organization, qt.Equals, "planetscale")
 			sso := testSSO()
 			sso.Enabled = false
@@ -170,7 +168,7 @@ func TestOrg_SSOConfigureCmd(t *testing.T) {
 	p.SetResourceOutput(&buf)
 
 	svc := &mock.OrganizationSSOService{
-		ConfigureFn: func(ctx context.Context, req *ps.ConfigureOrganizationSSORequest) (*ps.SSOPortal, error) {
+		ConfigureFn: func(ctx context.Context, req *ps.OrganizationSSORequest) (*ps.SSOPortal, error) {
 			c.Assert(req.Organization, qt.Equals, "planetscale")
 			return &ps.SSOPortal{PortalURL: "https://portal.example/sso"}, nil
 		},
@@ -205,7 +203,7 @@ func TestOrg_SSODirectoryEnableCmd(t *testing.T) {
 	p.SetResourceOutput(&buf)
 
 	svc := &mock.OrganizationSSOService{
-		EnableDirectoryFn: func(ctx context.Context, req *ps.EnableOrganizationSSODirectoryRequest) (*ps.SSOPortal, error) {
+		EnableDirectoryFn: func(ctx context.Context, req *ps.OrganizationSSORequest) (*ps.SSOPortal, error) {
 			return &ps.SSOPortal{PortalURL: "https://portal.example/dsync"}, nil
 		},
 	}
@@ -233,7 +231,7 @@ func TestOrg_SSODirectoryDisableCmd(t *testing.T) {
 	p.SetResourceOutput(&buf)
 
 	svc := &mock.OrganizationSSOService{
-		DisableDirectoryFn: func(ctx context.Context, req *ps.DisableOrganizationSSODirectoryRequest) (*ps.OrganizationSSO, error) {
+		DisableDirectoryFn: func(ctx context.Context, req *ps.OrganizationSSORequest) (*ps.OrganizationSSO, error) {
 			sso := testSSO()
 			sso.Directory = false
 			return sso, nil
@@ -264,7 +262,7 @@ func TestOrg_SSODomainListCmd(t *testing.T) {
 	p.SetResourceOutput(&buf)
 
 	svc := &mock.OrganizationSSOService{
-		ListDomainsFn: func(ctx context.Context, req *ps.ListOrganizationSSODomainsRequest) ([]*ps.OrganizationDomain, error) {
+		ListDomainsFn: func(ctx context.Context, req *ps.OrganizationSSORequest) ([]*ps.OrganizationDomain, error) {
 			return testSSO().Domains, nil
 		},
 	}
@@ -281,6 +279,39 @@ func TestOrg_SSODomainListCmd(t *testing.T) {
 	c.Assert(cmd.Execute(), qt.IsNil)
 	c.Assert(svc.ListDomainsFnInvoked, qt.IsTrue)
 	c.Assert(buf.String(), qt.Contains, "example.com")
+}
+
+func TestOrg_SSODomainVerifyCmd(t *testing.T) {
+	c := qt.New(t)
+
+	oldOpen := openSSOBrowser
+	c.Cleanup(func() { openSSOBrowser = oldOpen })
+	openSSOBrowser = func(_ string, url string) error { return nil }
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	svc := &mock.OrganizationSSOService{
+		VerifyDomainFn: func(ctx context.Context, req *ps.OrganizationSSORequest) (*ps.SSOPortal, error) {
+			c.Assert(req.Organization, qt.Equals, "planetscale")
+			return &ps.SSOPortal{PortalURL: "https://portal.example/verify"}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: "planetscale"},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{OrganizationSSO: svc}, nil
+		},
+	}
+
+	cmd := SSODomainVerifyCmd(ch)
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(svc.VerifyDomainFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.Contains, `"portal_url": "https://portal.example/verify"`)
 }
 
 func TestOrg_SSODomainDeleteCmd(t *testing.T) {
