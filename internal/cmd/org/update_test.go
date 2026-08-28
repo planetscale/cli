@@ -151,7 +151,7 @@ func TestOrganization_UpdateCmdRequiresUpdateFlag(t *testing.T) {
 
 	cmd := UpdateCmd(ch)
 	cmd.SetArgs([]string{"--org", "planetscale"})
-	c.Assert(cmd.Execute(), qt.ErrorMatches, "at least one of --billing-email, --idp-managed-roles, --spend-alert, or --spend-alert-amount must be provided")
+	c.Assert(cmd.Execute(), qt.ErrorMatches, "at least one of --billing-email, --idp-managed-roles, --idp-sso-managed-roles, --spend-alert, or --spend-alert-amount must be provided")
 }
 
 func TestOrganization_UpdateCmdRejectsAmountWithDisabledSpendAlert(t *testing.T) {
@@ -251,4 +251,107 @@ func TestOrganization_UpdateCmdHuman(t *testing.T) {
 	c.Assert(buf.String(), qt.Contains, "IDP MANAGED ROLES")
 	c.Assert(buf.String(), qt.Contains, "SPEND ALERT")
 	c.Assert(buf.String(), qt.Contains, "billing@example.com")
+}
+
+func TestOrganization_UpdateCmdIDPSSOManagedRoles(t *testing.T) {
+	c := qt.New(t)
+
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+
+	svc := &mock.OrganizationsService{
+		UpdateFn: func(ctx context.Context, req *ps.UpdateOrganizationRequest) (*ps.Organization, error) {
+			c.Assert(req.IDPSSOManagedRoles, qt.IsNotNil)
+			c.Assert(*req.IDPSSOManagedRoles, qt.IsTrue)
+			c.Assert(req.IDPManagedRoles, qt.IsNotNil)
+			c.Assert(*req.IDPManagedRoles, qt.IsFalse)
+			return &ps.Organization{Name: req.Organization, IDPSSOManagedRoles: true}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{Organizations: svc}, nil
+		},
+	}
+
+	cmd := UpdateCmd(ch)
+	cmd.SetArgs([]string{"--org", "planetscale", "--idp-sso-managed-roles=true"})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(svc.UpdateFnInvoked, qt.IsTrue)
+}
+
+func TestOrganization_UpdateCmdIDPManagedRolesDisablesSSORoles(t *testing.T) {
+	c := qt.New(t)
+
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+
+	svc := &mock.OrganizationsService{
+		UpdateFn: func(ctx context.Context, req *ps.UpdateOrganizationRequest) (*ps.Organization, error) {
+			c.Assert(req.IDPManagedRoles, qt.IsNotNil)
+			c.Assert(*req.IDPManagedRoles, qt.IsTrue)
+			c.Assert(req.IDPSSOManagedRoles, qt.IsNotNil)
+			c.Assert(*req.IDPSSOManagedRoles, qt.IsFalse)
+			return &ps.Organization{Name: req.Organization, IDPManagedRoles: true}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{Organizations: svc}, nil
+		},
+	}
+
+	cmd := UpdateCmd(ch)
+	cmd.SetArgs([]string{"--org", "planetscale", "--idp-managed-roles=true"})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(svc.UpdateFnInvoked, qt.IsTrue)
+}
+
+func TestOrganization_UpdateCmdDisablingRoleFlagLeavesOtherAlone(t *testing.T) {
+	c := qt.New(t)
+
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+
+	svc := &mock.OrganizationsService{
+		UpdateFn: func(ctx context.Context, req *ps.UpdateOrganizationRequest) (*ps.Organization, error) {
+			c.Assert(req.IDPManagedRoles, qt.IsNotNil)
+			c.Assert(*req.IDPManagedRoles, qt.IsFalse)
+			c.Assert(req.IDPSSOManagedRoles, qt.IsNil)
+			return &ps.Organization{Name: req.Organization}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{Organizations: svc}, nil
+		},
+	}
+
+	cmd := UpdateCmd(ch)
+	cmd.SetArgs([]string{"--org", "planetscale", "--idp-managed-roles=false"})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(svc.UpdateFnInvoked, qt.IsTrue)
+}
+
+func TestOrganization_UpdateCmdRejectsBothRoleFlagsEnabled(t *testing.T) {
+	c := qt.New(t)
+
+	format := printer.JSON
+	ch := &cmdutil.Helper{
+		Printer: printer.NewPrinter(&format),
+		Config:  &config.Config{},
+	}
+
+	cmd := UpdateCmd(ch)
+	cmd.SetArgs([]string{"--org", "planetscale", "--idp-managed-roles=true", "--idp-sso-managed-roles=true"})
+	c.Assert(cmd.Execute(), qt.ErrorMatches, "cannot enable both --idp-managed-roles and --idp-sso-managed-roles")
 }

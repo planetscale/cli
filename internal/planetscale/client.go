@@ -68,6 +68,7 @@ type Client struct {
 	Metrics               MetricsService
 	MoveTables            MoveTablesService
 	Organizations         OrganizationsService
+	OrganizationSSO       OrganizationSSOService
 	Passwords             PasswordsService
 	PaymentMethods        BillingPaymentMethodsService
 	PaymentMethodSetups   BillingPaymentMethodSetupsService
@@ -348,6 +349,7 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 	c.Metrics = &metricsService{client: c}
 	c.MoveTables = &moveTablesService{client: c}
 	c.Organizations = &organizationsService{client: c}
+	c.OrganizationSSO = &organizationSSOService{client: c}
 	c.Passwords = &passwordsService{client: c}
 	c.PaymentMethods = &billingPaymentMethodsService{client: c}
 	c.PaymentMethodSetups = &billingPaymentMethodSetupsService{client: c}

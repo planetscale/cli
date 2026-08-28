@@ -91,6 +91,7 @@ pscale --org <org> database list --format json
    ```bash
    pscale org update --org <org> --format json --billing-email billing@example.com
    pscale org update --org <org> --format json --idp-managed-roles=false
+   pscale org update --org <org> --format json --idp-sso-managed-roles=true
    pscale org update --org <org> --format json --spend-alert=true --spend-alert-amount 2500
    pscale org update --org <org> --format json --spend-alert=false
    ```
@@ -106,6 +107,22 @@ pscale --org <org> database list --format json
    ```
 
    Only org admins can change another member's role or remove someone else. Nobody can change their own role. `--role` is `admin`, `member`, or `analyst`.
+
+   Organization SSO (admin session, or a token with `manage_sso`). Disable, directory disable, and domain delete need `--force` in JSON. Success JSON includes `next_steps`. Configure, directory enable, and domain verify return `portal_url` and `browser_opened`; if `browser_opened` is false, open `portal_url`. `enable` JSON includes `domain_verification_url` when present. `domain verify` does not return a domain id. Prefer `domain verify --wait`: it prints the portal URL, polls `domain list` until a new domain id appears, then polls `domain show` until that domain is verified or failed. Without `--wait`, open `portal_url`, then `domain list` and `domain show <domain-id>` to check state. `--idp-sso-managed-roles` is for SSO profile roles; `--idp-managed-roles` is for directory sync roles. They are mutually exclusive: enabling one turns the other off, and enabling both in one call is rejected.
+
+   ```bash
+   pscale org sso show --org <org> --format json
+   pscale org sso enable --org <org> --format json
+   pscale org sso configure --org <org> --format json
+   pscale org sso disable --org <org> --format json --force
+   pscale org sso directory enable --org <org> --format json
+   pscale org sso directory disable --org <org> --format json --force
+   pscale org sso domain list --org <org> --format json
+   pscale org sso domain show <domain-id> --org <org> --format json
+   pscale org sso domain verify --org <org> --format json
+   pscale org sso domain verify --org <org> --format json --wait
+   pscale org sso domain delete <domain-id> --org <org> --format json --force
+   ```
 
 Organization teams and team members:
 
