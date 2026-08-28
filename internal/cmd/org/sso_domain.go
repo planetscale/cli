@@ -151,6 +151,7 @@ func SSODomainVerifyCmd(ch *cmdutil.Helper) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			end()
 
 			return printSSODomain(ch, org, domain)
 		},
