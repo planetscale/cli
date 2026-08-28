@@ -97,7 +97,7 @@ func ssoResourceNextSteps(org string, sso *ps.OrganizationSSO) []string {
 		return []string{jsonSSOCmd(org, "enable")}
 	}
 	if !sso.HasVerifiedDomain {
-		return []string{jsonSSOCmd(org, "domain verify")}
+		return []string{jsonSSOCmd(org, "domain verify") + " --wait"}
 	}
 	if !sso.Configured {
 		return []string{jsonSSOCmd(org, "configure")}
@@ -123,7 +123,8 @@ func ssoPortalNextSteps(org, kind string, browserOpened bool) []string {
 	case "directory":
 		steps = append(steps, jsonOrgUpdateCmd(org, "--idp-managed-roles=true"))
 	case "verify":
-		steps = append(steps, jsonSSOCmd(org, "configure"))
+		steps = append(steps, jsonSSOCmd(org, "domain list"))
+		steps = append(steps, jsonSSODomainShow(org, "<domain-id>"))
 	}
 	return steps
 }
@@ -143,28 +144,53 @@ type organizationDomain struct {
 	Domain string `header:"domain" json:"domain"`
 	State  string `header:"state" json:"state"`
 
-	orig *ps.OrganizationDomain
+	nextSteps []string
+	orig      *ps.OrganizationDomain
 }
 
 func (d *organizationDomain) MarshalJSON() ([]byte, error) {
-	return json.MarshalIndent(d.orig, "", "  ")
+	type payload struct {
+		*ps.OrganizationDomain
+		NextSteps []string `json:"next_steps"`
+	}
+	return json.MarshalIndent(payload{OrganizationDomain: d.orig, NextSteps: d.nextSteps}, "", "  ")
 }
 
 func (d *organizationDomain) MarshalCSVValue() interface{} {
 	return []*organizationDomain{d}
 }
 
-func toOrganizationDomains(domains []*ps.OrganizationDomain) []*organizationDomain {
+func toOrganizationDomain(org string, domain *ps.OrganizationDomain) *organizationDomain {
+	return &organizationDomain{
+		ID:        domain.ID,
+		Domain:    domain.Domain,
+		State:     domain.State,
+		nextSteps: domainNextSteps(org, domain),
+		orig:      domain,
+	}
+}
+
+func toOrganizationDomains(org string, domains []*ps.OrganizationDomain) []*organizationDomain {
 	out := make([]*organizationDomain, 0, len(domains))
 	for _, domain := range domains {
-		out = append(out, &organizationDomain{
-			ID:     domain.ID,
-			Domain: domain.Domain,
-			State:  domain.State,
-			orig:   domain,
-		})
+		out = append(out, toOrganizationDomain(org, domain))
 	}
 	return out
+}
+
+func jsonSSODomainShow(org, domainID string) string {
+	return fmt.Sprintf("pscale org sso domain show %s --org %s --format json", domainID, org)
+}
+
+func domainNextSteps(org string, domain *ps.OrganizationDomain) []string {
+	switch domain.State {
+	case "verified":
+		return []string{jsonSSOCmd(org, "configure")}
+	case "failed":
+		return []string{jsonSSOCmd(org, "domain verify") + " --wait"}
+	default:
+		return []string{jsonSSODomainShow(org, domain.ID)}
+	}
 }
 
 func handleSSOError(org string, err error) error {

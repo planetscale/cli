@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	qt "github.com/frankban/quicktest"
 	"github.com/planetscale/cli/internal/cmdutil"
@@ -314,7 +315,243 @@ func TestOrg_SSODomainVerifyCmd(t *testing.T) {
 	cmd := SSODomainVerifyCmd(ch)
 	c.Assert(cmd.Execute(), qt.IsNil)
 	c.Assert(svc.VerifyDomainFnInvoked, qt.IsTrue)
+	c.Assert(svc.ListDomainsFnInvoked, qt.IsFalse)
 	c.Assert(buf.String(), qt.Contains, `"portal_url": "https://portal.example/verify"`)
+	c.Assert(buf.String(), qt.Contains, "domain show <domain-id>")
+}
+
+func TestOrg_SSODomainShowCmd(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	svc := &mock.OrganizationSSOService{
+		GetDomainFn: func(ctx context.Context, req *ps.OrganizationSSODomainRequest) (*ps.OrganizationDomain, error) {
+			c.Assert(req.DomainID, qt.Equals, "dom_1")
+			return &ps.OrganizationDomain{ID: "dom_1", Domain: "example.com", State: "pending"}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: "planetscale"},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{OrganizationSSO: svc}, nil
+		},
+	}
+
+	cmd := SSODomainShowCmd(ch)
+	cmd.SetArgs([]string{"dom_1"})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(svc.GetDomainFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.Contains, `"state": "pending"`)
+	c.Assert(buf.String(), qt.Contains, "domain show dom_1")
+}
+
+func TestOrg_SSODomainVerifyCmdWait(t *testing.T) {
+	c := qt.New(t)
+
+	oldInterval := ssoDomainPollInterval
+	ssoDomainPollInterval = time.Millisecond
+	c.Cleanup(func() { ssoDomainPollInterval = oldInterval })
+
+	oldOpen := openSSOBrowser
+	c.Cleanup(func() { openSSOBrowser = oldOpen })
+	openSSOBrowser = func(_ string, url string) error { return nil }
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	listCalls := 0
+	svc := &mock.OrganizationSSOService{
+		ListDomainsFn: func(ctx context.Context, req *ps.OrganizationSSORequest) ([]*ps.OrganizationDomain, error) {
+			listCalls++
+			if listCalls == 1 {
+				return nil, nil
+			}
+			return []*ps.OrganizationDomain{{ID: "dom_1", Domain: "example.com", State: "pending"}}, nil
+		},
+		VerifyDomainFn: func(ctx context.Context, req *ps.OrganizationSSORequest) (*ps.SSOPortal, error) {
+			return &ps.SSOPortal{PortalURL: "https://portal.example/verify"}, nil
+		},
+		GetDomainFn: func(ctx context.Context, req *ps.OrganizationSSODomainRequest) (*ps.OrganizationDomain, error) {
+			c.Assert(req.DomainID, qt.Equals, "dom_1")
+			return &ps.OrganizationDomain{ID: "dom_1", Domain: "example.com", State: "verified"}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: "planetscale"},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{OrganizationSSO: svc}, nil
+		},
+	}
+
+	cmd := SSODomainVerifyCmd(ch)
+	cmd.SetArgs([]string{"--wait"})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(svc.VerifyDomainFnInvoked, qt.IsTrue)
+	c.Assert(svc.GetDomainFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.Contains, `"state": "verified"`)
+	c.Assert(buf.String(), qt.Contains, "example.com")
+}
+
+func TestOrg_SSODomainVerifyCmdWaitUsesLatestNewDomain(t *testing.T) {
+	c := qt.New(t)
+
+	oldInterval := ssoDomainPollInterval
+	ssoDomainPollInterval = time.Millisecond
+	c.Cleanup(func() { ssoDomainPollInterval = oldInterval })
+
+	oldOpen := openSSOBrowser
+	c.Cleanup(func() { openSSOBrowser = oldOpen })
+	openSSOBrowser = func(_ string, url string) error { return nil }
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	old := &ps.OrganizationDomain{ID: "dom_old", Domain: "old.com", State: "pending"}
+	newer := &ps.OrganizationDomain{
+		ID:        "dom_new",
+		Domain:    "new.com",
+		State:     "pending",
+		CreatedAt: time.Date(2026, 8, 28, 12, 0, 0, 0, time.UTC),
+	}
+	oldestNew := &ps.OrganizationDomain{
+		ID:        "dom_mid",
+		Domain:    "mid.com",
+		State:     "pending",
+		CreatedAt: time.Date(2026, 8, 28, 11, 0, 0, 0, time.UTC),
+	}
+
+	listCalls := 0
+	svc := &mock.OrganizationSSOService{
+		ListDomainsFn: func(ctx context.Context, req *ps.OrganizationSSORequest) ([]*ps.OrganizationDomain, error) {
+			listCalls++
+			if listCalls == 1 {
+				return []*ps.OrganizationDomain{old}, nil
+			}
+			return []*ps.OrganizationDomain{old, oldestNew, newer}, nil
+		},
+		VerifyDomainFn: func(ctx context.Context, req *ps.OrganizationSSORequest) (*ps.SSOPortal, error) {
+			return &ps.SSOPortal{PortalURL: "https://portal.example/verify"}, nil
+		},
+		GetDomainFn: func(ctx context.Context, req *ps.OrganizationSSODomainRequest) (*ps.OrganizationDomain, error) {
+			c.Assert(req.DomainID, qt.Equals, "dom_new")
+			return &ps.OrganizationDomain{ID: "dom_new", Domain: "new.com", State: "verified"}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: "planetscale"},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{OrganizationSSO: svc}, nil
+		},
+	}
+
+	cmd := SSODomainVerifyCmd(ch)
+	cmd.SetArgs([]string{"--wait"})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(buf.String(), qt.Contains, "new.com")
+}
+
+func TestOrg_SSODomainVerifyCmdWaitPollsShowForNewID(t *testing.T) {
+	c := qt.New(t)
+
+	oldInterval := ssoDomainPollInterval
+	ssoDomainPollInterval = time.Millisecond
+	c.Cleanup(func() { ssoDomainPollInterval = oldInterval })
+
+	oldOpen := openSSOBrowser
+	c.Cleanup(func() { openSSOBrowser = oldOpen })
+	openSSOBrowser = func(_ string, url string) error { return nil }
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	listCalls := 0
+	svc := &mock.OrganizationSSOService{
+		ListDomainsFn: func(ctx context.Context, req *ps.OrganizationSSORequest) ([]*ps.OrganizationDomain, error) {
+			listCalls++
+			if listCalls == 1 {
+				return nil, nil
+			}
+			return []*ps.OrganizationDomain{{ID: "dom_1", Domain: "example.com", State: "bogus"}}, nil
+		},
+		VerifyDomainFn: func(ctx context.Context, req *ps.OrganizationSSORequest) (*ps.SSOPortal, error) {
+			return &ps.SSOPortal{PortalURL: "https://portal.example/verify"}, nil
+		},
+		GetDomainFn: func(ctx context.Context, req *ps.OrganizationSSODomainRequest) (*ps.OrganizationDomain, error) {
+			c.Assert(req.DomainID, qt.Equals, "dom_1")
+			return &ps.OrganizationDomain{ID: "dom_1", Domain: "example.com", State: "verified"}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: "planetscale"},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{OrganizationSSO: svc}, nil
+		},
+	}
+
+	cmd := SSODomainVerifyCmd(ch)
+	cmd.SetArgs([]string{"--wait"})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(svc.GetDomainFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.Contains, `"state": "verified"`)
+}
+
+func TestOrg_SSODomainVerifyCmdWaitStopsOnPermissionError(t *testing.T) {
+	c := qt.New(t)
+
+	oldInterval := ssoDomainPollInterval
+	ssoDomainPollInterval = time.Millisecond
+	c.Cleanup(func() { ssoDomainPollInterval = oldInterval })
+
+	oldOpen := openSSOBrowser
+	c.Cleanup(func() { openSSOBrowser = oldOpen })
+	openSSOBrowser = func(_ string, url string) error { return nil }
+
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+
+	listCalls := 0
+	svc := &mock.OrganizationSSOService{
+		ListDomainsFn: func(ctx context.Context, req *ps.OrganizationSSORequest) ([]*ps.OrganizationDomain, error) {
+			listCalls++
+			if listCalls == 1 {
+				return nil, nil
+			}
+			return nil, &ps.Error{Code: ps.ErrPermission}
+		},
+		VerifyDomainFn: func(ctx context.Context, req *ps.OrganizationSSORequest) (*ps.SSOPortal, error) {
+			return &ps.SSOPortal{PortalURL: "https://portal.example/verify"}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: "planetscale"},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{OrganizationSSO: svc}, nil
+		},
+	}
+
+	cmd := SSODomainVerifyCmd(ch)
+	cmd.SetArgs([]string{"--wait", "--wait-timeout", "2s"})
+	c.Assert(cmd.Execute(), qt.ErrorMatches, ".*")
 }
 
 func TestOrg_SSODomainDeleteCmd(t *testing.T) {
@@ -326,7 +563,7 @@ func TestOrg_SSODomainDeleteCmd(t *testing.T) {
 	p.SetResourceOutput(&buf)
 
 	svc := &mock.OrganizationSSOService{
-		DeleteDomainFn: func(ctx context.Context, req *ps.DeleteOrganizationSSODomainRequest) error {
+		DeleteDomainFn: func(ctx context.Context, req *ps.OrganizationSSODomainRequest) error {
 			c.Assert(req.DomainID, qt.Equals, "dom_1")
 			return nil
 		},
@@ -356,7 +593,7 @@ func TestSSOResourceNextSteps(t *testing.T) {
 		"pscale org sso enable --org acme --format json",
 	})
 	c.Assert(ssoResourceNextSteps(org, &ps.OrganizationSSO{Enabled: true}), qt.DeepEquals, []string{
-		"pscale org sso domain verify --org acme --format json",
+		"pscale org sso domain verify --org acme --format json --wait",
 	})
 	c.Assert(ssoResourceNextSteps(org, &ps.OrganizationSSO{Enabled: true, HasVerifiedDomain: true}), qt.DeepEquals, []string{
 		"pscale org sso configure --org acme --format json",

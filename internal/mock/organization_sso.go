@@ -28,10 +28,13 @@ type OrganizationSSOService struct {
 	ListDomainsFn        func(context.Context, *ps.OrganizationSSORequest) ([]*ps.OrganizationDomain, error)
 	ListDomainsFnInvoked bool
 
+	GetDomainFn        func(context.Context, *ps.OrganizationSSODomainRequest) (*ps.OrganizationDomain, error)
+	GetDomainFnInvoked bool
+
 	VerifyDomainFn        func(context.Context, *ps.OrganizationSSORequest) (*ps.SSOPortal, error)
 	VerifyDomainFnInvoked bool
 
-	DeleteDomainFn        func(context.Context, *ps.DeleteOrganizationSSODomainRequest) error
+	DeleteDomainFn        func(context.Context, *ps.OrganizationSSODomainRequest) error
 	DeleteDomainFnInvoked bool
 }
 
@@ -70,12 +73,17 @@ func (s *OrganizationSSOService) ListDomains(ctx context.Context, req *ps.Organi
 	return s.ListDomainsFn(ctx, req)
 }
 
+func (s *OrganizationSSOService) GetDomain(ctx context.Context, req *ps.OrganizationSSODomainRequest) (*ps.OrganizationDomain, error) {
+	s.GetDomainFnInvoked = true
+	return s.GetDomainFn(ctx, req)
+}
+
 func (s *OrganizationSSOService) VerifyDomain(ctx context.Context, req *ps.OrganizationSSORequest) (*ps.SSOPortal, error) {
 	s.VerifyDomainFnInvoked = true
 	return s.VerifyDomainFn(ctx, req)
 }
 
-func (s *OrganizationSSOService) DeleteDomain(ctx context.Context, req *ps.DeleteOrganizationSSODomainRequest) error {
+func (s *OrganizationSSOService) DeleteDomain(ctx context.Context, req *ps.OrganizationSSODomainRequest) error {
 	s.DeleteDomainFnInvoked = true
 	return s.DeleteDomainFn(ctx, req)
 }

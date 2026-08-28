@@ -18,8 +18,9 @@ type OrganizationSSOService interface {
 	EnableDirectory(context.Context, *OrganizationSSORequest) (*SSOPortal, error)
 	DisableDirectory(context.Context, *OrganizationSSORequest) (*OrganizationSSO, error)
 	ListDomains(context.Context, *OrganizationSSORequest) ([]*OrganizationDomain, error)
+	GetDomain(context.Context, *OrganizationSSODomainRequest) (*OrganizationDomain, error)
 	VerifyDomain(context.Context, *OrganizationSSORequest) (*SSOPortal, error)
-	DeleteDomain(context.Context, *DeleteOrganizationSSODomainRequest) error
+	DeleteDomain(context.Context, *OrganizationSSODomainRequest) error
 }
 
 // OrganizationSSO is the SSO status for an organization.
@@ -55,7 +56,7 @@ type OrganizationSSORequest struct {
 	Organization string
 }
 
-type DeleteOrganizationSSODomainRequest struct {
+type OrganizationSSODomainRequest struct {
 	Organization string
 	DomainID     string
 }
@@ -107,11 +108,24 @@ func (s *organizationSSOService) ListDomains(ctx context.Context, listReq *Organ
 	return domains, nil
 }
 
+func (s *organizationSSOService) GetDomain(ctx context.Context, getReq *OrganizationSSODomainRequest) (*OrganizationDomain, error) {
+	req, err := s.client.newRequest(http.MethodGet, path.Join(organizationSSOAPIPath(getReq.Organization), "domains", getReq.DomainID), nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request for get organization sso domain: %w", err)
+	}
+
+	domain := &OrganizationDomain{}
+	if err := s.client.do(ctx, req, domain); err != nil {
+		return nil, err
+	}
+	return domain, nil
+}
+
 func (s *organizationSSOService) VerifyDomain(ctx context.Context, verifyReq *OrganizationSSORequest) (*SSOPortal, error) {
 	return s.postPortal(ctx, path.Join(organizationSSOAPIPath(verifyReq.Organization), "domains"), "verify organization sso domain")
 }
 
-func (s *organizationSSOService) DeleteDomain(ctx context.Context, deleteReq *DeleteOrganizationSSODomainRequest) error {
+func (s *organizationSSOService) DeleteDomain(ctx context.Context, deleteReq *OrganizationSSODomainRequest) error {
 	req, err := s.client.newRequest(http.MethodDelete, path.Join(organizationSSOAPIPath(deleteReq.Organization), "domains", deleteReq.DomainID), nil)
 	if err != nil {
 		return fmt.Errorf("error creating request for delete organization sso domain: %w", err)

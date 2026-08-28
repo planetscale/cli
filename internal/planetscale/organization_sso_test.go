@@ -183,9 +183,42 @@ func TestOrganizationSSO_DeleteDomain(t *testing.T) {
 	client, err := NewClient(WithBaseURL(ts.URL))
 	c.Assert(err, qt.IsNil)
 
-	err = client.OrganizationSSO.DeleteDomain(context.Background(), &DeleteOrganizationSSODomainRequest{
+	err = client.OrganizationSSO.DeleteDomain(context.Background(), &OrganizationSSODomainRequest{
 		Organization: "my-org",
 		DomainID:     "dom_1",
 	})
 	c.Assert(err, qt.IsNil)
+}
+
+func TestOrganizationSSO_GetDomain(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodGet)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/sso/domains/dom_1")
+		w.WriteHeader(200)
+		_, err := w.Write([]byte(`{
+			"id": "dom_1",
+			"type": "OrganizationDomain",
+			"domain": "example.com",
+			"state": "pending",
+			"verified_at": null,
+			"failure_reason": null,
+			"created_at": "2021-01-14T10:19:23.000Z",
+			"updated_at": "2021-01-14T10:19:23.000Z"
+		}`))
+		c.Assert(err, qt.IsNil)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	domain, err := client.OrganizationSSO.GetDomain(context.Background(), &OrganizationSSODomainRequest{
+		Organization: "my-org",
+		DomainID:     "dom_1",
+	})
+	c.Assert(err, qt.IsNil)
+	c.Assert(domain.ID, qt.Equals, "dom_1")
+	c.Assert(domain.Domain, qt.Equals, "example.com")
+	c.Assert(domain.State, qt.Equals, "pending")
 }
