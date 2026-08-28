@@ -49,48 +49,49 @@ type Client struct {
 	// base URL for the API
 	baseURL *url.URL
 
-	AuditLogs             AuditLogsService
-	AuthAttemptExports    AuthAttemptExportsService
-	BackupPolicies        BackupPoliciesService
-	Backups               BackupsService
-	BranchInfrastructure  BranchInfrastructureService
-	BranchMaintenance     BranchMaintenanceService
-	D1ImportNotifications D1ImportNotificationsService
-	DatabaseBranches      DatabaseBranchesService
-	Databases             DatabasesService
-	DataImports           DataImportsService
-	DeployRequests        DeployRequestsService
-	Invoices              InvoicesService
-	Keyspaces             KeyspacesService
-	LookupVindex          LookupVindexService
-	MaintenanceSchedules  MaintenanceSchedulesService
-	Materialize           MaterializeService
-	Metrics               MetricsService
-	MoveTables            MoveTablesService
-	Organizations         OrganizationsService
-	OrganizationSSO       OrganizationSSOService
-	Passwords             PasswordsService
-	PaymentMethods        BillingPaymentMethodsService
-	PaymentMethodSetups   BillingPaymentMethodSetupsService
-	PlannedReparentShard  PlannedReparentShardService
-	PostgresBranches      PostgresBranchesService
-	PostgresBouncers      PostgresBouncersService
-	PostgresCIDRs         PostgresCIDRsService
-	PostgresRoles         PostgresRolesService
-	PostgresSwitchovers   PostgresSwitchoversService
-	Processlist           ProcesslistService
-	QueryInsights         QueryInsightsService
-	QueryPatterns         QueryPatternsService
-	ReadOnlyRegions       ReadOnlyRegionsService
-	Regions               RegionsService
-	SchemaRecommendations SchemaRecommendationService
-	ServiceTokens         ServiceTokenService
-	TrafficBudgets        TrafficBudgetsService
-	TrafficRules          TrafficRulesService
-	VDiff                 VDiffService
-	Vtctld                VtctldService
-	Webhooks              WebhooksService
-	Workflows             WorkflowsService
+	AuditLogs                AuditLogsService
+	AuthAttemptExports       AuthAttemptExportsService
+	BackupPolicies           BackupPoliciesService
+	Backups                  BackupsService
+	BranchInfrastructure     BranchInfrastructureService
+	BranchMaintenance        BranchMaintenanceService
+	D1ImportNotifications    D1ImportNotificationsService
+	DatabaseBranches         DatabaseBranchesService
+	Databases                DatabasesService
+	DataImports              DataImportsService
+	DeployRequests           DeployRequestsService
+	Invoices                 InvoicesService
+	Keyspaces                KeyspacesService
+	LookupVindex             LookupVindexService
+	MaintenanceSchedules     MaintenanceSchedulesService
+	Materialize              MaterializeService
+	Metrics                  MetricsService
+	MoveTables               MoveTablesService
+	Organizations            OrganizationsService
+	OrganizationSSO          OrganizationSSOService
+	Passwords                PasswordsService
+	PaymentMethods           BillingPaymentMethodsService
+	PaymentMethodSetups      BillingPaymentMethodSetupsService
+	PlannedReparentShard     PlannedReparentShardService
+	PostgresBranches         PostgresBranchesService
+	PostgresBouncers         PostgresBouncersService
+	PostgresCIDRs            PostgresCIDRsService
+	PostgresReadOnlyReplicas PostgresReadOnlyReplicasService
+	PostgresRoles            PostgresRolesService
+	PostgresSwitchovers      PostgresSwitchoversService
+	Processlist              ProcesslistService
+	QueryInsights            QueryInsightsService
+	QueryPatterns            QueryPatternsService
+	ReadOnlyRegions          ReadOnlyRegionsService
+	Regions                  RegionsService
+	SchemaRecommendations    SchemaRecommendationService
+	ServiceTokens            ServiceTokenService
+	TrafficBudgets           TrafficBudgetsService
+	TrafficRules             TrafficRulesService
+	VDiff                    VDiffService
+	Vtctld                   VtctldService
+	Webhooks                 WebhooksService
+	Workflows                WorkflowsService
 }
 
 // ListOptions are options for listing responses.
@@ -357,6 +358,7 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 	c.PostgresBranches = &postgresBranchesService{client: c}
 	c.PostgresBouncers = &postgresBouncersService{client: c}
 	c.PostgresCIDRs = &postgresCIDRsService{client: c}
+	c.PostgresReadOnlyReplicas = &postgresReadOnlyReplicasService{client: c}
 	c.PostgresRoles = &postgresRolesService{client: c}
 	c.PostgresSwitchovers = &postgresSwitchoversService{client: c}
 	c.Processlist = &processlistService{client: c}
