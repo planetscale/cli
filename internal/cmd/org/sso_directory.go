@@ -43,7 +43,7 @@ func SSODirectoryEnableCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 			end()
 
-			return printSSOPortal(ch, portal.PortalURL, "configure directory sync")
+			return printSSOPortal(ch, portal.PortalURL, "directory", "configure directory sync")
 		},
 	}
 
@@ -84,10 +84,11 @@ func SSODirectoryDisableCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			if ch.Printer.Format() == printer.Human {
 				ch.Printer.Printf("Directory sync is disabled for %s.\n", printer.BoldBlue(org))
+				printHumanNextSteps(ch, ssoResourceNextSteps(org, sso))
 				return nil
 			}
 
-			return ch.Printer.PrintResource(toOrganizationSSO(sso))
+			return ch.Printer.PrintResource(toOrganizationSSO(org, sso))
 		},
 	}
 

@@ -61,6 +61,7 @@ func TestOrg_SSOShowCmd(t *testing.T) {
 	c.Assert(svc.GetFnInvoked, qt.IsTrue)
 	c.Assert(buf.String(), qt.Contains, `"enabled": true`)
 	c.Assert(buf.String(), qt.Contains, "example.com")
+	c.Assert(buf.String(), qt.Contains, "pscale org sso configure --org planetscale --format json")
 }
 
 func TestOrg_SSOEnableCmd(t *testing.T) {
@@ -188,6 +189,7 @@ func TestOrg_SSOConfigureCmd(t *testing.T) {
 	c.Assert(opened, qt.Equals, "https://portal.example/sso")
 	c.Assert(buf.String(), qt.Contains, `"portal_url": "https://portal.example/sso"`)
 	c.Assert(buf.String(), qt.Contains, `"browser_opened": true`)
+	c.Assert(buf.String(), qt.Contains, "--idp-sso-managed-roles=true")
 }
 
 func TestOrg_SSODirectoryEnableCmd(t *testing.T) {
@@ -220,6 +222,7 @@ func TestOrg_SSODirectoryEnableCmd(t *testing.T) {
 	c.Assert(cmd.Execute(), qt.IsNil)
 	c.Assert(svc.EnableDirectoryFnInvoked, qt.IsTrue)
 	c.Assert(buf.String(), qt.Contains, `"browser_opened": false`)
+	c.Assert(buf.String(), qt.Contains, "--idp-managed-roles=true")
 }
 
 func TestOrg_SSODirectoryDisableCmd(t *testing.T) {
@@ -342,4 +345,27 @@ func TestOrg_SSODomainDeleteCmd(t *testing.T) {
 	c.Assert(cmd.Execute(), qt.IsNil)
 	c.Assert(svc.DeleteDomainFnInvoked, qt.IsTrue)
 	c.Assert(buf.String(), qt.Contains, "domain deleted")
+	c.Assert(buf.String(), qt.Contains, "pscale org sso domain list --org planetscale --format json")
+}
+
+func TestSSOResourceNextSteps(t *testing.T) {
+	c := qt.New(t)
+	org := "acme"
+
+	c.Assert(ssoResourceNextSteps(org, &ps.OrganizationSSO{}), qt.DeepEquals, []string{
+		"pscale org sso enable --org acme --format json",
+	})
+	c.Assert(ssoResourceNextSteps(org, &ps.OrganizationSSO{Enabled: true}), qt.DeepEquals, []string{
+		"pscale org sso domain verify --org acme --format json",
+	})
+	c.Assert(ssoResourceNextSteps(org, &ps.OrganizationSSO{Enabled: true, HasVerifiedDomain: true}), qt.DeepEquals, []string{
+		"pscale org sso configure --org acme --format json",
+	})
+	c.Assert(ssoResourceNextSteps(org, &ps.OrganizationSSO{Enabled: true, HasVerifiedDomain: true, Configured: true}), qt.DeepEquals, []string{
+		"pscale org sso directory enable --org acme --format json",
+		"pscale org update --org acme --format json --idp-sso-managed-roles=true",
+	})
+	c.Assert(ssoResourceNextSteps(org, &ps.OrganizationSSO{Enabled: true, HasVerifiedDomain: true, Configured: true, Directory: true}), qt.DeepEquals, []string{
+		"pscale org update --org acme --format json --idp-managed-roles=true",
+	})
 }

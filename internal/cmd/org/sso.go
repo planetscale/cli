@@ -39,35 +39,103 @@ type organizationSSO struct {
 	Directory         bool   `header:"directory" json:"directory"`
 	HasVerifiedDomain bool   `header:"has_verified_domain" json:"has_verified_domain"`
 
-	orig *ps.OrganizationSSO
+	nextSteps []string
+	orig      *ps.OrganizationSSO
 }
 
 func (s *organizationSSO) MarshalJSON() ([]byte, error) {
-	return json.MarshalIndent(s.orig, "", "  ")
+	type payload struct {
+		*ps.OrganizationSSO
+		NextSteps []string `json:"next_steps"`
+	}
+	return json.MarshalIndent(payload{OrganizationSSO: s.orig, NextSteps: s.nextSteps}, "", "  ")
 }
 
 func (s *organizationSSO) MarshalCSVValue() interface{} {
 	return []*organizationSSO{s}
 }
 
-func toOrganizationSSO(sso *ps.OrganizationSSO) *organizationSSO {
+func toOrganizationSSO(org string, sso *ps.OrganizationSSO) *organizationSSO {
 	return &organizationSSO{
 		ID:                sso.ID,
 		Enabled:           sso.Enabled,
 		Configured:        sso.Configured,
 		Directory:         sso.Directory,
 		HasVerifiedDomain: sso.HasVerifiedDomain,
+		nextSteps:         ssoResourceNextSteps(org, sso),
 		orig:              sso,
 	}
 }
 
 type ssoPortal struct {
-	PortalURL     string `header:"portal_url" json:"portal_url"`
-	BrowserOpened bool   `header:"browser_opened" json:"browser_opened"`
+	PortalURL     string   `header:"portal_url" json:"portal_url"`
+	BrowserOpened bool     `header:"browser_opened" json:"browser_opened"`
+	NextSteps     []string `json:"next_steps"`
 }
 
 func (p *ssoPortal) MarshalCSVValue() interface{} {
 	return []*ssoPortal{p}
+}
+
+type ssoDomainDeleted struct {
+	Result    string   `json:"result"`
+	Org       string   `json:"org"`
+	ID        string   `json:"id"`
+	NextSteps []string `json:"next_steps"`
+}
+
+func jsonSSOCmd(org, rest string) string {
+	return fmt.Sprintf("pscale org sso %s --org %s --format json", rest, org)
+}
+
+func jsonOrgUpdateCmd(org, flag string) string {
+	return fmt.Sprintf("pscale org update --org %s --format json %s", org, flag)
+}
+
+func ssoResourceNextSteps(org string, sso *ps.OrganizationSSO) []string {
+	if sso == nil || !sso.Enabled {
+		return []string{jsonSSOCmd(org, "enable")}
+	}
+	if !sso.HasVerifiedDomain {
+		return []string{jsonSSOCmd(org, "domain verify")}
+	}
+	if !sso.Configured {
+		return []string{jsonSSOCmd(org, "configure")}
+	}
+	if !sso.Directory {
+		return []string{
+			jsonSSOCmd(org, "directory enable"),
+			jsonOrgUpdateCmd(org, "--idp-sso-managed-roles=true"),
+		}
+	}
+	return []string{jsonOrgUpdateCmd(org, "--idp-managed-roles=true")}
+}
+
+func ssoPortalNextSteps(org, kind string, browserOpened bool) []string {
+	steps := make([]string, 0, 3)
+	if !browserOpened {
+		steps = append(steps, "Open portal_url in a browser")
+	}
+	steps = append(steps, jsonSSOCmd(org, "show"))
+	switch kind {
+	case "configure":
+		steps = append(steps, jsonOrgUpdateCmd(org, "--idp-sso-managed-roles=true"))
+	case "directory":
+		steps = append(steps, jsonOrgUpdateCmd(org, "--idp-managed-roles=true"))
+	case "verify":
+		steps = append(steps, jsonSSOCmd(org, "configure"))
+	}
+	return steps
+}
+
+func printHumanNextSteps(ch *cmdutil.Helper, steps []string) {
+	if ch.Printer.Format() != printer.Human || len(steps) == 0 {
+		return
+	}
+	ch.Printer.Println("Next:")
+	for _, step := range steps {
+		ch.Printer.Printf("  %s\n", step)
+	}
 }
 
 type organizationDomain struct {
@@ -108,12 +176,14 @@ func handleSSOError(org string, err error) error {
 	}
 }
 
-func printSSOPortal(ch *cmdutil.Helper, url, action string) error {
+func printSSOPortal(ch *cmdutil.Helper, url, kind, action string) error {
 	if url == "" {
 		return fmt.Errorf("no %s URL was returned", action)
 	}
 
+	org := ch.Config.Organization
 	browserOpened := openSSOBrowser(runtime.GOOS, url) == nil
+	steps := ssoPortalNextSteps(org, kind, browserOpened)
 	if ch.Printer.Format() == printer.Human {
 		if browserOpened {
 			ch.Printer.Printf("Opened the %s URL in your browser.\n", action)
@@ -121,12 +191,14 @@ func printSSOPortal(ch *cmdutil.Helper, url, action string) error {
 		} else {
 			ch.Printer.Printf("Open this URL to %s: %s\n", action, printer.BoldBlue(url))
 		}
+		printHumanNextSteps(ch, steps)
 		return nil
 	}
 
 	return ch.Printer.PrintResource(&ssoPortal{
 		PortalURL:     url,
 		BrowserOpened: browserOpened,
+		NextSteps:     steps,
 	})
 }
 
@@ -153,7 +225,7 @@ func SSOShowCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 			end()
 
-			return ch.Printer.PrintResource(toOrganizationSSO(sso))
+			return ch.Printer.PrintResource(toOrganizationSSO(org, sso))
 		},
 	}
 
@@ -186,12 +258,13 @@ func SSOEnableCmd(ch *cmdutil.Helper) *cobra.Command {
 			if ch.Printer.Format() == printer.Human {
 				ch.Printer.Printf("SSO is enabled for %s.\n", printer.BoldBlue(org))
 				if sso.DomainVerificationURL != nil && *sso.DomainVerificationURL != "" {
-					return printSSOPortal(ch, *sso.DomainVerificationURL, "verify an email domain")
+					return printSSOPortal(ch, *sso.DomainVerificationURL, "verify", "verify an email domain")
 				}
+				printHumanNextSteps(ch, ssoResourceNextSteps(org, sso))
 				return nil
 			}
 
-			return ch.Printer.PrintResource(toOrganizationSSO(sso))
+			return ch.Printer.PrintResource(toOrganizationSSO(org, sso))
 		},
 	}
 
@@ -231,10 +304,11 @@ func SSODisableCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			if ch.Printer.Format() == printer.Human {
 				ch.Printer.Printf("SSO is disabled for %s.\n", printer.BoldBlue(org))
+				printHumanNextSteps(ch, ssoResourceNextSteps(org, sso))
 				return nil
 			}
 
-			return ch.Printer.PrintResource(toOrganizationSSO(sso))
+			return ch.Printer.PrintResource(toOrganizationSSO(org, sso))
 		},
 	}
 
@@ -266,7 +340,7 @@ func SSOConfigureCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 			end()
 
-			return printSSOPortal(ch, portal.PortalURL, "configure SSO")
+			return printSSOPortal(ch, portal.PortalURL, "configure", "configure SSO")
 		},
 	}
 

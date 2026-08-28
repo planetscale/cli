@@ -21,6 +21,7 @@ type UpdateOrganizationRequest struct {
 	Organization        string  `json:"-"`
 	BillingEmail        *string `json:"billing_email,omitempty"`
 	IDPManagedRoles     *bool   `json:"idp_managed_roles,omitempty"`
+	IDPSSOManagedRoles  *bool   `json:"idp_sso_managed_roles,omitempty"`
 	InvoiceBudgetAlerts *bool   `json:"invoice_budget_alerts,omitempty"`
 	InvoiceBudgetAmount *int64  `json:"invoice_budget_amount,omitempty"`
 }
@@ -32,6 +33,9 @@ func (r *UpdateOrganizationRequest) MarshalJSON() ([]byte, error) {
 	}
 	if r.IDPManagedRoles != nil {
 		body["idp_managed_roles"] = *r.IDPManagedRoles
+	}
+	if r.IDPSSOManagedRoles != nil {
+		body["idp_sso_managed_roles"] = *r.IDPSSOManagedRoles
 	}
 	if r.InvoiceBudgetAlerts != nil {
 		body["invoice_budget_alerts"] = *r.InvoiceBudgetAlerts
@@ -126,6 +130,7 @@ type Organization struct {
 	Name                         string              `json:"name"`
 	BillingEmail                 string              `json:"billing_email"`
 	IDPManagedRoles              bool                `json:"idp_managed_roles"`
+	IDPSSOManagedRoles           bool                `json:"idp_sso_managed_roles"`
 	InvoiceBudgetAlerts          bool                `json:"invoice_budget_alerts"`
 	InvoiceBudgetAmount          InvoiceBudgetAmount `json:"invoice_budget_amount"`
 	SuggestedInvoiceBudgetAmount InvoiceBudgetAmount `json:"suggested_invoice_budget_amount"`

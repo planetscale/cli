@@ -91,6 +91,7 @@ pscale --org <org> database list --format json
    ```bash
    pscale org update --org <org> --format json --billing-email billing@example.com
    pscale org update --org <org> --format json --idp-managed-roles=false
+   pscale org update --org <org> --format json --idp-sso-managed-roles=true
    pscale org update --org <org> --format json --spend-alert=true --spend-alert-amount 2500
    pscale org update --org <org> --format json --spend-alert=false
    ```
@@ -107,7 +108,7 @@ pscale --org <org> database list --format json
 
    Only org admins can change another member's role or remove someone else. Nobody can change their own role. `--role` is `admin`, `member`, or `analyst`.
 
-   Organization SSO (admin session, or a token with `manage_sso`). Disable, directory disable, and domain delete need `--force` in JSON. Configure, directory enable, and domain verify return `portal_url` and `browser_opened`; if `browser_opened` is false, open `portal_url`. `enable` JSON includes `domain_verification_url` when present.
+   Organization SSO (admin session, or a token with `manage_sso`). Disable, directory disable, and domain delete need `--force` in JSON. Success JSON includes `next_steps`. Configure, directory enable, and domain verify return `portal_url` and `browser_opened`; if `browser_opened` is false, open `portal_url`. `enable` JSON includes `domain_verification_url` when present. `--idp-sso-managed-roles` is for SSO profile roles; `--idp-managed-roles` is for directory sync roles. They cannot both be enabled.
 
    ```bash
    pscale org sso show --org <org> --format json

@@ -14,10 +14,11 @@ import (
 
 func UpdateCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
-		billingEmail     string
-		idpManagedRoles  bool
-		spendAlert       bool
-		spendAlertAmount int64
+		billingEmail       string
+		idpManagedRoles    bool
+		idpSSOManagedRoles bool
+		spendAlert         bool
+		spendAlertAmount   int64
 	}
 
 	cmd := &cobra.Command{
@@ -38,12 +39,21 @@ func UpdateCmd(ch *cmdutil.Helper) *cobra.Command {
 				req.IDPManagedRoles = &flags.idpManagedRoles
 				changed = true
 			}
+			if cmd.Flags().Changed("idp-sso-managed-roles") {
+				req.IDPSSOManagedRoles = &flags.idpSSOManagedRoles
+				changed = true
+			}
+
+			if cmd.Flags().Changed("idp-managed-roles") && cmd.Flags().Changed("idp-sso-managed-roles") &&
+				flags.idpManagedRoles && flags.idpSSOManagedRoles {
+				return fmt.Errorf("cannot enable both --idp-managed-roles and --idp-sso-managed-roles")
+			}
 
 			if cmd.Flags().Changed("spend-alert") || cmd.Flags().Changed("spend-alert-amount") {
 				changed = true
 			}
 			if !changed {
-				return fmt.Errorf("at least one of --billing-email, --idp-managed-roles, --spend-alert, or --spend-alert-amount must be provided")
+				return fmt.Errorf("at least one of --billing-email, --idp-managed-roles, --idp-sso-managed-roles, --spend-alert, or --spend-alert-amount must be provided")
 			}
 
 			client, err := ch.Client()
@@ -78,7 +88,8 @@ func UpdateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().StringVar(&ch.Config.Organization, "org", ch.Config.Organization, "The organization for the current user")
 	cmd.MarkFlagRequired("org")
 	cmd.Flags().StringVar(&flags.billingEmail, "billing-email", "", "The billing email for the organization")
-	cmd.Flags().BoolVar(&flags.idpManagedRoles, "idp-managed-roles", false, "Whether the identity provider manages organization roles")
+	cmd.Flags().BoolVar(&flags.idpManagedRoles, "idp-managed-roles", false, "Whether the identity provider manages organization roles through directory sync")
+	cmd.Flags().BoolVar(&flags.idpSSOManagedRoles, "idp-sso-managed-roles", false, "Whether the identity provider manages organization roles through SSO")
 	cmd.Flags().BoolVar(&flags.spendAlert, "spend-alert", false, "Enable or disable billing spend alerts")
 	cmd.Flags().Int64Var(&flags.spendAlertAmount, "spend-alert-amount", 0, "Monthly spend amount that triggers spend alerts")
 
@@ -140,23 +151,25 @@ func spendAlertAmount(org *ps.Organization) (int64, error) {
 }
 
 type organizationUpdate struct {
-	Name             string `header:"name" json:"name"`
-	BillingEmail     string `header:"billing_email" json:"billing_email"`
-	IDPManagedRoles  bool   `header:"idp_managed_roles" json:"idp_managed_roles"`
-	SpendAlert       bool   `header:"spend_alert" json:"spend_alert"`
-	SpendAlertAmount string `header:"spend_alert_amount" json:"spend_alert_amount"`
+	Name               string `header:"name" json:"name"`
+	BillingEmail       string `header:"billing_email" json:"billing_email"`
+	IDPManagedRoles    bool   `header:"idp_managed_roles" json:"idp_managed_roles"`
+	IDPSSOManagedRoles bool   `header:"idp_sso_managed_roles" json:"idp_sso_managed_roles"`
+	SpendAlert         bool   `header:"spend_alert" json:"spend_alert"`
+	SpendAlertAmount   string `header:"spend_alert_amount" json:"spend_alert_amount"`
 
 	orig *ps.Organization
 }
 
 func toOrganizationUpdate(org *ps.Organization) *organizationUpdate {
 	return &organizationUpdate{
-		Name:             org.Name,
-		BillingEmail:     org.BillingEmail,
-		IDPManagedRoles:  org.IDPManagedRoles,
-		SpendAlert:       org.InvoiceBudgetAlerts,
-		SpendAlertAmount: string(org.InvoiceBudgetAmount),
-		orig:             org,
+		Name:               org.Name,
+		BillingEmail:       org.BillingEmail,
+		IDPManagedRoles:    org.IDPManagedRoles,
+		IDPSSOManagedRoles: org.IDPSSOManagedRoles,
+		SpendAlert:         org.InvoiceBudgetAlerts,
+		SpendAlertAmount:   string(org.InvoiceBudgetAmount),
+		orig:               org,
 	}
 }
 

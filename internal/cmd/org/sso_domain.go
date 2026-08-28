@@ -47,6 +47,7 @@ func SSODomainListCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			if len(domains) == 0 && ch.Printer.Format() == printer.Human {
 				ch.Printer.Printf("No SSO domains in %s.\n", printer.BoldBlue(org))
+				printHumanNextSteps(ch, []string{jsonSSOCmd(org, "domain verify")})
 				return nil
 			}
 
@@ -80,7 +81,7 @@ func SSODomainVerifyCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 			end()
 
-			return printSSOPortal(ch, portal.PortalURL, "verify an email domain")
+			return printSSOPortal(ch, portal.PortalURL, "verify", "verify an email domain")
 		},
 	}
 
@@ -132,13 +133,15 @@ func SSODomainDeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 			if ch.Printer.Format() == printer.Human {
 				ch.Printer.Printf("Deleted SSO domain %s from %s.\n",
 					printer.BoldBlue(domainID), printer.BoldBlue(org))
+				printHumanNextSteps(ch, []string{jsonSSOCmd(org, "domain list"), jsonSSOCmd(org, "show")})
 				return nil
 			}
 
-			return ch.Printer.PrintResource(map[string]string{
-				"result": "domain deleted",
-				"org":    org,
-				"id":     domainID,
+			return ch.Printer.PrintResource(&ssoDomainDeleted{
+				Result:    "domain deleted",
+				Org:       org,
+				ID:        domainID,
+				NextSteps: []string{jsonSSOCmd(org, "domain list"), jsonSSOCmd(org, "show")},
 			})
 		},
 	}
