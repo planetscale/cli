@@ -35,18 +35,27 @@ func UpdateCmd(ch *cmdutil.Helper) *cobra.Command {
 				req.BillingEmail = &flags.billingEmail
 				changed = true
 			}
-			if cmd.Flags().Changed("idp-managed-roles") {
-				req.IDPManagedRoles = &flags.idpManagedRoles
+			directoryRoles := cmd.Flags().Changed("idp-managed-roles")
+			ssoRoles := cmd.Flags().Changed("idp-sso-managed-roles")
+			if directoryRoles || ssoRoles {
+				if directoryRoles && ssoRoles && flags.idpManagedRoles && flags.idpSSOManagedRoles {
+					return fmt.Errorf("cannot enable both --idp-managed-roles and --idp-sso-managed-roles")
+				}
+				if directoryRoles {
+					req.IDPManagedRoles = &flags.idpManagedRoles
+				}
+				if ssoRoles {
+					req.IDPSSOManagedRoles = &flags.idpSSOManagedRoles
+				}
+				// The two are mutually exclusive server-side, so enabling one turns
+				// the other off rather than leaving a stale setting behind.
+				if flags.idpManagedRoles && directoryRoles && !ssoRoles {
+					req.IDPSSOManagedRoles = boolPtr(false)
+				}
+				if flags.idpSSOManagedRoles && ssoRoles && !directoryRoles {
+					req.IDPManagedRoles = boolPtr(false)
+				}
 				changed = true
-			}
-			if cmd.Flags().Changed("idp-sso-managed-roles") {
-				req.IDPSSOManagedRoles = &flags.idpSSOManagedRoles
-				changed = true
-			}
-
-			if cmd.Flags().Changed("idp-managed-roles") && cmd.Flags().Changed("idp-sso-managed-roles") &&
-				flags.idpManagedRoles && flags.idpSSOManagedRoles {
-				return fmt.Errorf("cannot enable both --idp-managed-roles and --idp-sso-managed-roles")
 			}
 
 			if cmd.Flags().Changed("spend-alert") || cmd.Flags().Changed("spend-alert-amount") {
