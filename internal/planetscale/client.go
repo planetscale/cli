@@ -87,6 +87,7 @@ type Client struct {
 	ServiceTokens         ServiceTokenService
 	TrafficBudgets        TrafficBudgetsService
 	TrafficRules          TrafficRulesService
+	Users                 UsersService
 	VDiff                 VDiffService
 	Vtctld                VtctldService
 	Webhooks              WebhooksService
@@ -368,6 +369,7 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 	c.ServiceTokens = &serviceTokenService{client: c}
 	c.TrafficBudgets = &trafficBudgetsService{client: c}
 	c.TrafficRules = &trafficRulesService{client: c}
+	c.Users = &usersService{client: c}
 	c.VDiff = &vdiffService{client: c}
 	c.Vtctld = &vtctldService{client: c}
 	c.Webhooks = &webhooksService{client: c}

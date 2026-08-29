@@ -60,6 +60,7 @@ import (
 	"github.com/planetscale/cli/internal/cmd/signup"
 	"github.com/planetscale/cli/internal/cmd/sql"
 	"github.com/planetscale/cli/internal/cmd/token"
+	"github.com/planetscale/cli/internal/cmd/user"
 	"github.com/planetscale/cli/internal/cmd/version"
 	"github.com/planetscale/cli/internal/cmd/webhook"
 	"github.com/planetscale/cli/internal/cmdutil"
@@ -325,6 +326,10 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 	tokenCmd := token.TokenCmd(ch)
 	tokenCmd.GroupID = "platform"
 	rootCmd.AddCommand(tokenCmd)
+
+	userCmd := user.UserCmd(ch)
+	userCmd.GroupID = "platform"
+	rootCmd.AddCommand(userCmd)
 
 	versionCmd := version.VersionCmd(ch, ver, commit, buildDate)
 	versionCmd.GroupID = "platform"
