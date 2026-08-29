@@ -51,6 +51,7 @@ import (
 	"github.com/planetscale/cli/internal/cmd/keyspace"
 	"github.com/planetscale/cli/internal/cmd/maintenance"
 	"github.com/planetscale/cli/internal/cmd/metrics"
+	"github.com/planetscale/cli/internal/cmd/oauthapplication"
 	"github.com/planetscale/cli/internal/cmd/org"
 	"github.com/planetscale/cli/internal/cmd/password"
 	"github.com/planetscale/cli/internal/cmd/pgbouncer"
@@ -305,6 +306,10 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 	orgCmd := org.OrgCmd(ch)
 	orgCmd.GroupID = "platform"
 	rootCmd.AddCommand(orgCmd)
+
+	oauthApplicationCmd := oauthapplication.OAuthApplicationCmd(ch)
+	oauthApplicationCmd.GroupID = "platform"
+	rootCmd.AddCommand(oauthApplicationCmd)
 
 	pingCmd := ping.PingCmd(ch)
 	pingCmd.GroupID = "platform"

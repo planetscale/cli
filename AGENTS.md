@@ -592,6 +592,19 @@ pscale billing invoice line-items <invoice-id> --org <org> --format json
 - JSON preserves the API objects. Line items include the billed database and nested resource (usually a branch).
 - Requires `read_invoices` on a service token.
 
+## OAuth applications
+
+List and manage OAuth applications and their tokens. `--org` is required.
+
+```bash
+pscale oauth-application list --org <org> --format json
+pscale oauth-application show <application-id> --org <org> --format json
+pscale oauth-application token list <application-id> --org <org> --format json
+pscale oauth-application token show <application-id> <token-id> --org <org> --format json
+pscale oauth-application token create <application-id> --org <org> --format json
+pscale oauth-application token delete <application-id> <token-id> --org <org> --format json --force
+```
+
 ## Imports (Cloudflare D1) — Postgres only
 
 `pscale import d1` migrates a Cloudflare D1 (SQLite) export into a PlanetScale Postgres branch. Every subcommand supports `--format json` and returns `status`, `issues`, and `next_steps`; stateful steps return a `migration_id` — pass it back with `--migration-id` to resume.
