@@ -32,11 +32,6 @@ func ReadOnlyReplicaCmd(ch *cmdutil.Helper) *cobra.Command {
 }
 
 func ReadOnlyReplicaListCmd(ch *cmdutil.Helper) *cobra.Command {
-	var flags struct {
-		page    int
-		perPage int
-	}
-
 	cmd := &cobra.Command{
 		Use:   "list <database> <branch>",
 		Short: "List read-only replicas for a branch",
@@ -49,21 +44,13 @@ func ReadOnlyReplicaListCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
-			opts := make([]ps.ListOption, 0, 2)
-			if cmd.Flags().Changed("page") {
-				opts = append(opts, ps.WithPage(flags.page))
-			}
-			if cmd.Flags().Changed("per-page") {
-				opts = append(opts, ps.WithPerPage(flags.perPage))
-			}
-
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Fetching read-only replicas for %s branch in %s...", printer.BoldBlue(branch), printer.BoldBlue(database)))
 			defer end()
 			replicas, err := client.ReadOnlyReplicas.List(ctx, &ps.ListReadOnlyReplicasRequest{
 				Organization: ch.Config.Organization,
 				Database:     database,
 				Branch:       branch,
-			}, opts...)
+			})
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case ps.ErrNotFound:
@@ -83,8 +70,6 @@ func ReadOnlyReplicaListCmd(ch *cmdutil.Helper) *cobra.Command {
 			return ch.Printer.PrintResource(toReadOnlyReplicas(replicas))
 		},
 	}
-	cmd.Flags().IntVar(&flags.page, "page", 0, "Page number to fetch")
-	cmd.Flags().IntVar(&flags.perPage, "per-page", 100, "Number of results per page")
 	return cmd
 }
 
@@ -126,7 +111,7 @@ func ReadOnlyReplicaCreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case ps.ErrNotFound:
-					return cmdutil.HandleNotFoundWithServiceTokenCheck(ctx, cmd, ch.Config, ch.Client, err, "read_branch",
+					return cmdutil.HandleNotFoundWithServiceTokenCheck(ctx, cmd, ch.Config, ch.Client, err, "write_database",
 						"branch %s does not exist in database %s (organization: %s)",
 						printer.BoldBlue(branch), printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
 				default:
@@ -232,7 +217,7 @@ func ReadOnlyReplicaDeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case ps.ErrNotFound:
-					return cmdutil.HandleNotFoundWithServiceTokenCheck(ctx, cmd, ch.Config, ch.Client, err, "read_branch",
+					return cmdutil.HandleNotFoundWithServiceTokenCheck(ctx, cmd, ch.Config, ch.Client, err, "write_database",
 						"read-only replica %s does not exist in branch %s of database %s (organization: %s)",
 						printer.BoldBlue(name), printer.BoldBlue(branch), printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
 				default:

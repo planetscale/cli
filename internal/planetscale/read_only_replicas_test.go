@@ -34,7 +34,7 @@ func TestReadOnlyReplicas_List(t *testing.T) {
 	c := qt.New(t)
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c.Assert(r.Method, qt.Equals, http.MethodGet)
-		c.Assert(r.URL.String(), qt.Equals, "/v1/organizations/my-org/databases/planetscale-go-test-db/branches/main/read-only-replicas?page=2&per_page=10")
+		c.Assert(r.URL.String(), qt.Equals, "/v1/organizations/my-org/databases/planetscale-go-test-db/branches/main/read-only-replicas")
 		_, err := io.WriteString(w, "["+readOnlyReplicaJSON()+"]")
 		c.Assert(err, qt.IsNil)
 	}))
@@ -44,7 +44,7 @@ func TestReadOnlyReplicas_List(t *testing.T) {
 	c.Assert(err, qt.IsNil)
 	replicas, err := client.ReadOnlyReplicas.List(context.Background(), &ListReadOnlyReplicasRequest{
 		Organization: testOrg, Database: testDatabase, Branch: "main",
-	}, WithPage(2), WithPerPage(10))
+	})
 	c.Assert(err, qt.IsNil)
 	c.Assert(replicas, qt.HasLen, 1)
 	c.Assert(replicas[0].Name, qt.Equals, "analytics")

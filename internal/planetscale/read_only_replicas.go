@@ -63,7 +63,7 @@ type ReadOnlyReplicaRef struct {
 // ReadOnlyReplicasService is an interface for communicating with the read-only
 // replicas API.
 type ReadOnlyReplicasService interface {
-	List(context.Context, *ListReadOnlyReplicasRequest, ...ListOption) ([]*ReadOnlyReplica, error)
+	List(context.Context, *ListReadOnlyReplicasRequest) ([]*ReadOnlyReplica, error)
 	Create(context.Context, *CreateReadOnlyReplicaRequest) (*ReadOnlyReplica, error)
 	Get(context.Context, *GetReadOnlyReplicaRequest) (*ReadOnlyReplica, error)
 	Delete(context.Context, *DeleteReadOnlyReplicaRequest) error
@@ -115,9 +115,8 @@ type readOnlyReplicasService struct {
 	client *Client
 }
 
-func (s *readOnlyReplicasService) List(ctx context.Context, listReq *ListReadOnlyReplicasRequest, opts ...ListOption) ([]*ReadOnlyReplica, error) {
-	listOpts := defaultListOptions(opts...)
-	req, err := s.client.newRequest(http.MethodGet, readOnlyReplicasAPIPath(listReq.Organization, listReq.Database, listReq.Branch), nil, WithQueryParams(*listOpts.URLValues))
+func (s *readOnlyReplicasService) List(ctx context.Context, listReq *ListReadOnlyReplicasRequest) ([]*ReadOnlyReplica, error) {
+	req, err := s.client.newRequest(http.MethodGet, readOnlyReplicasAPIPath(listReq.Organization, listReq.Database, listReq.Branch), nil)
 	if err != nil {
 		return nil, err
 	}

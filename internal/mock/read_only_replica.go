@@ -7,7 +7,7 @@ import (
 )
 
 type ReadOnlyReplicasService struct {
-	ListFn               func(context.Context, *ps.ListReadOnlyReplicasRequest, ...ps.ListOption) ([]*ps.ReadOnlyReplica, error)
+	ListFn               func(context.Context, *ps.ListReadOnlyReplicasRequest) ([]*ps.ReadOnlyReplica, error)
 	ListFnInvoked        bool
 	CreateFn             func(context.Context, *ps.CreateReadOnlyReplicaRequest) (*ps.ReadOnlyReplica, error)
 	CreateFnInvoked      bool
@@ -19,9 +19,9 @@ type ReadOnlyReplicasService struct {
 	ListChangesFnInvoked bool
 }
 
-func (s *ReadOnlyReplicasService) List(ctx context.Context, req *ps.ListReadOnlyReplicasRequest, opts ...ps.ListOption) ([]*ps.ReadOnlyReplica, error) {
+func (s *ReadOnlyReplicasService) List(ctx context.Context, req *ps.ListReadOnlyReplicasRequest) ([]*ps.ReadOnlyReplica, error) {
 	s.ListFnInvoked = true
-	return s.ListFn(ctx, req, opts...)
+	return s.ListFn(ctx, req)
 }
 
 func (s *ReadOnlyReplicasService) Create(ctx context.Context, req *ps.CreateReadOnlyReplicaRequest) (*ps.ReadOnlyReplica, error) {

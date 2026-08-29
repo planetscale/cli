@@ -39,17 +39,16 @@ func TestReadOnlyReplicaListCmdJSON(t *testing.T) {
 		CreatedAt: time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC),
 	}}
 	svc := &mock.ReadOnlyReplicasService{
-		ListFn: func(_ context.Context, req *ps.ListReadOnlyReplicasRequest, opts ...ps.ListOption) ([]*ps.ReadOnlyReplica, error) {
+		ListFn: func(_ context.Context, req *ps.ListReadOnlyReplicasRequest) ([]*ps.ReadOnlyReplica, error) {
 			c.Assert(req.Organization, qt.Equals, "planetscale")
 			c.Assert(req.Database, qt.Equals, "app")
 			c.Assert(req.Branch, qt.Equals, "main")
-			c.Assert(opts, qt.HasLen, 2)
 			return replicas, nil
 		},
 	}
 
 	cmd := ReadOnlyReplicaListCmd(readOnlyReplicaTestHelper("planetscale", svc, printer.JSON, &buf))
-	cmd.SetArgs([]string{"app", "main", "--page", "2", "--per-page", "25"})
+	cmd.SetArgs([]string{"app", "main"})
 	c.Assert(cmd.Execute(), qt.IsNil)
 	c.Assert(svc.ListFnInvoked, qt.IsTrue)
 	c.Assert(buf.String(), qt.JSONEquals, replicas)
@@ -59,7 +58,7 @@ func TestReadOnlyReplicaListCmdHumanEmpty(t *testing.T) {
 	c := qt.New(t)
 	var buf bytes.Buffer
 	svc := &mock.ReadOnlyReplicasService{
-		ListFn: func(_ context.Context, _ *ps.ListReadOnlyReplicasRequest, _ ...ps.ListOption) ([]*ps.ReadOnlyReplica, error) {
+		ListFn: func(_ context.Context, _ *ps.ListReadOnlyReplicasRequest) ([]*ps.ReadOnlyReplica, error) {
 			return []*ps.ReadOnlyReplica{}, nil
 		},
 	}
