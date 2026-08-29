@@ -483,15 +483,16 @@ primary branch cluster and from Vitess read-only regions.
 
 ```bash
 pscale read-only-replica list <database> <branch> --org <org> --format json
+pscale read-only-replica show <database> <branch> <name> --org <org> --format json
 pscale read-only-replica create <database> <branch> <name> --region <region> --org <org> --format json
 pscale read-only-replica create <database> <branch> <name> --region <region> --replicas 2 --cluster-size PS_10_GCP_X86 --org <org> --format json
-pscale read-only-replica update <database> <branch> <replica-id> --replicas 3 --org <org> --format json
-pscale read-only-replica update <database> <branch> <replica-id> --cluster-size PS_20_GCP_X86 --parameters pgconf.max_connections=300 --org <org> --format json
-pscale read-only-replica delete <database> <branch> <replica-id> --org <org> --format json --force
+pscale read-only-replica update <database> <branch> <name> --replicas 3 --org <org> --format json
+pscale read-only-replica update <database> <branch> <name> --cluster-size PS_20_GCP_X86 --parameters pgconf.max_connections=300 --org <org> --format json
+pscale read-only-replica delete <database> <branch> <name> --org <org> --format json --force
 ```
 
 - `create` requires a name and `--region`. The API defaults to one instance and the primary cluster size when `--replicas` and `--cluster-size` are omitted.
-- Use the `id` returned by `list` for `update` and `delete`.
+- `show`, `update`, and `delete` identify the read-only replica by name.
 - `update` requires at least one of `--replicas`, `--cluster-size`, or repeatable `--parameters namespace.name=value`. Parameter values must be greater than or equal to the primary's corresponding values.
 - Creating and updating replicas is asynchronous; inspect `state` and `ready` in the returned object or with `list`.
 - `delete` requires explicit approval before using `--force`.

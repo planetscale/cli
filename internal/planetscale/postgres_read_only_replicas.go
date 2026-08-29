@@ -35,6 +35,14 @@ type ListPostgresReadOnlyReplicasRequest struct {
 	Branch       string
 }
 
+// GetPostgresReadOnlyReplicaRequest encapsulates getting a read-only replica by name.
+type GetPostgresReadOnlyReplicaRequest struct {
+	Organization string
+	Database     string
+	Branch       string
+	Replica      string
+}
+
 // CreatePostgresReadOnlyReplicaRequest encapsulates creating a read-only replica.
 type CreatePostgresReadOnlyReplicaRequest struct {
 	Organization string `json:"-"`
@@ -51,7 +59,7 @@ type UpdatePostgresReadOnlyReplicaRequest struct {
 	Organization string                       `json:"-"`
 	Database     string                       `json:"-"`
 	Branch       string                       `json:"-"`
-	ReplicaID    string                       `json:"-"`
+	Replica      string                       `json:"-"`
 	Replicas     *int                         `json:"replicas,omitempty"`
 	ClusterSize  string                       `json:"cluster_size,omitempty"`
 	Parameters   map[string]map[string]string `json:"parameters,omitempty"`
@@ -62,13 +70,14 @@ type DeletePostgresReadOnlyReplicaRequest struct {
 	Organization string
 	Database     string
 	Branch       string
-	ReplicaID    string
+	Replica      string
 }
 
 // PostgresReadOnlyReplicasService is an interface for the Postgres read-only
 // replicas API.
 type PostgresReadOnlyReplicasService interface {
 	List(context.Context, *ListPostgresReadOnlyReplicasRequest) ([]*PostgresReadOnlyReplica, error)
+	Get(context.Context, *GetPostgresReadOnlyReplicaRequest) (*PostgresReadOnlyReplica, error)
 	Create(context.Context, *CreatePostgresReadOnlyReplicaRequest) (*PostgresReadOnlyReplica, error)
 	Update(context.Context, *UpdatePostgresReadOnlyReplicaRequest) (*PostgresReadOnlyReplica, error)
 	Delete(context.Context, *DeletePostgresReadOnlyReplicaRequest) error
@@ -93,6 +102,19 @@ func (s *postgresReadOnlyReplicasService) List(ctx context.Context, listReq *Lis
 	return replicas, nil
 }
 
+func (s *postgresReadOnlyReplicasService) Get(ctx context.Context, getReq *GetPostgresReadOnlyReplicaRequest) (*PostgresReadOnlyReplica, error) {
+	req, err := s.client.newRequest(http.MethodGet, postgresReadOnlyReplicaAPIPath(getReq.Organization, getReq.Database, getReq.Branch, getReq.Replica), nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request for get postgres read-only replica: %w", err)
+	}
+
+	replica := &PostgresReadOnlyReplica{}
+	if err := s.client.do(ctx, req, replica); err != nil {
+		return nil, err
+	}
+	return replica, nil
+}
+
 func (s *postgresReadOnlyReplicasService) Create(ctx context.Context, createReq *CreatePostgresReadOnlyReplicaRequest) (*PostgresReadOnlyReplica, error) {
 	req, err := s.client.newRequest(http.MethodPost, postgresReadOnlyReplicasAPIPath(createReq.Organization, createReq.Database, createReq.Branch), createReq)
 	if err != nil {
@@ -107,7 +129,7 @@ func (s *postgresReadOnlyReplicasService) Create(ctx context.Context, createReq 
 }
 
 func (s *postgresReadOnlyReplicasService) Update(ctx context.Context, updateReq *UpdatePostgresReadOnlyReplicaRequest) (*PostgresReadOnlyReplica, error) {
-	req, err := s.client.newRequest(http.MethodPatch, postgresReadOnlyReplicaAPIPath(updateReq.Organization, updateReq.Database, updateReq.Branch, updateReq.ReplicaID), updateReq)
+	req, err := s.client.newRequest(http.MethodPatch, postgresReadOnlyReplicaAPIPath(updateReq.Organization, updateReq.Database, updateReq.Branch, updateReq.Replica), updateReq)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request for update postgres read-only replica: %w", err)
 	}
@@ -120,7 +142,7 @@ func (s *postgresReadOnlyReplicasService) Update(ctx context.Context, updateReq 
 }
 
 func (s *postgresReadOnlyReplicasService) Delete(ctx context.Context, deleteReq *DeletePostgresReadOnlyReplicaRequest) error {
-	req, err := s.client.newRequest(http.MethodDelete, postgresReadOnlyReplicaAPIPath(deleteReq.Organization, deleteReq.Database, deleteReq.Branch, deleteReq.ReplicaID), nil)
+	req, err := s.client.newRequest(http.MethodDelete, postgresReadOnlyReplicaAPIPath(deleteReq.Organization, deleteReq.Database, deleteReq.Branch, deleteReq.Replica), nil)
 	if err != nil {
 		return fmt.Errorf("error creating request for delete postgres read-only replica: %w", err)
 	}
@@ -131,6 +153,6 @@ func postgresReadOnlyReplicasAPIPath(org, db, branch string) string {
 	return path.Join(postgresBranchAPIPath(org, db, branch), "read-only-replicas")
 }
 
-func postgresReadOnlyReplicaAPIPath(org, db, branch, replicaID string) string {
-	return path.Join(postgresReadOnlyReplicasAPIPath(org, db, branch), replicaID)
+func postgresReadOnlyReplicaAPIPath(org, db, branch, replica string) string {
+	return path.Join(postgresReadOnlyReplicasAPIPath(org, db, branch), replica)
 }

@@ -10,6 +10,9 @@ type PostgresReadOnlyReplicasService struct {
 	ListFn        func(context.Context, *ps.ListPostgresReadOnlyReplicasRequest) ([]*ps.PostgresReadOnlyReplica, error)
 	ListFnInvoked bool
 
+	GetFn        func(context.Context, *ps.GetPostgresReadOnlyReplicaRequest) (*ps.PostgresReadOnlyReplica, error)
+	GetFnInvoked bool
+
 	CreateFn        func(context.Context, *ps.CreatePostgresReadOnlyReplicaRequest) (*ps.PostgresReadOnlyReplica, error)
 	CreateFnInvoked bool
 
@@ -23,6 +26,11 @@ type PostgresReadOnlyReplicasService struct {
 func (s *PostgresReadOnlyReplicasService) List(ctx context.Context, req *ps.ListPostgresReadOnlyReplicasRequest) ([]*ps.PostgresReadOnlyReplica, error) {
 	s.ListFnInvoked = true
 	return s.ListFn(ctx, req)
+}
+
+func (s *PostgresReadOnlyReplicasService) Get(ctx context.Context, req *ps.GetPostgresReadOnlyReplicaRequest) (*ps.PostgresReadOnlyReplica, error) {
+	s.GetFnInvoked = true
+	return s.GetFn(ctx, req)
 }
 
 func (s *PostgresReadOnlyReplicasService) Create(ctx context.Context, req *ps.CreatePostgresReadOnlyReplicaRequest) (*ps.PostgresReadOnlyReplica, error) {

@@ -83,6 +83,28 @@ func TestListCmd(t *testing.T) {
 	c.Assert(buf.String(), qt.JSONEquals, []*ReadOnlyReplica{{orig: replica}})
 }
 
+func TestShowCmd(t *testing.T) {
+	c := qt.New(t)
+	var buf bytes.Buffer
+	org, database, branch := "planetscale", "mydb", "main"
+	replica := testReplica()
+	svc := &mock.PostgresReadOnlyReplicasService{
+		GetFn: func(ctx context.Context, req *ps.GetPostgresReadOnlyReplicaRequest) (*ps.PostgresReadOnlyReplica, error) {
+			c.Assert(req.Organization, qt.Equals, org)
+			c.Assert(req.Database, qt.Equals, database)
+			c.Assert(req.Branch, qt.Equals, branch)
+			c.Assert(req.Replica, qt.Equals, "analytics")
+			return replica, nil
+		},
+	}
+
+	cmd := ShowCmd(testHelper(org, databaseService(c, org, database), svc, printer.JSON, &buf))
+	cmd.SetArgs([]string{database, branch, "analytics"})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(svc.GetFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.JSONEquals, &ReadOnlyReplica{orig: replica})
+}
+
 func TestCreateCmd(t *testing.T) {
 	c := qt.New(t)
 	var buf bytes.Buffer
@@ -119,7 +141,7 @@ func TestUpdateCmd(t *testing.T) {
 			c.Assert(req.Organization, qt.Equals, org)
 			c.Assert(req.Database, qt.Equals, database)
 			c.Assert(req.Branch, qt.Equals, branch)
-			c.Assert(req.ReplicaID, qt.Equals, "replica-1")
+			c.Assert(req.Replica, qt.Equals, "analytics")
 			c.Assert(req.ClusterSize, qt.Equals, "PS_20_GCP_X86")
 			c.Assert(req.Replicas, qt.IsNotNil)
 			c.Assert(*req.Replicas, qt.Equals, 3)
@@ -132,7 +154,7 @@ func TestUpdateCmd(t *testing.T) {
 
 	cmd := UpdateCmd(testHelper(org, databaseService(c, org, database), svc, printer.JSON, &buf))
 	cmd.SetArgs([]string{
-		database, branch, "replica-1",
+		database, branch, "analytics",
 		"--replicas", "3",
 		"--cluster-size", "PS_20_GCP_X86",
 		"--parameters", "pgconf.max_connections=300",
@@ -146,7 +168,7 @@ func TestUpdateCmdRequiresChange(t *testing.T) {
 	c := qt.New(t)
 	svc := &mock.PostgresReadOnlyReplicasService{}
 	cmd := UpdateCmd(testHelper("planetscale", &mock.DatabaseService{}, svc, printer.JSON, &bytes.Buffer{}))
-	cmd.SetArgs([]string{"mydb", "main", "replica-1"})
+	cmd.SetArgs([]string{"mydb", "main", "analytics"})
 	c.Assert(cmd.Execute(), qt.ErrorMatches, `nothing to change:.*`)
 	c.Assert(svc.UpdateFnInvoked, qt.IsFalse)
 }
@@ -160,20 +182,20 @@ func TestDeleteCmd(t *testing.T) {
 			c.Assert(req.Organization, qt.Equals, org)
 			c.Assert(req.Database, qt.Equals, database)
 			c.Assert(req.Branch, qt.Equals, branch)
-			c.Assert(req.ReplicaID, qt.Equals, "replica-1")
+			c.Assert(req.Replica, qt.Equals, "analytics")
 			return nil
 		},
 	}
 
 	cmd := DeleteCmd(testHelper(org, databaseService(c, org, database), svc, printer.JSON, &buf))
-	cmd.SetArgs([]string{database, branch, "replica-1", "--force"})
+	cmd.SetArgs([]string{database, branch, "analytics", "--force"})
 	c.Assert(cmd.Execute(), qt.IsNil)
 	c.Assert(svc.DeleteFnInvoked, qt.IsTrue)
 	c.Assert(buf.String(), qt.JSONEquals, map[string]string{
-		"result":     "read-only replica deleted",
-		"replica_id": "replica-1",
-		"database":   database,
-		"branch":     branch,
+		"result":   "read-only replica deleted",
+		"name":     "analytics",
+		"database": database,
+		"branch":   branch,
 	})
 }
 
@@ -182,7 +204,7 @@ func TestDeleteCmdRequiresForceInJSON(t *testing.T) {
 	org, database := "planetscale", "mydb"
 	svc := &mock.PostgresReadOnlyReplicasService{}
 	cmd := DeleteCmd(testHelper(org, databaseService(c, org, database), svc, printer.JSON, &bytes.Buffer{}))
-	cmd.SetArgs([]string{database, "main", "replica-1"})
+	cmd.SetArgs([]string{database, "main", "analytics"})
 	c.Assert(cmd.Execute(), qt.ErrorMatches, `(?s).*run with --force.*`)
 	c.Assert(svc.DeleteFnInvoked, qt.IsFalse)
 }

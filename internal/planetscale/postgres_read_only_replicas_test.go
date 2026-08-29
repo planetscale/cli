@@ -54,6 +54,30 @@ func TestPostgresReadOnlyReplicas_List(t *testing.T) {
 	c.Assert(replicas[0].Region.Slug, qt.Equals, "us-east")
 }
 
+func TestPostgresReadOnlyReplicas_Get(t *testing.T) {
+	c := qt.New(t)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodGet)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/my-db/branches/main/read-only-replicas/analytics")
+		_, err := w.Write([]byte(testReadOnlyReplicaJSON))
+		c.Assert(err, qt.IsNil)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	replica, err := client.PostgresReadOnlyReplicas.Get(context.Background(), &GetPostgresReadOnlyReplicaRequest{
+		Organization: testOrg,
+		Database:     "my-db",
+		Branch:       "main",
+		Replica:      "analytics",
+	})
+	c.Assert(err, qt.IsNil)
+	c.Assert(replica.ID, qt.Equals, "replica-1")
+	c.Assert(replica.Name, qt.Equals, "analytics")
+}
+
 func TestPostgresReadOnlyReplicas_Create(t *testing.T) {
 	c := qt.New(t)
 	replicaCount := 2
@@ -95,7 +119,7 @@ func TestPostgresReadOnlyReplicas_Update(t *testing.T) {
 	replicaCount := 3
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c.Assert(r.Method, qt.Equals, http.MethodPatch)
-		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/my-db/branches/main/read-only-replicas/replica-1")
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/my-db/branches/main/read-only-replicas/analytics")
 
 		var body map[string]any
 		c.Assert(json.NewDecoder(r.Body).Decode(&body), qt.IsNil)
@@ -116,7 +140,7 @@ func TestPostgresReadOnlyReplicas_Update(t *testing.T) {
 		Organization: testOrg,
 		Database:     "my-db",
 		Branch:       "main",
-		ReplicaID:    "replica-1",
+		Replica:      "analytics",
 		Replicas:     &replicaCount,
 		ClusterSize:  "PS_20_GCP_X86",
 		Parameters: map[string]map[string]string{
@@ -131,7 +155,7 @@ func TestPostgresReadOnlyReplicas_Delete(t *testing.T) {
 	c := qt.New(t)
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c.Assert(r.Method, qt.Equals, http.MethodDelete)
-		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/my-db/branches/main/read-only-replicas/replica-1")
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/my-db/branches/main/read-only-replicas/analytics")
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	defer ts.Close()
@@ -143,7 +167,7 @@ func TestPostgresReadOnlyReplicas_Delete(t *testing.T) {
 		Organization: testOrg,
 		Database:     "my-db",
 		Branch:       "main",
-		ReplicaID:    "replica-1",
+		Replica:      "analytics",
 	})
 	c.Assert(err, qt.IsNil)
 }

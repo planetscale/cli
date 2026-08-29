@@ -20,18 +20,18 @@ func UpdateCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:   "update <database> <branch> <replica-id>",
+		Use:   "update <database> <branch> <name>",
 		Short: "Update a read-only replica",
 		Long: `Update a read-only replica's cluster size, instance count, and/or
 PostgreSQL configuration parameters. Parameter values must be greater than or
 equal to the primary branch's corresponding values.`,
-		Example: `  pscale read-only-replica update mydb main replica-id --replicas 2
-  pscale read-only-replica update mydb main replica-id --cluster-size PS_20_GCP_X86
-  pscale read-only-replica update mydb main replica-id --parameters pgconf.max_connections=300`,
-		Args: cmdutil.RequiredArgs("database", "branch", "replica-id"),
+		Example: `  pscale read-only-replica update mydb main analytics --replicas 2
+  pscale read-only-replica update mydb main analytics --cluster-size PS_20_GCP_X86
+  pscale read-only-replica update mydb main analytics --parameters pgconf.max_connections=300`,
+		Args: cmdutil.RequiredArgs("database", "branch", "name"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			database, branch, replicaID := args[0], args[1], args[2]
+			database, branch, name := args[0], args[1], args[2]
 
 			if !cmd.Flags().Changed("replicas") && flags.clusterSize == "" && len(flags.parameters) == 0 {
 				return errors.New("nothing to change: pass at least one of --replicas, --cluster-size, or --parameters")
@@ -54,7 +54,7 @@ equal to the primary branch's corresponding values.`,
 				Organization: ch.Config.Organization,
 				Database:     database,
 				Branch:       branch,
-				ReplicaID:    replicaID,
+				Replica:      name,
 				ClusterSize:  flags.clusterSize,
 				Parameters:   parameters,
 			}
@@ -62,7 +62,7 @@ equal to the primary branch's corresponding values.`,
 				req.Replicas = &flags.replicas
 			}
 
-			end := ch.Printer.PrintProgress(fmt.Sprintf("Updating read-only replica %s on %s/%s", printer.BoldBlue(replicaID), printer.BoldBlue(database), printer.BoldBlue(branch)))
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Updating read-only replica %s on %s/%s", printer.BoldBlue(name), printer.BoldBlue(database), printer.BoldBlue(branch)))
 			defer end()
 
 			replica, err := client.PostgresReadOnlyReplicas.Update(ctx, req)
@@ -70,7 +70,7 @@ equal to the primary branch's corresponding values.`,
 				switch cmdutil.ErrCode(err) {
 				case ps.ErrNotFound:
 					return fmt.Errorf("read-only replica %s does not exist on %s/%s (organization: %s)",
-						printer.BoldBlue(replicaID), printer.BoldBlue(database), printer.BoldBlue(branch), printer.BoldBlue(ch.Config.Organization))
+						printer.BoldBlue(name), printer.BoldBlue(database), printer.BoldBlue(branch), printer.BoldBlue(ch.Config.Organization))
 				default:
 					return cmdutil.HandleError(err)
 				}
@@ -79,7 +79,7 @@ equal to the primary branch's corresponding values.`,
 
 			if ch.Printer.Format() == printer.Human {
 				ch.Printer.Printf("Update requested for read-only replica %s on %s/%s (state: %s).\n",
-					printer.BoldBlue(replicaID), printer.BoldBlue(database), printer.BoldBlue(branch), printer.BoldBlue(replica.State))
+					printer.BoldBlue(name), printer.BoldBlue(database), printer.BoldBlue(branch), printer.BoldBlue(replica.State))
 				return nil
 			}
 			return ch.Printer.PrintResource(toReadOnlyReplica(replica))

@@ -27,6 +27,7 @@ This command is only available for PostgreSQL databases.`,
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
 
 	cmd.AddCommand(ListCmd(ch))
+	cmd.AddCommand(ShowCmd(ch))
 	cmd.AddCommand(CreateCmd(ch))
 	cmd.AddCommand(UpdateCmd(ch))
 	cmd.AddCommand(DeleteCmd(ch))

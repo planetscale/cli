@@ -9,18 +9,18 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// DeleteCmd deletes a read-only replica by ID.
+// DeleteCmd deletes a read-only replica by name.
 func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 	var force bool
 
 	cmd := &cobra.Command{
-		Use:     "delete <database> <branch> <replica-id>",
+		Use:     "delete <database> <branch> <name>",
 		Short:   "Delete a read-only replica",
-		Args:    cmdutil.RequiredArgs("database", "branch", "replica-id"),
+		Args:    cmdutil.RequiredArgs("database", "branch", "name"),
 		Aliases: []string{"rm"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			database, branch, replicaID := args[0], args[1], args[2]
+			database, branch, name := args[0], args[1], args[2]
 
 			client, err := ch.Client()
 			if err != nil {
@@ -31,26 +31,26 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			if !force {
-				confirmationName := fmt.Sprintf("%s/%s/%s", database, branch, replicaID)
+				confirmationName := fmt.Sprintf("%s/%s/%s", database, branch, name)
 				if err := ch.Printer.ConfirmCommand(confirmationName, "delete read-only replica", "deletion of read-only replica"); err != nil {
 					return err
 				}
 			}
 
-			end := ch.Printer.PrintProgress(fmt.Sprintf("Deleting read-only replica %s from %s/%s", printer.BoldBlue(replicaID), printer.BoldBlue(database), printer.BoldBlue(branch)))
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Deleting read-only replica %s from %s/%s", printer.BoldBlue(name), printer.BoldBlue(database), printer.BoldBlue(branch)))
 			defer end()
 
 			err = client.PostgresReadOnlyReplicas.Delete(ctx, &ps.DeletePostgresReadOnlyReplicaRequest{
 				Organization: ch.Config.Organization,
 				Database:     database,
 				Branch:       branch,
-				ReplicaID:    replicaID,
+				Replica:      name,
 			})
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case ps.ErrNotFound:
 					return fmt.Errorf("read-only replica %s does not exist on %s/%s (organization: %s)",
-						printer.BoldBlue(replicaID), printer.BoldBlue(database), printer.BoldBlue(branch), printer.BoldBlue(ch.Config.Organization))
+						printer.BoldBlue(name), printer.BoldBlue(database), printer.BoldBlue(branch), printer.BoldBlue(ch.Config.Organization))
 				default:
 					return cmdutil.HandleError(err)
 				}
@@ -59,15 +59,15 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			if ch.Printer.Format() == printer.Human {
 				ch.Printer.Printf("Read-only replica %s was successfully deleted from %s/%s.\n",
-					printer.BoldBlue(replicaID), printer.BoldBlue(database), printer.BoldBlue(branch))
+					printer.BoldBlue(name), printer.BoldBlue(database), printer.BoldBlue(branch))
 				return nil
 			}
 
 			return ch.Printer.PrintResource(map[string]string{
-				"result":     "read-only replica deleted",
-				"replica_id": replicaID,
-				"database":   database,
-				"branch":     branch,
+				"result":   "read-only replica deleted",
+				"name":     name,
+				"database": database,
+				"branch":   branch,
 			})
 		},
 	}
