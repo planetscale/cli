@@ -47,6 +47,7 @@ func BranchCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.AddCommand(InfraCmd(ch))
 	cmd.AddCommand(SwitchoverCmd(ch))
 	cmd.AddCommand(MaintenanceCmd(ch))
+	cmd.AddCommand(ReadOnlyReplicaCmd(ch))
 
 	return cmd
 }

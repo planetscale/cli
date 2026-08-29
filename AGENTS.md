@@ -475,6 +475,18 @@ pscale branch resize cancel <database> <branch> --org <org> --format json
 - `resize cancel` prints `{"result": "canceled", "branch": "<branch>"}` in JSON mode.
 - MySQL databases are rejected: use `pscale keyspace resize` for Vitess keyspaces.
 
+## Branch read-only replicas
+
+Create and manage read-only replicas for a branch, and inspect their change requests. These commands do not assume a particular database engine.
+
+```bash
+pscale branch read-only-replica list <database> <branch> --org <org> --format json
+pscale branch read-only-replica create <database> <branch> --org <org> --format json --name <name> --region <region>
+pscale branch read-only-replica show <database> <branch> <replica> --org <org> --format json
+pscale branch read-only-replica delete <database> <branch> <replica> --org <org> --format json --force
+pscale branch read-only-replica changes <database> <branch> --org <org> --format json
+```
+
 ## Postgres switchovers
 
 `pscale branch switchover` moves the primary of a Postgres branch to a replica. It is Postgres-only; Vitess/MySQL databases are rejected before any API call.

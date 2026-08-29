@@ -81,6 +81,7 @@ type Client struct {
 	Processlist           ProcesslistService
 	QueryInsights         QueryInsightsService
 	QueryPatterns         QueryPatternsService
+	ReadOnlyReplicas      ReadOnlyReplicasService
 	ReadOnlyRegions       ReadOnlyRegionsService
 	Regions               RegionsService
 	SchemaRecommendations SchemaRecommendationService
@@ -362,6 +363,7 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 	c.Processlist = &processlistService{client: c}
 	c.QueryInsights = &queryInsightsService{client: c}
 	c.QueryPatterns = &queryPatternsService{client: c}
+	c.ReadOnlyReplicas = &readOnlyReplicasService{client: c}
 	c.ReadOnlyRegions = &readOnlyRegionsService{client: c}
 	c.Regions = &regionsService{client: c}
 	c.SchemaRecommendations = &schemaRecommendationService{client: c}
