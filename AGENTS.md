@@ -601,9 +601,19 @@ pscale oauth-application list --org <org> --format json
 pscale oauth-application show <application-id> --org <org> --format json
 pscale oauth-application token list <application-id> --org <org> --format json
 pscale oauth-application token show <application-id> <token-id> --org <org> --format json
-pscale oauth-application token create <application-id> --org <org> --format json
+pscale oauth-application token create <application-id> --org <org> --format json \
+  --client-id <client-id> --client-secret <client-secret> \
+  --grant-type authorization_code --code <code> --redirect-uri <redirect-uri>
+pscale oauth-application token create <application-id> --org <org> --format json \
+  --client-id <client-id> --client-secret <client-secret> \
+  --grant-type refresh_token --refresh-token <refresh-token>
 pscale oauth-application token delete <application-id> <token-id> --org <org> --format json --force
 ```
+
+- `--client-secret @-` reads the secret from stdin so it stays out of argv.
+- `list` commands are paginated with `--page` and `--per-page` (25 per page by default).
+- `token create` returns the plaintext token and refresh token, shown only once.
+- `token delete` requires `--force` in JSON format.
 
 ## Imports (Cloudflare D1) — Postgres only
 

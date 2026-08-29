@@ -29,7 +29,9 @@ func TokenDeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Deleting OAuth token %s", printer.BoldBlue(tokenID)))
 			defer end()
 			err = client.OAuthApplications.DeleteToken(cmd.Context(), &ps.DeleteOAuthTokenRequest{
-				Organization: ch.Config.Organization, ApplicationID: applicationID, TokenID: tokenID,
+				Organization:  ch.Config.Organization,
+				ApplicationID: applicationID,
+				TokenID:       tokenID,
 			})
 			if err != nil {
 				switch cmdutil.ErrCode(err) {

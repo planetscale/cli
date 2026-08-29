@@ -23,7 +23,9 @@ func TokenShowCmd(ch *cmdutil.Helper) *cobra.Command {
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Fetching OAuth token %s", printer.BoldBlue(tokenID)))
 			defer end()
 			token, err := client.OAuthApplications.GetToken(cmd.Context(), &ps.GetOAuthTokenRequest{
-				Organization: ch.Config.Organization, ApplicationID: applicationID, TokenID: tokenID,
+				Organization:  ch.Config.Organization,
+				ApplicationID: applicationID,
+				TokenID:       tokenID,
 			})
 			if err != nil {
 				switch cmdutil.ErrCode(err) {

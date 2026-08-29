@@ -3,6 +3,7 @@ package oauthapplication
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/planetscale/cli/internal/cmdutil"
 	ps "github.com/planetscale/cli/internal/planetscale"
@@ -28,12 +29,6 @@ func TokenCreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			if flags.grantType != "authorization_code" && flags.grantType != "refresh_token" {
 				return fmt.Errorf("--grant-type must be authorization_code or refresh_token")
 			}
-			if flags.clientID == "" {
-				return fmt.Errorf("required flag(s) \"client-id\" not set")
-			}
-			if flags.clientSecret == "" {
-				return fmt.Errorf("required flag(s) \"client-secret\" not set")
-			}
 			if flags.grantType == "authorization_code" {
 				if flags.code == "" || flags.redirectURI == "" {
 					return fmt.Errorf("--grant-type authorization_code requires --code and --redirect-uri")
@@ -56,7 +51,7 @@ func TokenCreateCmd(ch *cmdutil.Helper) *cobra.Command {
 				if err != nil {
 					return fmt.Errorf("reading --client-secret from stdin: %w", err)
 				}
-				clientSecret = string(data)
+				clientSecret = strings.TrimSpace(string(data))
 			}
 			if clientSecret == "" {
 				return fmt.Errorf("--client-secret cannot be empty")
