@@ -55,6 +55,7 @@ import (
 	"github.com/planetscale/cli/internal/cmd/password"
 	"github.com/planetscale/cli/internal/cmd/pgbouncer"
 	"github.com/planetscale/cli/internal/cmd/ping"
+	"github.com/planetscale/cli/internal/cmd/readonlyreplica"
 	"github.com/planetscale/cli/internal/cmd/region"
 	"github.com/planetscale/cli/internal/cmd/shell"
 	"github.com/planetscale/cli/internal/cmd/signup"
@@ -407,6 +408,10 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 	pgbouncerCmd := pgbouncer.Cmd(ch)
 	pgbouncerCmd.GroupID = "postgres"
 	rootCmd.AddCommand(pgbouncerCmd)
+
+	readOnlyReplicaCmd := readonlyreplica.Cmd(ch)
+	readOnlyReplicaCmd.GroupID = "postgres"
+	rootCmd.AddCommand(readOnlyReplicaCmd)
 
 	trafficCmd := trafficcontrol.TrafficCmd(ch)
 	trafficCmd.GroupID = "postgres"
