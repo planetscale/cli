@@ -11,17 +11,17 @@ import (
 
 func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
-		url				string
-		webhookAuthorizationToken	string
-		events				[]string
-		enabled				bool
+		url                       string
+		webhookAuthorizationToken string
+		events                    []string
+		enabled                   bool
 	}
 
 	cmd := &cobra.Command{
-		Use:	"create <database>",
-		Short:	"Create a webhook for a database",
-		Args:	cmdutil.RequiredArgs("database"),
-		RunE:	func(cmd *cobra.Command, args []string) error {
+		Use:   "create <database>",
+		Short: "Create a webhook for a database",
+		Args:  cmdutil.RequiredArgs("database"),
+		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			database := args[0]
 
@@ -31,11 +31,11 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			req := &planetscale.CreateWebhookRequest{
-				Organization:			ch.Config.Organization,
-				Database:			database,
-				URL:				flags.url,
-				WebhookAuthorizationToken:	flags.webhookAuthorizationToken,
-				Events:				flags.events,
+				Organization:              ch.Config.Organization,
+				Database:                  database,
+				URL:                       flags.url,
+				WebhookAuthorizationToken: flags.webhookAuthorizationToken,
+				Events:                    flags.events,
 			}
 
 			if cmd.Flags().Changed("enabled") {
