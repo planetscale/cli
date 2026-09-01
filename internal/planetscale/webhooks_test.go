@@ -98,7 +98,7 @@ func TestWebhooks_List_WithPagination(t *testing.T) {
 func TestWebhooks_Create(t *testing.T) {
 	c := qt.New(t)
 
-	wantBody := []byte("{\"url\":\"https://example.com/webhook\",\"enabled\":true,\"events\":[\"branch.ready\"]}\n")
+	wantBody := []byte("{\"url\":\"https://example.com/webhook\",\"authorization_token\":\"automation-token\",\"enabled\":true,\"events\":[\"branch.ready\"]}\n")
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(201)
@@ -132,11 +132,12 @@ func TestWebhooks_Create(t *testing.T) {
 	enabled := true
 
 	webhook, err := client.Webhooks.Create(ctx, &CreateWebhookRequest{
-		Organization: testOrg,
-		Database:     testDatabase,
-		URL:          "https://example.com/webhook",
-		Enabled:      &enabled,
-		Events:       []string{"branch.ready"},
+		Organization:       testOrg,
+		Database:           testDatabase,
+		URL:                "https://example.com/webhook",
+		AuthorizationToken: "automation-token",
+		Enabled:            &enabled,
+		Events:             []string{"branch.ready"},
 	})
 
 	c.Assert(err, qt.IsNil)
@@ -191,7 +192,7 @@ func TestWebhooks_Get(t *testing.T) {
 func TestWebhooks_Update(t *testing.T) {
 	c := qt.New(t)
 
-	wantBody := []byte("{\"url\":\"https://example.com/new-webhook\",\"enabled\":false}\n")
+	wantBody := []byte("{\"url\":\"https://example.com/new-webhook\",\"authorization_token\":\"automation-token\",\"enabled\":false}\n")
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(200)
@@ -224,13 +225,15 @@ func TestWebhooks_Update(t *testing.T) {
 	ctx := context.Background()
 	newURL := "https://example.com/new-webhook"
 	enabled := false
+	authorizationToken := "automation-token"
 
 	webhook, err := client.Webhooks.Update(ctx, &UpdateWebhookRequest{
-		Organization: testOrg,
-		Database:     testDatabase,
-		ID:           "webhook-123",
-		URL:          &newURL,
-		Enabled:      &enabled,
+		Organization:       testOrg,
+		Database:           testDatabase,
+		ID:                 "webhook-123",
+		URL:                &newURL,
+		AuthorizationToken: &authorizationToken,
+		Enabled:            &enabled,
 	})
 
 	c.Assert(err, qt.IsNil)
