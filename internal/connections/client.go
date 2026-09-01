@@ -21,7 +21,7 @@ import (
 
 const (
 	clientUserAgent = "pscale-cli"
-	defaultTimeout  = 5 * time.Second
+	defaultTimeout  = 10 * time.Second
 
 	// Retry defaults for list-only 503s returned while the server's
 	// connection snapshot cache is being populated. The floor is 50ms
