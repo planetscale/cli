@@ -11,9 +11,10 @@ import (
 
 func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
-		url     string
-		events  []string
-		enabled bool
+		url                string
+		authorizationToken string
+		events             []string
+		enabled            bool
 	}
 
 	cmd := &cobra.Command{
@@ -30,10 +31,11 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			req := &planetscale.CreateWebhookRequest{
-				Organization: ch.Config.Organization,
-				Database:     database,
-				URL:          flags.url,
-				Events:       flags.events,
+				Organization:       ch.Config.Organization,
+				Database:           database,
+				URL:                flags.url,
+				AuthorizationToken: flags.authorizationToken,
+				Events:             flags.events,
 			}
 
 			if cmd.Flags().Changed("enabled") {
@@ -61,6 +63,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&flags.url, "url", "", "The URL to send webhook events to (required)")
+	cmd.Flags().StringVar(&flags.authorizationToken, "authorization-token", "", "Bearer token to include in the Authorization header")
 	cmd.Flags().StringSliceVar(&flags.events, "events", nil, "Comma-separated list of events to subscribe to")
 	cmd.Flags().BoolVar(&flags.enabled, "enabled", true, "Whether the webhook is enabled")
 
