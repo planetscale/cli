@@ -11,10 +11,10 @@ import (
 
 func UpdateCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
-		url                string
-		webhookAuthorizationToken string
-		events             []string
-		enabled            bool
+		url				string
+		webhookAuthorizationToken	string
+		events				[]string
+		enabled				bool
 	}
 
 	cmd := &cobra.Command{
