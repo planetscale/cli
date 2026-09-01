@@ -169,6 +169,79 @@ func TestWebhook_UpdateCmd_WebhookAuthorizationTokenFlag(t *testing.T) {
 	c.Assert(svc.UpdateFnInvoked, qt.IsTrue)
 }
 
+func TestWebhook_UpdateCmd_ClearWebhookAuthorizationTokenFlag(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	db := "mydb"
+	webhookID := "webhook-123"
+	webhook := &ps.Webhook{ID: webhookID, URL: "https://example.com/webhook", Enabled: true}
+
+	svc := &mock.WebhooksService{
+		UpdateFn: func(ctx context.Context, req *ps.UpdateWebhookRequest) (*ps.Webhook, error) {
+			c.Assert(req.ClearWebhookAuthorizationToken, qt.IsTrue)
+			c.Assert(req.WebhookAuthorizationToken, qt.IsNil)
+			return webhook, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: org},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{Webhooks: svc}, nil
+		},
+	}
+
+	cmd := UpdateCmd(ch)
+	cmd.SetArgs([]string{db, webhookID, "--clear-webhook-authorization-token"})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.UpdateFnInvoked, qt.IsTrue)
+}
+
+func TestWebhook_UpdateCmd_RejectsEmptyWebhookAuthorizationToken(t *testing.T) {
+	c := qt.New(t)
+
+	ch := &cmdutil.Helper{
+		Printer: printer.NewPrinter(nil),
+		Config:  &config.Config{Organization: "planetscale"},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{}, nil
+		},
+	}
+
+	cmd := UpdateCmd(ch)
+	cmd.SetArgs([]string{"mydb", "webhook-123", "--webhook-authorization-token", ""})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.ErrorMatches, `--webhook-authorization-token cannot be empty; use --clear-webhook-authorization-token to remove the configured token`)
+}
+
+func TestWebhook_UpdateCmd_RejectsSetAndClearWebhookAuthorizationToken(t *testing.T) {
+	c := qt.New(t)
+
+	ch := &cmdutil.Helper{
+		Printer: printer.NewPrinter(nil),
+		Config:  &config.Config{Organization: "planetscale"},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{}, nil
+		},
+	}
+
+	cmd := UpdateCmd(ch)
+	cmd.SetArgs([]string{"mydb", "webhook-123", "--webhook-authorization-token", "automation-token", "--clear-webhook-authorization-token"})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.ErrorMatches, `if any flags in the group \[webhook-authorization-token clear-webhook-authorization-token\] are set none of the others can be; \[clear-webhook-authorization-token webhook-authorization-token\] were all set`)
+}
+
 func TestWebhook_UpdateCmd_RequiresAtLeastOneFlag(t *testing.T) {
 	c := qt.New(t)
 

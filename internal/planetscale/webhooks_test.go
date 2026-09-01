@@ -245,6 +245,39 @@ func TestWebhooks_Update(t *testing.T) {
 	c.Assert(webhook.UpdatedAt, qt.Equals, time.Date(2021, 1, 15, 10, 19, 23, 0, time.UTC))
 }
 
+func TestWebhooks_Update_ClearWebhookAuthorizationToken(t *testing.T) {
+	c := qt.New(t)
+
+	wantBody := []byte("{\"clear_webhook_authorization_token\":true}\n")
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		c.Assert(r.Method, qt.Equals, http.MethodPatch)
+		c.Assert(r.URL.String(), qt.Equals, "/v1/organizations/my-org/databases/planetscale-go-test-db/webhooks/webhook-123")
+
+		data, err := io.ReadAll(r.Body)
+		c.Assert(err, qt.IsNil)
+		c.Assert(data, qt.DeepEquals, wantBody)
+
+		_, err = w.Write([]byte(`{"id":"webhook-123","url":"https://example.com/webhook"}`))
+		c.Assert(err, qt.IsNil)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	webhook, err := client.Webhooks.Update(context.Background(), &UpdateWebhookRequest{
+		Organization:                   testOrg,
+		Database:                       testDatabase,
+		ID:                             "webhook-123",
+		ClearWebhookAuthorizationToken: true,
+	})
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(webhook.ID, qt.Equals, "webhook-123")
+}
+
 func TestWebhooks_Delete(t *testing.T) {
 	c := qt.New(t)
 

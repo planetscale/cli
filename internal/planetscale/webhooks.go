@@ -64,13 +64,14 @@ type GetWebhookRequest struct {
 
 // UpdateWebhookRequest is the request for updating a webhook.
 type UpdateWebhookRequest struct {
-	Organization              string   `json:"-"`
-	Database                  string   `json:"-"`
-	ID                        string   `json:"-"`
-	URL                       *string  `json:"url,omitempty"`
-	WebhookAuthorizationToken *string  `json:"webhook_authorization_token,omitempty"`
-	Enabled                   *bool    `json:"enabled,omitempty"`
-	Events                    []string `json:"events,omitempty"`
+	Organization                   string   `json:"-"`
+	Database                       string   `json:"-"`
+	ID                             string   `json:"-"`
+	URL                            *string  `json:"url,omitempty"`
+	WebhookAuthorizationToken      *string  `json:"webhook_authorization_token,omitempty"`
+	ClearWebhookAuthorizationToken bool     `json:"clear_webhook_authorization_token,omitempty"`
+	Enabled                        *bool    `json:"enabled,omitempty"`
+	Events                         []string `json:"events,omitempty"`
 }
 
 // DeleteWebhookRequest is the request for deleting a webhook.
