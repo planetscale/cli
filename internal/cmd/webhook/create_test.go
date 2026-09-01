@@ -30,12 +30,12 @@ func TestWebhook_CreateCmd(t *testing.T) {
 	createdAt := time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC)
 
 	webhook := &ps.Webhook{
-		ID:		"webhook-123",
-		URL:		url,
-		Secret:		"abcdefgh",
-		Enabled:	true,
-		Events:		events,
-		CreatedAt:	createdAt,
+		ID:        "webhook-123",
+		URL:       url,
+		Secret:    "abcdefgh",
+		Enabled:   true,
+		Events:    events,
+		CreatedAt: createdAt,
 	}
 
 	svc := &mock.WebhooksService{
@@ -50,8 +50,8 @@ func TestWebhook_CreateCmd(t *testing.T) {
 	}
 
 	ch := &cmdutil.Helper{
-		Printer:	p,
-		Config:		&config.Config{
+		Printer: p,
+		Config: &config.Config{
 			Organization: org,
 		},
 		Client: func() (*ps.Client, error) {
@@ -84,8 +84,8 @@ func TestWebhook_CreateCmd_RequiresURL(t *testing.T) {
 	db := "mydb"
 
 	ch := &cmdutil.Helper{
-		Printer:	p,
-		Config:		&config.Config{
+		Printer: p,
+		Config: &config.Config{
 			Organization: org,
 		},
 		Client: func() (*ps.Client, error) {
