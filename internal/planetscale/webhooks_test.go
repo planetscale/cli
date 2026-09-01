@@ -49,8 +49,8 @@ func TestWebhooks_List(t *testing.T) {
 	ctx := context.Background()
 
 	webhooks, err := client.Webhooks.List(ctx, &ListWebhooksRequest{
-		Organization:	testOrg,
-		Database:	testDatabase,
+		Organization: testOrg,
+		Database:     testDatabase,
 	})
 
 	c.Assert(err, qt.IsNil)
@@ -89,8 +89,8 @@ func TestWebhooks_List_WithPagination(t *testing.T) {
 	ctx := context.Background()
 
 	webhooks, err := client.Webhooks.List(ctx, &ListWebhooksRequest{
-		Organization:	testOrg,
-		Database:	testDatabase,
+		Organization: testOrg,
+		Database:     testDatabase,
 	}, WithPage(2), WithPerPage(10))
 
 	c.Assert(err, qt.IsNil)
@@ -134,12 +134,12 @@ func TestWebhooks_Create(t *testing.T) {
 	enabled := true
 
 	webhook, err := client.Webhooks.Create(ctx, &CreateWebhookRequest{
-		Organization:			testOrg,
-		Database:			testDatabase,
-		URL:				"https://example.com/webhook",
-		WebhookAuthorizationToken:	"automation-token",
-		Enabled:			&enabled,
-		Events:				[]string{"branch.ready"},
+		Organization:              testOrg,
+		Database:                  testDatabase,
+		URL:                       "https://example.com/webhook",
+		WebhookAuthorizationToken: "automation-token",
+		Enabled:                   &enabled,
+		Events:                    []string{"branch.ready"},
 	})
 
 	c.Assert(err, qt.IsNil)
@@ -180,9 +180,9 @@ func TestWebhooks_Get(t *testing.T) {
 	ctx := context.Background()
 
 	webhook, err := client.Webhooks.Get(ctx, &GetWebhookRequest{
-		Organization:	testOrg,
-		Database:	testDatabase,
-		ID:		"webhook-123",
+		Organization: testOrg,
+		Database:     testDatabase,
+		ID:           "webhook-123",
 	})
 
 	c.Assert(err, qt.IsNil)
@@ -230,12 +230,12 @@ func TestWebhooks_Update(t *testing.T) {
 	webhookAuthorizationToken := "automation-token"
 
 	webhook, err := client.Webhooks.Update(ctx, &UpdateWebhookRequest{
-		Organization:			testOrg,
-		Database:			testDatabase,
-		ID:				"webhook-123",
-		URL:				&newURL,
-		WebhookAuthorizationToken:	&webhookAuthorizationToken,
-		Enabled:			&enabled,
+		Organization:              testOrg,
+		Database:                  testDatabase,
+		ID:                        "webhook-123",
+		URL:                       &newURL,
+		WebhookAuthorizationToken: &webhookAuthorizationToken,
+		Enabled:                   &enabled,
 	})
 
 	c.Assert(err, qt.IsNil)
@@ -260,9 +260,9 @@ func TestWebhooks_Delete(t *testing.T) {
 	ctx := context.Background()
 
 	err = client.Webhooks.Delete(ctx, &DeleteWebhookRequest{
-		Organization:	testOrg,
-		Database:	testDatabase,
-		ID:		"webhook-123",
+		Organization: testOrg,
+		Database:     testDatabase,
+		ID:           "webhook-123",
 	})
 
 	c.Assert(err, qt.IsNil)
@@ -283,9 +283,9 @@ func TestWebhooks_Test(t *testing.T) {
 	ctx := context.Background()
 
 	err = client.Webhooks.Test(ctx, &TestWebhookRequest{
-		Organization:	testOrg,
-		Database:	testDatabase,
-		ID:		"webhook-123",
+		Organization: testOrg,
+		Database:     testDatabase,
+		ID:           "webhook-123",
 	})
 
 	c.Assert(err, qt.IsNil)
