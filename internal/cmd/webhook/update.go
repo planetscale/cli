@@ -93,7 +93,7 @@ func UpdateCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&flags.url, "url", "", "The URL to send webhook events to")
-	cmd.Flags().StringVar(&flags.webhookAuthorizationToken, "webhook-authorization-token", "", "Bearer token to include in the Authorization header")
+	cmd.Flags().StringVar(&flags.webhookAuthorizationToken, "webhook-authorization-token", "", "Token value only; PlanetScale adds the Bearer prefix automatically")
 	cmd.Flags().BoolVar(&flags.clearWebhookAuthorizationToken, "clear-webhook-authorization-token", false, "Remove the configured webhook authorization token")
 	cmd.Flags().StringSliceVar(&flags.events, "events", nil, "Comma-separated list of events to subscribe to")
 	cmd.Flags().BoolVar(&flags.enabled, "enabled", true, "Whether the webhook is enabled")
