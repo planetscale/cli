@@ -120,6 +120,55 @@ func TestWebhook_UpdateCmd_EnabledFlag(t *testing.T) {
 	c.Assert(svc.UpdateFnInvoked, qt.IsTrue)
 }
 
+func TestWebhook_UpdateCmd_AuthorizationTokenFlag(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	db := "mydb"
+	webhookID := "webhook-123"
+	authorizationToken := "automation-token"
+
+	webhook := &ps.Webhook{
+		ID:      webhookID,
+		URL:     "https://example.com/webhook",
+		Enabled: true,
+	}
+
+	svc := &mock.WebhooksService{
+		UpdateFn: func(ctx context.Context, req *ps.UpdateWebhookRequest) (*ps.Webhook, error) {
+			c.Assert(req.Organization, qt.Equals, org)
+			c.Assert(req.Database, qt.Equals, db)
+			c.Assert(req.ID, qt.Equals, webhookID)
+			c.Assert(*req.AuthorizationToken, qt.Equals, authorizationToken)
+			return webhook, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: org,
+		},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{
+				Webhooks: svc,
+			}, nil
+		},
+	}
+
+	cmd := UpdateCmd(ch)
+	cmd.SetArgs([]string{db, webhookID, "--authorization-token", authorizationToken})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.UpdateFnInvoked, qt.IsTrue)
+}
+
 func TestWebhook_UpdateCmd_RequiresAtLeastOneFlag(t *testing.T) {
 	c := qt.New(t)
 
