@@ -63,7 +63,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&flags.url, "url", "", "The URL to send webhook events to (required)")
-	cmd.Flags().StringVar(&flags.webhookAuthorizationToken, "webhook-authorization-token", "", "Token prefixed with Bearer")
+	cmd.Flags().StringVar(&flags.webhookAuthorizationToken, "webhook-authorization-token", "", "Token prefixed with Bearer.")
 	cmd.Flags().StringSliceVar(&flags.events, "events", nil, "Comma-separated list of events to subscribe to")
 	cmd.Flags().BoolVar(&flags.enabled, "enabled", true, "Whether the webhook is enabled")
 
