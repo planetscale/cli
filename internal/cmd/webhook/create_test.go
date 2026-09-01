@@ -26,16 +26,16 @@ func TestWebhook_CreateCmd(t *testing.T) {
 	db := "mydb"
 	url := "https://example.com/webhook"
 	events := []string{"branch.created", "branch.deleted"}
-	authorizationToken := "automation-token"
+	webhookAuthorizationToken := "automation-token"
 	createdAt := time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC)
 
 	webhook := &ps.Webhook{
-		ID:        "webhook-123",
-		URL:       url,
-		Secret:    "abcdefgh",
-		Enabled:   true,
-		Events:    events,
-		CreatedAt: createdAt,
+		ID:		"webhook-123",
+		URL:		url,
+		Secret:		"abcdefgh",
+		Enabled:	true,
+		Events:		events,
+		CreatedAt:	createdAt,
 	}
 
 	svc := &mock.WebhooksService{
@@ -43,15 +43,15 @@ func TestWebhook_CreateCmd(t *testing.T) {
 			c.Assert(req.Organization, qt.Equals, org)
 			c.Assert(req.Database, qt.Equals, db)
 			c.Assert(req.URL, qt.Equals, url)
-			c.Assert(req.AuthorizationToken, qt.Equals, authorizationToken)
+			c.Assert(req.WebhookAuthorizationToken, qt.Equals, webhookAuthorizationToken)
 			c.Assert(req.Events, qt.DeepEquals, events)
 			return webhook, nil
 		},
 	}
 
 	ch := &cmdutil.Helper{
-		Printer: p,
-		Config: &config.Config{
+		Printer:	p,
+		Config:		&config.Config{
 			Organization: org,
 		},
 		Client: func() (*ps.Client, error) {
@@ -62,7 +62,7 @@ func TestWebhook_CreateCmd(t *testing.T) {
 	}
 
 	cmd := CreateCmd(ch)
-	cmd.SetArgs([]string{db, "--url", url, "--authorization-token", authorizationToken, "--events", "branch.created,branch.deleted"})
+	cmd.SetArgs([]string{db, "--url", url, "--webhook-authorization-token", webhookAuthorizationToken, "--events", "branch.created,branch.deleted"})
 	err := cmd.Execute()
 
 	c.Assert(err, qt.IsNil)
@@ -84,8 +84,8 @@ func TestWebhook_CreateCmd_RequiresURL(t *testing.T) {
 	db := "mydb"
 
 	ch := &cmdutil.Helper{
-		Printer: p,
-		Config: &config.Config{
+		Printer:	p,
+		Config:		&config.Config{
 			Organization: org,
 		},
 		Client: func() (*ps.Client, error) {
