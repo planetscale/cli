@@ -26,16 +26,17 @@ type webhooksResponse struct {
 
 // Webhook represents a PlanetScale webhook.
 type Webhook struct {
-	ID              string    `json:"id"`
-	URL             string    `json:"url"`
-	Secret          string    `json:"secret"`
-	Enabled         bool      `json:"enabled"`
-	LastSentResult  string    `json:"last_sent_result"`
-	LastSentSuccess bool      `json:"last_sent_success"`
-	LastSentAt      time.Time `json:"last_sent_at"`
-	CreatedAt       time.Time `json:"created_at"`
-	UpdatedAt       time.Time `json:"updated_at"`
-	Events          []string  `json:"events"`
+	ID                           string    `json:"id"`
+	URL                          string    `json:"url"`
+	Secret                       string    `json:"secret"`
+	AuthorizationTokenConfigured bool      `json:"authorization_token_configured"`
+	Enabled                      bool      `json:"enabled"`
+	LastSentResult               string    `json:"last_sent_result"`
+	LastSentSuccess              bool      `json:"last_sent_success"`
+	LastSentAt                   time.Time `json:"last_sent_at"`
+	CreatedAt                    time.Time `json:"created_at"`
+	UpdatedAt                    time.Time `json:"updated_at"`
+	Events                       []string  `json:"events"`
 }
 
 // ListWebhooksRequest is the request for listing webhooks.
