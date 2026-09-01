@@ -35,7 +35,7 @@ func WebhookCmd(ch *cmdutil.Helper) *cobra.Command {
 type Webhook struct {
 	ID                                  string `header:"id" json:"id"`
 	URL                                 string `header:"url" json:"url"`
-	WebhookAuthorizationTokenConfigured bool   `header:"webhook authorization token" json:"webhook_authorization_token_configured"`
+	WebhookAuthorizationTokenConfigured bool   `header:"authorization token configured" json:"webhook_authorization_token_configured"`
 	Events                              string `header:"events" json:"events"`
 	Enabled                             bool   `header:"enabled" json:"enabled"`
 	CreatedAt                           int64  `header:"created_at,timestamp(ms|utc|human)" json:"created_at"`
@@ -75,7 +75,7 @@ type WebhookWithSecret struct {
 	ID                                  string `header:"id" json:"id"`
 	URL                                 string `header:"url" json:"url"`
 	Secret                              string `header:"secret" json:"secret"`
-	WebhookAuthorizationTokenConfigured bool   `header:"webhook authorization token" json:"webhook_authorization_token_configured"`
+	WebhookAuthorizationTokenConfigured bool   `header:"authorization token configured" json:"webhook_authorization_token_configured"`
 	Events                              string `header:"events" json:"events"`
 	Enabled                             bool   `header:"enabled" json:"enabled"`
 	CreatedAt                           int64  `header:"created_at,timestamp(ms|utc|human)" json:"created_at"`
