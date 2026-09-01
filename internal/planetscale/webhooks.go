@@ -21,74 +21,74 @@ type WebhooksService interface {
 }
 
 type webhooksResponse struct {
-	Webhooks []*Webhook `json:"data"`
+	Webhooks	[]*Webhook `json:"data"`
 }
 
 // Webhook represents a PlanetScale webhook.
 type Webhook struct {
-	ID                           string    `json:"id"`
-	URL                          string    `json:"url"`
-	Secret                       string    `json:"secret"`
-	AuthorizationTokenConfigured bool      `json:"authorization_token_configured"`
-	Enabled                      bool      `json:"enabled"`
-	LastSentResult               string    `json:"last_sent_result"`
-	LastSentSuccess              bool      `json:"last_sent_success"`
-	LastSentAt                   time.Time `json:"last_sent_at"`
-	CreatedAt                    time.Time `json:"created_at"`
-	UpdatedAt                    time.Time `json:"updated_at"`
-	Events                       []string  `json:"events"`
+	ID					string    `json:"id"`
+	URL					string    `json:"url"`
+	Secret					string    `json:"secret"`
+	WebhookAuthorizationTokenConfigured	bool      `json:"webhook_authorization_token_configured"`
+	Enabled					bool      `json:"enabled"`
+	LastSentResult				string    `json:"last_sent_result"`
+	LastSentSuccess				bool      `json:"last_sent_success"`
+	LastSentAt				time.Time `json:"last_sent_at"`
+	CreatedAt				time.Time `json:"created_at"`
+	UpdatedAt				time.Time `json:"updated_at"`
+	Events					[]string  `json:"events"`
 }
 
 // ListWebhooksRequest is the request for listing webhooks.
 type ListWebhooksRequest struct {
-	Organization string `json:"-"`
-	Database     string `json:"-"`
+	Organization	string `json:"-"`
+	Database	string `json:"-"`
 }
 
 // CreateWebhookRequest is the request for creating a webhook.
 type CreateWebhookRequest struct {
-	Organization       string   `json:"-"`
-	Database           string   `json:"-"`
-	URL                string   `json:"url"`
-	AuthorizationToken string   `json:"authorization_token,omitempty"`
-	Enabled            *bool    `json:"enabled,omitempty"`
-	Events             []string `json:"events,omitempty"`
+	Organization			string   `json:"-"`
+	Database			string   `json:"-"`
+	URL				string   `json:"url"`
+	WebhookAuthorizationToken	string   `json:"webhook_authorization_token,omitempty"`
+	Enabled				*bool    `json:"enabled,omitempty"`
+	Events				[]string `json:"events,omitempty"`
 }
 
 // GetWebhookRequest is the request for getting a webhook.
 type GetWebhookRequest struct {
-	Organization string `json:"-"`
-	Database     string `json:"-"`
-	ID           string `json:"-"`
+	Organization	string `json:"-"`
+	Database	string `json:"-"`
+	ID		string `json:"-"`
 }
 
 // UpdateWebhookRequest is the request for updating a webhook.
 type UpdateWebhookRequest struct {
-	Organization       string   `json:"-"`
-	Database           string   `json:"-"`
-	ID                 string   `json:"-"`
-	URL                *string  `json:"url,omitempty"`
-	AuthorizationToken *string  `json:"authorization_token,omitempty"`
-	Enabled            *bool    `json:"enabled,omitempty"`
-	Events             []string `json:"events,omitempty"`
+	Organization			string   `json:"-"`
+	Database			string   `json:"-"`
+	ID				string   `json:"-"`
+	URL				*string  `json:"url,omitempty"`
+	WebhookAuthorizationToken	*string  `json:"webhook_authorization_token,omitempty"`
+	Enabled				*bool    `json:"enabled,omitempty"`
+	Events				[]string `json:"events,omitempty"`
 }
 
 // DeleteWebhookRequest is the request for deleting a webhook.
 type DeleteWebhookRequest struct {
-	Organization string `json:"-"`
-	Database     string `json:"-"`
-	ID           string `json:"-"`
+	Organization	string `json:"-"`
+	Database	string `json:"-"`
+	ID		string `json:"-"`
 }
 
 // TestWebhookRequest is the request for testing a webhook.
 type TestWebhookRequest struct {
-	Organization string `json:"-"`
-	Database     string `json:"-"`
-	ID           string `json:"-"`
+	Organization	string `json:"-"`
+	Database	string `json:"-"`
+	ID		string `json:"-"`
 }
 
 type webhooksService struct {
-	client *Client
+	client	*Client
 }
 
 func (w *webhooksService) List(ctx context.Context, listReq *ListWebhooksRequest, opts ...ListOption) ([]*Webhook, error) {
