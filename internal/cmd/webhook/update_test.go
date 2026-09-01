@@ -29,11 +29,11 @@ func TestWebhook_UpdateCmd(t *testing.T) {
 	createdAt := time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC)
 
 	webhook := &ps.Webhook{
-		ID:        webhookID,
-		URL:       newURL,
-		Enabled:   true,
-		Events:    []string{"branch.created"},
-		CreatedAt: createdAt,
+		ID:		webhookID,
+		URL:		newURL,
+		Enabled:	true,
+		Events:		[]string{"branch.created"},
+		CreatedAt:	createdAt,
 	}
 
 	svc := &mock.WebhooksService{
@@ -47,8 +47,8 @@ func TestWebhook_UpdateCmd(t *testing.T) {
 	}
 
 	ch := &cmdutil.Helper{
-		Printer: p,
-		Config: &config.Config{
+		Printer:	p,
+		Config:		&config.Config{
 			Organization: org,
 		},
 		Client: func() (*ps.Client, error) {
@@ -83,11 +83,11 @@ func TestWebhook_UpdateCmd_EnabledFlag(t *testing.T) {
 	createdAt := time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC)
 
 	webhook := &ps.Webhook{
-		ID:        webhookID,
-		URL:       "https://example.com/webhook",
-		Enabled:   false,
-		Events:    []string{"branch.created"},
-		CreatedAt: createdAt,
+		ID:		webhookID,
+		URL:		"https://example.com/webhook",
+		Enabled:	false,
+		Events:		[]string{"branch.created"},
+		CreatedAt:	createdAt,
 	}
 
 	svc := &mock.WebhooksService{
@@ -101,8 +101,8 @@ func TestWebhook_UpdateCmd_EnabledFlag(t *testing.T) {
 	}
 
 	ch := &cmdutil.Helper{
-		Printer: p,
-		Config: &config.Config{
+		Printer:	p,
+		Config:		&config.Config{
 			Organization: org,
 		},
 		Client: func() (*ps.Client, error) {
@@ -120,7 +120,7 @@ func TestWebhook_UpdateCmd_EnabledFlag(t *testing.T) {
 	c.Assert(svc.UpdateFnInvoked, qt.IsTrue)
 }
 
-func TestWebhook_UpdateCmd_AuthorizationTokenFlag(t *testing.T) {
+func TestWebhook_UpdateCmd_WebhookAuthorizationTokenFlag(t *testing.T) {
 	c := qt.New(t)
 
 	var buf bytes.Buffer
@@ -131,12 +131,12 @@ func TestWebhook_UpdateCmd_AuthorizationTokenFlag(t *testing.T) {
 	org := "planetscale"
 	db := "mydb"
 	webhookID := "webhook-123"
-	authorizationToken := "automation-token"
+	webhookAuthorizationToken := "automation-token"
 
 	webhook := &ps.Webhook{
-		ID:      webhookID,
-		URL:     "https://example.com/webhook",
-		Enabled: true,
+		ID:		webhookID,
+		URL:		"https://example.com/webhook",
+		Enabled:	true,
 	}
 
 	svc := &mock.WebhooksService{
@@ -144,14 +144,14 @@ func TestWebhook_UpdateCmd_AuthorizationTokenFlag(t *testing.T) {
 			c.Assert(req.Organization, qt.Equals, org)
 			c.Assert(req.Database, qt.Equals, db)
 			c.Assert(req.ID, qt.Equals, webhookID)
-			c.Assert(*req.AuthorizationToken, qt.Equals, authorizationToken)
+			c.Assert(*req.WebhookAuthorizationToken, qt.Equals, webhookAuthorizationToken)
 			return webhook, nil
 		},
 	}
 
 	ch := &cmdutil.Helper{
-		Printer: p,
-		Config: &config.Config{
+		Printer:	p,
+		Config:		&config.Config{
 			Organization: org,
 		},
 		Client: func() (*ps.Client, error) {
@@ -162,7 +162,7 @@ func TestWebhook_UpdateCmd_AuthorizationTokenFlag(t *testing.T) {
 	}
 
 	cmd := UpdateCmd(ch)
-	cmd.SetArgs([]string{db, webhookID, "--authorization-token", authorizationToken})
+	cmd.SetArgs([]string{db, webhookID, "--webhook-authorization-token", webhookAuthorizationToken})
 	err := cmd.Execute()
 
 	c.Assert(err, qt.IsNil)
@@ -182,8 +182,8 @@ func TestWebhook_UpdateCmd_RequiresAtLeastOneFlag(t *testing.T) {
 	webhookID := "webhook-123"
 
 	ch := &cmdutil.Helper{
-		Printer: p,
-		Config: &config.Config{
+		Printer:	p,
+		Config:		&config.Config{
 			Organization: org,
 		},
 		Client: func() (*ps.Client, error) {
