@@ -33,12 +33,13 @@ func WebhookCmd(ch *cmdutil.Helper) *cobra.Command {
 
 // Webhook returns a table and json serializable webhook for printing.
 type Webhook struct {
-	ID        string `header:"id" json:"id"`
-	URL       string `header:"url" json:"url"`
-	Events    string `header:"events" json:"events"`
-	Enabled   bool   `header:"enabled" json:"enabled"`
-	CreatedAt int64  `header:"created_at,timestamp(ms|utc|human)" json:"created_at"`
-	UpdatedAt int64  `header:"updated_at,timestamp(ms|utc|human)" json:"updated_at"`
+	ID                           string `header:"id" json:"id"`
+	URL                          string `header:"url" json:"url"`
+	AuthorizationTokenConfigured bool   `header:"authorization token" json:"authorization_token_configured"`
+	Events                       string `header:"events" json:"events"`
+	Enabled                      bool   `header:"enabled" json:"enabled"`
+	CreatedAt                    int64  `header:"created_at,timestamp(ms|utc|human)" json:"created_at"`
+	UpdatedAt                    int64  `header:"updated_at,timestamp(ms|utc|human)" json:"updated_at"`
 
 	orig *ps.Webhook
 }
@@ -50,13 +51,14 @@ func (w *Webhook) MarshalJSON() ([]byte, error) {
 // toWebhook returns a struct that prints out the various fields of a webhook model.
 func toWebhook(webhook *ps.Webhook) *Webhook {
 	return &Webhook{
-		ID:        webhook.ID,
-		URL:       webhook.URL,
-		Events:    strings.Join(webhook.Events, ", "),
-		Enabled:   webhook.Enabled,
-		CreatedAt: printer.GetMilliseconds(webhook.CreatedAt),
-		UpdatedAt: printer.GetMilliseconds(webhook.UpdatedAt),
-		orig:      webhook,
+		ID:                           webhook.ID,
+		URL:                          webhook.URL,
+		AuthorizationTokenConfigured: webhook.AuthorizationTokenConfigured,
+		Events:                       strings.Join(webhook.Events, ", "),
+		Enabled:                      webhook.Enabled,
+		CreatedAt:                    printer.GetMilliseconds(webhook.CreatedAt),
+		UpdatedAt:                    printer.GetMilliseconds(webhook.UpdatedAt),
+		orig:                         webhook,
 	}
 }
 
@@ -70,13 +72,14 @@ func toWebhooks(webhooks []*ps.Webhook) []*Webhook {
 
 // WebhookWithSecret includes the webhook secret for display.
 type WebhookWithSecret struct {
-	ID        string `header:"id" json:"id"`
-	URL       string `header:"url" json:"url"`
-	Secret    string `header:"secret" json:"secret"`
-	Events    string `header:"events" json:"events"`
-	Enabled   bool   `header:"enabled" json:"enabled"`
-	CreatedAt int64  `header:"created_at,timestamp(ms|utc|human)" json:"created_at"`
-	UpdatedAt int64  `header:"updated_at,timestamp(ms|utc|human)" json:"updated_at"`
+	ID                           string `header:"id" json:"id"`
+	URL                          string `header:"url" json:"url"`
+	Secret                       string `header:"secret" json:"secret"`
+	AuthorizationTokenConfigured bool   `header:"authorization token" json:"authorization_token_configured"`
+	Events                       string `header:"events" json:"events"`
+	Enabled                      bool   `header:"enabled" json:"enabled"`
+	CreatedAt                    int64  `header:"created_at,timestamp(ms|utc|human)" json:"created_at"`
+	UpdatedAt                    int64  `header:"updated_at,timestamp(ms|utc|human)" json:"updated_at"`
 
 	orig *ps.Webhook
 }
@@ -88,13 +91,14 @@ func (w *WebhookWithSecret) MarshalJSON() ([]byte, error) {
 // toWebhookWithSecret returns a struct that includes the webhook secret.
 func toWebhookWithSecret(webhook *ps.Webhook) *WebhookWithSecret {
 	return &WebhookWithSecret{
-		ID:        webhook.ID,
-		URL:       webhook.URL,
-		Secret:    webhook.Secret,
-		Events:    strings.Join(webhook.Events, ", "),
-		Enabled:   webhook.Enabled,
-		CreatedAt: printer.GetMilliseconds(webhook.CreatedAt),
-		UpdatedAt: printer.GetMilliseconds(webhook.UpdatedAt),
-		orig:      webhook,
+		ID:                           webhook.ID,
+		URL:                          webhook.URL,
+		Secret:                       webhook.Secret,
+		AuthorizationTokenConfigured: webhook.AuthorizationTokenConfigured,
+		Events:                       strings.Join(webhook.Events, ", "),
+		Enabled:                      webhook.Enabled,
+		CreatedAt:                    printer.GetMilliseconds(webhook.CreatedAt),
+		UpdatedAt:                    printer.GetMilliseconds(webhook.UpdatedAt),
+		orig:                         webhook,
 	}
 }
