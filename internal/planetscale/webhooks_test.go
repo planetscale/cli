@@ -29,6 +29,7 @@ func TestWebhooks_List(t *testing.T) {
 				"id": "webhook-123",
 				"url": "https://example.com/webhook",
 				"secret": "secret-123",
+				"authorization_token_configured": true,
 				"enabled": true,
 				"last_sent_result": "success",
 				"last_sent_success": true,
@@ -56,6 +57,7 @@ func TestWebhooks_List(t *testing.T) {
 	c.Assert(len(webhooks), qt.Equals, 1)
 	c.Assert(webhooks[0].ID, qt.Equals, "webhook-123")
 	c.Assert(webhooks[0].URL, qt.Equals, "https://example.com/webhook")
+	c.Assert(webhooks[0].AuthorizationTokenConfigured, qt.IsTrue)
 	c.Assert(webhooks[0].Enabled, qt.IsTrue)
 	c.Assert(webhooks[0].Events, qt.DeepEquals, []string{"branch.ready", "deploy_request.opened"})
 }
