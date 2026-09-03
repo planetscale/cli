@@ -33,4 +33,3 @@ func TestPostgresPsqlArgs_CustomDBName(t *testing.T) {
 		"-v", "PROMPT1=prod/my-branch> ",
 	})
 }
-
