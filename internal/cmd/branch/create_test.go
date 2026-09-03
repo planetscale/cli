@@ -3,6 +3,7 @@ package branch
 import (
 	"bytes"
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -779,6 +780,8 @@ func TestBranch_CreateCmdWithRestorePoint(t *testing.T) {
 			c.Assert(req.ParentBranch, qt.Equals, parentBranch)
 			c.Assert(req.BackupID, qt.Equals, backupID)
 			c.Assert(req.ClusterName, qt.Equals, "PS-10")
+			c.Assert(req.Replicas, qt.IsNotNil)
+			c.Assert(*req.Replicas, qt.Equals, 3)
 
 			return res, nil
 		},
@@ -807,7 +810,7 @@ func TestBranch_CreateCmdWithRestorePoint(t *testing.T) {
 	}
 
 	cmd := CreateCmd(ch)
-	cmd.SetArgs([]string{db, branch, "--region", "us-east", "--from", parentBranch, "--restore-point", restorePoint})
+	cmd.SetArgs([]string{db, branch, "--region", "us-east", "--from", parentBranch, "--restore-point", restorePoint, "--replicas", "3"})
 	err := cmd.Execute()
 
 	c.Assert(err, qt.IsNil)
@@ -1001,4 +1004,141 @@ func TestBranch_CreateCmdWithRestorePointMySQLError(t *testing.T) {
 	c.Assert(err, qt.IsNotNil)
 	c.Assert(err, qt.ErrorMatches, ".*only supported for PostgreSQL.*")
 	c.Assert(svc.CreateFnInvoked, qt.IsFalse)
+}
+
+func TestBranch_CreateCmdWithPostgresRestoreReplicas(t *testing.T) {
+	zero := 0
+	tests := []struct {
+		name         string
+		args         []string
+		wantReplicas *int
+	}{
+		{name: "omitted", args: []string{"planetscale", "restored", "--restore", "backup-id"}},
+		{name: "explicit zero", args: []string{"planetscale", "restored", "--restore", "backup-id", "--replicas", "0"}, wantReplicas: &zero},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := qt.New(t)
+
+			var buf bytes.Buffer
+			format := printer.JSON
+			p := printer.NewPrinter(&format)
+			p.SetResourceOutput(&buf)
+
+			res := &ps.PostgresBranch{Name: "restored"}
+			svc := &mock.PostgresBranchesService{
+				CreateFn: func(ctx context.Context, req *ps.CreatePostgresBranchRequest) (*ps.PostgresBranch, error) {
+					c.Assert(req.BackupID, qt.Equals, "backup-id")
+					if tt.wantReplicas == nil {
+						c.Assert(req.Replicas, qt.IsNil)
+					} else {
+						c.Assert(req.Replicas, qt.IsNotNil)
+						c.Assert(*req.Replicas, qt.Equals, *tt.wantReplicas)
+					}
+					return res, nil
+				},
+			}
+			dbSvc := &mock.DatabaseService{
+				GetFn: func(ctx context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
+					return &ps.Database{Kind: ps.DatabaseEnginePostgres}, nil
+				},
+			}
+			ch := &cmdutil.Helper{
+				Printer: p,
+				Config:  &config.Config{Organization: "planetscale"},
+				Client: func() (*ps.Client, error) {
+					return &ps.Client{Databases: dbSvc, PostgresBranches: svc}, nil
+				},
+			}
+
+			cmd := CreateCmd(ch)
+			cmd.SetArgs(tt.args)
+
+			c.Assert(cmd.Execute(), qt.IsNil)
+			c.Assert(svc.CreateFnInvoked, qt.IsTrue)
+			c.Assert(buf.String(), qt.JSONEquals, res)
+		})
+	}
+}
+
+func TestBranch_CreateCmdRejectsReplicasWithoutRestore(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{name: "ordinary branch", args: []string{"planetscale", "development", "--replicas", "2"}},
+		{name: "data branching", args: []string{"planetscale", "development", "--seed-data", "--replicas", "2"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := qt.New(t)
+			cmd := CreateCmd(&cmdutil.Helper{})
+			cmd.SetArgs(tt.args)
+
+			c.Assert(cmd.Execute(), qt.ErrorMatches, ".*--replicas can only be used with a PostgreSQL backup restore or point-in-time recovery.*")
+		})
+	}
+}
+
+func TestBranch_CreateCmdRejectsRestoreReplicasForMySQL(t *testing.T) {
+	c := qt.New(t)
+
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	dbSvc := &mock.DatabaseService{
+		GetFn: func(ctx context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
+			return &ps.Database{Kind: ps.DatabaseEngineMySQL}, nil
+		},
+	}
+	svc := &mock.DatabaseBranchesService{
+		CreateFn: func(ctx context.Context, req *ps.CreateDatabaseBranchRequest) (*ps.DatabaseBranch, error) {
+			c.Fatal("CreateFn should not be called for MySQL with --replicas")
+			return nil, nil
+		},
+	}
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: "planetscale"},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{Databases: dbSvc, DatabaseBranches: svc}, nil
+		},
+	}
+
+	cmd := CreateCmd(ch)
+	cmd.SetArgs([]string{"planetscale", "restored", "--restore", "backup-id", "--replicas", "2"})
+
+	c.Assert(cmd.Execute(), qt.ErrorMatches, ".*--replicas is only supported for PostgreSQL.*")
+	c.Assert(svc.CreateFnInvoked, qt.IsFalse)
+}
+
+func TestBranch_CreateCmdPropagatesReplicaValidationError(t *testing.T) {
+	c := qt.New(t)
+
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	validationErr := errors.New("replica count is not valid for the selected cluster size")
+	svc := &mock.PostgresBranchesService{
+		CreateFn: func(ctx context.Context, req *ps.CreatePostgresBranchRequest) (*ps.PostgresBranch, error) {
+			return nil, validationErr
+		},
+	}
+	dbSvc := &mock.DatabaseService{
+		GetFn: func(ctx context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
+			return &ps.Database{Kind: ps.DatabaseEnginePostgres}, nil
+		},
+	}
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: "planetscale"},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{Databases: dbSvc, PostgresBranches: svc}, nil
+		},
+	}
+
+	cmd := CreateCmd(ch)
+	cmd.SetArgs([]string{"planetscale", "restored", "--restore", "backup-id", "--replicas", "1"})
+
+	c.Assert(cmd.Execute(), qt.Equals, validationErr)
 }
