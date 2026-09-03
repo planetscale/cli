@@ -27,6 +27,7 @@ import (
 type shellFlags struct {
 	localAddr  string
 	remoteAddr string
+	dbName     string
 	role       string
 	replica    bool
 }
@@ -35,9 +36,17 @@ func ShellCmd(ch *cmdutil.Helper, sigc chan os.Signal, signals ...os.Signal) *co
 	var flags shellFlags
 
 	cmd := &cobra.Command{
-		Use: "shell [database] [branch]",
+		Use: "shell [database] [branch] [db-name]",
 		// we only require database, because we deduct branch automatically
-		Args:  cmdutil.RequiredArgs("database"),
+		Args: func(cmd *cobra.Command, args []string) error {
+			if err := cmdutil.RequiredArgs("database")(cmd, args); err != nil {
+				return err
+			}
+			if len(args) > 3 {
+				return fmt.Errorf("too many arguments\n\n%s", cmd.UsageString())
+			}
+			return nil
+		},
 		Short: "Open a shell instance to a database and branch",
 		Example: `The shell subcommand opens a secure shell instance to your database.
 
@@ -53,7 +62,13 @@ If there are multiple branches for the given database, you'll be prompted to
 choose one. To open a shell instance to a specific branch, pass the branch as a
 second argument:
 
-  pscale shell mydatabase mybranch`,
+  pscale shell mydatabase mybranch
+
+For Postgres databases, you can optionally specify the logical database
+to connect to using --db-name (or as a third argument):
+
+  pscale shell production main --db-name my_db
+  pscale shell production main my_db`,
 		PersistentPreRunE: cmdutil.CheckAuthentication(ch.Config),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx, cancel := context.WithCancel(cmd.Context())
@@ -111,8 +126,12 @@ second argument:
 			}
 
 			var branch string
-			if len(args) == 2 {
+			var dbNamePositional string
+			if len(args) >= 2 {
 				branch = args[1]
+			}
+			if len(args) == 3 {
+				dbNamePositional = args[2]
 			}
 
 			if branch == "" {
@@ -163,10 +182,23 @@ second argument:
 			}
 
 			if isPostgreSQL {
-				return startShellForPostgres(ctx, ch, client, database, branch, dbBranch, clientPath, role, flags, sigc, signals, runForeground)
-			} else {
-				return startShellForMySQL(ctx, ch, client, database, branch, dbBranch, clientPath, authMethod, role, flags, sigc, signals, runForeground)
+				if flags.dbName != "" && dbNamePositional != "" {
+					return errors.New("only one of --db-name or the positional db-name argument is supported")
+				}
+
+				dbName := flags.dbName
+				if dbName == "" {
+					dbName = dbNamePositional
+				}
+
+				return startShellForPostgres(ctx, ch, client, database, branch, dbBranch, clientPath, role, flags, dbName, sigc, signals, runForeground)
 			}
+
+			if flags.dbName != "" || dbNamePositional != "" {
+				return errors.New("--db-name / db-name positional argument is only supported for Postgres databases")
+			}
+
+			return startShellForMySQL(ctx, ch, client, database, branch, dbBranch, clientPath, authMethod, role, flags, sigc, signals, runForeground)
 		},
 	}
 
@@ -178,6 +210,8 @@ second argument:
 	cmd.PersistentFlags().StringVar(&flags.role, "role",
 		"", "Role defines the access level, allowed values are: reader, writer, readwriter, admin. Defaults to 'reader' for replica passwords, otherwise defaults to 'admin'.")
 	cmd.Flags().BoolVar(&flags.replica, "replica", false, "When enabled, the password will route all reads to the branch's primary replicas and all read-only regions.")
+	cmd.Flags().StringVar(&flags.dbName, "db-name", "",
+		"Postgres logical database name to connect to (default: postgres). Only supported for Postgres databases.")
 
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
 
@@ -304,7 +338,7 @@ func historyFilePath(org, db, branch string) string {
 	return historyFile
 }
 
-func startShellForPostgres(ctx context.Context, ch *cmdutil.Helper, client *ps.Client, database, branch string, dbBranch *ps.DatabaseBranch, clientPath string, role cmdutil.PasswordRole, flags shellFlags, sigc chan os.Signal, signals []os.Signal, runForeground bool) error {
+func startShellForPostgres(ctx context.Context, ch *cmdutil.Helper, client *ps.Client, database, branch string, dbBranch *ps.DatabaseBranch, clientPath string, role cmdutil.PasswordRole, flags shellFlags, dbName string, sigc chan os.Signal, signals []os.Signal, runForeground bool) error {
 	// Postgres connects directly, no local proxy needed
 	if flags.localAddr != "" {
 		return errors.New("--local-addr flag is not supported for Postgres databases")
@@ -358,13 +392,11 @@ func startShellForPostgres(ctx context.Context, ch *cmdutil.Helper, client *ps.C
 	historyFile := historyFilePath(ch.Config.Organization, database, branch)
 	styledBranch := formatBranch(database, dbBranch)
 
-	psqlArgs := []string{
-		"-h", remoteHost,
-		"-p", remotePort,
-		"-U", username,
-		"-d", "postgres",
-		"-v", fmt.Sprintf("PROMPT1=%s", styledBranch),
+	if dbName == "" {
+		dbName = "postgres"
 	}
+
+	psqlArgs := postgresPsqlArgs(remoteHost, remotePort, username, dbName, styledBranch)
 
 	psql := &postgresql{
 		psqlPath:     clientPath,
@@ -380,6 +412,20 @@ func startShellForPostgres(ctx context.Context, ch *cmdutil.Helper, client *ps.C
 		return cmdutil.HandleError(err)
 	}
 	return nil
+}
+
+func postgresPsqlArgs(remoteHost, remotePort, username, dbName, styledBranch string) []string {
+	if dbName == "" {
+		dbName = "postgres"
+	}
+
+	return []string{
+		"-h", remoteHost,
+		"-p", remotePort,
+		"-U", username,
+		"-d", dbName,
+		"-v", fmt.Sprintf("PROMPT1=%s", styledBranch),
+	}
 }
 
 func startShellForMySQL(ctx context.Context, ch *cmdutil.Helper, client *ps.Client, database, branch string, dbBranch *ps.DatabaseBranch, clientPath string, authMethod mysql.AuthMethodDescription, role cmdutil.PasswordRole, flags shellFlags, sigc chan os.Signal, signals []os.Signal, runForeground bool) error {
