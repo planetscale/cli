@@ -22,6 +22,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 		backupID      string
 		restorePoint  string
 		majorVersion  string
+		replicas      int
 		minStorage    int64
 		maxStorage    int64
 	}
@@ -75,6 +76,9 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			if flags.backupID != "" && flags.parentBranch != "" && flags.restorePoint == "" {
 				return fmt.Errorf("--from and --restore cannot be used together")
 			}
+			if cmd.Flags().Changed("replicas") && flags.backupID == "" && flags.restorePoint == "" {
+				return fmt.Errorf("--replicas can only be used with a PostgreSQL backup restore or point-in-time recovery")
+			}
 
 			client, err := ch.Client()
 			if err != nil {
@@ -118,6 +122,9 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			if db.Kind == "mysql" {
+				if cmd.Flags().Changed("replicas") {
+					return fmt.Errorf("--replicas is only supported for PostgreSQL backup restores and point-in-time recovery")
+				}
 				if cmd.Flags().Changed("min-storage") || cmd.Flags().Changed("max-storage") {
 					return fmt.Errorf("--min-storage and --max-storage are only supported for PostgreSQL databases")
 				}
@@ -209,6 +216,11 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 					MajorVersion: flags.majorVersion,
 				}
 
+				if cmd.Flags().Changed("replicas") {
+					replicas := flags.replicas
+					createReq.Replicas = &replicas
+				}
+
 				if cmd.Flags().Changed("min-storage") || cmd.Flags().Changed("max-storage") {
 					createReq.Storage = &ps.StorageConfig{}
 					if cmd.Flags().Changed("min-storage") {
@@ -274,6 +286,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().BoolVar(&flags.dataBranching, "seed-data", false, "Add seed data using the Data Branching™ feature. This branch will be created with the same resources as the base branch.")
 	cmd.Flags().BoolVar(&flags.wait, "wait", false, "Wait until the branch is ready")
 	cmd.Flags().StringVar(&flags.majorVersion, "major-version", "", "For PostgreSQL databases, the PostgreSQL major version to use for the branch. Defaults to the major version of the parent branch if it exists or the database's default branch major version. Ignored for branches restored from backups.")
+	cmd.Flags().IntVar(&flags.replicas, "replicas", 0, "Number of additional replicas for a PostgreSQL restore. 0 creates a single-node branch; omit to use the target cluster size default.")
 	cmd.Flags().Int64Var(&flags.minStorage, "min-storage", 0, "Minimum storage size in bytes")
 	cmd.Flags().Int64Var(&flags.maxStorage, "max-storage", 0, "Maximum storage size in bytes for autoscaling")
 

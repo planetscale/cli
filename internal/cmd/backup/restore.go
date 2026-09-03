@@ -13,7 +13,10 @@ import (
 )
 
 func RestoreCmd(ch *cmdutil.Helper) *cobra.Command {
-	var clusterSize string
+	var flags struct {
+		clusterSize string
+		replicas    int
+	}
 
 	cmd := &cobra.Command{
 		Use:   "restore <database> <branch> <backup>",
@@ -48,12 +51,16 @@ func RestoreCmd(ch *cmdutil.Helper) *cobra.Command {
 			defer end()
 
 			if db.Kind == "mysql" {
+				if cmd.Flags().Changed("replicas") {
+					return fmt.Errorf("--replicas is only supported for PostgreSQL backup restores")
+				}
+
 				newBranch, err := client.DatabaseBranches.Create(ctx, &planetscale.CreateDatabaseBranchRequest{
 					Organization: ch.Config.Organization,
 					Database:     database,
 					Name:         branchName,
 					BackupID:     backup,
-					ClusterSize:  clusterSize,
+					ClusterSize:  flags.clusterSize,
 				})
 				if err != nil {
 					return cmdutil.HandleError(err)
@@ -62,13 +69,19 @@ func RestoreCmd(ch *cmdutil.Helper) *cobra.Command {
 				end()
 				return ch.Printer.PrintResource(branch.ToDatabaseBranch(newBranch))
 			} else {
-				newBranch, err := client.PostgresBranches.Create(ctx, &planetscale.CreatePostgresBranchRequest{
+				createReq := &planetscale.CreatePostgresBranchRequest{
 					Organization: ch.Config.Organization,
 					Database:     database,
 					Name:         branchName,
 					BackupID:     backup,
-					ClusterName:  clusterSize,
-				})
+					ClusterName:  flags.clusterSize,
+				}
+				if cmd.Flags().Changed("replicas") {
+					replicas := flags.replicas
+					createReq.Replicas = &replicas
+				}
+
+				newBranch, err := client.PostgresBranches.Create(ctx, createReq)
 				if err != nil {
 					return cmdutil.HandleError(err)
 				}
@@ -79,7 +92,8 @@ func RestoreCmd(ch *cmdutil.Helper) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&clusterSize, "cluster-size", "PS-10", "Cluster size for restored backup branch. Use `pscale size cluster list` to see the valid sizes.")
+	cmd.Flags().StringVar(&flags.clusterSize, "cluster-size", "PS-10", "Cluster size for restored backup branch. Use `pscale size cluster list` to see the valid sizes.")
+	cmd.Flags().IntVar(&flags.replicas, "replicas", 0, "Number of additional replicas for a PostgreSQL restore. 0 creates a single-node branch; omit to use the target cluster size default.")
 	cmd.MarkFlagRequired("cluster-size")
 	cmd.RegisterFlagCompletionFunc("cluster-size", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return cmdutil.ClusterSizesCompletionFunc(ch, cmd, args, toComplete)
