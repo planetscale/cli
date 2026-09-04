@@ -29,6 +29,7 @@ func TestWebhooks_List(t *testing.T) {
 				"id": "webhook-123",
 				"url": "https://example.com/webhook",
 				"secret": "secret-123",
+				"authorization_header_configured": true,
 				"enabled": true,
 				"last_sent_result": "success",
 				"last_sent_success": true,
@@ -56,6 +57,7 @@ func TestWebhooks_List(t *testing.T) {
 	c.Assert(len(webhooks), qt.Equals, 1)
 	c.Assert(webhooks[0].ID, qt.Equals, "webhook-123")
 	c.Assert(webhooks[0].URL, qt.Equals, "https://example.com/webhook")
+	c.Assert(webhooks[0].AuthorizationHeaderConfigured, qt.IsTrue)
 	c.Assert(webhooks[0].Enabled, qt.IsTrue)
 	c.Assert(webhooks[0].Events, qt.DeepEquals, []string{"branch.ready", "deploy_request.opened"})
 }
@@ -98,7 +100,7 @@ func TestWebhooks_List_WithPagination(t *testing.T) {
 func TestWebhooks_Create(t *testing.T) {
 	c := qt.New(t)
 
-	wantBody := []byte("{\"url\":\"https://example.com/webhook\",\"enabled\":true,\"events\":[\"branch.ready\"]}\n")
+	wantBody := []byte("{\"url\":\"https://example.com/webhook\",\"authorization_header\":\"Bearer automation-token\",\"enabled\":true,\"events\":[\"branch.ready\"]}\n")
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(201)
@@ -132,11 +134,12 @@ func TestWebhooks_Create(t *testing.T) {
 	enabled := true
 
 	webhook, err := client.Webhooks.Create(ctx, &CreateWebhookRequest{
-		Organization: testOrg,
-		Database:     testDatabase,
-		URL:          "https://example.com/webhook",
-		Enabled:      &enabled,
-		Events:       []string{"branch.ready"},
+		Organization:        testOrg,
+		Database:            testDatabase,
+		URL:                 "https://example.com/webhook",
+		AuthorizationHeader: "Bearer automation-token",
+		Enabled:             &enabled,
+		Events:              []string{"branch.ready"},
 	})
 
 	c.Assert(err, qt.IsNil)
@@ -191,7 +194,7 @@ func TestWebhooks_Get(t *testing.T) {
 func TestWebhooks_Update(t *testing.T) {
 	c := qt.New(t)
 
-	wantBody := []byte("{\"url\":\"https://example.com/new-webhook\",\"enabled\":false}\n")
+	wantBody := []byte("{\"url\":\"https://example.com/new-webhook\",\"authorization_header\":\"Bearer automation-token\",\"enabled\":false}\n")
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(200)
@@ -224,13 +227,15 @@ func TestWebhooks_Update(t *testing.T) {
 	ctx := context.Background()
 	newURL := "https://example.com/new-webhook"
 	enabled := false
+	authorizationHeader := "Bearer automation-token"
 
 	webhook, err := client.Webhooks.Update(ctx, &UpdateWebhookRequest{
-		Organization: testOrg,
-		Database:     testDatabase,
-		ID:           "webhook-123",
-		URL:          &newURL,
-		Enabled:      &enabled,
+		Organization:        testOrg,
+		Database:            testDatabase,
+		ID:                  "webhook-123",
+		URL:                 &newURL,
+		AuthorizationHeader: &authorizationHeader,
+		Enabled:             &enabled,
 	})
 
 	c.Assert(err, qt.IsNil)
@@ -238,6 +243,40 @@ func TestWebhooks_Update(t *testing.T) {
 	c.Assert(webhook.URL, qt.Equals, "https://example.com/new-webhook")
 	c.Assert(webhook.Enabled, qt.IsFalse)
 	c.Assert(webhook.UpdatedAt, qt.Equals, time.Date(2021, 1, 15, 10, 19, 23, 0, time.UTC))
+}
+
+func TestWebhooks_Update_ClearAuthorizationHeader(t *testing.T) {
+	c := qt.New(t)
+
+	wantBody := []byte("{\"authorization_header\":\"\"}\n")
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		c.Assert(r.Method, qt.Equals, http.MethodPatch)
+		c.Assert(r.URL.String(), qt.Equals, "/v1/organizations/my-org/databases/planetscale-go-test-db/webhooks/webhook-123")
+
+		data, err := io.ReadAll(r.Body)
+		c.Assert(err, qt.IsNil)
+		c.Assert(data, qt.DeepEquals, wantBody)
+
+		_, err = w.Write([]byte(`{"id":"webhook-123","url":"https://example.com/webhook"}`))
+		c.Assert(err, qt.IsNil)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	empty := ""
+	webhook, err := client.Webhooks.Update(context.Background(), &UpdateWebhookRequest{
+		Organization:        testOrg,
+		Database:            testDatabase,
+		ID:                  "webhook-123",
+		AuthorizationHeader: &empty,
+	})
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(webhook.ID, qt.Equals, "webhook-123")
 }
 
 func TestWebhooks_Delete(t *testing.T) {
