@@ -26,17 +26,17 @@ type webhooksResponse struct {
 
 // Webhook represents a PlanetScale webhook.
 type Webhook struct {
-	ID                                  string    `json:"id"`
-	URL                                 string    `json:"url"`
-	Secret                              string    `json:"secret"`
-	WebhookAuthorizationTokenConfigured bool      `json:"webhook_authorization_token_configured"`
-	Enabled                             bool      `json:"enabled"`
-	LastSentResult                      string    `json:"last_sent_result"`
-	LastSentSuccess                     bool      `json:"last_sent_success"`
-	LastSentAt                          time.Time `json:"last_sent_at"`
-	CreatedAt                           time.Time `json:"created_at"`
-	UpdatedAt                           time.Time `json:"updated_at"`
-	Events                              []string  `json:"events"`
+	ID                            string    `json:"id"`
+	URL                           string    `json:"url"`
+	Secret                        string    `json:"secret"`
+	AuthorizationHeaderConfigured bool      `json:"authorization_header_configured"`
+	Enabled                       bool      `json:"enabled"`
+	LastSentResult                string    `json:"last_sent_result"`
+	LastSentSuccess               bool      `json:"last_sent_success"`
+	LastSentAt                    time.Time `json:"last_sent_at"`
+	CreatedAt                     time.Time `json:"created_at"`
+	UpdatedAt                     time.Time `json:"updated_at"`
+	Events                        []string  `json:"events"`
 }
 
 // ListWebhooksRequest is the request for listing webhooks.
@@ -47,12 +47,12 @@ type ListWebhooksRequest struct {
 
 // CreateWebhookRequest is the request for creating a webhook.
 type CreateWebhookRequest struct {
-	Organization              string   `json:"-"`
-	Database                  string   `json:"-"`
-	URL                       string   `json:"url"`
-	WebhookAuthorizationToken string   `json:"webhook_authorization_token,omitempty"`
-	Enabled                   *bool    `json:"enabled,omitempty"`
-	Events                    []string `json:"events,omitempty"`
+	Organization        string   `json:"-"`
+	Database            string   `json:"-"`
+	URL                 string   `json:"url"`
+	AuthorizationHeader string   `json:"authorization_header,omitempty"`
+	Enabled             *bool    `json:"enabled,omitempty"`
+	Events              []string `json:"events,omitempty"`
 }
 
 // GetWebhookRequest is the request for getting a webhook.
@@ -64,14 +64,13 @@ type GetWebhookRequest struct {
 
 // UpdateWebhookRequest is the request for updating a webhook.
 type UpdateWebhookRequest struct {
-	Organization                   string   `json:"-"`
-	Database                       string   `json:"-"`
-	ID                             string   `json:"-"`
-	URL                            *string  `json:"url,omitempty"`
-	WebhookAuthorizationToken      *string  `json:"webhook_authorization_token,omitempty"`
-	ClearWebhookAuthorizationToken bool     `json:"clear_webhook_authorization_token,omitempty"`
-	Enabled                        *bool    `json:"enabled,omitempty"`
-	Events                         []string `json:"events,omitempty"`
+	Organization        string   `json:"-"`
+	Database            string   `json:"-"`
+	ID                  string   `json:"-"`
+	URL                 *string  `json:"url,omitempty"`
+	AuthorizationHeader *string  `json:"authorization_header,omitempty"`
+	Enabled             *bool    `json:"enabled,omitempty"`
+	Events              []string `json:"events,omitempty"`
 }
 
 // DeleteWebhookRequest is the request for deleting a webhook.

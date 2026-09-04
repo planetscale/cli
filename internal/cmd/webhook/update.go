@@ -11,11 +11,11 @@ import (
 
 func UpdateCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
-		url                            string
-		webhookAuthorizationToken      string
-		clearWebhookAuthorizationToken bool
-		events                         []string
-		enabled                        bool
+		url                      string
+		authorizationHeader      string
+		clearAuthorizationHeader bool
+		events                   []string
+		enabled                  bool
 	}
 
 	cmd := &cobra.Command{
@@ -45,16 +45,17 @@ func UpdateCmd(ch *cmdutil.Helper) *cobra.Command {
 				changed = true
 			}
 
-			if cmd.Flags().Changed("webhook-authorization-token") {
-				if flags.webhookAuthorizationToken == "" {
-					return fmt.Errorf("--webhook-authorization-token cannot be empty; use --clear-webhook-authorization-token to remove the configured token")
+			if cmd.Flags().Changed("authorization-header") {
+				if flags.authorizationHeader == "" {
+					return fmt.Errorf("--authorization-header cannot be empty; use --clear-authorization-header to remove the configured header")
 				}
-				req.WebhookAuthorizationToken = &flags.webhookAuthorizationToken
+				req.AuthorizationHeader = &flags.authorizationHeader
 				changed = true
 			}
 
-			if flags.clearWebhookAuthorizationToken {
-				req.ClearWebhookAuthorizationToken = true
+			if flags.clearAuthorizationHeader {
+				empty := ""
+				req.AuthorizationHeader = &empty
 				changed = true
 			}
 
@@ -69,7 +70,7 @@ func UpdateCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			if !changed {
-				return fmt.Errorf("at least one of --url, --webhook-authorization-token, --clear-webhook-authorization-token, --events, or --enabled must be provided")
+				return fmt.Errorf("at least one of --url, --authorization-header, --clear-authorization-header, --events, or --enabled must be provided")
 			}
 
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Updating webhook %s for %s", printer.BoldBlue(webhookID), printer.BoldBlue(database)))
@@ -93,11 +94,11 @@ func UpdateCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&flags.url, "url", "", "The URL to send webhook events to")
-	cmd.Flags().StringVar(&flags.webhookAuthorizationToken, "webhook-authorization-token", "", "Token prefixed with Bearer.")
-	cmd.Flags().BoolVar(&flags.clearWebhookAuthorizationToken, "clear-webhook-authorization-token", false, "Remove the configured webhook authorization token")
+	cmd.Flags().StringVar(&flags.authorizationHeader, "authorization-header", "", "The complete Authorization header value, for example Bearer token")
+	cmd.Flags().BoolVar(&flags.clearAuthorizationHeader, "clear-authorization-header", false, "Remove the configured Authorization header")
 	cmd.Flags().StringSliceVar(&flags.events, "events", nil, "Comma-separated list of events to subscribe to")
 	cmd.Flags().BoolVar(&flags.enabled, "enabled", true, "Whether the webhook is enabled")
-	cmd.MarkFlagsMutuallyExclusive("webhook-authorization-token", "clear-webhook-authorization-token")
+	cmd.MarkFlagsMutuallyExclusive("authorization-header", "clear-authorization-header")
 
 	return cmd
 }
