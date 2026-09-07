@@ -37,8 +37,14 @@ func TestMapSQLiteCheckFunction(t *testing.T) {
 		{"json_array", "1, 2", "json_build_array(1, 2)", true},
 		{"json_object", "'k', 1", "json_build_object('k', 1)", true},
 		{"json_array_length", "payload", "json_array_length((payload)::json)", true},
+		{"json_array_length", "payload, '$.items'", "jsonb_array_length(((payload)::jsonb #> '{items}'))", true},
+		{"json_array_length", "payload, path", "", false},
 		{"datetime", "'now'", "now()", true},
+		{"datetime", "created_at", "", false},
+		{"date", "created_at", "", false},
 		{"unixepoch", "'now'", "now()", true},
+		{"unixepoch", "created_at", "", false},
+		{"unhex", "'00ff', ':'", "", false},
 		{"printf", "'%s', name", "", false},
 		{"json_set", "data, '$.x', 1", "", false},
 		{"length", "name", "", false},
@@ -108,6 +114,11 @@ func TestConvertCheckExprSQLiteFunctions(t *testing.T) {
 		"json_valid(row_json)":              `("row_json") IS JSON`,
 		`json_valid("row_json")`:            `("row_json") IS JSON`,
 		"JSON_VALID(row_json)":              `("row_json") IS JSON`,
+		"json_valid(row_json) = 1":          `("row_json") IS JSON`,
+		"json_valid(row_json) = 0":          `("row_json") IS NOT JSON`,
+		"json_valid(row_json) != 1":         `("row_json") IS NOT JSON`,
+		"1 = json_valid(row_json)":          `("row_json") IS JSON`,
+		"0 = json_valid(row_json)":          `("row_json") IS NOT JSON`,
 		"ifnull(a, 0) > 0":                  `coalesce("a", 0) > 0`,
 		"iif(a > 0, a, 0)":                  `CASE WHEN ("a" > 0) THEN ("a") ELSE (0) END`,
 		"instr(name, 'x') > 0":              `strpos("name", 'x') > 0`,
@@ -246,5 +257,60 @@ func TestUnconvertedSQLiteFunctions(t *testing.T) {
 	}
 	if got := unconvertedSQLiteFunctions("name GLOB '*.md'"); len(got) != 0 {
 		t.Fatalf("literal GLOB is convertible, got %v", got)
+	}
+	if got := unconvertedSQLiteFunctions("name REGEXP pattern"); len(got) != 1 || got[0] != "REGEXP" {
+		t.Fatalf("non-literal REGEXP: got %v", got)
+	}
+	if got := unconvertedSQLiteFunctions("name REGEXP '^[a-z]+$'"); len(got) != 0 {
+		t.Fatalf("literal REGEXP is convertible, got %v", got)
+	}
+	if got := unconvertedSQLiteFunctions("datetime(created_at)"); len(got) != 1 || !strings.EqualFold(got[0], "datetime") {
+		t.Fatalf("datetime(column) must be flagged, got %v", got)
+	}
+	if got := unconvertedSQLiteFunctions("json_array_length(data, path)"); len(got) != 1 || !strings.EqualFold(got[0], "json_array_length") {
+		t.Fatalf("json_array_length non-literal path must be flagged, got %v", got)
+	}
+	if got := unconvertedSQLiteFunctions("unhex(blob, ':')"); len(got) != 1 || !strings.EqualFold(got[0], "unhex") {
+		t.Fatalf("two-arg unhex must be flagged, got %v", got)
+	}
+}
+
+func TestConvertCheckConstraintJSONValidEqualsOne(t *testing.T) {
+	sql := `CREATE TABLE docs (
+  id INTEGER PRIMARY KEY,
+  payload TEXT CHECK (json_valid(payload) = 1)
+);`
+	ddl := convertTablesDDL(t, sql)
+	if strings.Contains(ddl, "json_valid") || strings.Contains(ddl, "IS JSON =") {
+		t.Fatalf("json_valid = 1 must become a boolean IS JSON predicate:\n%s", ddl)
+	}
+	if !strings.Contains(ddl, `("payload") IS JSON`) {
+		t.Fatalf("expected IS JSON rewrite:\n%s", ddl)
+	}
+	assertValidPostgresDDL(t, ddl)
+}
+
+func TestConvertCheckDoesNotMapDatetimeColumnToNow(t *testing.T) {
+	sql := `CREATE TABLE t (
+  id INTEGER PRIMARY KEY,
+  created_at TEXT,
+  CHECK (datetime(created_at) IS NOT NULL)
+);`
+	ddl := convertTablesDDL(t, sql)
+	if strings.Contains(ddl, "now()") {
+		t.Fatalf("datetime(column) must not become now():\n%s", ddl)
+	}
+	result, err := Lint(writeDump(t, sql))
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, issue := range result.Issues {
+		if issue.Code == "SQLITE_FUNCTION" && strings.Contains(strings.ToLower(issue.Message), "datetime") {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("expected SQLITE_FUNCTION for datetime(column), issues=%#v", result.Issues)
 	}
 }

@@ -22,7 +22,7 @@ var sqliteOnlyCheckFuncs = map[string]struct{}{
 	"sqlite_compileoption_used": {}, "sqlite_offset": {}, "sqlite_source_id": {},
 	"sqlite_version": {}, "strftime": {}, "timediff": {}, "total_changes": {},
 	"typeof": {}, "unhex": {}, "unicode": {}, "unlikely": {}, "unixepoch": {},
-	"zeroblob": {}, "datetime": {},
+	"zeroblob": {}, "datetime": {}, "json_array_length": {},
 }
 
 var doubleEqRe = regexp.MustCompile(`==`)
@@ -31,6 +31,7 @@ var doubleEqRe = regexp.MustCompile(`==`)
 // inside an already identifier-rewritten CHECK/GENERATED expression.
 func rewriteSQLiteCheckFunctions(expr string) string {
 	expr = rewriteFunctionCalls(expr)
+	expr = rewritePrefixJSONValidCompares(expr)
 	expr = rewriteGlobAndRegexpOperators(expr)
 	return rewriteOutsideStringLiterals(expr, func(sql string) string {
 		return doubleEqRe.ReplaceAllString(sql, "=")
@@ -74,6 +75,14 @@ func rewriteFunctionCalls(expr string) string {
 				}
 				args := rewriteFunctionCalls(expr[k+1 : end])
 				if mapped, converted := mapSQLiteCheckFunction(name, args); converted {
+					if strings.EqualFold(name, "json_valid") {
+						if consumed, notJSON, ok := consumeJSONValidCompare(expr[end+1:]); ok {
+							if notJSON {
+								mapped = strings.Replace(mapped, " IS JSON", " IS NOT JSON", 1)
+							}
+							end += consumed
+						}
+					}
 					out.WriteString(mapped)
 				} else {
 					out.WriteString(name)
@@ -136,8 +145,9 @@ func mapSQLiteCheckFunction(name, args string) (mapped string, converted bool) {
 			return "upper(encode(convert_to((" + args + ")::text, 'UTF8'), 'hex'))", true
 		}
 	case "unhex":
-		if strings.TrimSpace(args) != "" {
-			return "decode((" + args + "), 'hex')", true
+		parts := splitFunctionArgs(args)
+		if len(parts) == 1 && parts[0] != "" {
+			return "decode((" + parts[0] + "), 'hex')", true
 		}
 	case "quote":
 		if strings.TrimSpace(args) != "" {
@@ -180,7 +190,7 @@ func mapSQLiteCheckFunction(name, args string) (mapped string, converted bool) {
 			return "json_array_length((" + parts[0] + ")::json)", true
 		case 2:
 			if path, ok := sqliteJSONPathLiteral(parts[1]); ok {
-				return "json_array_length(((" + parts[0] + ")::jsonb #> " + path + "))", true
+				return "jsonb_array_length(((" + parts[0] + ")::jsonb #> " + path + "))", true
 			}
 		}
 	case "json_pretty":
@@ -204,15 +214,257 @@ func mapSQLiteCheckFunction(name, args string) (mapped string, converted bool) {
 			return fmt.Sprintf("decode(repeat('00', %d), 'hex')", n), true
 		}
 	case "date", "time", "datetime", "julianday", "unixepoch", "strftime":
-		if mapped := mapSQLiteDefaultFunction(name+"("+args+")", "TIMESTAMPTZ"); mapped != "" {
-			return mapped, true
-		}
-		// date(col) / time(col) are valid Postgres casts; leave them alone.
-		if strings.EqualFold(name, "date") || strings.EqualFold(name, "time") {
-			return "", false
-		}
+		return mapSQLiteCheckDateFunction(name, args)
 	}
 	return "", false
+}
+
+// mapSQLiteCheckDateFunction translates SQLite date/time calls only when they
+// mean "current time". The DEFAULT mapper cannot be reused here: it maps any
+// datetime(...) / date(...) / time(...) to now()/CURRENT_DATE/CURRENT_TIME.
+func mapSQLiteCheckDateFunction(name, args string) (string, bool) {
+	parts := splitFunctionArgs(args)
+	switch strings.ToLower(name) {
+	case "strftime":
+		if mapped := mapSQLiteDefaultFunction("strftime("+args+")", "TIMESTAMPTZ"); mapped != "" {
+			return mapped, true
+		}
+		return "", false
+	case "unixepoch":
+		arg := ""
+		if len(parts) > 0 {
+			arg = parts[0]
+		}
+		if len(parts) > 1 {
+			return "", false
+		}
+		modifier := strings.ToUpper(strings.Trim(strings.TrimSpace(arg), `'"`))
+		if modifier != "" && modifier != "NOW" && modifier != "SUBSEC" {
+			return "", false
+		}
+		if mapped := mapUnixEpochDefault(arg, "TIMESTAMPTZ"); mapped != "" {
+			return mapped, true
+		}
+		return "", false
+	case "julianday":
+		arg := ""
+		if len(parts) > 0 {
+			arg = parts[0]
+		}
+		if len(parts) > 1 || !isSQLiteCurrentTimeValue(arg) {
+			return "", false
+		}
+		return "(extract(epoch from now()) / 86400.0 + 2440587.5)", true
+	case "datetime", "date", "time":
+		timeArg := ""
+		if len(parts) > 0 {
+			timeArg = parts[0]
+		}
+		if !isSQLiteCurrentTimeValue(timeArg) {
+			return "", false
+		}
+		base, ok := strftimeTimeValueExpr(currentTimeArgOrNow(timeArg))
+		if !ok {
+			return "", false
+		}
+		if len(parts) > 1 {
+			base, ok = applyStrftimeModifiers(base, parts[1:])
+			if !ok {
+				return "", false
+			}
+		}
+		switch strings.ToLower(name) {
+		case "date":
+			if len(parts) <= 1 {
+				return "CURRENT_DATE", true
+			}
+			return utcDateTrunc("day", base), true
+		case "time":
+			if len(parts) <= 1 {
+				return "CURRENT_TIME", true
+			}
+		}
+		return base, true
+	}
+	return "", false
+}
+
+func currentTimeArgOrNow(arg string) string {
+	if strings.TrimSpace(arg) == "" {
+		return "'now'"
+	}
+	return arg
+}
+
+func isSQLiteCurrentTimeValue(arg string) bool {
+	arg = strings.TrimSpace(arg)
+	if arg == "" {
+		return true
+	}
+	if strings.HasPrefix(arg, "'") || strings.HasPrefix(arg, `"`) {
+		return strings.EqualFold(strings.Trim(arg, `'" `), "now")
+	}
+	switch strings.ToUpper(arg) {
+	case "NOW", "CURRENT_TIMESTAMP", "CURRENT_DATE", "CURRENT_TIME":
+		return true
+	}
+	return false
+}
+
+func consumeJSONValidCompare(rest string) (consumed int, notJSON bool, ok bool) {
+	i := 0
+	for i < len(rest) && (rest[i] == ' ' || rest[i] == '\t') {
+		i++
+	}
+	op := ""
+	switch {
+	case strings.HasPrefix(rest[i:], "=="):
+		op = "="
+		i += 2
+	case strings.HasPrefix(rest[i:], "!="), strings.HasPrefix(rest[i:], "<>"):
+		op = "!="
+		i += 2
+	case i < len(rest) && rest[i] == '=':
+		op = "="
+		i++
+	default:
+		return 0, false, false
+	}
+	for i < len(rest) && (rest[i] == ' ' || rest[i] == '\t') {
+		i++
+	}
+	val, n := readJSONValidCompareValue(rest[i:])
+	if n == 0 {
+		return 0, false, false
+	}
+	i += n
+	truthy := val == "1" || val == "true"
+	if op == "!=" {
+		truthy = !truthy
+	}
+	return i, !truthy, true
+}
+
+func readJSONValidCompareValue(s string) (string, int) {
+	if s == "" {
+		return "", 0
+	}
+	lower := strings.ToLower(s)
+	switch {
+	case strings.HasPrefix(lower, "true") && (len(s) == 4 || !isSQLIdentChar(s[4])):
+		return "true", 4
+	case strings.HasPrefix(lower, "false") && (len(s) == 5 || !isSQLIdentChar(s[5])):
+		return "false", 5
+	case (s[0] == '0' || s[0] == '1') && (len(s) == 1 || !isSQLIdentChar(s[1]) && s[1] != '.'):
+		return string(s[0]), 1
+	}
+	return "", 0
+}
+
+func rewritePrefixJSONValidCompares(expr string) string {
+	var out strings.Builder
+	n := len(expr)
+	for i := 0; i < n; {
+		if expr[i] == '\'' || expr[i] == '"' {
+			j := quotedEnd(expr, i, expr[i])
+			out.WriteString(expr[i:j])
+			i = j
+			continue
+		}
+		if consumed, replacement, ok := matchPrefixJSONValidCompare(expr, i); ok {
+			out.WriteString(replacement)
+			i += consumed
+			continue
+		}
+		out.WriteByte(expr[i])
+		i++
+	}
+	return out.String()
+}
+
+func matchPrefixJSONValidCompare(expr string, i int) (int, string, bool) {
+	if i > 0 && isSQLIdentChar(expr[i-1]) {
+		return 0, "", false
+	}
+	val, n := readJSONValidCompareValue(expr[i:])
+	if n == 0 {
+		return 0, "", false
+	}
+	j := i + n
+	for j < len(expr) && (expr[j] == ' ' || expr[j] == '\t') {
+		j++
+	}
+	op := ""
+	switch {
+	case strings.HasPrefix(expr[j:], "=="):
+		op = "="
+		j += 2
+	case strings.HasPrefix(expr[j:], "!="), strings.HasPrefix(expr[j:], "<>"):
+		op = "!="
+		j += 2
+	case j < len(expr) && expr[j] == '=':
+		op = "="
+		j++
+	default:
+		return 0, "", false
+	}
+	for j < len(expr) && (expr[j] == ' ' || expr[j] == '\t') {
+		j++
+	}
+	pred, end, ok := parseLeadingIsJSON(expr[j:])
+	if !ok {
+		return 0, "", false
+	}
+	truthy := val == "1" || val == "true"
+	if op == "!=" {
+		truthy = !truthy
+	}
+	if pred.not {
+		truthy = !truthy
+	}
+	out := pred.operand + " IS JSON"
+	if !truthy {
+		out = pred.operand + " IS NOT JSON"
+	}
+	return (j - i) + end, out, true
+}
+
+type isJSONPred struct {
+	operand string
+	not     bool
+}
+
+func parseLeadingIsJSON(s string) (isJSONPred, int, bool) {
+	if !strings.HasPrefix(s, "(") {
+		return isJSONPred{}, 0, false
+	}
+	end, ok := matchingParenEnd(s, 0)
+	if !ok {
+		return isJSONPred{}, 0, false
+	}
+	k := end + 1
+	for k < len(s) && (s[k] == ' ' || s[k] == '\t') {
+		k++
+	}
+	rest := s[k:]
+	upper := strings.ToUpper(rest)
+	not := false
+	switch {
+	case strings.HasPrefix(upper, "IS NOT JSON"):
+		if len(rest) > 11 && isSQLIdentChar(rest[11]) {
+			return isJSONPred{}, 0, false
+		}
+		not = true
+		k += len("IS NOT JSON")
+	case strings.HasPrefix(upper, "IS JSON"):
+		if len(rest) > 7 && isSQLIdentChar(rest[7]) {
+			return isJSONPred{}, 0, false
+		}
+		k += len("IS JSON")
+	default:
+		return isJSONPred{}, 0, false
+	}
+	return isJSONPred{operand: s[:end+1], not: not}, k, true
 }
 
 func sqliteTypeofExpr(arg string) string {
@@ -647,6 +899,9 @@ func unconvertedSQLiteFunctions(expr string) []string {
 	}
 	if leftoverPatternOp(expr, "GLOB") {
 		names = append(names, "GLOB")
+	}
+	if leftoverPatternOp(expr, "REGEXP") {
+		names = append(names, "REGEXP")
 	}
 	return names
 }
