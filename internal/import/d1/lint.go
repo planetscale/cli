@@ -55,6 +55,7 @@ func lintTable(table TableSchema, all []TableSchema, ctx *TypeCoercionContext) [
 	issues = append(issues, lintORMMetadata(table)...)
 	issues = append(issues, lintIdentifiers(table)...)
 	issues = append(issues, lintForeignKeyReferences(table, all)...)
+	issues = append(issues, lintSQLiteCheckFunctions(table)...)
 
 	for _, col := range table.Columns {
 		if col.AutoIncrement {
@@ -141,6 +142,77 @@ func lintTable(table TableSchema, all []TableSchema, ctx *TypeCoercionContext) [
 	}
 
 	return issues
+}
+
+func lintSQLiteCheckFunctions(table TableSchema) []Issue {
+	var issues []Issue
+	seen := make(map[string]struct{})
+	add := func(column, fn string) {
+		key := table.Name + "." + column + "." + strings.ToLower(fn)
+		if _, ok := seen[key]; ok {
+			return
+		}
+		seen[key] = struct{}{}
+		issues = append(issues, Issue{
+			Code:        "SQLITE_FUNCTION",
+			Severity:    SeverityError,
+			Table:       table.Name,
+			Column:      column,
+			Message:     fmt.Sprintf("CHECK/GENERATED uses SQLite function %s() which cannot be translated to Postgres", fn),
+			Remediation: "Rewrite or remove this expression in the SQLite schema before importing",
+		})
+	}
+	for _, src := range tableCheckExprs(table) {
+		for _, fn := range unconvertedSQLiteFunctions(src.expr) {
+			add(src.column, fn)
+		}
+	}
+	return issues
+}
+
+type checkExprSource struct {
+	column string
+	expr   string
+}
+
+func tableCheckExprs(table TableSchema) []checkExprSource {
+	var out []checkExprSource
+	for _, col := range table.Columns {
+		for _, expr := range col.CheckExprs {
+			out = append(out, checkExprSource{column: col.Name, expr: expr})
+		}
+		if col.GeneratedExpr != "" {
+			out = append(out, checkExprSource{column: col.Name, expr: col.GeneratedExpr})
+		}
+	}
+	for _, clause := range table.Constraints {
+		if expr, ok := rawCheckConstraintExpr(clause); ok {
+			out = append(out, checkExprSource{expr: expr})
+		}
+	}
+	return out
+}
+
+func rawCheckConstraintExpr(clause string) (string, bool) {
+	clause = strings.TrimSpace(clause)
+	upper := strings.ToUpper(clause)
+	if strings.HasPrefix(upper, "CONSTRAINT ") {
+		_, body := parseColumnNameAndRest(strings.TrimSpace(clause[len("CONSTRAINT"):]))
+		clause = strings.TrimSpace(body)
+		upper = strings.ToUpper(clause)
+	}
+	if !strings.HasPrefix(upper, "CHECK") {
+		return "", false
+	}
+	rest := strings.TrimSpace(clause[len("CHECK"):])
+	if !strings.HasPrefix(rest, "(") {
+		return "", false
+	}
+	end, ok := matchingParenEnd(rest, 0)
+	if !ok {
+		return "", false
+	}
+	return rest[1:end], true
 }
 
 func lintForeignKeyReferences(table TableSchema, all []TableSchema) []Issue {
