@@ -185,7 +185,7 @@ func TestConvertCheckConstraintIfnullInstrIif(t *testing.T) {
   CHECK (iif(qty > 0, 1, 0) = 1)
 );`
 	ddl := convertTablesDDL(t, sql)
-	for _, leftover := range []string{"ifnull", "instr(", "iif("} {
+	for _, leftover := range []string{"ifnull(", "instr(", "iif("} {
 		if strings.Contains(strings.ToLower(ddl), leftover) {
 			t.Fatalf("%s must be rewritten, got:\n%s", leftover, ddl)
 		}

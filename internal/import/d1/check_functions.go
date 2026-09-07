@@ -25,11 +25,7 @@ var sqliteOnlyCheckFuncs = map[string]struct{}{
 	"zeroblob": {}, "datetime": {},
 }
 
-var (
-	globLiteralRe = regexp.MustCompile(`(?i)(?:\bNOT\s+)?\bGLOB\b\s+('(?:[^']|'')*')`)
-	regexpOpRe    = regexp.MustCompile(`(?i)(?:\bNOT\s+)?\bREGEXP\b\s+('(?:[^']|'')*')`)
-	doubleEqRe    = regexp.MustCompile(`==`)
-)
+var doubleEqRe = regexp.MustCompile(`==`)
 
 // rewriteSQLiteCheckFunctions maps SQLite-only function calls and a few operators
 // inside an already identifier-rewritten CHECK/GENERATED expression.
@@ -66,6 +62,11 @@ func rewriteFunctionCalls(expr string) string {
 				k++
 			}
 			if k < n && expr[k] == '(' {
+				if _, isKeyword := checkExprKeywords[strings.ToLower(name)]; isKeyword {
+					out.WriteString(name)
+					i = j
+					continue
+				}
 				end, ok := matchingParenEnd(expr, k)
 				if !ok {
 					out.WriteString(expr[i:])
@@ -253,7 +254,7 @@ func sqliteJSONPathLiteral(lit string) (string, bool) {
 }
 
 func parseSQLiteJSONPath(path string) ([]string, bool) {
-	if !strings.HasPrefix(path, "$") {
+	if path == "$" || !strings.HasPrefix(path, "$") {
 		return nil, false
 	}
 	var keys []string
@@ -441,52 +442,93 @@ func parsePositiveIntArg(args string) (int, error) {
 }
 
 func rewriteGlobAndRegexpOperators(expr string) string {
-	return rewriteOutsideStringLiterals(expr, func(sql string) string {
-		sql = globLiteralRe.ReplaceAllStringFunc(sql, rewriteGlobMatch)
-		return regexpOpRe.ReplaceAllStringFunc(sql, rewriteRegexpMatch)
-	})
+	var out strings.Builder
+	n := len(expr)
+	for i := 0; i < n; {
+		c := expr[i]
+		if c == '\'' || c == '"' {
+			j := quotedEnd(expr, i, c)
+			out.WriteString(expr[i:j])
+			i = j
+			continue
+		}
+		if !isIdentStartByte(c) {
+			out.WriteByte(c)
+			i++
+			continue
+		}
+		j := i + 1
+		for j < n && isSQLIdentChar(expr[j]) {
+			j++
+		}
+		word := expr[i:j]
+		lower := strings.ToLower(word)
+		if lower == "not" {
+			if rewritten, next, ok := tryRewritePatternOp(expr, j, true); ok {
+				out.WriteString(rewritten)
+				i = next
+				continue
+			}
+		}
+		if lower == "glob" || lower == "regexp" {
+			if rewritten, next, ok := rewritePatternOpAt(expr, j, lower, false); ok {
+				out.WriteString(rewritten)
+				i = next
+				continue
+			}
+		}
+		out.WriteString(word)
+		i = j
+	}
+	return out.String()
 }
 
-func rewriteGlobMatch(match string) string {
-	negated, lit, ok := splitPatternOp(match, "GLOB")
-	if !ok {
-		return match
+func tryRewritePatternOp(expr string, afterNot int, negated bool) (string, int, bool) {
+	n := len(expr)
+	k := afterNot
+	for k < n && (expr[k] == ' ' || expr[k] == '\t') {
+		k++
 	}
-	pattern, ok := unquoteSQLString(lit)
-	if !ok {
-		return match
+	if k >= n || !isIdentStartByte(expr[k]) {
+		return "", 0, false
 	}
-	op := "~"
+	j := k + 1
+	for j < n && isSQLIdentChar(expr[j]) {
+		j++
+	}
+	op := strings.ToLower(expr[k:j])
+	if op != "glob" && op != "regexp" {
+		return "", 0, false
+	}
+	return rewritePatternOpAt(expr, j, op, negated)
+}
+
+func rewritePatternOpAt(expr string, opEnd int, op string, negated bool) (string, int, bool) {
+	n := len(expr)
+	k := opEnd
+	for k < n && (expr[k] == ' ' || expr[k] == '\t') {
+		k++
+	}
+	if k >= n || (expr[k] != '\'' && expr[k] != '"') {
+		return "", 0, false
+	}
+	end := quotedEnd(expr, k, expr[k])
+	lit := expr[k:end]
+	sym := "~"
 	if negated {
-		op = "!~"
+		sym = "!~"
 	}
-	return op + " " + quotePostgresLiteral(globToPOSIXRegex(pattern))
-}
-
-func rewriteRegexpMatch(match string) string {
-	negated, lit, ok := splitPatternOp(match, "REGEXP")
-	if !ok {
-		return match
+	if op == "glob" {
+		pattern, ok := unquoteSQLString(lit)
+		if !ok {
+			return "", 0, false
+		}
+		return sym + " " + quotePostgresLiteral(globToPOSIXRegex(pattern)), end, true
 	}
-	op := "~"
-	if negated {
-		op = "!~"
+	if q, ok := unquoteSQLString(lit); ok {
+		lit = quotePostgresLiteral(q)
 	}
-	return op + " " + lit
-}
-
-func splitPatternOp(match, op string) (negated bool, lit string, ok bool) {
-	upper := strings.ToUpper(strings.TrimSpace(match))
-	negated = strings.HasPrefix(upper, "NOT")
-	idx := strings.Index(strings.ToUpper(match), op)
-	if idx < 0 {
-		return false, "", false
-	}
-	rest := strings.TrimSpace(match[idx+len(op):])
-	if rest == "" {
-		return false, "", false
-	}
-	return negated, rest, true
+	return sym + " " + lit, end, true
 }
 
 func globToPOSIXRegex(pattern string) string {
@@ -610,25 +652,32 @@ func unconvertedSQLiteFunctions(expr string) []string {
 }
 
 func leftoverPatternOp(expr, op string) bool {
-	found := false
-	_ = rewriteOutsideStringLiterals(expr, func(sql string) string {
-		upper := strings.ToUpper(sql)
-		for {
-			idx := strings.Index(upper, op)
-			if idx < 0 {
-				return sql
-			}
-			if (idx == 0 || !isSQLIdentChar(sql[idx-1])) &&
-				(idx+len(op) == len(sql) || !isSQLIdentChar(sql[idx+len(op)])) {
-				rest := strings.TrimSpace(sql[idx+len(op):])
-				if !strings.HasPrefix(rest, "'") && !strings.HasPrefix(rest, `"`) {
-					found = true
-					return sql
-				}
-			}
-			upper = upper[idx+len(op):]
-			sql = sql[idx+len(op):]
+	n := len(expr)
+	want := strings.ToLower(op)
+	for i := 0; i < n; {
+		c := expr[i]
+		if c == '\'' || c == '"' {
+			i = quotedEnd(expr, i, c)
+			continue
 		}
-	})
-	return found
+		if !isIdentStartByte(c) {
+			i++
+			continue
+		}
+		j := i + 1
+		for j < n && isSQLIdentChar(expr[j]) {
+			j++
+		}
+		if strings.ToLower(expr[i:j]) == want {
+			k := j
+			for k < n && (expr[k] == ' ' || expr[k] == '\t') {
+				k++
+			}
+			if k >= n || (expr[k] != '\'' && expr[k] != '"') {
+				return true
+			}
+		}
+		i = j
+	}
+	return false
 }
