@@ -84,5 +84,13 @@ func toKeyspaceSettings(ks *ps.Keyspace) *KeyspaceSettings {
 		}
 	}
 
+	// Set disk autoscaling settings if available
+	if ks.DiskAutoscaling != nil {
+		settings.DiskScalingStrategy = ks.DiskAutoscaling.Strategy
+		settings.MaxStorageBytes = ks.DiskAutoscaling.StorageLimitBytes
+	} else {
+		settings.DiskScalingStrategy = "not set"
+	}
+
 	return settings
 }

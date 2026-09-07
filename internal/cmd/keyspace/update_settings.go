@@ -3,13 +3,20 @@ package keyspace
 import (
 	"context"
 	"fmt"
+	"slices"
+	"strings"
 
 	"github.com/charmbracelet/huh"
+	"github.com/spf13/cobra"
+
 	"github.com/planetscale/cli/internal/cmdutil"
 	ps "github.com/planetscale/cli/internal/planetscale"
 	"github.com/planetscale/cli/internal/printer"
-	"github.com/spf13/cobra"
 )
+
+// diskScalingStrategies are the disk autoscaling strategies accepted by the
+// --disk-scaling-strategy flag.
+var diskScalingStrategies = []string{"grow", "disable", "shrink"}
 
 func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 	updateReq := &ps.UpdateKeyspaceSettingsRequest{}
@@ -17,6 +24,8 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
 		replicationDurabilityConstraints *ps.ReplicationDurabilityConstraints
 		vreplicationFlags                *ps.VReplicationFlags
+		diskScalingStrategy              string
+		maxStorage                       int64
 		interactive                      bool
 	}
 
@@ -35,6 +44,10 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 			updateReq.Database = database
 			updateReq.Branch = branch
 			updateReq.Keyspace = keyspace
+
+			if cmd.Flags().Changed("disk-scaling-strategy") && !slices.Contains(diskScalingStrategies, flags.diskScalingStrategy) {
+				return fmt.Errorf("invalid --disk-scaling-strategy %q, must be one of: %s", flags.diskScalingStrategy, strings.Join(diskScalingStrategies, ", "))
+			}
 
 			if flags.interactive {
 				return updateInteractive(ctx, ch, updateReq)
@@ -84,7 +97,26 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 				}
 			}
 
-			if !rdcChanged && !vrfChanged {
+			// Check if any relevant flags are changing disk autoscaling settings
+			strategyChanged := cmd.Flags().Changed("disk-scaling-strategy")
+			maxStorageChanged := cmd.Flags().Changed("max-storage")
+			daChanged := strategyChanged || maxStorageChanged
+
+			if daChanged {
+				updateReq.DiskAutoscaling = &ps.DiskAutoscalingUpdate{}
+
+				if strategyChanged {
+					strategy := flags.diskScalingStrategy
+					updateReq.DiskAutoscaling.Strategy = &strategy
+				}
+
+				if maxStorageChanged {
+					maxStorage := flags.maxStorage
+					updateReq.DiskAutoscaling.StorageLimitBytes = &maxStorage
+				}
+			}
+
+			if !rdcChanged && !vrfChanged && !daChanged {
 				end()
 				ch.Printer.Println("No changes were requested. No update performed.")
 				return nil
@@ -105,7 +137,11 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().BoolVar(&flags.vreplicationFlags.OptimizeInserts, "vreplication-optimize-inserts", true, "When enabled, skips sending INSERT events for rows that have yet to be replicated.")
 	cmd.Flags().BoolVar(&flags.vreplicationFlags.AllowNoBlobBinlogRowImage, "vreplication-enable-noblob-binlog-mode", true, "When enabled, omits changed BLOB and TEXT columns from replication events, which reduces binlog sizes.")
 	cmd.Flags().BoolVar(&flags.vreplicationFlags.VPlayerBatching, "vreplication-batch-replication-events", false, "When enabled, sends fewer queries to MySQL to improve performance.")
+	cmd.Flags().StringVar(&flags.diskScalingStrategy, "disk-scaling-strategy", "grow", fmt.Sprintf("The disk autoscaling strategy (%s). 'grow' lets dedicated disks grow automatically up to the storage limit; 'disable' turns autoscaling off; 'shrink' recreates disks at their initial size and then disables autoscaling.", strings.Join(diskScalingStrategies, ", ")))
+	cmd.Flags().Int64Var(&flags.maxStorage, "max-storage", 0, "The maximum size in bytes that dedicated disks may autoscale to. Required when the strategy is 'grow'.")
 	cmd.Flags().BoolVarP(&flags.interactive, "interactive", "i", false, "Run the command in interactive mode")
+
+	_ = cmd.RegisterFlagCompletionFunc("disk-scaling-strategy", cobra.FixedCompletions(diskScalingStrategies, cobra.ShellCompDirectiveNoFileComp))
 
 	return cmd
 }
