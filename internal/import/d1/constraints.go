@@ -148,6 +148,7 @@ var checkExprKeywords = map[string]struct{}{
 //     that Postgres rejects — are converted to double-quoted identifiers, canonicalized
 //     to the column's declared case when they match one.
 //   - single-quoted string literals and everything else are passed through unchanged.
+//   - SQLite-only functions (json_valid, ifnull, iif, …) are rewritten to Postgres.
 //   - 0/1 values compared with coerced BOOLEAN columns become false/true.
 func convertCheckExpr(expr string, table TableSchema, ctx *TypeCoercionContext) string {
 	colMap := make(map[string]string, len(table.Columns))
@@ -249,7 +250,7 @@ func convertCheckExpr(expr string, table TableSchema, ctx *TypeCoercionContext) 
 			i++
 		}
 	}
-	result := out.String()
+	result := rewriteSQLiteCheckFunctions(out.String())
 	if boolCols := booleanCoercedColumnNames(table, ctx); len(boolCols) > 0 {
 		result = rewriteBooleanCheckLiterals(result, boolCols)
 	}
