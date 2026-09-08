@@ -244,9 +244,11 @@ func TestBranch_VtgateShowCmd_PendingUsesPreviousAutoscaling(t *testing.T) {
 func TestPublicVTGateName(t *testing.T) {
 	c := qt.New(t)
 	c.Assert(publicVTGateName("vg.c1.micro"), qt.Equals, "VTG_10")
+	c.Assert(publicVTGateName("vg.c1.arm64.micro"), qt.Equals, "VTG_10_ARM")
 	c.Assert(publicVTGateName("VTG_320"), qt.Equals, "VTG_320")
 	c.Assert(publicVTGateName("VTG-320"), qt.Equals, "VTG_320")
 	c.Assert(publicVTGateName(""), qt.Equals, "")
+	c.Assert(knownVTGateSizes, qt.Contains, "VTG_10_ARM")
 }
 
 func TestBranch_VtgateResizeCmd_SizeOnly(t *testing.T) {
