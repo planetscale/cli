@@ -23,8 +23,8 @@ func UpdateCmd(ch *cmdutil.Helper) *cobra.Command {
 		Use:   "update <database> <branch> <name>",
 		Short: "Update a read-only replica",
 		Long: `Update a read-only replica's cluster size, instance count, and/or
-PostgreSQL configuration parameters. Parameter values must be greater than or
-equal to the primary branch's corresponding values.`,
+PostgreSQL configuration parameters. Read-only replica parameter values may have
+different restrictions than their primary branch equivalents.`,
 		Example: `  pscale read-only-replica update mydb main analytics --replicas 2
   pscale read-only-replica update mydb main analytics --cluster-size PS_20_GCP_X86
   pscale read-only-replica update mydb main analytics --parameters pgconf.max_connections=300`,
