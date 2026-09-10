@@ -2,7 +2,9 @@ package keyspace
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/charmbracelet/huh"
 	"github.com/planetscale/cli/internal/cmdutil"
@@ -17,6 +19,8 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
 		replicationDurabilityConstraints *ps.ReplicationDurabilityConstraints
 		vreplicationFlags                *ps.VReplicationFlags
+		throttlerEnabled                 bool
+		throttlerThreshold               float64
 		interactive                      bool
 	}
 
@@ -84,7 +88,27 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 				}
 			}
 
-			if !rdcChanged && !vrfChanged {
+			throttlerChanged := cmd.Flags().Changed("throttler-enabled") ||
+				cmd.Flags().Changed("throttler-threshold")
+
+			if throttlerChanged {
+				if updateReq.Throttler == nil {
+					updateReq.Throttler = &ps.KeyspaceThrottler{}
+				}
+
+				if cmd.Flags().Changed("throttler-enabled") {
+					updateReq.Throttler.Enabled = flags.throttlerEnabled
+				}
+
+				if cmd.Flags().Changed("throttler-threshold") {
+					if flags.throttlerThreshold < 0 {
+						return errors.New("--throttler-threshold must be greater than or equal to 0")
+					}
+					updateReq.Throttler.Threshold = &flags.throttlerThreshold
+				}
+			}
+
+			if !rdcChanged && !vrfChanged && !throttlerChanged {
 				end()
 				ch.Printer.Println("No changes were requested. No update performed.")
 				return nil
@@ -105,6 +129,8 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().BoolVar(&flags.vreplicationFlags.OptimizeInserts, "vreplication-optimize-inserts", true, "When enabled, skips sending INSERT events for rows that have yet to be replicated.")
 	cmd.Flags().BoolVar(&flags.vreplicationFlags.AllowNoBlobBinlogRowImage, "vreplication-enable-noblob-binlog-mode", true, "When enabled, omits changed BLOB and TEXT columns from replication events, which reduces binlog sizes.")
 	cmd.Flags().BoolVar(&flags.vreplicationFlags.VPlayerBatching, "vreplication-batch-replication-events", false, "When enabled, sends fewer queries to MySQL to improve performance.")
+	cmd.Flags().BoolVar(&flags.throttlerEnabled, "throttler-enabled", true, "When enabled, migrations and workflows are paused while replicas fall behind.")
+	cmd.Flags().Float64Var(&flags.throttlerThreshold, "throttler-threshold", 5, "Replication lag in seconds that trips the throttler.")
 	cmd.Flags().BoolVarP(&flags.interactive, "interactive", "i", false, "Run the command in interactive mode")
 
 	return cmd
@@ -145,6 +171,10 @@ func setInitialSettings(ctx context.Context, ch *cmdutil.Helper, req *ps.UpdateK
 		req.VReplicationFlags = ks.VReplicationFlags
 	}
 
+	if ks.Throttler != nil {
+		req.Throttler = ks.Throttler
+	}
+
 	return nil
 }
 
@@ -164,6 +194,15 @@ func updateInteractive(ctx context.Context, ch *cmdutil.Helper, updateReq *ps.Up
 
 	if updateReq.VReplicationFlags == nil {
 		updateReq.VReplicationFlags = &ps.VReplicationFlags{}
+	}
+
+	if updateReq.Throttler == nil {
+		updateReq.Throttler = &ps.KeyspaceThrottler{Enabled: true}
+	}
+
+	throttlerThreshold := "5"
+	if updateReq.Throttler.Threshold != nil {
+		throttlerThreshold = strconv.FormatFloat(*updateReq.Throttler.Threshold, 'g', -1, 64)
 	}
 
 	form := huh.NewForm(
@@ -200,11 +239,39 @@ func updateInteractive(ctx context.Context, ch *cmdutil.Helper, updateReq *ps.Up
 				Description("When enabled, sends fewer queries to MySQL to improve performance.").
 				Value(&updateReq.VReplicationFlags.VPlayerBatching),
 		).Title("VReplication").Description("Options for improving performance during deploy requests and workflows"),
+
+		huh.NewGroup(
+			huh.NewConfirm().
+				Title("Enable the throttler?").
+				Description("When enabled, migrations and workflows are paused while replicas fall behind.").
+				Value(&updateReq.Throttler.Enabled),
+
+			huh.NewInput().
+				Title("Replication lag threshold (seconds)").
+				Description("Replication lag above which the throttler pauses work.").
+				Value(&throttlerThreshold).
+				Validate(func(s string) error {
+					v, err := strconv.ParseFloat(s, 64)
+					if err != nil {
+						return errors.New("threshold must be a number")
+					}
+					if v < 0 {
+						return errors.New("threshold must be greater than or equal to 0")
+					}
+					return nil
+				}),
+		).Title("Throttler"),
 	).WithTheme(huh.ThemeBase16())
 
 	if err := form.Run(); err != nil {
 		return err
 	}
+
+	threshold, err := strconv.ParseFloat(throttlerThreshold, 64)
+	if err != nil {
+		return err
+	}
+	updateReq.Throttler.Threshold = &threshold
 
 	ks, err := updateKeyspaceSettings(ctx, client, updateReq)
 	if err != nil {
