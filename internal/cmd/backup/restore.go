@@ -83,8 +83,12 @@ Preview Neki restore sizes from the source branch with:
 				return ch.Printer.PrintResource(branch.ToDatabaseBranch(newBranch))
 			} else {
 				clusterName := flags.clusterSize
-				if db.Kind == planetscale.DatabaseEngineNeki && !cmd.Flags().Changed("cluster-size") {
-					clusterName = ""
+				if db.Kind == planetscale.DatabaseEngineNeki {
+					if !cmd.Flags().Changed("cluster-size") {
+						clusterName = ""
+					} else {
+						clusterName = cmdutil.ToSizeSKUName(flags.clusterSize)
+					}
 				}
 
 				createReq := &planetscale.CreatePostgresBranchRequest{

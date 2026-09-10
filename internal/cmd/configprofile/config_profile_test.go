@@ -146,6 +146,21 @@ func TestConfigProfileCreateCmdSendsStorage(t *testing.T) {
 	c.Assert(svc.CreateFnInvoked, qt.IsTrue)
 }
 
+func TestConfigProfileCreateCmdNormalizesClusterSize(t *testing.T) {
+	c := qt.New(t)
+	var out bytes.Buffer
+	svc := &mock.NekiShardConfigurationProfilesService{CreateFn: func(_ context.Context, req *ps.CreateNekiShardConfigurationProfileRequest) (*ps.NekiShardConfigurationProfile, error) {
+		c.Assert(req.ClusterSize, qt.IsNotNil)
+		c.Assert(*req.ClusterSize, qt.Equals, "PS_40")
+		return testProfile(), nil
+	}}
+
+	cmd := CreateCmd(configProfileTestHelper(svc, &out))
+	cmd.SetArgs([]string{"app", "main", "metal", "--cluster-size", "PS-40"})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(svc.CreateFnInvoked, qt.IsTrue)
+}
+
 func TestConfigProfileCreateCmdRejectsExtraArguments(t *testing.T) {
 	c := qt.New(t)
 	var out bytes.Buffer
@@ -178,6 +193,21 @@ func TestConfigProfileUpdateCmd(t *testing.T) {
 
 	cmd := UpdateCmd(configProfileTestHelper(svc, &out))
 	cmd.SetArgs([]string{"app", "main", "metal", "--replicas", "2", "--parameters", "pgconf.max_connections=200", "--parameters", "pgconf.work_mem=64MB", "--parameters", "pgbouncer.default_pool_size=20"})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(svc.UpdateFnInvoked, qt.IsTrue)
+}
+
+func TestConfigProfileUpdateCmdNormalizesClusterSize(t *testing.T) {
+	c := qt.New(t)
+	var out bytes.Buffer
+	svc := &mock.NekiShardConfigurationProfilesService{UpdateFn: func(_ context.Context, req *ps.UpdateNekiShardConfigurationProfileRequest) (*ps.NekiShardConfigurationProfile, error) {
+		c.Assert(req.ClusterSize, qt.IsNotNil)
+		c.Assert(*req.ClusterSize, qt.Equals, "PS_40")
+		return testProfile(), nil
+	}}
+
+	cmd := UpdateCmd(configProfileTestHelper(svc, &out))
+	cmd.SetArgs([]string{"app", "main", "metal", "--cluster-size", "PS-40"})
 	c.Assert(cmd.Execute(), qt.IsNil)
 	c.Assert(svc.UpdateFnInvoked, qt.IsTrue)
 }

@@ -122,8 +122,11 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 					clusterSize = "PS_DEV"
 				}
 			}
+			if db.Kind == ps.DatabaseEngineNeki && clusterSize != "" {
+				clusterSize = cmdutil.ToSizeSKUName(clusterSize)
+			}
 
-			if err := cmdutil.EnsureNekiRestoreSizing(db.Kind, flags.backupID != "", flags.dataBranching, len(flags.configProfiles) > 0 || len(flags.routers) > 0); err != nil {
+			if err := cmdutil.EnsureNekiRestoreSizing(db.Kind, flags.backupID != "" || flags.restorePoint != "", flags.dataBranching, len(flags.configProfiles) > 0 || len(flags.routers) > 0); err != nil {
 				return err
 			}
 

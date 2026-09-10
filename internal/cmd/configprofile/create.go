@@ -38,7 +38,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 				Database:             database,
 				Branch:               branch,
 				Name:                 name,
-				ClusterSize:          stringPointerIfChanged(cmd, "cluster-size", flags.clusterSize),
+				ClusterSize:          stringPointerIfChanged(cmd, "cluster-size", cmdutil.ToSizeSKUName(flags.clusterSize)),
 				Replicas:             intPointerIfChanged(cmd, "replicas", flags.replicas),
 				PostgresMajorVersion: stringPointerIfChanged(cmd, "postgres-major-version", flags.major),
 				PostgresMinorVersion: stringPointerIfChanged(cmd, "postgres-minor-version", flags.minor),
