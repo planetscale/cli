@@ -24,6 +24,7 @@ type Keyspace struct {
 	UpdatedAt                        time.Time                         `json:"updated_at"`
 	VReplicationFlags                *VReplicationFlags                `json:"vreplication_flags"`
 	ReplicationDurabilityConstraints *ReplicationDurabilityConstraints `json:"replication_durability_constraints"`
+	MaxRollout                       *int                              `json:"max_rollout"`
 	ReadOnlyRegions                  []*ReadOnlyRegionKeyspace         `json:"read_only_regions"`
 }
 
@@ -174,6 +175,9 @@ type UpdateKeyspaceSettingsRequest struct {
 	Keyspace                         string                            `json:"-"`
 	ReplicationDurabilityConstraints *ReplicationDurabilityConstraints `json:"replication_durability_constraints,omitempty"`
 	VReplicationFlags                *VReplicationFlags                `json:"vreplication_flags,omitempty"`
+	// MaxRollout is a tri-state PATCH field: nil omits max_rollout, a pointer
+	// to an integer sets it, and a pointer to nil sends JSON null to reset it.
+	MaxRollout **int `json:"max_rollout,omitempty"`
 }
 
 type ReplicationDurabilityConstraints struct {

@@ -2,6 +2,7 @@ package keyspace
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/planetscale/cli/internal/cmdutil"
 	ps "github.com/planetscale/cli/internal/planetscale"
@@ -53,7 +54,11 @@ func SettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 // toKeyspaceSettings converts a Keyspace API response to a KeyspaceSettings object for display
 func toKeyspaceSettings(ks *ps.Keyspace) *KeyspaceSettings {
 	settings := &KeyspaceSettings{
-		orig: ks,
+		MaxRollout: "default (1)",
+		orig:       ks,
+	}
+	if ks.MaxRollout != nil {
+		settings.MaxRollout = strconv.Itoa(*ks.MaxRollout)
 	}
 
 	// Set replication durability constraints if available
