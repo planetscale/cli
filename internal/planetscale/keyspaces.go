@@ -189,7 +189,7 @@ type VReplicationFlags struct {
 }
 
 type KeyspaceThrottler struct {
-	Enabled   bool     `json:"enabled"`
+	Enabled   *bool    `json:"enabled,omitempty"`
 	Threshold *float64 `json:"threshold,omitempty"`
 }
 

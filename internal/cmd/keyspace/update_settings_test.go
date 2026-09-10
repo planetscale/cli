@@ -619,6 +619,58 @@ func TestKeyspace_UpdateSettingsCmd_PreserveNilValues(t *testing.T) {
 	c.Assert(buf.String(), qt.JSONEquals, updatedKs)
 }
 
+func boolPtr(b bool) *bool { return &b }
+
+// Regression: the API may return no throttler at all. A threshold-only update
+// must not send enabled=false and silently turn the throttler off.
+func TestKeyspace_UpdateSettingsCmd_ThresholdOnlyWithNoExistingThrottler(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	db := "planetscale"
+	branch := "main"
+	keyspace := "sharded"
+
+	ks := &ps.Keyspace{ID: "ks1", Name: keyspace, Throttler: nil}
+
+	svc := &mock.KeyspacesService{
+		GetFn: func(ctx context.Context, req *ps.GetKeyspaceRequest) (*ps.Keyspace, error) {
+			return ks, nil
+		},
+		UpdateSettingsFn: func(ctx context.Context, req *ps.UpdateKeyspaceSettingsRequest) (*ps.Keyspace, error) {
+			c.Assert(req.Throttler, qt.Not(qt.IsNil))
+			c.Assert(req.Throttler.Enabled, qt.IsNil)
+			c.Assert(*req.Throttler.Threshold, qt.Equals, 10.0)
+
+			return ks, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: org,
+		},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{
+				Keyspaces: svc,
+			}, nil
+		},
+	}
+
+	cmd := UpdateSettingsCmd(ch)
+	cmd.SetArgs([]string{db, branch, keyspace, "--throttler-threshold=10"})
+	err := cmd.Execute()
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.UpdateSettingsFnInvoked, qt.IsTrue)
+}
+
 func TestKeyspace_UpdateSettingsCmd_DisableThrottler(t *testing.T) {
 	c := qt.New(t)
 
@@ -641,7 +693,7 @@ func TestKeyspace_UpdateSettingsCmd_DisableThrottler(t *testing.T) {
 		Name:      keyspace,
 		CreatedAt: ts,
 		UpdatedAt: ts,
-		Throttler: &ps.KeyspaceThrottler{Enabled: true, Threshold: &threshold},
+		Throttler: &ps.KeyspaceThrottler{Enabled: boolPtr(true), Threshold: &threshold},
 	}
 
 	updatedKs := &ps.Keyspace{
@@ -649,7 +701,7 @@ func TestKeyspace_UpdateSettingsCmd_DisableThrottler(t *testing.T) {
 		Name:      keyspace,
 		CreatedAt: ts,
 		UpdatedAt: ts,
-		Throttler: &ps.KeyspaceThrottler{Enabled: false, Threshold: &threshold},
+		Throttler: &ps.KeyspaceThrottler{Enabled: boolPtr(false), Threshold: &threshold},
 	}
 
 	svc := &mock.KeyspacesService{
@@ -658,7 +710,8 @@ func TestKeyspace_UpdateSettingsCmd_DisableThrottler(t *testing.T) {
 		},
 		UpdateSettingsFn: func(ctx context.Context, req *ps.UpdateKeyspaceSettingsRequest) (*ps.Keyspace, error) {
 			c.Assert(req.Throttler, qt.Not(qt.IsNil))
-			c.Assert(req.Throttler.Enabled, qt.Equals, false)
+			c.Assert(req.Throttler.Enabled, qt.Not(qt.IsNil))
+			c.Assert(*req.Throttler.Enabled, qt.Equals, false)
 			c.Assert(req.Throttler.Threshold, qt.Not(qt.IsNil))
 			c.Assert(*req.Throttler.Threshold, qt.Equals, 5.0)
 
@@ -709,7 +762,7 @@ func TestKeyspace_UpdateSettingsCmd_ThrottlerThresholdOnly(t *testing.T) {
 		Name:      keyspace,
 		CreatedAt: ts,
 		UpdatedAt: ts,
-		Throttler: &ps.KeyspaceThrottler{Enabled: true, Threshold: &initial},
+		Throttler: &ps.KeyspaceThrottler{Enabled: boolPtr(true), Threshold: &initial},
 	}
 
 	updatedKs := &ps.Keyspace{
@@ -717,7 +770,7 @@ func TestKeyspace_UpdateSettingsCmd_ThrottlerThresholdOnly(t *testing.T) {
 		Name:      keyspace,
 		CreatedAt: ts,
 		UpdatedAt: ts,
-		Throttler: &ps.KeyspaceThrottler{Enabled: true, Threshold: &updated},
+		Throttler: &ps.KeyspaceThrottler{Enabled: boolPtr(true), Threshold: &updated},
 	}
 
 	svc := &mock.KeyspacesService{
@@ -726,7 +779,8 @@ func TestKeyspace_UpdateSettingsCmd_ThrottlerThresholdOnly(t *testing.T) {
 		},
 		UpdateSettingsFn: func(ctx context.Context, req *ps.UpdateKeyspaceSettingsRequest) (*ps.Keyspace, error) {
 			// Changing only the threshold must not disable the throttler.
-			c.Assert(req.Throttler.Enabled, qt.Equals, true)
+			c.Assert(req.Throttler.Enabled, qt.Not(qt.IsNil))
+			c.Assert(*req.Throttler.Enabled, qt.Equals, true)
 			c.Assert(*req.Throttler.Threshold, qt.Equals, 10.0)
 
 			return updatedKs, nil

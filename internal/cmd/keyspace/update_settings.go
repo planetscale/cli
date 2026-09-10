@@ -97,7 +97,7 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 				}
 
 				if cmd.Flags().Changed("throttler-enabled") {
-					updateReq.Throttler.Enabled = flags.throttlerEnabled
+					updateReq.Throttler.Enabled = &flags.throttlerEnabled
 				}
 
 				if cmd.Flags().Changed("throttler-threshold") {
@@ -197,7 +197,12 @@ func updateInteractive(ctx context.Context, ch *cmdutil.Helper, updateReq *ps.Up
 	}
 
 	if updateReq.Throttler == nil {
-		updateReq.Throttler = &ps.KeyspaceThrottler{Enabled: true}
+		updateReq.Throttler = &ps.KeyspaceThrottler{}
+	}
+
+	throttlerEnabled := true
+	if updateReq.Throttler.Enabled != nil {
+		throttlerEnabled = *updateReq.Throttler.Enabled
 	}
 
 	throttlerThreshold := "5"
@@ -244,7 +249,7 @@ func updateInteractive(ctx context.Context, ch *cmdutil.Helper, updateReq *ps.Up
 			huh.NewConfirm().
 				Title("Enable the throttler?").
 				Description("Pauses schema migrations and VReplication workflows when replication lag rises above the threshold.").
-				Value(&updateReq.Throttler.Enabled),
+				Value(&throttlerEnabled),
 
 			huh.NewInput().
 				Title("Replication lag threshold (seconds)").
@@ -271,6 +276,7 @@ func updateInteractive(ctx context.Context, ch *cmdutil.Helper, updateReq *ps.Up
 	if err != nil {
 		return err
 	}
+	updateReq.Throttler.Enabled = &throttlerEnabled
 	updateReq.Throttler.Threshold = &threshold
 
 	ks, err := updateKeyspaceSettings(ctx, client, updateReq)

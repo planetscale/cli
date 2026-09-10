@@ -86,7 +86,7 @@ func toKeyspaceSettings(ks *ps.Keyspace) *KeyspaceSettings {
 
 	if ks.Throttler != nil {
 		settings.Throttler = Throttler{
-			Enabled:   ks.Throttler.Enabled,
+			Enabled:   ks.Throttler.Enabled != nil && *ks.Throttler.Enabled,
 			Threshold: "not set",
 		}
 		if ks.Throttler.Threshold != nil {
