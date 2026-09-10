@@ -2,10 +2,14 @@ package sqlquery
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/config"
+	"github.com/planetscale/cli/internal/mock"
+	ps "github.com/planetscale/cli/internal/planetscale"
+	"github.com/planetscale/cli/internal/printer"
 )
 
 func TestIsReadQuery(t *testing.T) {
@@ -109,5 +113,64 @@ func TestExecuteValidation(t *testing.T) {
 				t.Fatalf("error = %q, want %q", err.Error(), tt.wantErr)
 			}
 		})
+	}
+}
+
+func TestOpenPostgresCleansUpRoleWhenReadinessWaitIsCanceled(t *testing.T) {
+	getCalls := 0
+	deleteCalls := 0
+
+	roles := &mock.PostgresRolesService{
+		CreateFn: func(_ context.Context, req *ps.CreatePostgresRoleRequest) (*ps.PostgresRole, error) {
+			if req.Organization != "org" || req.Database != "database" || req.Branch != "main" {
+				t.Fatalf("unexpected create request: %+v", req)
+			}
+			return &ps.PostgresRole{ID: "role-id", Ready: false}, nil
+		},
+		GetFn: func(_ context.Context, req *ps.GetPostgresRoleRequest) (*ps.PostgresRole, error) {
+			getCalls++
+			t.Fatalf("unexpected readiness request: %+v", req)
+			return nil, nil
+		},
+		DeleteFn: func(_ context.Context, req *ps.DeletePostgresRoleRequest) error {
+			deleteCalls++
+			if req.Organization != "org" || req.Database != "database" || req.Branch != "main" || req.RoleId != "role-id" {
+				t.Fatalf("unexpected delete request: %+v", req)
+			}
+			return nil
+		},
+	}
+
+	format := printer.JSON
+	ch := &cmdutil.Helper{
+		Printer: printer.NewPrinter(&format),
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{PostgresRoles: roles}, nil
+		},
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+
+	db, cleanup, err := openPostgres(ctx, ch, Options{
+		Organization: "org",
+		Database:     "database",
+		Branch:       "main",
+	}, "postgres", cmdutil.ReaderRole)
+
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("error = %v, want context cancellation", err)
+	}
+	if db != nil {
+		t.Fatalf("db = %v, want nil", db)
+	}
+	if cleanup != nil {
+		t.Fatal("cleanup is not nil")
+	}
+	if getCalls != 0 {
+		t.Fatalf("readiness checks = %d, want 0", getCalls)
+	}
+	if deleteCalls != 1 {
+		t.Fatalf("role deletions = %d, want 1", deleteCalls)
 	}
 }

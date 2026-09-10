@@ -25,15 +25,6 @@ type Keyspace struct {
 	VReplicationFlags                *VReplicationFlags                `json:"vreplication_flags"`
 	ReplicationDurabilityConstraints *ReplicationDurabilityConstraints `json:"replication_durability_constraints"`
 	ReadOnlyRegions                  []*ReadOnlyRegionKeyspace         `json:"read_only_regions"`
-	DiskAutoscaling                  *DiskAutoscaling                  `json:"disk_autoscaling"`
-}
-
-// DiskAutoscaling configures how a keyspace's dedicated disks autoscale.
-type DiskAutoscaling struct {
-	// Strategy is the disk autoscaling strategy: "grow" or "disable".
-	Strategy string `json:"strategy"`
-	// StorageLimitBytes is the maximum size in bytes disks may autoscale to.
-	StorageLimitBytes int64 `json:"storage_limit_bytes"`
 }
 
 type ReadOnlyRegionKeyspace struct {
@@ -183,14 +174,6 @@ type UpdateKeyspaceSettingsRequest struct {
 	Keyspace                         string                            `json:"-"`
 	ReplicationDurabilityConstraints *ReplicationDurabilityConstraints `json:"replication_durability_constraints,omitempty"`
 	VReplicationFlags                *VReplicationFlags                `json:"vreplication_flags,omitempty"`
-	DiskAutoscaling                  *DiskAutoscalingUpdate            `json:"disk_autoscaling,omitempty"`
-}
-
-// DiskAutoscalingUpdate is the request body for changing a keyspace's disk
-// autoscaling settings. Only the fields that are set are sent to the API.
-type DiskAutoscalingUpdate struct {
-	Strategy          *string `json:"strategy,omitempty"`
-	StorageLimitBytes *int64  `json:"storage_limit_bytes,omitempty"`
 }
 
 type ReplicationDurabilityConstraints struct {

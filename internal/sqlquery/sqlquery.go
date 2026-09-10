@@ -120,7 +120,7 @@ func Execute(ctx context.Context, ch *cmdutil.Helper, opts Options) (*Result, er
 	switch string(dbInfo.Kind) {
 	case "mysql":
 		outcome, err = queryMySQL(ctx, ch, opts, role)
-	case "postgresql", "horizon":
+	case "postgresql", "horizon", "neki":
 		pgDB := opts.PostgresDB
 		if pgDB == "" {
 			pgDB = "postgres"
@@ -279,6 +279,16 @@ func openPostgres(ctx context.Context, ch *cmdutil.Helper, opts Options, pgDB st
 		cleanupCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		_ = pgRole.Cleanup(cleanupCtx, successor)
+	}
+
+	if !pgRole.Role.Ready {
+		end := ch.Printer.PrintProgress("Waiting for role to become ready...")
+		err = pgRole.WaitUntilReady(ctx)
+		end()
+		if err != nil {
+			cleanupRole()
+			return nil, nil, err
+		}
 	}
 
 	username := pgRole.Role.Username

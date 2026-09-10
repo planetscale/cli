@@ -142,6 +142,18 @@ func RequiredArgs(reqArgs ...string) cobra.PositionalArgs {
 	}
 }
 
+func ExactArgs(reqArgs ...string) cobra.PositionalArgs {
+	required := RequiredArgs(reqArgs...)
+
+	return func(cmd *cobra.Command, args []string) error {
+		if err := required(cmd, args); err != nil {
+			return err
+		}
+
+		return cobra.ExactArgs(len(reqArgs))(cmd, args)
+	}
+}
+
 // CheckAuthentication checks whether the user is authenticated and returns a
 // actionable error message.
 func CheckAuthentication(cfg *config.Config) func(cmd *cobra.Command, args []string) error {
@@ -394,6 +406,177 @@ func DeployRequestBranchToNumber(ctx context.Context, client *ps.Client, organiz
 
 func ToClusterSizeSlug(c string) string {
 	return strings.ReplaceAll(c, "_", "-")
+}
+
+// ToSizeSKUName converts a user-facing size slug (PS-10, NKR-5) to the API
+// SKU name (PS_10, NKR_5).
+func ToSizeSKUName(c string) string {
+	return strings.ReplaceAll(c, "-", "_")
+}
+
+const (
+	ConfigProfileSizeFlagHelp = "For Neki backup restores, size and replica count for one configuration profile as name=<profile>[,cluster-size=<size>][,replicas=<n>]. Repeatable. Omitted profiles inherit the source. List names with 'pscale branch config-profile list' on the source branch."
+	RouterSizeFlagHelp        = "For Neki backup restores, size and replica count for one router as name=<router>[,size=<sku>][,replicas-per-cell=<n>]. Repeatable. Omitted routers inherit the source. List names with 'pscale branch router list' on the source branch."
+)
+
+// EnsureNekiRestoreSizing rejects --config-profile/--router unless this is a Neki backup restore.
+func EnsureNekiRestoreSizing(kind ps.DatabaseEngine, restoring, seedData, hasFlags bool) error {
+	if !hasFlags {
+		return nil
+	}
+	if kind != ps.DatabaseEngineNeki {
+		return fmt.Errorf("--config-profile and --router are only supported for Neki backup restores")
+	}
+	if !restoring {
+		return fmt.Errorf("--config-profile and --router can only be used when restoring a backup")
+	}
+	if seedData {
+		return fmt.Errorf("--config-profile and --router are not supported with --seed-data")
+	}
+	return nil
+}
+
+// ParseConfigurationProfileSizes parses repeatable --config-profile flags.
+func ParseConfigurationProfileSizes(raw []string) ([]ps.ConfigurationProfileSize, error) {
+	if len(raw) == 0 {
+		return nil, nil
+	}
+	out := make([]ps.ConfigurationProfileSize, 0, len(raw))
+	seen := make(map[string]struct{}, len(raw))
+	for _, s := range raw {
+		entry, err := parseConfigurationProfileSize(s)
+		if err != nil {
+			return nil, err
+		}
+		if _, ok := seen[entry.Name]; ok {
+			return nil, fmt.Errorf("duplicate --config-profile name %q", entry.Name)
+		}
+		seen[entry.Name] = struct{}{}
+		out = append(out, entry)
+	}
+	return out, nil
+}
+
+func parseConfigurationProfileSize(s string) (ps.ConfigurationProfileSize, error) {
+	var entry ps.ConfigurationProfileSize
+	hasOverride := false
+	for part := range strings.SplitSeq(s, ",") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		k, v, ok := strings.Cut(part, "=")
+		if !ok {
+			return entry, fmt.Errorf("invalid --config-profile %q: expected name=<profile>[,cluster-size=<size>][,replicas=<n>]", s)
+		}
+		k = strings.TrimSpace(k)
+		v = strings.TrimSpace(v)
+		switch k {
+		case "name":
+			entry.Name = v
+		case "cluster-size":
+			if v == "" {
+				return entry, fmt.Errorf("invalid --config-profile %q: cluster-size must not be empty", s)
+			}
+			entry.ClusterSize = ToSizeSKUName(v)
+			hasOverride = true
+		case "replicas":
+			n, err := strconv.Atoi(v)
+			if err != nil {
+				return entry, fmt.Errorf("invalid --config-profile %q: replicas must be an integer", s)
+			}
+			entry.Replicas = &n
+			hasOverride = true
+		default:
+			return entry, fmt.Errorf("unknown --config-profile field %q in %q: valid fields are name, cluster-size, replicas", k, s)
+		}
+	}
+	if entry.Name == "" {
+		return entry, fmt.Errorf("--config-profile %q is missing required field name", s)
+	}
+	if !hasOverride {
+		return entry, fmt.Errorf("--config-profile %q must set cluster-size and/or replicas", s)
+	}
+	return entry, nil
+}
+
+// ParseRouterSizes parses repeatable --router flags.
+func ParseRouterSizes(raw []string) ([]ps.RouterSize, error) {
+	if len(raw) == 0 {
+		return nil, nil
+	}
+	out := make([]ps.RouterSize, 0, len(raw))
+	seen := make(map[string]struct{}, len(raw))
+	for _, s := range raw {
+		entry, err := parseRouterSize(s)
+		if err != nil {
+			return nil, err
+		}
+		if _, ok := seen[entry.Name]; ok {
+			return nil, fmt.Errorf("duplicate --router name %q", entry.Name)
+		}
+		seen[entry.Name] = struct{}{}
+		out = append(out, entry)
+	}
+	return out, nil
+}
+
+func parseRouterSize(s string) (ps.RouterSize, error) {
+	var entry ps.RouterSize
+	hasOverride := false
+	for part := range strings.SplitSeq(s, ",") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		k, v, ok := strings.Cut(part, "=")
+		if !ok {
+			return entry, fmt.Errorf("invalid --router %q: expected name=<router>[,size=<sku>][,replicas-per-cell=<n>]", s)
+		}
+		k = strings.TrimSpace(k)
+		v = strings.TrimSpace(v)
+		switch k {
+		case "name":
+			entry.Name = v
+		case "size":
+			if v == "" {
+				return entry, fmt.Errorf("invalid --router %q: size must not be empty", s)
+			}
+			entry.RouterSize = ToSizeSKUName(v)
+			hasOverride = true
+		case "replicas-per-cell":
+			n, err := strconv.Atoi(v)
+			if err != nil {
+				return entry, fmt.Errorf("invalid --router %q: replicas-per-cell must be an integer", s)
+			}
+			entry.ReplicasPerCell = &n
+			hasOverride = true
+		default:
+			return entry, fmt.Errorf("unknown --router field %q in %q: valid fields are name, size, replicas-per-cell", k, s)
+		}
+	}
+	if entry.Name == "" {
+		return entry, fmt.Errorf("--router %q is missing required field name", s)
+	}
+	if !hasOverride {
+		return entry, fmt.Errorf("--router %q must set size and/or replicas-per-cell", s)
+	}
+	return entry, nil
+}
+
+// ApplyNekiRestoreSizing copies parsed --config-profile/--router flags onto a branch create request.
+func ApplyNekiRestoreSizing(req *ps.CreatePostgresBranchRequest, configProfiles, routers []string) error {
+	profiles, err := ParseConfigurationProfileSizes(configProfiles)
+	if err != nil {
+		return err
+	}
+	routerSizes, err := ParseRouterSizes(routers)
+	if err != nil {
+		return err
+	}
+	req.ConfigurationProfileSizes = profiles
+	req.RouterSizes = routerSizes
+	return nil
 }
 
 func SnakeToSentenceCase(s string) string {

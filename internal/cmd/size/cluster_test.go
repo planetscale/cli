@@ -37,11 +37,14 @@ func TestSizeCluster_ListCmd_DefaultShowsAll(t *testing.T) {
 		ListClusterSKUsFn: func(ctx context.Context, req *ps.ListOrganizationClusterSKUsRequest, opts ...ps.ListOption) ([]*ps.ClusterSKU, error) {
 			c.Assert(req.Organization, qt.Equals, org)
 			callCount++
-			// First call is MySQL (no WithPostgreSQL), second is PostgreSQL (with WithPostgreSQL)
-			if callCount == 1 {
+			switch callCount {
+			case 1:
 				return mysqlSKUs, nil
+			case 2:
+				return postgresSKUs, nil
+			default:
+				return postgresSKUs, nil
 			}
-			return postgresSKUs, nil
 		},
 	}
 
@@ -62,7 +65,7 @@ func TestSizeCluster_ListCmd_DefaultShowsAll(t *testing.T) {
 
 	c.Assert(err, qt.IsNil)
 	c.Assert(svc.ListClusterSKUsFnInvoked, qt.IsTrue)
-	c.Assert(callCount, qt.Equals, 2) // Should make 2 calls (MySQL and PostgreSQL)
+	c.Assert(callCount, qt.Equals, 3) // MySQL, PostgreSQL, and Neki
 
 	// Verify output contains clusters from both engines
 	c.Assert(buf.String(), qt.Contains, "PS-10")
@@ -109,6 +112,53 @@ func TestSizeCluster_ListCmd_PostgreSQL(t *testing.T) {
 
 	// PostgreSQL clusters use ClusterSKUSingleEngine type (no engine column, has configuration and replicas)
 	// Each cluster shows twice: once as HA and once as single node
+	res := []*ClusterSKUSingleEngine{
+		{Configuration: "highly available", Replicas: "2", orig: orig[0], rate: orig[0].Rate},
+		{Configuration: "single node", Replicas: "0", orig: orig[0], rate: orig[0].ReplicaRate},
+	}
+
+	c.Assert(buf.String(), qt.JSONEquals, res)
+}
+
+func TestSizeCluster_ListCmd_Neki(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+
+	orig := []*ps.ClusterSKU{
+		{Name: "PS-10", Enabled: true, Rate: testutil.Pointer[int64](39), ReplicaRate: testutil.Pointer[int64](13)},
+	}
+	svc := &mock.OrganizationsService{
+		ListClusterSKUsFn: func(ctx context.Context, req *ps.ListOrganizationClusterSKUsRequest, opts ...ps.ListOption) ([]*ps.ClusterSKU, error) {
+			c.Assert(req.Organization, qt.Equals, org)
+			return orig, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: org,
+		},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{
+				Organizations: svc,
+			}, nil
+		},
+	}
+
+	cmd := ListCmd(ch)
+	cmd.SetArgs([]string{"--engine", "neki"})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.ListClusterSKUsFnInvoked, qt.IsTrue)
+
 	res := []*ClusterSKUSingleEngine{
 		{Configuration: "highly available", Replicas: "2", orig: orig[0], rate: orig[0].Rate},
 		{Configuration: "single node", Replicas: "0", orig: orig[0], rate: orig[0].ReplicaRate},
@@ -232,6 +282,7 @@ func TestParseDatabaseEngine(t *testing.T) {
 		{input: "mysql", wantEngine: ps.DatabaseEngineMySQL, wantShowAll: false, wantErr: false},
 		{input: "postgresql", wantEngine: ps.DatabaseEnginePostgres, wantShowAll: false, wantErr: false},
 		{input: "postgres", wantEngine: ps.DatabaseEnginePostgres, wantShowAll: false, wantErr: false},
+		{input: "neki", wantEngine: ps.DatabaseEngineNeki, wantShowAll: false, wantErr: false},
 		{input: "invalid", wantEngine: ps.DatabaseEngineMySQL, wantShowAll: false, wantErr: true},
 	}
 

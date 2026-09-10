@@ -57,8 +57,8 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 				createReq.MajorVersion = flags.majorVersion
 			}
 
-			if (cmd.Flags().Changed("min-storage") || cmd.Flags().Changed("max-storage")) && engine != ps.DatabaseEnginePostgres {
-				return fmt.Errorf("--min-storage and --max-storage are only supported for PostgreSQL databases")
+			if (cmd.Flags().Changed("min-storage") || cmd.Flags().Changed("max-storage")) && engine != ps.DatabaseEnginePostgres && engine != ps.DatabaseEngineNeki {
+				return fmt.Errorf("--min-storage and --max-storage are only supported for Postgres or Neki databases")
 			}
 
 			if cmd.Flags().Changed("min-storage") || cmd.Flags().Changed("max-storage") {
@@ -127,17 +127,18 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	cmd.Flags().StringVar(&createReq.ClusterSize, "cluster-size", "", "cluster size for Scaler Pro databases. Use `pscale size cluster list` to see the valid sizes.")
 
-	flags.replicas = cmd.Flags().Int("replicas", 0, "number of replicas for postgresql database. 0 for single node, 2+ for HA.")
+	flags.replicas = cmd.Flags().Int("replicas", 0, "number of replicas for Postgres or Neki databases. Use 0 for single-node Postgres or 2 or more for HA.")
 
-	cmd.Flags().StringVar(&flags.engine, "engine", string(ps.DatabaseEngineMySQL), "The database engine for the database. Supported values: mysql, postgresql. Defaults to mysql.")
+	cmd.Flags().StringVar(&flags.engine, "engine", string(ps.DatabaseEngineMySQL), "The database engine for the database. Supported values: mysql, postgresql, neki. Defaults to mysql.")
 	cmd.RegisterFlagCompletionFunc("engine", func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
 		return []cobra.Completion{
 			cobra.CompletionWithDesc("mysql", "A Vitess database"),
 			cobra.CompletionWithDesc("postgresql", "The fastest cloud Postgres"),
+			cobra.CompletionWithDesc("neki", "Sharded PostgreSQL"),
 		}, cobra.ShellCompDirectiveNoFileComp
 	})
 
-	cmd.Flags().StringVar(&flags.majorVersion, "major-version", "", "For PostgreSQL databases, the PostgreSQL major version to use for the database. Defaults to the latest available major version.")
+	cmd.Flags().StringVar(&flags.majorVersion, "major-version", "", "For Postgres or Neki databases, the Postgres major version to use. Defaults to the latest available major version.")
 	cmd.RegisterFlagCompletionFunc("major-version", func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
 		return []cobra.Completion{
 			cobra.CompletionWithDesc("17", "PostgreSQL 17"),
@@ -211,8 +212,10 @@ func parseDatabaseEngine(engine string) (ps.DatabaseEngine, error) {
 		return ps.DatabaseEngineMySQL, nil
 	case "postgresql", "postgres":
 		return ps.DatabaseEnginePostgres, nil
+	case "neki":
+		return ps.DatabaseEngineNeki, nil
 	default:
-		return ps.DatabaseEngineMySQL, fmt.Errorf("invalid database engine %q, supported values: mysql, postgresql", engine)
+		return ps.DatabaseEngineMySQL, fmt.Errorf("invalid database engine %q, supported values: mysql, postgresql, neki", engine)
 	}
 }
 
@@ -221,6 +224,26 @@ func waitUntilReady(ctx context.Context, client *ps.Client, printer *printer.Pri
 	defer cancel()
 
 	startTime := time.Now()
+	poll := func() *ps.Database {
+		resp, err := client.Databases.Get(ctx, getReq)
+		if err != nil {
+			if debug {
+				printer.Printf("fetching database %s failed: %s", getReq.Database, err)
+			}
+			return nil
+		}
+
+		if resp.State == ps.DatabaseReady {
+			return resp
+		}
+
+		return nil
+	}
+
+	if database := poll(); database != nil {
+		return database, nil
+	}
+
 	var ticker *time.Ticker
 
 	// Start with 5-second interval for the first minute
@@ -232,16 +255,8 @@ func waitUntilReady(ctx context.Context, client *ps.Client, printer *printer.Pri
 		case <-ctx.Done():
 			return nil, errors.New("database creation timed out")
 		case <-ticker.C:
-			resp, err := client.Databases.Get(ctx, getReq)
-			if err != nil {
-				if debug {
-					printer.Printf("fetching database %s failed: %s", getReq.Database, err)
-				}
-				continue
-			}
-
-			if resp.State == ps.DatabaseReady {
-				return resp, nil
+			if database := poll(); database != nil {
+				return database, nil
 			}
 
 			elapsed := time.Since(startTime)

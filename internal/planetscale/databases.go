@@ -13,6 +13,7 @@ type DatabaseEngine string
 const (
 	DatabaseEngineMySQL    DatabaseEngine = "mysql"
 	DatabaseEnginePostgres DatabaseEngine = "postgresql"
+	DatabaseEngineNeki     DatabaseEngine = "neki"
 )
 
 // StorageConfig represents storage size configuration for a database or branch.

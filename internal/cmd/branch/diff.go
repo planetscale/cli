@@ -21,7 +21,7 @@ func DiffCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "diff <database> <branch>",
-		Short: "Show the diff of a branch",
+		Short: "Show the schema diff of a MySQL branch",
 		Args:  cmdutil.RequiredArgs("database", "branch"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()

@@ -30,6 +30,7 @@ type shellFlags struct {
 	dbName     string
 	role       string
 	replica    bool
+	router     string
 }
 
 func ShellCmd(ch *cmdutil.Helper, sigc chan os.Signal, signals ...os.Signal) *cobra.Command {
@@ -115,14 +116,14 @@ to connect to using --db-name (or as a third argument):
 				if err != nil {
 					return err
 				}
-			case "postgresql", "horizon":
+			case "postgresql", "horizon", "neki":
 				clientPath, err = cmdutil.PostgreSQLClientPath()
 				if err != nil {
 					return err
 				}
 				isPostgreSQL = true
 			default:
-				return fmt.Errorf("unsupported database kind: %s. Only 'mysql' and 'postgresql' are supported", dbInfo.Kind)
+				return fmt.Errorf("unsupported database kind: %s. Only 'mysql', 'postgresql', and 'neki' are supported", dbInfo.Kind)
 			}
 
 			var branch string
@@ -191,7 +192,7 @@ to connect to using --db-name (or as a third argument):
 					dbName = dbNamePositional
 				}
 
-				return startShellForPostgres(ctx, ch, client, database, branch, dbBranch, clientPath, role, flags, dbName, sigc, signals, runForeground)
+				return startShellForPostgres(ctx, ch, client, database, branch, dbBranch, dbInfo.Kind, clientPath, role, flags, dbName, sigc, signals, runForeground)
 			}
 
 			if flags.dbName != "" || dbNamePositional != "" {
@@ -210,6 +211,7 @@ to connect to using --db-name (or as a third argument):
 	cmd.PersistentFlags().StringVar(&flags.role, "role",
 		"", "Role defines the access level, allowed values are: reader, writer, readwriter, admin. Defaults to 'reader' for replica passwords, otherwise defaults to 'admin'.")
 	cmd.Flags().BoolVar(&flags.replica, "replica", false, "When enabled, the password will route all reads to the branch's primary replicas and all read-only regions.")
+	cmd.Flags().StringVar(&flags.router, "router", "", "Connect through the named router group. Only supported for Neki databases.")
 	cmd.Flags().StringVar(&flags.dbName, "db-name", "",
 		"Postgres logical database name to connect to (default: postgres). Only supported for Postgres databases.")
 
@@ -235,6 +237,7 @@ type postgresql struct {
 	debug        bool
 	printer      *printer.Printer
 	password     string
+	pgOptions    string
 }
 
 // Run runs the `mysql` client with the given arguments.
@@ -276,6 +279,9 @@ func (p *postgresql) Run(ctx context.Context, sigc chan os.Signal, signals []os.
 		fmt.Sprintf("PSQL_HISTORY=%s", p.historyFile),
 		fmt.Sprintf("PGPASSWORD=%s", p.password),
 	)
+	if p.pgOptions != "" {
+		c.Env = append(c.Env, fmt.Sprintf("PGOPTIONS=%s", p.pgOptions))
+	}
 
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr
@@ -290,6 +296,33 @@ func (p *postgresql) Run(ctx context.Context, sigc chan os.Signal, signals []os.
 	}
 
 	return c.Run()
+}
+
+// shellUsername applies routing suffixes to the role username. Neki branches
+// select router groups with a |<name> suffix; replica reads on Neki use
+// PGOPTIONS (see shellPgOptions) instead of the |replica suffix.
+func shellUsername(username string, replica bool, router string, kind ps.DatabaseEngine) (string, error) {
+	if router != "" && kind != ps.DatabaseEngineNeki {
+		return "", errors.New("--router is only supported for Neki databases")
+	}
+	if replica && kind != ps.DatabaseEngineNeki {
+		username += "|replica"
+	}
+	if router != "" {
+		username += "|" + router
+	}
+	return username, nil
+}
+
+// nekiReplicaOptions routes a Neki connection to replicas via the psql
+// PGOPTIONS environment variable.
+const nekiReplicaOptions = "-c __neki.target=REPLICA"
+
+func shellPgOptions(replica bool, kind ps.DatabaseEngine) string {
+	if replica && kind == ps.DatabaseEngineNeki {
+		return nekiReplicaOptions
+	}
+	return ""
 }
 
 func formatBranch(database string, branch *ps.DatabaseBranch) string {
@@ -338,7 +371,7 @@ func historyFilePath(org, db, branch string) string {
 	return historyFile
 }
 
-func startShellForPostgres(ctx context.Context, ch *cmdutil.Helper, client *ps.Client, database, branch string, dbBranch *ps.DatabaseBranch, clientPath string, role cmdutil.PasswordRole, flags shellFlags, dbName string, sigc chan os.Signal, signals []os.Signal, runForeground bool) error {
+func startShellForPostgres(ctx context.Context, ch *cmdutil.Helper, client *ps.Client, database, branch string, dbBranch *ps.DatabaseBranch, kind ps.DatabaseEngine, clientPath string, role cmdutil.PasswordRole, flags shellFlags, dbName string, sigc chan os.Signal, signals []os.Signal, runForeground bool) error {
 	// Postgres connects directly, no local proxy needed
 	if flags.localAddr != "" {
 		return errors.New("--local-addr flag is not supported for Postgres databases")
@@ -360,12 +393,6 @@ func startShellForPostgres(ctx context.Context, ch *cmdutil.Helper, client *ps.C
 		return cmdutil.HandleError(err)
 	}
 
-	username := pgRole.Role.Username
-	if flags.replica {
-		username = username + "|replica"
-	}
-	password := pgRole.Role.Password
-
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
@@ -374,6 +401,21 @@ func startShellForPostgres(ctx context.Context, ch *cmdutil.Helper, client *ps.C
 			ch.Printer.Println("failed to delete role: ", err)
 		}
 	}()
+
+	if !pgRole.Role.Ready {
+		end := ch.Printer.PrintProgress("Waiting for role to become ready...")
+		err = pgRole.WaitUntilReady(ctx)
+		end()
+		if err != nil {
+			return cmdutil.HandleError(err)
+		}
+	}
+
+	username, err := shellUsername(pgRole.Role.Username, flags.replica, flags.router, kind)
+	if err != nil {
+		return err
+	}
+	password := pgRole.Role.Password
 
 	remoteAddr := flags.remoteAddr
 	if remoteAddr == "" {
@@ -405,6 +447,7 @@ func startShellForPostgres(ctx context.Context, ch *cmdutil.Helper, client *ps.C
 		debug:        ch.Debug(),
 		printer:      ch.Printer,
 		password:     password,
+		pgOptions:    shellPgOptions(flags.replica, kind),
 	}
 
 	err = psql.Run(ctx, sigc, signals, runForeground, psqlArgs...)

@@ -14,17 +14,19 @@ import (
 
 func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
-		wait          bool
-		dataBranching bool
-		region        string
-		parentBranch  string
-		clusterSize   string
-		backupID      string
-		restorePoint  string
-		majorVersion  string
-		replicas      int
-		minStorage    int64
-		maxStorage    int64
+		wait           bool
+		dataBranching  bool
+		region         string
+		parentBranch   string
+		clusterSize    string
+		backupID       string
+		restorePoint   string
+		majorVersion   string
+		replicas       int
+		minStorage     int64
+		maxStorage     int64
+		configProfiles []string
+		routers        []string
 	}
 
 	cmd := &cobra.Command{
@@ -113,12 +115,16 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			clusterSize := flags.clusterSize
-			if clusterSize == "" {
+			if clusterSize == "" && db.Kind != ps.DatabaseEngineNeki {
 				if flags.backupID != "" || flags.restorePoint != "" || flags.dataBranching {
 					clusterSize = "PS-10"
 				} else {
 					clusterSize = "PS_DEV"
 				}
+			}
+
+			if err := cmdutil.EnsureNekiRestoreSizing(db.Kind, flags.backupID != "", flags.dataBranching, len(flags.configProfiles) > 0 || len(flags.routers) > 0); err != nil {
+				return err
 			}
 
 			if db.Kind == "mysql" {
@@ -221,6 +227,10 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 					createReq.Replicas = &replicas
 				}
 
+				if err := cmdutil.ApplyNekiRestoreSizing(createReq, flags.configProfiles, flags.routers); err != nil {
+					return err
+				}
+
 				if cmd.Flags().Changed("min-storage") || cmd.Flags().Changed("max-storage") {
 					createReq.Storage = &ps.StorageConfig{}
 					if cmd.Flags().Changed("min-storage") {
@@ -282,13 +292,15 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().StringVar(&flags.region, "region", "", "Region for the branch to be created in.")
 	cmd.Flags().StringVar(&flags.backupID, "restore", "", "ID of Backup to restore into branch.")
 	cmd.Flags().StringVar(&flags.restorePoint, "restore-point", "", "For PostgreSQL databases, restore from a point-in-time recovery timestamp (e.g. 2023-01-01T00:00:00Z). Requires --restore or --from.")
-	cmd.Flags().StringVar(&flags.clusterSize, "cluster-size", "", "Cluster size for the branch. Defaults to PS_DEV for regular branches, or PS-10 for branches created from a backup or with seed-data. Use 'pscale size cluster list' to see the valid sizes.")
+	cmd.Flags().StringVar(&flags.clusterSize, "cluster-size", "", "Cluster size for the branch. Defaults to PS_DEV for regular branches, or PS-10 for branches created from a backup or with seed-data. Omitted for Neki so the API uses the database default. Use 'pscale size cluster list' to see the valid sizes.")
 	cmd.Flags().BoolVar(&flags.dataBranching, "seed-data", false, "Add seed data using the Data Branching™ feature. This branch will be created with the same resources as the base branch.")
 	cmd.Flags().BoolVar(&flags.wait, "wait", false, "Wait until the branch is ready")
 	cmd.Flags().StringVar(&flags.majorVersion, "major-version", "", "For PostgreSQL databases, the PostgreSQL major version to use for the branch. Defaults to the major version of the parent branch if it exists or the database's default branch major version. Ignored for branches restored from backups.")
 	cmd.Flags().IntVar(&flags.replicas, "replicas", 0, "Number of additional replicas for a PostgreSQL restore. 0 creates a single-node branch; omit to use the target cluster size default.")
 	cmd.Flags().Int64Var(&flags.minStorage, "min-storage", 0, "Minimum storage size in bytes")
 	cmd.Flags().Int64Var(&flags.maxStorage, "max-storage", 0, "Maximum storage size in bytes for autoscaling")
+	cmd.Flags().StringArrayVar(&flags.configProfiles, "config-profile", nil, cmdutil.ConfigProfileSizeFlagHelp)
+	cmd.Flags().StringArrayVar(&flags.routers, "router", nil, cmdutil.RouterSizeFlagHelp)
 
 	cmd.MarkFlagsMutuallyExclusive("restore", "seed-data")
 	cmd.MarkFlagsMutuallyExclusive("restore-point", "seed-data")

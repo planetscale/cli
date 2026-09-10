@@ -49,49 +49,55 @@ type Client struct {
 	// base URL for the API
 	baseURL *url.URL
 
-	AuditLogs                AuditLogsService
-	AuthAttemptExports       AuthAttemptExportsService
-	BackupPolicies           BackupPoliciesService
-	Backups                  BackupsService
-	BranchInfrastructure     BranchInfrastructureService
-	BranchMaintenance        BranchMaintenanceService
-	D1ImportNotifications    D1ImportNotificationsService
-	DatabaseBranches         DatabaseBranchesService
-	Databases                DatabasesService
-	DataImports              DataImportsService
-	DeployRequests           DeployRequestsService
-	Invoices                 InvoicesService
-	Keyspaces                KeyspacesService
-	LookupVindex             LookupVindexService
-	MaintenanceSchedules     MaintenanceSchedulesService
-	Materialize              MaterializeService
-	Metrics                  MetricsService
-	MoveTables               MoveTablesService
-	Organizations            OrganizationsService
-	OrganizationSSO          OrganizationSSOService
-	Passwords                PasswordsService
-	PaymentMethods           BillingPaymentMethodsService
-	PaymentMethodSetups      BillingPaymentMethodSetupsService
-	PlannedReparentShard     PlannedReparentShardService
-	PostgresBranches         PostgresBranchesService
-	PostgresBouncers         PostgresBouncersService
-	PostgresCIDRs            PostgresCIDRsService
-	PostgresReadOnlyReplicas PostgresReadOnlyReplicasService
-	PostgresRoles            PostgresRolesService
-	PostgresSwitchovers      PostgresSwitchoversService
-	Processlist              ProcesslistService
-	QueryInsights            QueryInsightsService
-	QueryPatterns            QueryPatternsService
-	ReadOnlyRegions          ReadOnlyRegionsService
-	Regions                  RegionsService
-	SchemaRecommendations    SchemaRecommendationService
-	ServiceTokens            ServiceTokenService
-	TrafficBudgets           TrafficBudgetsService
-	TrafficRules             TrafficRulesService
-	VDiff                    VDiffService
-	Vtctld                   VtctldService
-	Webhooks                 WebhooksService
-	Workflows                WorkflowsService
+	AuditLogs                      AuditLogsService
+	AuthAttemptExports             AuthAttemptExportsService
+	BackupPolicies                 BackupPoliciesService
+	Backups                        BackupsService
+	BranchInfrastructure           BranchInfrastructureService
+	BranchMaintenance              BranchMaintenanceService
+	D1ImportNotifications          D1ImportNotificationsService
+	DatabaseBranches               DatabaseBranchesService
+	Databases                      DatabasesService
+	DataImports                    DataImportsService
+	DeployRequests                 DeployRequestsService
+	Invoices                       InvoicesService
+	Keyspaces                      KeyspacesService
+	Logs                           LogsService
+	LookupVindex                   LookupVindexService
+	MaintenanceSchedules           MaintenanceSchedulesService
+	Materialize                    MaterializeService
+	Metrics                        MetricsService
+	MoveTables                     MoveTablesService
+	NekiAdmins                     NekiAdminsService
+	NekiRouters                    NekiRoutersService
+	NekiSidecars                   NekiSidecarsService
+	NekiShardConfigurationProfiles NekiShardConfigurationProfilesService
+	NekiShards                     NekiShardsService
+	Organizations                  OrganizationsService
+	OrganizationSSO                OrganizationSSOService
+	Passwords                      PasswordsService
+	PaymentMethods                 BillingPaymentMethodsService
+	PaymentMethodSetups            BillingPaymentMethodSetupsService
+	PlannedReparentShard           PlannedReparentShardService
+	PostgresBranches               PostgresBranchesService
+	PostgresBouncers               PostgresBouncersService
+	PostgresCIDRs                  PostgresCIDRsService
+	PostgresReadOnlyReplicas       PostgresReadOnlyReplicasService
+	PostgresRoles                  PostgresRolesService
+	PostgresSwitchovers            PostgresSwitchoversService
+	Processlist                    ProcesslistService
+	QueryInsights                  QueryInsightsService
+	QueryPatterns                  QueryPatternsService
+	ReadOnlyRegions                ReadOnlyRegionsService
+	Regions                        RegionsService
+	SchemaRecommendations          SchemaRecommendationService
+	ServiceTokens                  ServiceTokenService
+	TrafficBudgets                 TrafficBudgetsService
+	TrafficRules                   TrafficRulesService
+	VDiff                          VDiffService
+	Vtctld                         VtctldService
+	Webhooks                       WebhooksService
+	Workflows                      WorkflowsService
 }
 
 // ListOptions are options for listing responses.
@@ -150,6 +156,14 @@ func WithRates() ListOption {
 func WithPostgreSQL() ListOption {
 	return func(opt *ListOptions) error {
 		opt.URLValues.Set("postgresql", "true")
+		return nil
+	}
+}
+
+// WithNeki returns a ListOption that sets the "engine" URL parameter to neki.
+func WithNeki() ListOption {
+	return func(opt *ListOptions) error {
+		opt.URLValues.Set("engine", "neki")
 		return nil
 	}
 }
@@ -344,11 +358,17 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 	c.DeployRequests = &deployRequestsService{client: c}
 	c.Invoices = &invoicesService{client: c}
 	c.Keyspaces = &keyspacesService{client: c}
+	c.Logs = &logsService{client: c}
 	c.LookupVindex = &lookupVindexService{client: c}
 	c.MaintenanceSchedules = &maintenanceSchedulesService{client: c}
 	c.Materialize = &materializeService{client: c}
 	c.Metrics = &metricsService{client: c}
 	c.MoveTables = &moveTablesService{client: c}
+	c.NekiAdmins = &nekiAdminsService{client: c}
+	c.NekiRouters = &nekiRoutersService{client: c}
+	c.NekiSidecars = &nekiSidecarsService{client: c}
+	c.NekiShardConfigurationProfiles = &nekiShardConfigurationProfilesService{client: c}
+	c.NekiShards = &nekiShardsService{client: c}
 	c.Organizations = &organizationsService{client: c}
 	c.OrganizationSSO = &organizationSSOService{client: c}
 	c.Passwords = &passwordsService{client: c}

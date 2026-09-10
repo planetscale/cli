@@ -37,6 +37,16 @@ func TestGlobalJSONErrorInvalidUsageSkipsAuth(t *testing.T) {
 	}
 }
 
+func TestGlobalJSONErrorExtraArgumentsAreInvalidUsage(t *testing.T) {
+	resp := GlobalJSONError(errors.New("accepts 3 arg(s), received 4"))
+	if resp.Status != "action_required" {
+		t.Fatalf("status = %q", resp.Status)
+	}
+	if resp.Code() != "INVALID_USAGE" {
+		t.Fatalf("code = %q", resp.Code())
+	}
+}
+
 func TestGlobalJSONErrorOrgFlagPlacement(t *testing.T) {
 	resp := GlobalJSONError(errors.New("unknown flag: --org"))
 	if resp.Code() != "INVALID_FLAG_PLACEMENT" {

@@ -34,6 +34,12 @@ type DatabaseBranchesService struct {
 	UpdateRoutingRulesFn        func(context.Context, *ps.UpdateBranchRoutingRulesRequest) (*ps.RoutingRules, error)
 	UpdateRoutingRulesFnInvoked bool
 
+	DataTopologyFn        func(context.Context, *ps.BranchDataTopologyRequest) (*ps.DataTopology, error)
+	DataTopologyFnInvoked bool
+
+	UpdateDataTopologyFn        func(context.Context, *ps.UpdateBranchDataTopologyRequest) (*ps.DataTopology, error)
+	UpdateDataTopologyFnInvoked bool
+
 	RefreshSchemaFn        func(context.Context, *ps.RefreshSchemaRequest) error
 	RefreshSchemaFnInvoked bool
 
@@ -111,6 +117,16 @@ func (d *DatabaseBranchesService) RoutingRules(ctx context.Context, req *ps.Bran
 func (d *DatabaseBranchesService) UpdateRoutingRules(ctx context.Context, req *ps.UpdateBranchRoutingRulesRequest) (*ps.RoutingRules, error) {
 	d.UpdateRoutingRulesFnInvoked = true
 	return d.UpdateRoutingRulesFn(ctx, req)
+}
+
+func (d *DatabaseBranchesService) DataTopology(ctx context.Context, req *ps.BranchDataTopologyRequest) (*ps.DataTopology, error) {
+	d.DataTopologyFnInvoked = true
+	return d.DataTopologyFn(ctx, req)
+}
+
+func (d *DatabaseBranchesService) UpdateDataTopology(ctx context.Context, req *ps.UpdateBranchDataTopologyRequest) (*ps.DataTopology, error) {
+	d.UpdateDataTopologyFnInvoked = true
+	return d.UpdateDataTopologyFn(ctx, req)
 }
 
 func (d *DatabaseBranchesService) RefreshSchema(ctx context.Context, req *ps.RefreshSchemaRequest) error {

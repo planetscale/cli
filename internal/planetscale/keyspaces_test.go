@@ -3,7 +3,6 @@ package planetscale
 import (
 	"context"
 	"encoding/json"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -479,46 +478,4 @@ func TestKeyspaces_UpdateSettings(t *testing.T) {
 	c.Assert(keyspace.VReplicationFlags.AllowNoBlobBinlogRowImage, qt.Equals, true)
 	c.Assert(keyspace.VReplicationFlags.VPlayerBatching, qt.Equals, true)
 	c.Assert(keyspace.ReplicationDurabilityConstraints.Strategy, qt.Equals, "maximum")
-}
-
-func TestKeyspaces_UpdateSettingsDiskAutoscaling(t *testing.T) {
-	c := qt.New(t)
-
-	var body []byte
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var err error
-		body, err = io.ReadAll(r.Body)
-		c.Assert(err, qt.IsNil)
-
-		w.WriteHeader(200)
-		out := `{"type":"Keyspace","id":"thisisanid","name":"planetscale","shards":2,"sharded":true,"disk_autoscaling":{"strategy":"grow","storage_limit_bytes":8796093022208}}`
-		_, err = w.Write([]byte(out))
-		c.Assert(err, qt.IsNil)
-		c.Assert(r.Method, qt.Equals, http.MethodPatch)
-	}))
-
-	client, err := NewClient(WithBaseURL(ts.URL))
-	c.Assert(err, qt.IsNil)
-
-	ctx := context.Background()
-
-	strategy := "grow"
-	limit := int64(8796093022208)
-
-	keyspace, err := client.Keyspaces.UpdateSettings(ctx, &UpdateKeyspaceSettingsRequest{
-		Organization: "foo",
-		Database:     "bar",
-		Branch:       "baz",
-		Keyspace:     "qux",
-		DiskAutoscaling: &DiskAutoscalingUpdate{
-			Strategy:          &strategy,
-			StorageLimitBytes: &limit,
-		},
-	})
-
-	c.Assert(err, qt.IsNil)
-	c.Assert(string(body), qt.Contains, `"disk_autoscaling":{"strategy":"grow","storage_limit_bytes":8796093022208}`)
-	c.Assert(keyspace.DiskAutoscaling, qt.IsNotNil)
-	c.Assert(keyspace.DiskAutoscaling.Strategy, qt.Equals, "grow")
-	c.Assert(keyspace.DiskAutoscaling.StorageLimitBytes, qt.Equals, int64(8796093022208))
 }

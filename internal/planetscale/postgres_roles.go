@@ -9,8 +9,9 @@ import (
 	"time"
 )
 
-// PostgresRole represents a PostgreSQL role in PlanetScale.
+// PostgresRole represents a Postgres or Neki role in PlanetScale.
 type PostgresRole struct {
+	Type            string     `json:"type"`
 	ID              string     `json:"id"`
 	Name            string     `json:"name"`
 	AccessHostURL   string     `json:"access_host_url"`
@@ -23,6 +24,7 @@ type PostgresRole struct {
 	DisabledAt      *time.Time `json:"disabled_at"`
 	ExpiresAt       *time.Time `json:"expires_at"`
 	Expired         bool       `json:"expired"`
+	Ready           bool       `json:"ready"`
 }
 
 type postgresRolesResponse struct {

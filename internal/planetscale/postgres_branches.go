@@ -33,6 +33,22 @@ type postgresBranchesResponse struct {
 	Branches []*PostgresBranch `json:"data"`
 }
 
+// ConfigurationProfileSize sizes one Neki configuration profile during a backup restore.
+// Omitted profiles inherit the source size and replica count.
+type ConfigurationProfileSize struct {
+	Name        string `json:"name"`
+	ClusterSize string `json:"cluster_size,omitempty"`
+	Replicas    *int   `json:"replicas,omitempty"`
+}
+
+// RouterSize sizes one Neki router during a backup restore.
+// Omitted routers inherit the source size and replica count.
+type RouterSize struct {
+	Name            string `json:"name"`
+	RouterSize      string `json:"router_size,omitempty"`
+	ReplicasPerCell *int   `json:"replicas_per_cell,omitempty"`
+}
+
 // CreatePostgresBranchRequest encapsulates the request to create a Postgres branch.
 type CreatePostgresBranchRequest struct {
 	Organization string         `json:"-"`
@@ -46,6 +62,10 @@ type CreatePostgresBranchRequest struct {
 	MajorVersion string         `json:"major_version,omitempty"`
 	Replicas     *int           `json:"replicas,omitempty"`
 	Storage      *StorageConfig `json:"storage,omitempty"`
+
+	// ConfigurationProfileSizes and RouterSizes apply to Neki backup restores only.
+	ConfigurationProfileSizes []ConfigurationProfileSize `json:"configuration_profile_sizes,omitempty"`
+	RouterSizes               []RouterSize               `json:"router_sizes,omitempty"`
 }
 
 // ListPostgresBranchesRequest encapsulates the request to list Postgres branches for a database.

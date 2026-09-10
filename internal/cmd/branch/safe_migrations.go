@@ -15,7 +15,7 @@ import (
 func SafeMigrationsCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "safe-migrations <command>",
-		Short: "Enable or disable safe migrations on a branch",
+		Short: "Enable or disable safe migrations on a MySQL branch",
 	}
 
 	cmd.AddCommand(EnableSafeMigrationsCmd(ch))
@@ -27,7 +27,7 @@ func SafeMigrationsCmd(ch *cmdutil.Helper) *cobra.Command {
 func EnableSafeMigrationsCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "enable <database> <branch>",
-		Short: "Enable safe migrations for a branch",
+		Short: "Enable safe migrations for a MySQL branch",
 		Args:  cmdutil.RequiredArgs("database", "branch"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -98,7 +98,7 @@ func EnableSafeMigrationsCmd(ch *cmdutil.Helper) *cobra.Command {
 func DisableSafeMigrationsCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "disable <database> <branch>",
-		Short: "Disable safe migrations for a branch",
+		Short: "Disable safe migrations for a MySQL branch",
 		Args:  cmdutil.RequiredArgs("database", "branch"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()

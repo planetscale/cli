@@ -15,6 +15,17 @@ import (
 	"github.com/spf13/cobra"
 )
 
+func TestAddCommandGroupsOmitsNeki(t *testing.T) {
+	cmd := &cobra.Command{Use: "pscale"}
+	addCommandGroups(cmd)
+
+	for _, group := range cmd.Groups() {
+		if group.ID == "neki" {
+			t.Fatal("Neki command group should live under branch, not pscale root")
+		}
+	}
+}
+
 const rootCLIHelperEnv = "PSCALE_ROOT_CLI_HELPER"
 
 func TestRootSkillFlag(t *testing.T) {

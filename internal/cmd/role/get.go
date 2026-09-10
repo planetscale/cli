@@ -85,12 +85,19 @@ func GetCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 			end()
 
-			output := toPostgresRole(role)
 			if flags.bouncer != "" {
-				output.DatabaseURL = buildPostgresConnectionURLWithDefaultPort(role.Username, role.Password, role.AccessHostURL, "6432")
+				bouncerURL := buildPostgresConnectionURLWithDefaultPort(role.Username, role.Password, role.AccessHostURL, "6432")
+				if isNekiRole(role) {
+					output := toNekiRole(role)
+					output.DatabaseURL = bouncerURL
+					return ch.Printer.PrintResource(output)
+				}
+				output := toPostgresRole(role)
+				output.DatabaseURL = bouncerURL
+				return ch.Printer.PrintResource(output)
 			}
 
-			return ch.Printer.PrintResource(output)
+			return printRole(ch.Printer, role)
 		},
 	}
 

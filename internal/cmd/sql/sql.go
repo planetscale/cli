@@ -39,7 +39,7 @@ Pass --keyspace when targeting a specific keyspace in a multi-keyspace database.
 include a shard and tablet type (mykeyspace/-80, mykeyspace/-80@replica) to pin the connection to
 one shard; enumerate shards with SHOW VITESS_SHARDS.
 
-PostgreSQL databases use --dbname (default postgres).
+Postgres or Neki databases use --dbname (default postgres).
 
 Human output prints rows as a table. Pass --vertical (or end the query with \G,
 like the mysql client) to print one column per line, which is easier to read for
@@ -96,7 +96,7 @@ Place flags after positional arguments (see Usage). --org is required:
 		"The organization for the current user")
 	cmd.Flags().StringVar(&flags.query, "query", "", "SQL query to execute")
 	cmd.Flags().StringVar(&flags.keyspace, "keyspace", "", "Vitess keyspace, optionally with a shard and tablet type (e.g. mykeyspace, mykeyspace/-80, mykeyspace/-80@replica). List shards with --query \"SHOW VITESS_SHARDS\". Defaults to @primary, same as pscale shell.")
-	cmd.Flags().StringVar(&flags.postgresDB, "dbname", "postgres", "PostgreSQL database name")
+	cmd.Flags().StringVar(&flags.postgresDB, "dbname", "postgres", "Postgres or Neki database name")
 	cmd.Flags().StringVar(&flags.role, "role",
 		"", "Role defines the access level, allowed values are: reader, writer, readwriter, admin. Defaults to reader (use --role admin for writes).")
 	cmd.Flags().BoolVar(&flags.replica, "replica", false,

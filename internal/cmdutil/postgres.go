@@ -31,3 +31,26 @@ func RequirePostgresDatabase(ctx context.Context, client *ps.Client, org, databa
 	}
 	return nil
 }
+
+// RequirePostgresOrNekiDatabase fetches the database and errors if it is
+// missing or neither PostgreSQL nor Neki.
+func RequirePostgresOrNekiDatabase(ctx context.Context, client *ps.Client, org, database, resourcePlural string) error {
+	db, err := client.Databases.Get(ctx, &ps.GetDatabaseRequest{
+		Organization: org,
+		Database:     database,
+	})
+	if err != nil {
+		switch ErrCode(err) {
+		case ps.ErrNotFound:
+			return fmt.Errorf("database %s does not exist in organization %s",
+				printer.BoldBlue(database), printer.BoldBlue(org))
+		default:
+			return HandleError(err)
+		}
+	}
+	if db.Kind != ps.DatabaseEnginePostgres && db.Kind != ps.DatabaseEngineNeki {
+		return fmt.Errorf("%s are only available for Postgres and Neki databases; %s is %s",
+			resourcePlural, printer.BoldBlue(database), printer.BoldBlue(string(db.Kind)))
+	}
+	return nil
+}

@@ -16,7 +16,7 @@ import (
 // the connection and clean up the ephemeral credentials.
 type Session struct {
 	// Kind is the database kind as reported by the API: "mysql",
-	// "postgresql", or "horizon".
+	// "postgresql", "horizon", or "neki".
 	Kind string
 
 	db      *sql.DB
@@ -70,7 +70,7 @@ func NewSession(ctx context.Context, ch *cmdutil.Helper, opts Options) (*Session
 	switch string(dbInfo.Kind) {
 	case "mysql":
 		db, cleanup, err = openMySQL(ctx, ch, opts, role)
-	case "postgresql", "horizon":
+	case "postgresql", "horizon", "neki":
 		pgDB := opts.PostgresDB
 		if pgDB == "" {
 			pgDB = "postgres"

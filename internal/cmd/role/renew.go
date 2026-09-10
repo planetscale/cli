@@ -56,7 +56,7 @@ func RenewCmd(ch *cmdutil.Helper) *cobra.Command {
 					printer.BoldBlue(roleID), printer.BoldBlue(database), printer.BoldBlue(branch))
 			}
 
-			return ch.Printer.PrintResource(toPostgresRole(role))
+			return printRole(ch.Printer, role)
 		},
 	}
 

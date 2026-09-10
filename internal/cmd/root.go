@@ -49,6 +49,7 @@ import (
 	"github.com/planetscale/cli/internal/cmd/insights"
 	"github.com/planetscale/cli/internal/cmd/inspect"
 	"github.com/planetscale/cli/internal/cmd/keyspace"
+	"github.com/planetscale/cli/internal/cmd/logs"
 	"github.com/planetscale/cli/internal/cmd/maintenance"
 	"github.com/planetscale/cli/internal/cmd/metrics"
 	"github.com/planetscale/cli/internal/cmd/org"
@@ -265,10 +266,7 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 		Long:  clicontent.AgentGuide,
 	})
 
-	rootCmd.AddGroup(&cobra.Group{ID: "database", Title: printer.Bold("MySQL & PostgreSQL database commands:")})
-	rootCmd.AddGroup(&cobra.Group{ID: "vitess", Title: printer.Bold("Vitess/MySQL-specific commands:")})
-	rootCmd.AddGroup(&cobra.Group{ID: "postgres", Title: printer.Bold("PostgreSQL-specific commands:")})
-	rootCmd.AddGroup(&cobra.Group{ID: "platform", Title: printer.Bold("Platform & account management:")})
+	addCommandGroups(rootCmd)
 
 	loginCmd := auth.LoginCmd(ch)
 	loginCmd.Hidden = true
@@ -331,7 +329,7 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 	versionCmd.GroupID = "platform"
 	rootCmd.AddCommand(versionCmd)
 
-	// Database management commands (Both databases)
+	// Database management commands shared across database engines.
 	backupCmd := backup.BackupCmd(ch)
 	backupCmd.GroupID = "database"
 	rootCmd.AddCommand(backupCmd)
@@ -351,6 +349,10 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 	inspectCmd := inspect.InspectCmd(ch)
 	inspectCmd.GroupID = "database"
 	rootCmd.AddCommand(inspectCmd)
+
+	logsCmd := logs.LogsCmd(ch)
+	logsCmd.GroupID = "database"
+	rootCmd.AddCommand(logsCmd)
 
 	metricsCmd := metrics.MetricsCmd(ch)
 	metricsCmd.GroupID = "database"
@@ -402,7 +404,7 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 	rootCmd.AddCommand(workflowCmd)
 
 	roleCmd := role.RoleCmd(ch)
-	roleCmd.GroupID = "postgres"
+	roleCmd.GroupID = "database"
 	rootCmd.AddCommand(roleCmd)
 
 	pgbouncerCmd := pgbouncer.Cmd(ch)
@@ -420,6 +422,13 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 	annotateRequiredFlags(rootCmd)
 
 	return rootCmd.ExecuteContext(ctx)
+}
+
+func addCommandGroups(cmd *cobra.Command) {
+	cmd.AddGroup(&cobra.Group{ID: "database", Title: printer.Bold("MySQL, Postgres, and Neki database commands:")})
+	cmd.AddGroup(&cobra.Group{ID: "vitess", Title: printer.Bold("Vitess/MySQL-specific commands:")})
+	cmd.AddGroup(&cobra.Group{ID: "postgres", Title: printer.Bold("PostgreSQL-specific commands:")})
+	cmd.AddGroup(&cobra.Group{ID: "platform", Title: printer.Bold("Platform & account management:")})
 }
 
 // annotateRequiredFlags walks the command tree and appends "(required)" to the

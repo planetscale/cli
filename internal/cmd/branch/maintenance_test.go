@@ -13,136 +13,97 @@ import (
 	"github.com/planetscale/cli/internal/printer"
 )
 
-func TestBranch_MaintenanceRunCmd(t *testing.T) {
-	c := qt.New(t)
-
-	var buf bytes.Buffer
+func maintenanceTestHelper(out *bytes.Buffer, kind ps.DatabaseEngine, svc *mock.BranchMaintenanceService) *cmdutil.Helper {
 	format := printer.JSON
 	p := printer.NewPrinter(&format)
-	p.SetResourceOutput(&buf)
-
-	org := "planetscale"
-	db := "planetscale"
-	branch := "main"
+	p.SetResourceOutput(out)
 
 	dbSvc := &mock.DatabaseService{
-		GetFn: func(ctx context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
-			return &ps.Database{Name: db, Kind: ps.DatabaseEnginePostgres}, nil
-		},
-	}
-	svc := &mock.BranchMaintenanceService{
-		RunFn: func(ctx context.Context, req *ps.RunBranchMaintenanceRequest) error {
-			c.Assert(req.Organization, qt.Equals, org)
-			c.Assert(req.Database, qt.Equals, db)
-			c.Assert(req.Branch, qt.Equals, branch)
-			c.Assert(req.UpdatePostgresMinorVersion, qt.IsFalse)
-
-			return nil
+		GetFn: func(_ context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
+			return &ps.Database{Name: req.Database, Kind: kind}, nil
 		},
 	}
 
-	ch := &cmdutil.Helper{
+	return &cmdutil.Helper{
 		Printer: p,
-		Config: &config.Config{
-			Organization: org,
-		},
+		Config:  &config.Config{Organization: "acme"},
 		Client: func() (*ps.Client, error) {
-			return &ps.Client{
-				Databases:         dbSvc,
-				BranchMaintenance: svc,
-			}, nil
+			return &ps.Client{Databases: dbSvc, BranchMaintenance: svc}, nil
 		},
 	}
-
-	cmd := MaintenanceRunCmd(ch)
-	cmd.SetArgs([]string{db, branch})
-	err := cmd.Execute()
-
-	c.Assert(err, qt.IsNil)
-	c.Assert(svc.RunFnInvoked, qt.IsTrue)
-	c.Assert(buf.String(), qt.JSONEquals, map[string]string{
-		"result": "maintenance started",
-		"branch": branch,
-	})
 }
 
-func TestBranch_MaintenanceRunCmd_UpdateMinorVersion(t *testing.T) {
-	c := qt.New(t)
+func TestMaintenanceRunCmd(t *testing.T) {
+	for _, kind := range []ps.DatabaseEngine{ps.DatabaseEngineNeki, ps.DatabaseEnginePostgres} {
+		t.Run(string(kind), func(t *testing.T) {
+			c := qt.New(t)
+			var out bytes.Buffer
+			svc := &mock.BranchMaintenanceService{
+				RunFn: func(_ context.Context, req *ps.RunBranchMaintenanceRequest) error {
+					c.Assert(req, qt.DeepEquals, &ps.RunBranchMaintenanceRequest{
+						Organization: "acme",
+						Database:     "app",
+						Branch:       "main",
+					})
+					return nil
+				},
+			}
 
-	var buf bytes.Buffer
-	format := printer.JSON
-	p := printer.NewPrinter(&format)
-	p.SetResourceOutput(&buf)
+			cmd := MaintenanceRunCmd(maintenanceTestHelper(&out, kind, svc))
+			cmd.SetArgs([]string{"app", "main"})
 
-	dbSvc := &mock.DatabaseService{
-		GetFn: func(ctx context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
-			return &ps.Database{Name: req.Database, Kind: ps.DatabaseEnginePostgres}, nil
-		},
+			c.Assert(cmd.Execute(), qt.IsNil)
+			c.Assert(svc.RunFnInvoked, qt.IsTrue)
+			c.Assert(out.String(), qt.JSONEquals, map[string]interface{}{
+				"result":   "maintenance started",
+				"database": "app",
+				"branch":   "main",
+			})
+		})
 	}
+}
+
+func TestMaintenanceRunCmdUpdatesPostgresMinorVersion(t *testing.T) {
+	c := qt.New(t)
+	var out bytes.Buffer
 	svc := &mock.BranchMaintenanceService{
-		RunFn: func(ctx context.Context, req *ps.RunBranchMaintenanceRequest) error {
+		RunFn: func(_ context.Context, req *ps.RunBranchMaintenanceRequest) error {
 			c.Assert(req.UpdatePostgresMinorVersion, qt.IsTrue)
 			return nil
 		},
 	}
 
-	ch := &cmdutil.Helper{
-		Printer: p,
-		Config: &config.Config{
-			Organization: "planetscale",
-		},
-		Client: func() (*ps.Client, error) {
-			return &ps.Client{
-				Databases:         dbSvc,
-				BranchMaintenance: svc,
-			}, nil
-		},
-	}
+	cmd := MaintenanceRunCmd(maintenanceTestHelper(&out, ps.DatabaseEnginePostgres, svc))
+	cmd.SetArgs([]string{"app", "main", "--update-postgres-minor-version"})
 
-	cmd := MaintenanceRunCmd(ch)
-	cmd.SetArgs([]string{"planetscale", "main", "--update-postgres-minor-version"})
-	err := cmd.Execute()
-
-	c.Assert(err, qt.IsNil)
+	c.Assert(cmd.Execute(), qt.IsNil)
 	c.Assert(svc.RunFnInvoked, qt.IsTrue)
 }
 
-func TestBranch_MaintenanceRunCmd_VitessDatabase(t *testing.T) {
+func TestMaintenanceRunCmdRejectsVitessDatabases(t *testing.T) {
 	c := qt.New(t)
-
-	var buf bytes.Buffer
-	format := printer.JSON
-	p := printer.NewPrinter(&format)
-	p.SetResourceOutput(&buf)
-
-	dbSvc := &mock.DatabaseService{
-		GetFn: func(ctx context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
-			return &ps.Database{Name: req.Database, Kind: ps.DatabaseEngineMySQL}, nil
-		},
-	}
+	var out bytes.Buffer
 	svc := &mock.BranchMaintenanceService{
-		RunFn: func(ctx context.Context, req *ps.RunBranchMaintenanceRequest) error {
+		RunFn: func(_ context.Context, _ *ps.RunBranchMaintenanceRequest) error {
 			return nil
 		},
 	}
 
-	ch := &cmdutil.Helper{
-		Printer: p,
-		Config: &config.Config{
-			Organization: "planetscale",
-		},
-		Client: func() (*ps.Client, error) {
-			return &ps.Client{
-				Databases:         dbSvc,
-				BranchMaintenance: svc,
-			}, nil
-		},
-	}
+	cmd := MaintenanceRunCmd(maintenanceTestHelper(&out, ps.DatabaseEngineMySQL, svc))
+	cmd.SetArgs([]string{"app", "main"})
 
-	cmd := MaintenanceRunCmd(ch)
-	cmd.SetArgs([]string{"planetscale", "main"})
-	err := cmd.Execute()
+	c.Assert(cmd.Execute(), qt.ErrorMatches, `(?s).*only available for Postgres and Neki.*mysql.*`)
+	c.Assert(svc.RunFnInvoked, qt.IsFalse)
+}
 
-	c.Assert(err, qt.ErrorMatches, `(?s).*only available for PostgreSQL.*mysql.*`)
+func TestMaintenanceRunCmdRequiresBranch(t *testing.T) {
+	c := qt.New(t)
+	var out bytes.Buffer
+	svc := &mock.BranchMaintenanceService{}
+
+	cmd := MaintenanceRunCmd(maintenanceTestHelper(&out, ps.DatabaseEngineNeki, svc))
+	cmd.SetArgs([]string{"app"})
+
+	c.Assert(cmd.Execute(), qt.IsNotNil)
 	c.Assert(svc.RunFnInvoked, qt.IsFalse)
 }

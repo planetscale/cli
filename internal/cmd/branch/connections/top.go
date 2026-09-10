@@ -36,7 +36,7 @@ previously captured trace in the TUI — actions are rejected in replay mode.
 
 For Postgres, connections top shows session activity across instances. For
 Vitess, pass --keyspace and --shard or run interactively to select them when
-the server reports available targets.`,
+the server reports available targets. Neki is not supported.`,
 		Args: func(cmd *cobra.Command, args []string) error {
 			if flags.replay != "" {
 				return nil

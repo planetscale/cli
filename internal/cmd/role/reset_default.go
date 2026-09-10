@@ -101,7 +101,7 @@ func ResetDefaultCmd(ch *cmdutil.Helper) *cobra.Command {
 				return nil
 			}
 
-			return ch.Printer.PrintResource(toPostgresRole(role))
+			return printRole(ch.Printer, role)
 		},
 	}
 
@@ -114,6 +114,21 @@ type PostgresRole struct {
 	PublicID        string  `header:"id" json:"id"`
 	Name            string  `header:"name" json:"name"`
 	Username        string  `header:"username" json:"username"`
+	Status          string  `header:"status" json:"status"`
+	ExpiresAt       *string `header:"expires_at" json:"expires_at"`
+	Password        string  `header:"password" json:"password"`
+	AccessHostURL   string  `header:"access_host_url" json:"access_host_url"`
+	DatabaseURL     string  `header:"database_url" json:"database_url"`
+	WithReplication bool    `header:"with_replication" json:"with_replication"`
+
+	orig *ps.PostgresRole
+}
+
+type NekiRole struct {
+	PublicID        string  `header:"id" json:"id"`
+	Name            string  `header:"name" json:"name"`
+	Username        string  `header:"username" json:"username"`
+	Ready           bool    `header:"ready" json:"ready"`
 	Status          string  `header:"status" json:"status"`
 	ExpiresAt       *string `header:"expires_at" json:"expires_at"`
 	Password        string  `header:"password" json:"password"`
@@ -137,6 +152,34 @@ func toPostgresRole(role *ps.PostgresRole) *PostgresRole {
 		WithReplication: role.WithReplication,
 		orig:            role,
 	}
+}
+
+func toNekiRole(role *ps.PostgresRole) *NekiRole {
+	return &NekiRole{
+		PublicID:        role.ID,
+		Name:            role.Name,
+		Username:        role.Username,
+		Ready:           role.Ready,
+		Status:          postgresRoleStatus(role),
+		ExpiresAt:       postgresRoleExpiresAt(role),
+		Password:        role.Password,
+		AccessHostURL:   role.AccessHostURL,
+		DatabaseURL:     buildPostgresConnectionURL(role.Username, role.Password, role.AccessHostURL),
+		WithReplication: role.WithReplication,
+		orig:            role,
+	}
+}
+
+func printRole(p *printer.Printer, role *ps.PostgresRole) error {
+	if isNekiRole(role) {
+		return p.PrintResource(toNekiRole(role))
+	}
+
+	return p.PrintResource(toPostgresRole(role))
+}
+
+func isNekiRole(role *ps.PostgresRole) bool {
+	return role.Type == "NekiRole"
 }
 
 func postgresRoleStatus(role *ps.PostgresRole) string {
