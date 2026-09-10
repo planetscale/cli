@@ -249,7 +249,7 @@ func TestBackup_RestoreCmd_NekiClusterSize(t *testing.T) {
 	}
 
 	cmd := RestoreCmd(ch)
-	cmd.SetArgs([]string{"planetscale", "restore-branch", "mybackup", "--cluster-size", "PS_40"})
+	cmd.SetArgs([]string{"planetscale", "restore-branch", "mybackup", "--cluster-size", "PS-40"})
 	c.Assert(cmd.Execute(), qt.IsNil)
 	c.Assert(svc.CreateFnInvoked, qt.IsTrue)
 }

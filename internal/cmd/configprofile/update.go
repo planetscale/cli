@@ -53,7 +53,7 @@ func UpdateCmd(ch *cmdutil.Helper) *cobra.Command {
 				Branch:               branch,
 				ConfigurationProfile: profileName,
 				Name:                 stringPointerIfChanged(cmd, "name", flags.name),
-				ClusterSize:          stringPointerIfChanged(cmd, "cluster-size", flags.clusterSize),
+				ClusterSize:          stringPointerIfChanged(cmd, "cluster-size", cmdutil.ToSizeSKUName(flags.clusterSize)),
 				Replicas:             intPointerIfChanged(cmd, "replicas", flags.replicas),
 				Parameters:           parameters,
 				PostgresMajorVersion: stringPointerIfChanged(cmd, "postgres-major-version", flags.major),

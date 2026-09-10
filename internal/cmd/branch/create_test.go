@@ -518,6 +518,35 @@ func TestBranch_CreateCmdNekiRespectsClusterSize(t *testing.T) {
 	c.Assert(buf.String(), qt.JSONEquals, res)
 }
 
+func TestBranch_CreateCmdNekiNormalizesClusterSize(t *testing.T) {
+	c := qt.New(t)
+
+	svc := &mock.PostgresBranchesService{
+		CreateFn: func(ctx context.Context, req *ps.CreatePostgresBranchRequest) (*ps.PostgresBranch, error) {
+			c.Assert(req.ClusterName, qt.Equals, "PS_10_AWS_ARM_NEKI")
+			return &ps.PostgresBranch{Name: "development"}, nil
+		},
+	}
+	dbSvc := &mock.DatabaseService{
+		GetFn: func(ctx context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
+			return &ps.Database{Kind: ps.DatabaseEngineNeki}, nil
+		},
+	}
+	format := printer.JSON
+	ch := &cmdutil.Helper{
+		Printer: printer.NewPrinter(&format),
+		Config:  &config.Config{Organization: "planetscale"},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{PostgresBranches: svc, Databases: dbSvc}, nil
+		},
+	}
+
+	cmd := CreateCmd(ch)
+	cmd.SetArgs([]string{"planetscale", "development", "--from", "main", "--cluster-size", "PS-10-AWS-ARM-NEKI"})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(svc.CreateFnInvoked, qt.IsTrue)
+}
+
 func TestBranch_CreateCmdNekiWithWaitPrintsReadyBranch(t *testing.T) {
 	t.Parallel()
 	c := qt.New(t)
@@ -1356,6 +1385,75 @@ func TestBranch_CreateCmdNekiRestoreWithSizes(t *testing.T) {
 		"--router", "name=default,size=NKR-20,replicas-per-cell=1",
 	})
 	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(svc.CreateFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.JSONEquals, res)
+}
+
+func TestBranch_CreateCmdNekiRestorePointWithSizes(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	db := "planetscale"
+	branch := "restored"
+	parentBranch := "main"
+	restorePoint := "2023-01-01T00:00:00Z"
+	backupID := "backup-id"
+	replicas := 2
+	replicasPerCell := 1
+	res := &ps.PostgresBranch{Name: branch}
+
+	backupSvc := &mock.BackupsService{
+		ListFn: func(ctx context.Context, req *ps.ListBackupsRequest) ([]*ps.Backup, error) {
+			c.Assert(req.Organization, qt.Equals, org)
+			c.Assert(req.Database, qt.Equals, db)
+			c.Assert(req.Branch, qt.Equals, parentBranch)
+			return []*ps.Backup{{
+				PublicID:    backupID,
+				State:       "success",
+				CompletedAt: time.Date(2022, time.December, 31, 23, 0, 0, 0, time.UTC),
+			}}, nil
+		},
+	}
+	svc := &mock.PostgresBranchesService{
+		CreateFn: func(ctx context.Context, req *ps.CreatePostgresBranchRequest) (*ps.PostgresBranch, error) {
+			c.Assert(req.BackupID, qt.Equals, backupID)
+			c.Assert(req.RestorePoint, qt.Equals, restorePoint)
+			c.Assert(req.ClusterName, qt.Equals, "")
+			c.Assert(req.ConfigurationProfileSizes, qt.DeepEquals, []ps.ConfigurationProfileSize{
+				{Name: "default", ClusterSize: "PS_40", Replicas: &replicas},
+			})
+			c.Assert(req.RouterSizes, qt.DeepEquals, []ps.RouterSize{
+				{Name: "default", RouterSize: "NKR_20", ReplicasPerCell: &replicasPerCell},
+			})
+			return res, nil
+		},
+	}
+	dbSvc := &mock.DatabaseService{
+		GetFn: func(ctx context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
+			return &ps.Database{Kind: ps.DatabaseEngineNeki}, nil
+		},
+	}
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: org},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{PostgresBranches: svc, Databases: dbSvc, Backups: backupSvc}, nil
+		},
+	}
+
+	cmd := CreateCmd(ch)
+	cmd.SetArgs([]string{
+		db, branch, "--from", parentBranch, "--restore-point", restorePoint,
+		"--config-profile", "name=default,cluster-size=PS-40,replicas=2",
+		"--router", "name=default,size=NKR-20,replicas-per-cell=1",
+	})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(backupSvc.ListFnInvoked, qt.IsTrue)
 	c.Assert(svc.CreateFnInvoked, qt.IsTrue)
 	c.Assert(buf.String(), qt.JSONEquals, res)
 }
