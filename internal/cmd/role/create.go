@@ -20,7 +20,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "create <database> <branch> <name>",
-		Short: "Create a new role for a Postgres database branch",
+		Short: "Create a new role for a Postgres or Neki database branch",
 		Args:  cmdutil.RequiredArgs("database", "branch", "name"),
 		Example: `  # Create a role with admin access
   pscale role create mydb main my-role --inherited-roles postgres
@@ -80,7 +80,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 				return nil
 			}
 
-			return ch.Printer.PrintResource(toPostgresRole(role))
+			return printRole(ch.Printer, role)
 		},
 	}
 	cmd.PersistentFlags().Var(&flags.ttl, "ttl", `TTL defines the time to live for the role. Durations such as "30m", "24h", or bare integers such as "3600" (seconds) are accepted. The default TTL is 0s, which means the role will never expire.`)

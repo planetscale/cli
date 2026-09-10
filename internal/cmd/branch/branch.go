@@ -4,10 +4,25 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/planetscale/cli/internal/cmd/admin"
 	"github.com/planetscale/cli/internal/cmd/branch/vtctld"
+	"github.com/planetscale/cli/internal/cmd/configprofile"
+	"github.com/planetscale/cli/internal/cmd/router"
+	"github.com/planetscale/cli/internal/cmd/shard"
+	"github.com/planetscale/cli/internal/cmd/sidecar"
 	"github.com/planetscale/cli/internal/cmdutil"
 	ps "github.com/planetscale/cli/internal/planetscale"
+	"github.com/planetscale/cli/internal/printer"
 	"github.com/spf13/cobra"
+)
+
+const (
+	branchGroupDatabase      = "database"
+	branchGroupMySQLPostgres = "mysql-postgres"
+	branchGroupVitess        = "vitess"
+	branchGroupPostgres      = "postgres"
+	branchGroupPostgresNeki  = "postgres-neki"
+	branchGroupNeki          = "neki"
 )
 
 // BranchCmd handles the branching of a database.
@@ -22,31 +37,51 @@ func BranchCmd(ch *cmdutil.Helper) *cobra.Command {
 		"The organization for the current user")
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
 
-	cmd.AddCommand(CreateCmd(ch))
-	cmd.AddCommand(ListCmd(ch))
-	cmd.AddCommand(DeleteCmd(ch))
-	cmd.AddCommand(ResizeCmd(ch))
-	cmd.AddCommand(VtgateCmd(ch))
-	cmd.AddCommand(ParametersCmd(ch))
-	cmd.AddCommand(ExtensionsCmd(ch))
-	cmd.AddCommand(ShowCmd(ch))
-	cmd.AddCommand(UpdateCmd(ch))
-	cmd.AddCommand(SwitchCmd(ch))
-	cmd.AddCommand(DiffCmd(ch))
-	cmd.AddCommand(SchemaCmd(ch))
-	cmd.AddCommand(RefreshSchemaCmd(ch))
-	cmd.AddCommand(PromoteCmd(ch))
-	cmd.AddCommand(DemoteCmd(ch))
-	cmd.AddCommand(RoutingRulesCmd(ch))
-	cmd.AddCommand(SafeMigrationsCmd(ch))
-	cmd.AddCommand(LintCmd(ch))
-	cmd.AddCommand(ConnectionsCmd(ch))
-	cmd.AddCommand(ProcesslistCmd(ch))
-	cmd.AddCommand(QueryPatternsCmd(ch))
-	cmd.AddCommand(vtctld.VtctldCmd(ch))
-	cmd.AddCommand(InfraCmd(ch))
-	cmd.AddCommand(SwitchoverCmd(ch))
-	cmd.AddCommand(MaintenanceCmd(ch))
+	cmd.AddGroup(
+		&cobra.Group{ID: branchGroupDatabase, Title: printer.Bold("MySQL, Postgres, and Neki branch commands:")},
+		&cobra.Group{ID: branchGroupMySQLPostgres, Title: printer.Bold("MySQL and Postgres:")},
+		&cobra.Group{ID: branchGroupVitess, Title: printer.Bold("Vitess/MySQL-specific:")},
+		&cobra.Group{ID: branchGroupPostgres, Title: printer.Bold("Postgres-specific:")},
+		&cobra.Group{ID: branchGroupPostgresNeki, Title: printer.Bold("Postgres and Neki:")},
+		&cobra.Group{ID: branchGroupNeki, Title: printer.Bold("Neki-specific:")},
+	)
+
+	add := func(group string, command *cobra.Command) {
+		command.GroupID = group
+		cmd.AddCommand(command)
+	}
+
+	add(branchGroupDatabase, CreateCmd(ch))
+	add(branchGroupDatabase, ListCmd(ch))
+	add(branchGroupDatabase, DeleteCmd(ch))
+	add(branchGroupDatabase, ShowCmd(ch))
+	add(branchGroupDatabase, UpdateCmd(ch))
+	add(branchGroupDatabase, SwitchCmd(ch))
+	add(branchGroupDatabase, SchemaCmd(ch))
+	add(branchGroupDatabase, PromoteCmd(ch))
+	add(branchGroupDatabase, DemoteCmd(ch))
+	add(branchGroupMySQLPostgres, ConnectionsCmd(ch))
+	add(branchGroupDatabase, InfraCmd(ch))
+	add(branchGroupVitess, DiffCmd(ch))
+	add(branchGroupVitess, LintCmd(ch))
+	add(branchGroupVitess, RefreshSchemaCmd(ch))
+	add(branchGroupVitess, RoutingRulesCmd(ch))
+	add(branchGroupVitess, SafeMigrationsCmd(ch))
+	add(branchGroupVitess, QueryPatternsCmd(ch))
+	add(branchGroupVitess, ProcesslistCmd(ch))
+	add(branchGroupVitess, VtgateCmd(ch))
+	add(branchGroupVitess, vtctld.VtctldCmd(ch))
+	add(branchGroupPostgres, ResizeCmd(ch))
+	add(branchGroupPostgres, ParametersCmd(ch))
+	add(branchGroupPostgres, ExtensionsCmd(ch))
+	add(branchGroupPostgres, SwitchoverCmd(ch))
+	add(branchGroupPostgresNeki, MaintenanceCmd(ch))
+	add(branchGroupNeki, DataTopologyCmd(ch))
+	add(branchGroupNeki, admin.AdminCmd(ch))
+	add(branchGroupNeki, configprofile.ConfigProfileCmd(ch))
+	add(branchGroupNeki, router.RouterCmd(ch))
+	add(branchGroupNeki, shard.ShardCmd(ch))
+	add(branchGroupNeki, sidecar.SidecarCmd(ch))
 
 	return cmd
 }

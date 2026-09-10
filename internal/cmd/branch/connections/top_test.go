@@ -163,6 +163,12 @@ func TestTopCmdValidation(t *testing.T) {
 			wantErr: "--instance/--role are only supported for Postgres databases",
 		},
 		{
+			name:    "neki is not supported",
+			engine:  ps.DatabaseEngineNeki,
+			args:    []string{"neki", "main"},
+			wantErr: "connections is not supported for Neki databases",
+		},
+		{
 			name:    "unknown role",
 			engine:  ps.DatabaseEnginePostgres,
 			args:    []string{"--role", "writer", "pgload", "main"},

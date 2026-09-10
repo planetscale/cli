@@ -186,6 +186,8 @@ type DatabaseBranchesService interface {
 	Schema(context.Context, *BranchSchemaRequest) ([]*Diff, error)
 	RoutingRules(context.Context, *BranchRoutingRulesRequest) (*RoutingRules, error)
 	UpdateRoutingRules(context.Context, *UpdateBranchRoutingRulesRequest) (*RoutingRules, error)
+	DataTopology(context.Context, *BranchDataTopologyRequest) (*DataTopology, error)
+	UpdateDataTopology(context.Context, *UpdateBranchDataTopologyRequest) (*DataTopology, error)
 	RefreshSchema(context.Context, *RefreshSchemaRequest) error
 	Demote(context.Context, *DemoteRequest) (*DatabaseBranch, error)
 	Promote(context.Context, *PromoteRequest) (*DatabaseBranch, error)

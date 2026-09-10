@@ -21,7 +21,7 @@ var queryPatternsPollInterval = 2 * time.Second
 func QueryPatternsCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "query-patterns <command>",
-		Short: "List, show, delete, and download query pattern reports for a branch",
+		Short: "List, show, delete, and download query pattern reports for a MySQL branch",
 	}
 
 	cmd.AddCommand(ListQueryPatternsCmd(ch))
@@ -48,7 +48,7 @@ func DownloadQueryPatternsCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "download <database> <branch>",
-		Short: "Download a CSV report of the query patterns for a branch",
+		Short: "Download a CSV report of the query patterns for a MySQL branch",
 		Args:  cmdutil.RequiredArgs("database", "branch"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()

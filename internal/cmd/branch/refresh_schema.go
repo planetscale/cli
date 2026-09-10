@@ -12,7 +12,7 @@ import (
 func RefreshSchemaCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "refresh-schema <database> <branch>",
-		Short: "Refresh the schema for a database branch",
+		Short: "Refresh the schema for a MySQL branch",
 		Args:  cmdutil.RequiredArgs("database", "branch"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()

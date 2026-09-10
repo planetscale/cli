@@ -412,6 +412,171 @@ func TestBranch_CreateCmdWithMajorVersion(t *testing.T) {
 	c.Assert(buf.String(), qt.JSONEquals, res)
 }
 
+func TestBranch_CreateCmdNekiOmitsDefaultClusterSize(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	db := "planetscale"
+	branch := "development"
+
+	res := &ps.PostgresBranch{Name: branch}
+
+	svc := &mock.PostgresBranchesService{
+		CreateFn: func(ctx context.Context, req *ps.CreatePostgresBranchRequest) (*ps.PostgresBranch, error) {
+			c.Assert(req.Name, qt.Equals, branch)
+			c.Assert(req.Database, qt.Equals, db)
+			c.Assert(req.Organization, qt.Equals, org)
+			c.Assert(req.ParentBranch, qt.Equals, "main")
+			c.Assert(req.ClusterName, qt.Equals, "")
+
+			return res, nil
+		},
+	}
+
+	dbSvc := &mock.DatabaseService{
+		GetFn: func(ctx context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
+			c.Assert(req.Database, qt.Equals, db)
+			c.Assert(req.Organization, qt.Equals, org)
+			return &ps.Database{Kind: ps.DatabaseEngineNeki}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: org,
+		},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{
+				PostgresBranches: svc,
+				Databases:        dbSvc,
+			}, nil
+		},
+	}
+
+	cmd := CreateCmd(ch)
+	cmd.SetArgs([]string{db, branch, "--from", "main"})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.CreateFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.JSONEquals, res)
+}
+
+func TestBranch_CreateCmdNekiRespectsClusterSize(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	db := "planetscale"
+	branch := "development"
+
+	res := &ps.PostgresBranch{Name: branch}
+
+	svc := &mock.PostgresBranchesService{
+		CreateFn: func(ctx context.Context, req *ps.CreatePostgresBranchRequest) (*ps.PostgresBranch, error) {
+			c.Assert(req.ClusterName, qt.Equals, "PS_10_AWS_ARM_NEKI")
+
+			return res, nil
+		},
+	}
+
+	dbSvc := &mock.DatabaseService{
+		GetFn: func(ctx context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
+			return &ps.Database{Kind: ps.DatabaseEngineNeki}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: org,
+		},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{
+				PostgresBranches: svc,
+				Databases:        dbSvc,
+			}, nil
+		},
+	}
+
+	cmd := CreateCmd(ch)
+	cmd.SetArgs([]string{db, branch, "--from", "main", "--cluster-size", "PS_10_AWS_ARM_NEKI"})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.CreateFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.JSONEquals, res)
+}
+
+func TestBranch_CreateCmdNekiWithWaitPrintsReadyBranch(t *testing.T) {
+	t.Parallel()
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	db := "planetscale"
+	branch := "development"
+
+	pending := &ps.PostgresBranch{Name: branch, Kind: "neki", Ready: false}
+	ready := &ps.PostgresBranch{Name: branch, Kind: "neki", Ready: true}
+
+	branchSvc := &mock.PostgresBranchesService{
+		CreateFn: func(_ context.Context, req *ps.CreatePostgresBranchRequest) (*ps.PostgresBranch, error) {
+			c.Assert(req.Organization, qt.Equals, org)
+			c.Assert(req.Database, qt.Equals, db)
+			c.Assert(req.Name, qt.Equals, branch)
+			return pending, nil
+		},
+		GetFn: func(_ context.Context, req *ps.GetPostgresBranchRequest) (*ps.PostgresBranch, error) {
+			c.Assert(req, qt.DeepEquals, &ps.GetPostgresBranchRequest{
+				Organization: org,
+				Database:     db,
+				Branch:       branch,
+			})
+			return ready, nil
+		},
+	}
+
+	dbSvc := &mock.DatabaseService{
+		GetFn: func(_ context.Context, _ *ps.GetDatabaseRequest) (*ps.Database, error) {
+			return &ps.Database{Kind: ps.DatabaseEngineNeki}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: org},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{
+				Databases:        dbSvc,
+				PostgresBranches: branchSvc,
+			}, nil
+		},
+	}
+	debug := false
+	ch.SetDebug(&debug)
+
+	cmd := CreateCmd(ch)
+	cmd.SetArgs([]string{db, branch, "--wait"})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(branchSvc.GetFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.JSONEquals, ready)
+}
+
 func TestBranch_CreateCmdWithStorageMySQLError(t *testing.T) {
 	c := qt.New(t)
 
@@ -1141,4 +1306,104 @@ func TestBranch_CreateCmdPropagatesReplicaValidationError(t *testing.T) {
 	cmd.SetArgs([]string{"planetscale", "restored", "--restore", "backup-id", "--replicas", "1"})
 
 	c.Assert(cmd.Execute(), qt.Equals, validationErr)
+}
+
+func TestBranch_CreateCmdNekiRestoreWithSizes(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	db := "planetscale"
+	branch := "restored"
+	replicas := 2
+	replicasPerCell := 1
+	res := &ps.PostgresBranch{Name: branch}
+
+	svc := &mock.PostgresBranchesService{
+		CreateFn: func(ctx context.Context, req *ps.CreatePostgresBranchRequest) (*ps.PostgresBranch, error) {
+			c.Assert(req.BackupID, qt.Equals, "somebackupid")
+			c.Assert(req.ClusterName, qt.Equals, "")
+			c.Assert(req.ConfigurationProfileSizes, qt.DeepEquals, []ps.ConfigurationProfileSize{
+				{Name: "default", ClusterSize: "PS_40", Replicas: &replicas},
+			})
+			c.Assert(req.RouterSizes, qt.DeepEquals, []ps.RouterSize{
+				{Name: "default", RouterSize: "NKR_20", ReplicasPerCell: &replicasPerCell},
+			})
+			return res, nil
+		},
+	}
+	dbSvc := &mock.DatabaseService{
+		GetFn: func(ctx context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
+			return &ps.Database{Kind: ps.DatabaseEngineNeki}, nil
+		},
+	}
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: org},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{PostgresBranches: svc, Databases: dbSvc}, nil
+		},
+	}
+
+	cmd := CreateCmd(ch)
+	cmd.SetArgs([]string{
+		db, branch, "--restore", "somebackupid",
+		"--config-profile", "name=default,cluster-size=PS-40,replicas=2",
+		"--router", "name=default,size=NKR-20,replicas-per-cell=1",
+	})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(svc.CreateFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.JSONEquals, res)
+}
+
+func TestBranch_CreateCmdNekiSizingRequiresRestore(t *testing.T) {
+	c := qt.New(t)
+
+	svc := &mock.PostgresBranchesService{}
+	dbSvc := &mock.DatabaseService{
+		GetFn: func(ctx context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
+			return &ps.Database{Kind: ps.DatabaseEngineNeki}, nil
+		},
+	}
+	format := printer.JSON
+	ch := &cmdutil.Helper{
+		Printer: printer.NewPrinter(&format),
+		Config:  &config.Config{Organization: "planetscale"},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{PostgresBranches: svc, Databases: dbSvc}, nil
+		},
+	}
+
+	cmd := CreateCmd(ch)
+	cmd.SetArgs([]string{"planetscale", "development", "--from", "main", "--config-profile", "name=default,replicas=2"})
+	c.Assert(cmd.Execute(), qt.ErrorMatches, `.*can only be used when restoring a backup`)
+	c.Assert(svc.CreateFnInvoked, qt.IsFalse)
+}
+
+func TestBranch_CreateCmdMySQLRestoreRejectsNekiSizing(t *testing.T) {
+	c := qt.New(t)
+
+	svc := &mock.DatabaseBranchesService{}
+	dbSvc := &mock.DatabaseService{
+		GetFn: func(ctx context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
+			return &ps.Database{Kind: "mysql"}, nil
+		},
+	}
+	format := printer.JSON
+	ch := &cmdutil.Helper{
+		Printer: printer.NewPrinter(&format),
+		Config:  &config.Config{Organization: "planetscale"},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{DatabaseBranches: svc, Databases: dbSvc}, nil
+		},
+	}
+
+	cmd := CreateCmd(ch)
+	cmd.SetArgs([]string{"planetscale", "development", "--restore", "somebackupid", "--router", "name=default,size=NKR_20"})
+	c.Assert(cmd.Execute(), qt.ErrorMatches, `.*only supported for Neki backup restores`)
+	c.Assert(svc.CreateFnInvoked, qt.IsFalse)
 }

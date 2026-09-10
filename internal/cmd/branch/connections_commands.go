@@ -119,6 +119,9 @@ the matching Postgres connection.`,
 			if err != nil {
 				return err
 			}
+			if err := connections.ValidateEngineFlags(engine, connections.ConnectionFilter{}, connections.ConnectionTarget{}); err != nil {
+				return err
+			}
 			if engine != ps.DatabaseEnginePostgres {
 				return errors.New("connections kill-transaction is only supported for Postgres databases")
 			}

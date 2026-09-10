@@ -240,7 +240,7 @@ pscale sql <database> <branch> --org <org> --format json --query "SELECT 1"
 # Read from replica
 pscale sql <database> <branch> --org <org> --format json --replica --query "SELECT 1"
 
-# PostgreSQL — optional --dbname (default postgres)
+# Postgres or Neki — optional --dbname (default postgres)
 pscale sql <database> <branch> --org <org> --format json --query "SELECT 1"
 
 # MySQL multi-keyspace — optional --keyspace (default @primary)
@@ -251,11 +251,11 @@ pscale sql <database> <branch> --org <org> --format json --keyspace <keyspace> -
 |------|---------|
 | `--role` | `reader` (default), `writer`, `readwriter`, `admin` — same names as `pscale shell` |
 | `--replica` | Route reads to replicas |
-| `--dbname` | PostgreSQL database name (default `postgres`) |
+| `--dbname` | Postgres or Neki database name (default `postgres`) |
 | `--keyspace` | MySQL keyspace (default `@primary`); may include a shard and tablet type: `mykeyspace/-80`, `mykeyspace/-80@replica` |
 | `--force` | Allow destructive SQL after explicit user approval |
 
-**`--role` by engine** (same as `pscale shell`):
+**`--role` by engine** (same as `pscale shell`; Neki uses the Postgres behavior):
 
 | `--role` | MySQL (Vitess) | PostgreSQL |
 |----------|----------------|------------|
@@ -286,6 +286,41 @@ MySQL may return synthetic column names (e.g. `:vtg1 /* INT64 */`). PostgreSQL m
 Error: one JSON object on stdout with `status: "error"`, `error`, `issues`, and `next_steps` (see JSON errors above).
 
 Destructive SQL without `--force`: `status: "action_required"`, `query_kind: "destructive"`, `issues`, and `next_steps` (includes `--force` retry command).
+
+## Branch logs
+
+`pscale logs` queries recent logs for a PostgreSQL or Neki branch. It obtains a signed logs URL from the API and prints parsed entries; API credentials are not sent to the signed logs host.
+
+```bash
+# Last hour from the primary server (default)
+pscale logs <database> <branch> --org <org> --format json
+
+# Search errors across the last six hours
+pscale logs <database> <branch> --org <org> --format json --period 6h --level ERROR --query "connection refused"
+
+# Query an exact ISO 8601 time range
+pscale logs <database> <branch> --org <org> --format json --from <RFC3339> --to <RFC3339>
+
+# Query selected Neki shards and pods
+pscale logs <database> <branch> --org <org> --format json --shard <shard> --server <pod>
+
+# Fetch the next page (100 entries per page by default)
+pscale logs <database> <branch> --org <org> --format json --page 2
+```
+
+| Flag | Purpose |
+|------|---------|
+| `--query` | Text or LogsQL expression; pipeline stages after `\|` are preserved |
+| `--period` | `15m`, `1h` (default), `3h`, `6h`, `12h`, `1d`, `7d`, or `8d` |
+| `--from` | Start of a custom ISO 8601 time range; must be used with `--to` and cannot be combined with `--period` |
+| `--to` | End of a custom ISO 8601 time range; must be used with `--from` and cannot be combined with `--period` |
+| `--level` | Comma-separated or repeatable `DEBUG`, `INFO`, `WARNING`, or `ERROR` filters |
+| `--server` | Comma-separated or repeatable server filters; `primary` (default) selects the primary role, other values select pod names |
+| `--shard` | Comma-separated or repeatable Neki shard filters |
+| `--limit` | Maximum entries per page (default `100`) |
+| `--page` | Page number; translated to a LogsQL offset (default `1`) |
+
+Human output prints one event per line as `<time> <level> <message>`, escaping embedded newlines and tabs. Success JSON is an array of parsed entries with `time`, `level`, `message`, `role`, `shard`, `container`, `availability_zone`, `pod`, `stream_id`, and `raw_message`. Malformed individual log lines are skipped. PostgreSQL and Neki branches are supported; other engines return `NOT_FOUND` from the signature endpoint.
 
 ## Metrics
 
@@ -522,9 +557,9 @@ pscale branch switchover show <database> <branch> <id> --org <org> --format json
 - A switchover that ends in `failed` has an unconfirmed outcome: the primary may still have moved and nothing is rolled back. Check the current primary with `pscale branch infra <database> <branch> --org <org> --format json` before retrying.
 - `--candidate` is rejected for branches without replicas. Poll status with `pscale branch switchover show <database> <branch> <id> --org <org> --format json`.
 
-## Postgres branch maintenance
+## Branch maintenance
 
-`pscale branch maintenance run` upgrades a Postgres branch to the latest cluster image. This is how regular version bumps, bugfixes, and quality-of-life improvements reach a branch; PlanetScale otherwise upgrades images only in emergencies, such as patching security issues.
+`pscale branch maintenance run` upgrades a Postgres or Neki branch to the latest cluster image. This is how regular version bumps, bugfixes, and quality-of-life improvements reach a branch; PlanetScale otherwise upgrades images only in emergencies, such as patching security issues.
 
 ```bash
 # Run maintenance now
@@ -535,11 +570,193 @@ pscale branch maintenance run <database> <branch> --org <org> --format json --up
 ```
 
 - The upgrade is applied to the replicas first, followed by a switchover from the old primary to an upgraded replica. That failover leads to a short period of database unavailability (seconds) and terminates all direct connections. A branch running a single instance has no replica to switch over to and is unavailable until it comes back. Warn the user before running this.
-- The command returns `{"result": "maintenance started", "branch": "<branch>"}` and exits; it does not wait. Check progress with `pscale branch infra <database> <branch> --org <org> --format json`.
+- The command returns `{"result": "maintenance started", "database": "<database>", "branch": "<branch>"}` and exits; it does not wait. Check progress with `pscale branch infra <database> <branch> --org <org> --format json`.
 - Rejected while a change request from `pscale branch resize` is still in progress — check `pscale branch resize status` first.
 - `--update-postgres-minor-version` is rejected when the branch is already on the latest minor version or the upgrade is unavailable for it.
-- Postgres only; Vitess/MySQL databases are rejected before any API call.
+- Postgres and Neki only; Vitess/MySQL databases are rejected before any API call.
 - See https://planetscale.com/docs/postgres/operations-philosophy
+
+## Neki data topology
+
+Neki branches expose their cluster-wide data topology through the branch resource:
+
+```bash
+# Read the cached data topology and its last synchronization time
+pscale branch data-topology get <database> <branch> --org <org> --format json
+
+# Show database, table, shard-group, shard-index, key-range, and shard relationships
+pscale branch data-topology ls <database> <branch> --org <org> --format json
+
+# Group the topology by physical shard and list the data hosted by each placement
+pscale branch data-topology ls <database> <branch> --org <org> --shards --format json
+
+# Replace the data topology using a JSON object from standard input
+pscale branch data-topology update <database> <branch> --org <org> --format json < data-topology.json
+```
+
+- `ls` JSON output uses the topology's structured `databases`, `shard_groups`, and `shard_indexes` domains. Human output renders the relationships as a tree.
+  The `--shards` option reverses the view to physical shard → shard-group key range → hosted data; its JSON output is keyed by shard UID and uses structured
+  placements, key ranges, tables, reference tables, and sequences.
+- `update` reads the topology from standard input.
+- `--format json` controls command output; it does not describe the input format.
+- The input must be a JSON object. Empty input, arrays, scalar values, and malformed JSON are rejected before the API request.
+- `get` returns the API's cached topology with `synced_at`. When the cached value is stale, the API schedules a refresh asynchronously, so the response may briefly contain the previous topology.
+- The command is only supported for Neki branches. Other branches return `NOT_FOUND`.
+
+## Neki shards
+
+Use `pscale branch shard` to manage the physical shards of a Neki branch:
+
+```bash
+# List every shard, or focus the list on one configuration profile
+pscale branch shard list <database> <branch> --org <org> --format json
+pscale branch shard list <database> <branch> --org <org> --config-profile <profile> --format json
+
+# Show one shard (includes whether it is the authoritative copy)
+pscale branch shard show <database> <branch> <shard-id> --org <org> --format json
+
+# Create shards in a configuration profile (--count defaults to 1)
+pscale branch shard create <database> <branch> --org <org> --config-profile <profile> --count 2 --format json
+
+# Move existing shards to a configuration profile
+pscale branch shard assign <database> <branch> <shard-id>... --org <org> --config-profile <profile> --format json
+
+# Set or clear a shard's display name
+pscale branch shard update <database> <branch> <shard-id> --org <org> --display-name reporting --format json
+pscale branch shard update <database> <branch> <shard-id> --org <org> --display-name "" --format json
+
+# Delete after explicit user approval
+pscale branch shard delete <database> <branch> <shard-id> --org <org> --force --format json
+```
+
+- `list` and `show` include `authoritative` — whether the shard is the authoritative copy from the branch data topology.
+- `list` accepts `--query`, `--page`, and `--per-page`. Use `--exclude-config-profile <profile>` to omit shards assigned to one profile.
+- `assign` returns one result per shard with `status` set to `assigned`, `unchanged`, or `failed`. A response can contain both successful and failed assignments, so inspect every result.
+- Assigning a shard reconciles it toward the target configuration profile's infrastructure settings.
+- `delete` is destructive. Ask the user to approve the exact shard before adding `--force`.
+
+## Neki configuration profiles
+
+Use `pscale branch config-profile` to manage the infrastructure configuration shared by a set of Neki shards:
+
+```bash
+# Discover profiles and inspect the current default
+pscale branch config-profile list <database> <branch> --org <org> --format json
+pscale branch config-profile show <database> <branch> <profile> --org <org> --format json
+pscale branch config-profile default <database> <branch> --org <org> --format json
+
+# Create or update a profile
+pscale branch config-profile create <database> <branch> <profile> --org <org> --cluster-size <size> --replicas 2 --format json
+pscale branch config-profile create <database> <branch> <profile> --org <org> --min-storage 10737418240 --max-storage 107374182400 --storage-autoscaling --format json
+pscale branch config-profile update <database> <branch> <profile> --org <org> --cluster-size <size> --replicas 2 --format json
+pscale branch config-profile update <database> <branch> <profile> --org <org> --parameters pgconf.max_connections=200 --format json
+pscale branch config-profile update <database> <branch> <profile> --org <org> --min-storage 21474836480 --storage-autoscaling=false --format json
+
+# Select the default used for new shards
+pscale branch config-profile set-default <database> <branch> <profile> --org <org> --format json
+
+# Inspect available settings and asynchronous changes
+pscale branch config-profile parameters <database> <branch> <profile> --org <org> --format json
+pscale branch config-profile extensions <database> <branch> <profile> --org <org> --format json
+pscale branch config-profile extensions enable <database> <branch> <profile> <extension> --org <org> --format json
+pscale branch config-profile extensions disable <database> <branch> <profile> <extension> --org <org> --format json
+pscale branch config-profile changes list <database> <branch> <profile> --org <org> --format json
+pscale branch config-profile changes show <database> <branch> <profile> <change-id> --org <org> --format json
+pscale branch config-profile changes cancel <database> <branch> <profile> <change-id> --org <org> --format json
+
+# Run maintenance on one profile or several
+pscale branch config-profile maintenance <database> <branch> <profile> --org <org> --format json
+pscale branch config-profile maintenance <database> <branch> <profile> <profile> --org <org> --format json
+
+# Delete after explicit user approval
+pscale branch config-profile delete <database> <branch> <profile> --org <org> --force --format json
+```
+
+- Create and update flags are optional in the API request unless explicitly supplied. Repeat `--parameters namespace.name=value` to update multiple settings together.
+- Storage flags are `--min-storage` and `--max-storage` in bytes, `--storage-autoscaling`, `--storage-iops`, and `--storage-throughput` (MiB/s). `list` and `show` include the current storage configuration.
+- `parameters` accepts `--namespace`, `--extension`, and `--internal` filters.
+- `extensions enable` / `extensions disable` toggle an extension that the catalog marks as enablable. Not every listed extension can be toggled.
+- Updates may create asynchronous change requests. Use `changes list` to inspect their state and `changes show` to see human-readable before → after differences, including storage; `changes cancel` cancels a request that is still cancelable.
+- `maintenance` upgrades one or more profiles to the latest image. It returns immediately; check profile `state` and `changes list` for progress. Warn the user about a short unavailability window before running it. Use `pscale branch maintenance run` to maintain every profile on the branch.
+- `delete` is destructive. Ask the user to approve the exact configuration profile before adding `--force`.
+
+## Neki routers
+
+Use `pscale branch router` to manage router groups for a Neki branch.
+
+```bash
+# List routers, inspect one, and list available sizes
+pscale branch router list <database> <branch> --org <org> --format json
+pscale branch router show <database> <branch> <router> --org <org> --format json
+pscale branch router sizes <database> <branch> --org <org> --format json
+
+# Create or update a router
+pscale branch router create <database> <branch> <router> --org <org> --size NKR-5 --replicas-per-cell 1 --format json
+pscale branch router update <database> <branch> <router> --org <org> --size NKR-10 --replicas-per-cell 2 --format json
+pscale branch router update <database> <branch> <router> --org <org> --autoscaling --max-replicas-per-cell 4 --target-cpu-utilization 70 --format json
+pscale branch router update <database> <branch> <router> --org <org> --parameters router.replication-lag-tolerable-max=15m --format json
+
+# Inspect asynchronous changes
+pscale branch router changes list <database> <branch> <router> --org <org> --format json
+pscale branch router changes show <database> <branch> <router> <change-id> --org <org> --format json
+pscale branch router changes cancel <database> <branch> <router> <change-id> --org <org> --format json
+
+# Delete after explicit user approval
+pscale branch router delete <database> <branch> <router> --org <org> --force --format json
+```
+
+- `--size` is a billed SKU name (e.g. `NKR-5`). Underscores are also accepted. Use `router sizes` to list valid SKUs.
+- Updates are applied asynchronously; check router `state` and `changes list` for progress. `changes show` prints human-readable before → after differences; `changes cancel` cancels a request that is still cancelable.
+- `delete` is destructive. Ask the user to approve the exact router before adding `--force`.
+
+## Neki sidecars
+
+Use `pscale branch sidecar` to inspect and update the connection-pool sidecar for a Neki configuration profile. Sidecars are created and deleted with their profile; there is no create or delete command.
+
+```bash
+# List sidecars and inspect one (by sidecar ID or configuration profile name)
+pscale branch sidecar list <database> <branch> --org <org> --format json
+pscale branch sidecar show <database> <branch> <sidecar> --org <org> --format json
+
+# Update parameters (repeat --parameters)
+pscale branch sidecar update <database> <branch> <sidecar> --org <org> --parameters pgbouncer.default_pool_size=20 --format json
+
+# Inspect available settings and asynchronous changes
+pscale branch sidecar parameters <database> <branch> <sidecar> --org <org> --format json
+pscale branch sidecar changes list <database> <branch> <sidecar> --org <org> --format json
+pscale branch sidecar changes show <database> <branch> <sidecar> <change-id> --org <org> --format json
+pscale branch sidecar changes cancel <database> <branch> <sidecar> <change-id> --org <org> --format json
+```
+
+- Each configuration profile has one sidecar. Pass the sidecar ID from `pscale branch sidecar list`, or the configuration profile name.
+- `--parameters` is required on `update`. Repeat `--parameters namespace.name=value` to change multiple settings together.
+- Updates are applied asynchronously; check sidecar `state` and `changes list` for progress. `changes show` prints human-readable before → after differences; `changes cancel` cancels a request that is still cancelable.
+- Sidecars cannot be created or deleted through the CLI or API.
+
+## Neki admin
+
+Use `pscale branch admin` to inspect and update the failover and recovery admin for a Neki branch. Each cluster has one admin, created and deleted with the cluster; there is no create, delete, or list command.
+
+```bash
+# Inspect the admin and list available sizes
+pscale branch admin show <database> <branch> --org <org> --format json
+pscale branch admin sizes <database> <branch> --org <org> --format json
+
+# Update size and parameters (repeat --parameters)
+pscale branch admin update <database> <branch> --org <org> --size NKA-0 --format json
+pscale branch admin update <database> <branch> --org <org> --parameters admin.recovery-poll-interval=20s --format json
+
+# Inspect available settings and asynchronous changes
+pscale branch admin parameters <database> <branch> --org <org> --format json
+pscale branch admin changes list <database> <branch> --org <org> --format json
+pscale branch admin changes show <database> <branch> <change-id> --org <org> --format json
+pscale branch admin changes cancel <database> <branch> <change-id> --org <org> --format json
+```
+
+- `--size` is a billed SKU name (e.g. `NKA-0`), not a Singularity slug. Underscores are also accepted. Use `admin sizes` to list valid SKUs.
+- At least one of `--size` or `--parameters` is required on `update`. Repeat `--parameters namespace.name=value` to change multiple settings together.
+- Updates are applied asynchronously; check admin `state` and `changes list` for progress. `changes show` prints human-readable before → after differences; `changes cancel` cancels a request that is still cancelable.
+- The admin cannot be created or deleted through the CLI or API.
 
 ## Billing payment methods
 
@@ -614,6 +831,31 @@ pscale billing invoice line-items <invoice-id> --org <org> --format json
 - `list` and `line-items` are paginated and return **one page per call**: `--page` (default 1) and `--per-page` (default 25). Invoices with thousands of line items are common, so walk pages deliberately. Human output prints the next page number; in JSON compare the row count to `--per-page` to decide whether to fetch again.
 - JSON preserves the API objects. Line items include the billed database and nested resource (usually a branch).
 - Requires `read_invoices` on a service token.
+
+## Neki backup restore
+
+Restoring a Neki backup creates a new branch. Configuration profiles and routers are restored; omitted sizes inherit the source. Sidecar, admin, and parameter settings are not restored.
+
+```bash
+# Preview the live source sizes restore will use if you send no overrides
+pscale backup restore show <database> <source-branch> <backup> --org <org> --format json
+
+# Restore and inherit source sizes
+pscale backup restore <database> <new-branch> <backup> --org <org> --format json
+pscale branch create <database> <new-branch> --org <org> --format json --restore <backup>
+
+# Override individual configuration profiles and routers (repeatable)
+pscale backup restore <database> <new-branch> <backup> --org <org> --format json \
+  --config-profile name=default,cluster-size=PS_40,replicas=2 \
+  --config-profile name=analytics,replicas=0 \
+  --router name=default,size=NKR_20,replicas-per-cell=1
+```
+
+- `--config-profile` is `name=<profile>[,cluster-size=<size>][,replicas=<n>]`. `--router` is `name=<router>[,size=<sku>][,replicas-per-cell=<n>]`. `name` is required; size and replica count are optional per entry.
+- `backup restore show` lists the source branch's current configuration profiles and routers. That is what an empty restore uses. It is live source state, not a snapshot stored on the backup.
+- `backup restore show` `<branch>` is the **source** branch the backup belongs to. `backup restore` `<branch>` is the **new** branch name.
+- `--cluster-size` is a shorthand for the default configuration profile. For Neki, `backup restore` omits it unless you pass it, so the source default is kept.
+- MySQL and PostgreSQL restores reject these flags. Profile and router parameters, admin size, and autoscaling are not accepted on restore.
 
 ## Imports (Cloudflare D1) — Postgres only
 

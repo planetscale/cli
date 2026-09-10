@@ -9,12 +9,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// MaintenanceCmd groups the maintenance commands for a Postgres branch.
+// MaintenanceCmd groups the maintenance commands for a Postgres or Neki branch.
 func MaintenanceCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "maintenance <command>",
-		Short: "Run maintenance for a Postgres branch",
-		Long: `Manage maintenance for a Postgres branch.
+		Short: "Run maintenance for a Postgres or Neki branch",
+		Long: `Manage maintenance for a Postgres or Neki branch.
 
 PlanetScale upgrades a branch's image in emergencies, such as patching security
 issues, or when you initiate the upgrade yourself. 'maintenance run' initiates
@@ -28,7 +28,7 @@ See https://planetscale.com/docs/postgres/operations-philosophy`,
 	return cmd
 }
 
-// MaintenanceRunCmd starts a maintenance run for a Postgres branch.
+// MaintenanceRunCmd starts a maintenance run for a Postgres or Neki branch.
 func MaintenanceRunCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
 		updatePostgresMinorVersion bool
@@ -36,9 +36,9 @@ func MaintenanceRunCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "run <database> <branch>",
-		Short: "Run maintenance for a Postgres branch now (Postgres only)",
-		Long: `Run maintenance for a Postgres branch, updating it to the latest available
-image. Postgres only.
+		Short: "Run maintenance for a Postgres or Neki branch now",
+		Long: `Run maintenance for a Postgres or Neki branch, updating it to the latest
+available image. Vitess (MySQL) databases are not supported.
 
 This is how regular version bumps, bugfixes, and quality-of-life improvements
 reach a branch. PlanetScale otherwise upgrades images only in emergencies, such
@@ -67,7 +67,7 @@ See https://planetscale.com/docs/postgres/operations-philosophy`,
 				return err
 			}
 
-			if err := cmdutil.RequirePostgresDatabase(ctx, client, ch.Config.Organization, database, "Maintenance runs"); err != nil {
+			if err := cmdutil.RequirePostgresOrNekiDatabase(ctx, client, ch.Config.Organization, database, "Maintenance runs"); err != nil {
 				return err
 			}
 
@@ -101,8 +101,9 @@ See https://planetscale.com/docs/postgres/operations-philosophy`,
 			}
 
 			return ch.Printer.PrintResource(map[string]string{
-				"result": "maintenance started",
-				"branch": branch,
+				"result":   "maintenance started",
+				"database": database,
+				"branch":   branch,
 			})
 		},
 	}

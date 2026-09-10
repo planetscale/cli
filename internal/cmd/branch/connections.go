@@ -10,8 +10,15 @@ import (
 func ConnectionsCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "connections <command>",
-		Short: "Show and kill branch connections",
-		Long: `Show and kill branch connections.
+		Short: "Show and kill MySQL or Postgres branch connections",
+		Long: `Show and kill MySQL or Postgres branch connections. Neki is not supported.
+
+MySQL (Vitess):
+  show/kill/top with --keyspace and --shard.
+
+Postgres:
+  show/top with --instance or --role.
+  kill-transaction terminates a transaction_id from show.
 
 Agent workflow:
   1. Run: pscale branch connections show <database> <branch> --format json

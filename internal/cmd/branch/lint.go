@@ -26,7 +26,7 @@ type SchemaLintError struct {
 func LintCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "lint <database> <branch>",
-		Short: "Lints the schema for a branch",
+		Short: "Lint the schema of a MySQL branch",
 		Args:  cmdutil.RequiredArgs("database", "branch"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()

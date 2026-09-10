@@ -16,6 +16,10 @@ import (
 
 const testRoleID = "AbC123xYz"
 
+func timePointer(value time.Time) *time.Time {
+	return &value
+}
+
 func TestResetDefaultRole(t *testing.T) {
 	c := qt.New(t)
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -273,6 +277,7 @@ func TestPostgresRoles_Get(t *testing.T) {
 		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/my-db/branches/my-branch/roles/AbC123xYz")
 		w.WriteHeader(200)
 		out := fmt.Sprintf(`{
+    "type": "BranchRole",
     "id": "%s",
     "name": "test-role",
     "access_host_url": "test.planetscale.com",
@@ -280,6 +285,7 @@ func TestPostgresRoles_Get(t *testing.T) {
     "password": "secret-password",
     "username": "test-user",
     "with_replication": true,
+    "ready": true,
     "disabled_at": null,
     "expires_at": "2021-02-14T10:19:23.000Z",
     "expired": true,
@@ -306,6 +312,7 @@ func TestPostgresRoles_Get(t *testing.T) {
 
 	expiresAt := time.Date(2021, time.February, 14, 10, 19, 23, 0, time.UTC)
 	want := &PostgresRole{
+		Type:            "BranchRole",
 		ID:              testRoleID,
 		Name:            "test-role",
 		AccessHostURL:   "test.planetscale.com",
@@ -316,6 +323,59 @@ func TestPostgresRoles_Get(t *testing.T) {
 		CreatedAt:       time.Date(2021, time.January, 14, 10, 19, 23, 0, time.UTC),
 		ExpiresAt:       &expiresAt,
 		Expired:         true,
+		Ready:           true,
+	}
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(role, qt.DeepEquals, want)
+}
+
+func TestPostgresRoles_GetNekiLifecycleFields(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, "GET")
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/my-db/branches/my-branch/roles/AbC123xYz")
+		w.WriteHeader(200)
+		out := fmt.Sprintf(`{
+    "type": "NekiRole",
+    "id": "%s",
+    "name": "test-role",
+    "access_host_url": "test.planetscale.com",
+    "database_name": "test-db",
+    "username": "test-user",
+    "ready": false,
+    "expired": true,
+    "expires_at": null,
+    "disabled_at": "2026-08-19T12:00:00.000Z",
+    "created_at": "2021-01-14T10:19:23.000Z"
+}`, testRoleID)
+		_, err := w.Write([]byte(out))
+		c.Assert(err, qt.IsNil)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	role, err := client.PostgresRoles.Get(context.Background(), &GetPostgresRoleRequest{
+		Organization: "my-org",
+		Database:     "my-db",
+		Branch:       "my-branch",
+		RoleId:       testRoleID,
+	})
+
+	want := &PostgresRole{
+		Type:          "NekiRole",
+		ID:            testRoleID,
+		Name:          "test-role",
+		AccessHostURL: "test.planetscale.com",
+		DatabaseName:  "test-db",
+		Username:      "test-user",
+		CreatedAt:     time.Date(2021, time.January, 14, 10, 19, 23, 0, time.UTC),
+		DisabledAt:    timePointer(time.Date(2026, time.August, 19, 12, 0, 0, 0, time.UTC)),
+		Expired:       true,
+		Ready:         false,
 	}
 
 	c.Assert(err, qt.IsNil)

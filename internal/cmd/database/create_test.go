@@ -5,6 +5,7 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/config"
@@ -79,8 +80,20 @@ func TestDatabase_CreateCmdWithWaitPrintsReadyDatabase(t *testing.T) {
 
 	org := "planetscale"
 	db := "planetscale"
-	pending := &ps.Database{Name: db, State: ps.DatabasePending}
-	ready := &ps.Database{Name: db, State: ps.DatabaseReady}
+	createdAt := time.Date(2026, 8, 11, 23, 21, 50, 0, time.UTC)
+	readyAt := createdAt.Add(time.Minute)
+	pending := &ps.Database{
+		Name:      db,
+		State:     ps.DatabasePending,
+		CreatedAt: createdAt,
+		UpdatedAt: createdAt,
+	}
+	ready := &ps.Database{
+		Name:      db,
+		State:     ps.DatabaseReady,
+		CreatedAt: createdAt,
+		UpdatedAt: readyAt,
+	}
 
 	svc := &mock.DatabaseService{
 		CreateFn: func(_ context.Context, _ *ps.CreateDatabaseRequest) (*ps.Database, error) {
@@ -315,7 +328,7 @@ func TestDatabase_CreateCmdWithStorageMySQLError(t *testing.T) {
 	err := cmd.Execute()
 
 	c.Assert(err, qt.IsNotNil)
-	c.Assert(err, qt.ErrorMatches, ".*only supported for PostgreSQL.*")
+	c.Assert(err, qt.ErrorMatches, ".*only supported for Postgres or Neki.*")
 	c.Assert(svc.CreateFnInvoked, qt.IsFalse)
 }
 
@@ -424,6 +437,59 @@ func TestDatabase_CreateCmdPostgresWithMajorVersion(t *testing.T) {
 
 	cmd := CreateCmd(ch)
 	cmd.SetArgs([]string{db, "--region", "us-east", "--engine", "postgresql", "--major-version", "17"})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.CreateFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.JSONEquals, res)
+}
+
+func TestDatabase_CreateCmdNeki(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	db := "planetscale"
+
+	res := &ps.Database{Name: "foo"}
+
+	svc := &mock.DatabaseService{
+		CreateFn: func(ctx context.Context, req *ps.CreateDatabaseRequest) (*ps.Database, error) {
+			c.Assert(req.Organization, qt.Equals, org)
+			c.Assert(req.Name, qt.Equals, db)
+			c.Assert(req.Region, qt.Equals, "us-east")
+			c.Assert(req.Kind, qt.Equals, ps.DatabaseEngineNeki)
+
+			return res, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: org,
+		},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{
+				Databases: svc,
+				Organizations: &mock.OrganizationsService{
+					GetFn: func(ctx context.Context, request *ps.GetOrganizationRequest) (*ps.Organization, error) {
+						return &ps.Organization{
+							RemainingFreeDatabases: 1,
+							Name:                   request.Organization,
+						}, nil
+					},
+				},
+			}, nil
+		},
+	}
+
+	cmd := CreateCmd(ch)
+	cmd.SetArgs([]string{db, "--region", "us-east", "--engine", "neki"})
 	err := cmd.Execute()
 
 	c.Assert(err, qt.IsNil)

@@ -100,11 +100,12 @@ func GlobalJSONError(err error) JSONErrorResponse {
 	case strings.Contains(msg, "missing argument") ||
 		strings.Contains(msg, "missing arguments") ||
 		strings.Contains(msg, "missing required flags") ||
-		strings.Contains(msg, "required flag"):
+		strings.Contains(msg, "required flag") ||
+		(strings.Contains(msg, "accepts ") && strings.Contains(msg, " arg(s), received ")):
 		status = "action_required"
 		code = "INVALID_USAGE"
 		nextSteps = []string{
-			"Re-run with the missing arguments or flags named in the error message",
+			"Re-run with the arguments and flags described by the error message",
 			AgentGuideCmd(),
 		}
 

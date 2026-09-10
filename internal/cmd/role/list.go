@@ -22,7 +22,7 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:     "list <database> <branch>",
-		Short:   "List all roles for a Postgres database branch",
+		Short:   "List all roles for a Postgres or Neki database branch",
 		Args:    cmdutil.RequiredArgs("database", "branch"),
 		Aliases: []string{"ls"},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -90,7 +90,7 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 				return nil
 			}
 
-			return ch.Printer.PrintResource(toPostgresRoles(roles))
+			return printRoleList(ch.Printer, roles)
 		},
 	}
 
@@ -118,6 +118,28 @@ type PostgresRoleList struct {
 	orig *ps.PostgresRole
 }
 
+type NekiRoleList struct {
+	PublicID        string  `header:"id" json:"id"`
+	Name            string  `header:"name" json:"name"`
+	Username        string  `header:"username" json:"username"`
+	Ready           bool    `header:"ready" json:"ready"`
+	Status          string  `header:"status" json:"status"`
+	ExpiresAt       *string `header:"expires_at" json:"expires_at"`
+	AccessHostURL   string  `header:"access_host_url" json:"access_host_url"`
+	WithReplication bool    `header:"with_replication" json:"with_replication"`
+	CreatedAt       string  `header:"created_at" json:"created_at"`
+
+	orig *ps.PostgresRole
+}
+
+func printRoleList(p *printer.Printer, roles []*ps.PostgresRole) error {
+	if len(roles) > 0 && isNekiRole(roles[0]) {
+		return p.PrintResource(toNekiRoles(roles))
+	}
+
+	return p.PrintResource(toPostgresRoles(roles))
+}
+
 func toPostgresRoles(roles []*ps.PostgresRole) []*PostgresRoleList {
 	psRoles := make([]*PostgresRoleList, 0, len(roles))
 
@@ -136,4 +158,25 @@ func toPostgresRoles(roles []*ps.PostgresRole) []*PostgresRoleList {
 	}
 
 	return psRoles
+}
+
+func toNekiRoles(roles []*ps.PostgresRole) []*NekiRoleList {
+	nekiRoles := make([]*NekiRoleList, 0, len(roles))
+
+	for _, role := range roles {
+		nekiRoles = append(nekiRoles, &NekiRoleList{
+			PublicID:        role.ID,
+			Name:            role.Name,
+			Username:        role.Username,
+			AccessHostURL:   role.AccessHostURL,
+			WithReplication: role.WithReplication,
+			Ready:           role.Ready,
+			Status:          postgresRoleStatus(role),
+			ExpiresAt:       postgresRoleExpiresAt(role),
+			CreatedAt:       role.CreatedAt.Format("2006-01-02 15:04:05"),
+			orig:            role,
+		})
+	}
+
+	return nekiRoles
 }

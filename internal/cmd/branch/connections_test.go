@@ -36,6 +36,15 @@ func TestConnectionsCmdConstruction(t *testing.T) {
 	}
 }
 
+func TestConnectionsHelpListsEngines(t *testing.T) {
+	c := qt.New(t)
+
+	help := connectionsHelpForTest(c, "--help")
+	c.Assert(help, qt.Contains, "MySQL (Vitess):")
+	c.Assert(help, qt.Contains, "Postgres:")
+	c.Assert(help, qt.Contains, "Neki is not supported")
+}
+
 func TestConnectionsShowHelpListsTargetAndFilterFlags(t *testing.T) {
 	c := qt.New(t)
 
@@ -251,6 +260,12 @@ func TestConnectionsShowRejectsEngineSpecificFlags(t *testing.T) {
 			engine:  ps.DatabaseEnginePostgres,
 			args:    []string{"show", "pgload", "main", "--keyspace", "commerce", "--shard", "-80"},
 			wantErr: "--keyspace/--shard are only supported for Vitess databases",
+		},
+		{
+			name:    "neki is not supported",
+			engine:  ps.DatabaseEngineNeki,
+			args:    []string{"show", "neki", "main"},
+			wantErr: "connections is not supported for Neki databases",
 		},
 	}
 
@@ -520,6 +535,32 @@ func TestConnectionsKillTransactionRejectsVitess(t *testing.T) {
 	err := cmd.Execute()
 
 	c.Assert(err, qt.ErrorMatches, "connections kill-transaction is only supported for Postgres databases")
+}
+
+func TestConnectionsRejectsNekiBeforeAPI(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{name: "show", args: []string{"show", "neki", "main"}},
+		{name: "kill", args: []string{"kill", "neki", "main", "primary-123-c"}},
+		{name: "kill-transaction", args: []string{"kill-transaction", "neki", "main", "primary-123-t"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := qt.New(t)
+			server := liveConnectionsBranchServer(t, func(w http.ResponseWriter, r *http.Request) {
+				c.Fatalf("%s should reject Neki before calling %s", tt.name, r.URL.Path)
+			})
+			cmd := connectionsCmdForTest(connectionsTestHelper("acme", ps.DatabaseEngineNeki, nil, server.URL, printer.JSON, &bytes.Buffer{}))
+			cmd.SetArgs(tt.args)
+
+			err := cmd.Execute()
+
+			c.Assert(err, qt.ErrorMatches, "connections is not supported for Neki databases")
+		})
+	}
 }
 
 func TestPostgresActionResultOmitsVitessTopologyColumns(t *testing.T) {

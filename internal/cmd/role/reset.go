@@ -99,7 +99,7 @@ func ResetCmd(ch *cmdutil.Helper) *cobra.Command {
 				return nil
 			}
 
-			return ch.Printer.PrintResource(toPostgresRole(role))
+			return printRole(ch.Printer, role)
 		},
 	}
 

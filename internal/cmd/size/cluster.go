@@ -58,40 +58,35 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 			var allClusterSKUsWithEngine []clusterSKUWithEngine
 
 			if showAll {
-				// Make two API calls: one for MySQL, one for PostgreSQL
-				// MySQL clusters (without WithPostgreSQL)
-				mysqlSKUs, err := client.Organizations.ListClusterSKUs(ctx, &planetscale.ListOrganizationClusterSKUsRequest{
-					Organization: ch.Config.Organization,
-				}, baseOpts...)
-				if err != nil {
-					return cmdutil.HandleError(err)
+				engines := []struct {
+					engine planetscale.DatabaseEngine
+					opts   []planetscale.ListOption
+				}{
+					{planetscale.DatabaseEngineMySQL, baseOpts},
+					{planetscale.DatabaseEnginePostgres, append(baseOpts, planetscale.WithPostgreSQL())},
+					{planetscale.DatabaseEngineNeki, append(baseOpts, planetscale.WithNeki())},
 				}
-				for _, sku := range mysqlSKUs {
-					allClusterSKUsWithEngine = append(allClusterSKUsWithEngine, clusterSKUWithEngine{
-						sku:    sku,
-						engine: planetscale.DatabaseEngineMySQL,
-					})
-				}
-
-				// PostgreSQL clusters (with WithPostgreSQL)
-				postgresOpts := append(baseOpts, planetscale.WithPostgreSQL())
-				postgresSKUs, err := client.Organizations.ListClusterSKUs(ctx, &planetscale.ListOrganizationClusterSKUsRequest{
-					Organization: ch.Config.Organization,
-				}, postgresOpts...)
-				if err != nil {
-					return cmdutil.HandleError(err)
-				}
-				for _, sku := range postgresSKUs {
-					allClusterSKUsWithEngine = append(allClusterSKUsWithEngine, clusterSKUWithEngine{
-						sku:    sku,
-						engine: planetscale.DatabaseEnginePostgres,
-					})
+				for _, item := range engines {
+					skus, err := client.Organizations.ListClusterSKUs(ctx, &planetscale.ListOrganizationClusterSKUsRequest{
+						Organization: ch.Config.Organization,
+					}, item.opts...)
+					if err != nil {
+						return cmdutil.HandleError(err)
+					}
+					for _, sku := range skus {
+						allClusterSKUsWithEngine = append(allClusterSKUsWithEngine, clusterSKUWithEngine{
+							sku:    sku,
+							engine: item.engine,
+						})
+					}
 				}
 			} else {
-				// Single engine filter
 				listOpts := baseOpts
-				if engine == planetscale.DatabaseEnginePostgres {
+				switch engine {
+				case planetscale.DatabaseEnginePostgres:
 					listOpts = append(listOpts, planetscale.WithPostgreSQL())
+				case planetscale.DatabaseEngineNeki:
+					listOpts = append(listOpts, planetscale.WithNeki())
 				}
 
 				clusterSKUs, err := client.Organizations.ListClusterSKUs(ctx, &planetscale.ListOrganizationClusterSKUsRequest{
@@ -119,7 +114,7 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	cmd.Flags().StringVar(&flags.region, "region", "", "view cluster sizes and rates for a specific region")
 	cmd.Flags().BoolVar(&flags.metal, "metal", false, "view cluster sizes and rates for clusters with metal storage")
-	cmd.Flags().StringVar(&flags.engine, "engine", "", "Filter cluster sizes by database engine. Supported values: mysql, postgresql. If not specified, shows all clusters for all engines.")
+	cmd.Flags().StringVar(&flags.engine, "engine", "", "Filter cluster sizes by database engine. Supported values: mysql, postgresql, neki. If not specified, shows all clusters for all engines.")
 
 	cmd.RegisterFlagCompletionFunc("region", func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
 		return cmdutil.RegionsCompletionFunc(ch, cmd, args, toComplete)
@@ -129,6 +124,7 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 		return []cobra.Completion{
 			cobra.CompletionWithDesc("mysql", "A Vitess database"),
 			cobra.CompletionWithDesc("postgresql", "The fastest cloud Postgres"),
+			cobra.CompletionWithDesc("neki", "Sharded PostgreSQL"),
 		}, cobra.ShellCompDirectiveNoFileComp
 	})
 
@@ -156,7 +152,7 @@ type ClusterSKU struct {
 	rate *int64
 }
 
-// ClusterSKUSingleEngine is the format for single-engine views (--engine mysql or --engine postgresql).
+// ClusterSKUSingleEngine is the format for single-engine views (--engine mysql, postgresql, or neki).
 // Same as ClusterSKU but without the engine column (since it's implied by the filter).
 type ClusterSKUSingleEngine struct {
 	Name          string `header:"name" json:"name"`
@@ -204,6 +200,21 @@ func (c *ClusterSKUSingleEngine) MarshalCSVValue() interface{} {
 	return []*ClusterSKUSingleEngine{c}
 }
 
+func postgresLike(engine planetscale.DatabaseEngine) bool {
+	return engine == planetscale.DatabaseEnginePostgres || engine == planetscale.DatabaseEngineNeki
+}
+
+func engineDisplayName(engine planetscale.DatabaseEngine) string {
+	switch engine {
+	case planetscale.DatabaseEnginePostgres:
+		return "postgresql"
+	case planetscale.DatabaseEngineNeki:
+		return "neki"
+	default:
+		return "mysql"
+	}
+}
+
 func parseDatabaseEngine(engine string) (planetscale.DatabaseEngine, bool, error) {
 	switch engine {
 	case "":
@@ -212,8 +223,10 @@ func parseDatabaseEngine(engine string) (planetscale.DatabaseEngine, bool, error
 		return planetscale.DatabaseEngineMySQL, false, nil
 	case "postgresql", "postgres":
 		return planetscale.DatabaseEnginePostgres, false, nil
+	case "neki":
+		return planetscale.DatabaseEngineNeki, false, nil
 	default:
-		return planetscale.DatabaseEngineMySQL, false, fmt.Errorf("invalid database engine %q, supported values: mysql, postgresql", engine)
+		return planetscale.DatabaseEngineMySQL, false, fmt.Errorf("invalid database engine %q, supported values: mysql, postgresql, neki", engine)
 	}
 }
 
@@ -252,7 +265,7 @@ func formatClusterFields(sku *planetscale.ClusterSKU, rateOverride *int64) (name
 }
 
 // toClusterSKUs converts cluster SKUs to the full format with all columns including engine.
-// PostgreSQL clusters appear twice (highly available and single node).
+// PostgreSQL and Neki clusters appear twice (highly available and single node).
 // MySQL clusters are always highly available with 2 replicas.
 func toClusterSKUs(items []clusterSKUWithEngine, onlyMetal bool) []*ClusterSKU {
 	clusters := make([]*ClusterSKU, 0, len(items)*2)
@@ -262,12 +275,9 @@ func toClusterSKUs(items []clusterSKUWithEngine, onlyMetal bool) []*ClusterSKU {
 			continue
 		}
 
-		engineStr := "mysql"
-		if item.engine == planetscale.DatabaseEnginePostgres {
-			engineStr = "postgresql"
-		}
+		engineStr := engineDisplayName(item.engine)
 
-		if item.engine == planetscale.DatabaseEnginePostgres {
+		if postgresLike(item.engine) {
 			// Highly available version with regular rate
 			name, cpu, memory, storage, price := formatClusterFields(item.sku, nil)
 			clusters = append(clusters, &ClusterSKU{
@@ -322,7 +332,7 @@ func toClusterSKUs(items []clusterSKUWithEngine, onlyMetal bool) []*ClusterSKU {
 }
 
 // toClusterSKUsSingleEngine converts cluster SKUs to the single-engine format (no engine column).
-// PostgreSQL clusters appear twice (highly available and single node).
+// PostgreSQL and Neki clusters appear twice (highly available and single node).
 // MySQL clusters are always highly available with 2 replicas.
 func toClusterSKUsSingleEngine(items []clusterSKUWithEngine, onlyMetal bool) []*ClusterSKUSingleEngine {
 	clusters := make([]*ClusterSKUSingleEngine, 0, len(items)*2)
@@ -332,7 +342,7 @@ func toClusterSKUsSingleEngine(items []clusterSKUWithEngine, onlyMetal bool) []*
 			continue
 		}
 
-		if item.engine == planetscale.DatabaseEnginePostgres {
+		if postgresLike(item.engine) {
 			// Highly available version with regular rate
 			name, cpu, memory, storage, price := formatClusterFields(item.sku, nil)
 			clusters = append(clusters, &ClusterSKUSingleEngine{
