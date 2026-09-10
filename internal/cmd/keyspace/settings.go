@@ -53,7 +53,11 @@ func SettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 // toKeyspaceSettings converts a Keyspace API response to a KeyspaceSettings object for display
 func toKeyspaceSettings(ks *ps.Keyspace) *KeyspaceSettings {
 	settings := &KeyspaceSettings{
-		orig: ks,
+		MaxRollout: 1,
+		orig:       ks,
+	}
+	if ks.MaxRollout != nil {
+		settings.MaxRollout = *ks.MaxRollout
 	}
 
 	// Set replication durability constraints if available

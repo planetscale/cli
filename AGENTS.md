@@ -419,6 +419,24 @@ pscale database aggressive-cutover disable <database> --org <org> --format json
 
 Vitess only. See https://planetscale.com/docs/vitess/schema-changes/aggressive-cutover
 
+## Vitess keyspace rollout concurrency
+
+Configure how many shard rollouts may run concurrently for a keyspace:
+
+```bash
+pscale keyspace settings <database> <branch> <keyspace> --org <org> --format json
+pscale keyspace update-settings <database> <branch> <keyspace> --org <org> --format json --max-rollout 8
+pscale keyspace update-settings <database> <branch> <keyspace> --org <org> --format json --reset-max-rollout
+```
+
+`--max-rollout` accepts 1–32. Resetting removes the configured value and uses
+the default of 1. In JSON, `max_rollout` is the stored configured value and is
+`null` when unset; it is not a computed effective concurrency value. The
+service caps effective rollout concurrency at 32. Values above 32 may appear
+when an administrator has stored an override, but customer updates remain
+limited to 32. An administrator's force override can also supersede the
+configured value for the next rollout.
+
 ## Vitess deploy requests (inspect + throttler)
 
 Core lifecycle is already covered (`list/create/show/diff/review/deploy/apply/unblock/update/cancel/close/revert/skip-revert`). `update` (`edit` is an alias) sets auto-apply and auto-delete-branch. `unblock` clears the queue after a failed deploy or revert (dashboard “Unblock deploy queue”); it is not `apply`. These inspect commands are read-only:
