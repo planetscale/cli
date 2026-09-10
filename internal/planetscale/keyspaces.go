@@ -24,6 +24,7 @@ type Keyspace struct {
 	UpdatedAt                        time.Time                         `json:"updated_at"`
 	VReplicationFlags                *VReplicationFlags                `json:"vreplication_flags"`
 	ReplicationDurabilityConstraints *ReplicationDurabilityConstraints `json:"replication_durability_constraints"`
+	Throttler                        *KeyspaceThrottler                `json:"throttler"`
 	ReadOnlyRegions                  []*ReadOnlyRegionKeyspace         `json:"read_only_regions"`
 }
 
@@ -174,6 +175,7 @@ type UpdateKeyspaceSettingsRequest struct {
 	Keyspace                         string                            `json:"-"`
 	ReplicationDurabilityConstraints *ReplicationDurabilityConstraints `json:"replication_durability_constraints,omitempty"`
 	VReplicationFlags                *VReplicationFlags                `json:"vreplication_flags,omitempty"`
+	Throttler                        *KeyspaceThrottler                `json:"throttler,omitempty"`
 }
 
 type ReplicationDurabilityConstraints struct {
@@ -184,6 +186,11 @@ type VReplicationFlags struct {
 	OptimizeInserts           bool `json:"optimize_inserts"`
 	AllowNoBlobBinlogRowImage bool `json:"allow_no_blob_binlog_row_image"`
 	VPlayerBatching           bool `json:"vplayer_batching"`
+}
+
+type KeyspaceThrottler struct {
+	Enabled   *bool    `json:"enabled,omitempty"`
+	Threshold *float64 `json:"threshold,omitempty"`
 }
 
 // KeyspacesService is an interface for interacting with the keyspace endpoints of the PlanetScale API

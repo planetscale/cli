@@ -84,5 +84,15 @@ func toKeyspaceSettings(ks *ps.Keyspace) *KeyspaceSettings {
 		}
 	}
 
+	if ks.Throttler != nil {
+		settings.Throttler = Throttler{
+			Enabled:   ks.Throttler.Enabled != nil && *ks.Throttler.Enabled,
+			Threshold: "not set",
+		}
+		if ks.Throttler.Threshold != nil {
+			settings.Throttler.Threshold = fmt.Sprintf("%gs", *ks.Throttler.Threshold)
+		}
+	}
+
 	return settings
 }
