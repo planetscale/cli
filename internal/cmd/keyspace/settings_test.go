@@ -3,6 +3,7 @@ package keyspace
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 	"time"
@@ -183,6 +184,7 @@ func TestBuildKeyspaceSettings(t *testing.T) {
 	c := qt.New(t)
 
 	ts := time.Now()
+	maxRollout := 64
 
 	// Test with all settings populated
 	fullKs := &ps.Keyspace{
@@ -198,6 +200,7 @@ func TestBuildKeyspaceSettings(t *testing.T) {
 			AllowNoBlobBinlogRowImage: true,
 			VPlayerBatching:           false,
 		},
+		MaxRollout: &maxRollout,
 	}
 
 	settings := toKeyspaceSettings(fullKs)
@@ -205,6 +208,8 @@ func TestBuildKeyspaceSettings(t *testing.T) {
 	c.Assert(settings.VReplicationFlags.OptimizeInserts, qt.Equals, true)
 	c.Assert(settings.VReplicationFlags.AllowNoBlobBinlogRowImage, qt.Equals, true)
 	c.Assert(settings.VReplicationFlags.VPlayerBatching, qt.Equals, false)
+	c.Assert(settings.MaxRollout, qt.Equals, "64")
+	assertMaxRolloutJSON(t, settings, "64")
 
 	// Test with nil settings
 	nilKs := &ps.Keyspace{
@@ -221,4 +226,17 @@ func TestBuildKeyspaceSettings(t *testing.T) {
 	c.Assert(nilSettings.VReplicationFlags.OptimizeInserts, qt.Equals, false) // Default values
 	c.Assert(nilSettings.VReplicationFlags.AllowNoBlobBinlogRowImage, qt.Equals, false)
 	c.Assert(nilSettings.VReplicationFlags.VPlayerBatching, qt.Equals, false)
+	c.Assert(nilSettings.MaxRollout, qt.Equals, "default (1)")
+	assertMaxRolloutJSON(t, nilSettings, "null")
+}
+
+func assertMaxRolloutJSON(t *testing.T, settings *KeyspaceSettings, want string) {
+	t.Helper()
+	c := qt.New(t)
+	encoded, err := json.Marshal(settings)
+	c.Assert(err, qt.IsNil)
+
+	var object map[string]json.RawMessage
+	c.Assert(json.Unmarshal(encoded, &object), qt.IsNil)
+	c.Assert(string(object["max_rollout"]), qt.Equals, want)
 }

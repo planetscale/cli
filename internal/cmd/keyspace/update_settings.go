@@ -12,11 +12,11 @@ import (
 )
 
 func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
-	updateReq := &ps.UpdateKeyspaceSettingsRequest{}
-
 	var flags struct {
 		replicationDurabilityConstraints *ps.ReplicationDurabilityConstraints
 		vreplicationFlags                *ps.VReplicationFlags
+		maxRollout                       int
+		resetMaxRollout                  bool
 		interactive                      bool
 	}
 
@@ -30,14 +30,41 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			database, branch, keyspace := args[0], args[1], args[2]
+			maxRolloutChanged := cmd.Flags().Changed("max-rollout")
+			resetMaxRolloutChanged := cmd.Flags().Changed("reset-max-rollout")
+			resetMaxRolloutRequested := resetMaxRolloutChanged && flags.resetMaxRollout
 
-			updateReq.Organization = ch.Config.Organization
-			updateReq.Database = database
-			updateReq.Branch = branch
-			updateReq.Keyspace = keyspace
+			if maxRolloutChanged && resetMaxRolloutRequested {
+				return fmt.Errorf("--max-rollout and --reset-max-rollout are mutually exclusive")
+			}
+			if flags.interactive && (maxRolloutChanged || resetMaxRolloutChanged) {
+				return fmt.Errorf("--max-rollout and --reset-max-rollout cannot be used with --interactive")
+			}
+			if maxRolloutChanged && (flags.maxRollout < 1 || flags.maxRollout > 32) {
+				return fmt.Errorf("--max-rollout must be between 1 and 32")
+			}
+
+			updateReq := &ps.UpdateKeyspaceSettingsRequest{
+				Organization: ch.Config.Organization,
+				Database:     database,
+				Branch:       branch,
+				Keyspace:     keyspace,
+			}
 
 			if flags.interactive {
 				return updateInteractive(ctx, ch, updateReq)
+			}
+
+			// Only nested VReplication updates need a read before the PATCH so
+			// unspecified flags in that group can be preserved.
+			rdcChanged := cmd.Flags().Changed("replication-durability-constraints-strategy")
+			vrfChanged := cmd.Flags().Changed("vreplication-optimize-inserts") ||
+				cmd.Flags().Changed("vreplication-enable-noblob-binlog-mode") ||
+				cmd.Flags().Changed("vreplication-batch-replication-events")
+
+			if !rdcChanged && !vrfChanged && !maxRolloutChanged && !resetMaxRolloutRequested {
+				ch.Printer.Println("No changes were requested. No update performed.")
+				return nil
 			}
 
 			client, err := ch.Client()
@@ -48,25 +75,16 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Updating settings for keyspace %s in %s/%s", printer.BoldBlue(keyspace), printer.BoldBlue(database), printer.BoldBlue(branch)))
 			defer end()
 
-			if err := setInitialSettings(ctx, ch, updateReq); err != nil {
-				return err
-			}
-
-			// Check if any relevant flags are changing replication durability constraints
-			rdcChanged := cmd.Flags().Changed("replication-durability-constraints-strategy")
 			if rdcChanged {
-				if updateReq.ReplicationDurabilityConstraints == nil {
-					updateReq.ReplicationDurabilityConstraints = &ps.ReplicationDurabilityConstraints{}
+				updateReq.ReplicationDurabilityConstraints = &ps.ReplicationDurabilityConstraints{
+					Strategy: constraintsToStrategy(flags.replicationDurabilityConstraints.Strategy),
 				}
-				updateReq.ReplicationDurabilityConstraints.Strategy = constraintsToStrategy(flags.replicationDurabilityConstraints.Strategy)
 			}
-
-			// Check if any relevant flags are changing VReplication flags
-			vrfChanged := cmd.Flags().Changed("vreplication-optimize-inserts") ||
-				cmd.Flags().Changed("vreplication-enable-noblob-binlog-mode") ||
-				cmd.Flags().Changed("vreplication-batch-replication-events")
 
 			if vrfChanged {
+				if err := setInitialSettings(ctx, client, updateReq, false, true); err != nil {
+					return err
+				}
 				if updateReq.VReplicationFlags == nil {
 					updateReq.VReplicationFlags = &ps.VReplicationFlags{}
 				}
@@ -84,10 +102,12 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 				}
 			}
 
-			if !rdcChanged && !vrfChanged {
-				end()
-				ch.Printer.Println("No changes were requested. No update performed.")
-				return nil
+			if maxRolloutChanged {
+				maxRollout := &flags.maxRollout
+				updateReq.MaxRollout = &maxRollout
+			} else if resetMaxRolloutRequested {
+				var maxRollout *int
+				updateReq.MaxRollout = &maxRollout
 			}
 
 			k, err := updateKeyspaceSettings(ctx, client, updateReq)
@@ -105,17 +125,14 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().BoolVar(&flags.vreplicationFlags.OptimizeInserts, "vreplication-optimize-inserts", true, "When enabled, skips sending INSERT events for rows that have yet to be replicated.")
 	cmd.Flags().BoolVar(&flags.vreplicationFlags.AllowNoBlobBinlogRowImage, "vreplication-enable-noblob-binlog-mode", true, "When enabled, omits changed BLOB and TEXT columns from replication events, which reduces binlog sizes.")
 	cmd.Flags().BoolVar(&flags.vreplicationFlags.VPlayerBatching, "vreplication-batch-replication-events", false, "When enabled, sends fewer queries to MySQL to improve performance.")
+	cmd.Flags().IntVar(&flags.maxRollout, "max-rollout", 0, "Maximum number of concurrent shard rollouts (1-32). The effective service cap is 32.")
+	cmd.Flags().BoolVar(&flags.resetMaxRollout, "reset-max-rollout", false, "Reset the configured maximum concurrent shard rollouts to the default (1).")
 	cmd.Flags().BoolVarP(&flags.interactive, "interactive", "i", false, "Run the command in interactive mode")
 
 	return cmd
 }
 
-func setInitialSettings(ctx context.Context, ch *cmdutil.Helper, req *ps.UpdateKeyspaceSettingsRequest) error {
-	client, err := ch.Client()
-	if err != nil {
-		return err
-	}
-
+func setInitialSettings(ctx context.Context, client *ps.Client, req *ps.UpdateKeyspaceSettingsRequest, includeDurability, includeVReplication bool) error {
 	organization := req.Organization
 	database := req.Database
 	branch := req.Branch
@@ -136,13 +153,13 @@ func setInitialSettings(ctx context.Context, ch *cmdutil.Helper, req *ps.UpdateK
 		}
 	}
 
-	// Get initial defaults from the API
-	if ks.ReplicationDurabilityConstraints != nil {
+	if includeDurability && ks.ReplicationDurabilityConstraints != nil {
 		req.ReplicationDurabilityConstraints = ks.ReplicationDurabilityConstraints
 	}
 
-	if ks.VReplicationFlags != nil {
-		req.VReplicationFlags = ks.VReplicationFlags
+	if includeVReplication && ks.VReplicationFlags != nil {
+		vreplicationFlags := *ks.VReplicationFlags
+		req.VReplicationFlags = &vreplicationFlags
 	}
 
 	return nil
@@ -154,7 +171,7 @@ func updateInteractive(ctx context.Context, ch *cmdutil.Helper, updateReq *ps.Up
 		return err
 	}
 
-	if err := setInitialSettings(ctx, ch, updateReq); err != nil {
+	if err := setInitialSettings(ctx, client, updateReq, true, true); err != nil {
 		return err
 	}
 

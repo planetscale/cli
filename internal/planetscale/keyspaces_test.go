@@ -3,6 +3,7 @@ package planetscale
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -478,4 +479,64 @@ func TestKeyspaces_UpdateSettings(t *testing.T) {
 	c.Assert(keyspace.VReplicationFlags.AllowNoBlobBinlogRowImage, qt.Equals, true)
 	c.Assert(keyspace.VReplicationFlags.VPlayerBatching, qt.Equals, true)
 	c.Assert(keyspace.ReplicationDurabilityConstraints.Strategy, qt.Equals, "maximum")
+}
+
+func TestKeyspaces_UpdateSettingsMaxRolloutPayload(t *testing.T) {
+	for _, tt := range []struct {
+		name       string
+		maxRollout func() **int
+		wantBody   string
+	}{
+		{
+			name: "omitted",
+			maxRollout: func() **int {
+				return nil
+			},
+			wantBody: `{}`,
+		},
+		{
+			name: "integer",
+			maxRollout: func() **int {
+				value := 8
+				valuePointer := &value
+				return &valuePointer
+			},
+			wantBody: `{"max_rollout":8}`,
+		},
+		{
+			name: "null",
+			maxRollout: func() **int {
+				var value *int
+				return &value
+			},
+			wantBody: `{"max_rollout":null}`,
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			c := qt.New(t)
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				body, err := io.ReadAll(r.Body)
+				c.Assert(err, qt.IsNil)
+				c.Assert(r.Method, qt.Equals, http.MethodPatch)
+				c.Assert(string(body), qt.JSONEquals, json.RawMessage(tt.wantBody))
+				_, err = w.Write([]byte(`{"max_rollout":64}`))
+				c.Assert(err, qt.IsNil)
+			}))
+			defer ts.Close()
+
+			client, err := NewClient(WithBaseURL(ts.URL))
+			c.Assert(err, qt.IsNil)
+
+			keyspace, err := client.Keyspaces.UpdateSettings(context.Background(), &UpdateKeyspaceSettingsRequest{
+				Organization: "foo",
+				Database:     "bar",
+				Branch:       "baz",
+				Keyspace:     "qux",
+				MaxRollout:   tt.maxRollout(),
+			})
+			c.Assert(err, qt.IsNil)
+			c.Assert(keyspace.MaxRollout, qt.Not(qt.IsNil))
+			c.Assert(*keyspace.MaxRollout, qt.Equals, 64)
+		})
+	}
 }

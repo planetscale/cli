@@ -55,6 +55,7 @@ type Keyspace struct {
 type KeyspaceSettings struct {
 	ReplicationDurabilityConstraintStrategy string            `header:"replication durability constraint strategy" json:"replication_durability_constraint"`
 	VReplicationFlags                       VReplicationFlags `header:"inline" json:"vreplication_flags"`
+	MaxRollout                              string            `header:"max rollout" json:"max_rollout"`
 
 	orig *ps.Keyspace
 }
