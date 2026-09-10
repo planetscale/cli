@@ -129,8 +129,8 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().BoolVar(&flags.vreplicationFlags.OptimizeInserts, "vreplication-optimize-inserts", true, "When enabled, skips sending INSERT events for rows that have yet to be replicated.")
 	cmd.Flags().BoolVar(&flags.vreplicationFlags.AllowNoBlobBinlogRowImage, "vreplication-enable-noblob-binlog-mode", true, "When enabled, omits changed BLOB and TEXT columns from replication events, which reduces binlog sizes.")
 	cmd.Flags().BoolVar(&flags.vreplicationFlags.VPlayerBatching, "vreplication-batch-replication-events", false, "When enabled, sends fewer queries to MySQL to improve performance.")
-	cmd.Flags().BoolVar(&flags.throttlerEnabled, "throttler-enabled", true, "When enabled, migrations and workflows are paused while replicas fall behind.")
-	cmd.Flags().Float64Var(&flags.throttlerThreshold, "throttler-threshold", 5, "Replication lag in seconds that trips the throttler.")
+	cmd.Flags().BoolVar(&flags.throttlerEnabled, "throttler-enabled", true, "Pause schema migrations and VReplication workflows when replication lag rises above the threshold.")
+	cmd.Flags().Float64Var(&flags.throttlerThreshold, "throttler-threshold", 5, "Replication lag in seconds above which migrations and workflows are paused.")
 	cmd.Flags().BoolVarP(&flags.interactive, "interactive", "i", false, "Run the command in interactive mode")
 
 	return cmd
@@ -243,12 +243,12 @@ func updateInteractive(ctx context.Context, ch *cmdutil.Helper, updateReq *ps.Up
 		huh.NewGroup(
 			huh.NewConfirm().
 				Title("Enable the throttler?").
-				Description("When enabled, migrations and workflows are paused while replicas fall behind.").
+				Description("Pauses schema migrations and VReplication workflows when replication lag rises above the threshold.").
 				Value(&updateReq.Throttler.Enabled),
 
 			huh.NewInput().
 				Title("Replication lag threshold (seconds)").
-				Description("Replication lag above which the throttler pauses work.").
+				Description("Migrations and workflows are paused while replication lag is above this value.").
 				Value(&throttlerThreshold).
 				Validate(func(s string) error {
 					v, err := strconv.ParseFloat(s, 64)
