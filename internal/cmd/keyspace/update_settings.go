@@ -2,7 +2,9 @@ package keyspace
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/charmbracelet/huh"
 	"github.com/planetscale/cli/internal/cmdutil"
@@ -17,6 +19,8 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 		vreplicationFlags                *ps.VReplicationFlags
 		maxRollout                       int
 		resetMaxRollout                  bool
+		throttlerEnabled                 bool
+		throttlerThreshold               float64
 		interactive                      bool
 	}
 
@@ -55,14 +59,16 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 				return updateInteractive(ctx, ch, updateReq)
 			}
 
-			// Only nested VReplication updates need a read before the PATCH so
-			// unspecified flags in that group can be preserved.
+			// Nested VReplication and throttler updates read current settings
+			// first so unspecified flags in that group can be preserved.
 			rdcChanged := cmd.Flags().Changed("replication-durability-constraints-strategy")
 			vrfChanged := cmd.Flags().Changed("vreplication-optimize-inserts") ||
 				cmd.Flags().Changed("vreplication-enable-noblob-binlog-mode") ||
 				cmd.Flags().Changed("vreplication-batch-replication-events")
+			throttlerChanged := cmd.Flags().Changed("throttler-enabled") ||
+				cmd.Flags().Changed("throttler-threshold")
 
-			if !rdcChanged && !vrfChanged && !maxRolloutChanged && !resetMaxRolloutRequested {
+			if !rdcChanged && !vrfChanged && !throttlerChanged && !maxRolloutChanged && !resetMaxRolloutRequested {
 				ch.Printer.Println("No changes were requested. No update performed.")
 				return nil
 			}
@@ -82,7 +88,7 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			if vrfChanged {
-				if err := setInitialSettings(ctx, client, updateReq, false, true); err != nil {
+				if err := setInitialSettings(ctx, client, updateReq, false, true, false); err != nil {
 					return err
 				}
 				if updateReq.VReplicationFlags == nil {
@@ -99,6 +105,26 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 
 				if cmd.Flags().Changed("vreplication-batch-replication-events") {
 					updateReq.VReplicationFlags.VPlayerBatching = flags.vreplicationFlags.VPlayerBatching
+				}
+			}
+
+			if throttlerChanged {
+				if err := setInitialSettings(ctx, client, updateReq, false, false, true); err != nil {
+					return err
+				}
+				if updateReq.Throttler == nil {
+					updateReq.Throttler = &ps.KeyspaceThrottler{}
+				}
+
+				if cmd.Flags().Changed("throttler-enabled") {
+					updateReq.Throttler.Enabled = &flags.throttlerEnabled
+				}
+
+				if cmd.Flags().Changed("throttler-threshold") {
+					if flags.throttlerThreshold < 0 {
+						return errors.New("--throttler-threshold must be greater than or equal to 0")
+					}
+					updateReq.Throttler.Threshold = &flags.throttlerThreshold
 				}
 			}
 
@@ -127,12 +153,14 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().BoolVar(&flags.vreplicationFlags.VPlayerBatching, "vreplication-batch-replication-events", false, "When enabled, sends fewer queries to MySQL to improve performance.")
 	cmd.Flags().IntVar(&flags.maxRollout, "max-rollout", 0, "Maximum number of concurrent shard rollouts (1-32). The effective service cap is 32.")
 	cmd.Flags().BoolVar(&flags.resetMaxRollout, "reset-max-rollout", false, "Reset the configured maximum concurrent shard rollouts to the default (1).")
+	cmd.Flags().BoolVar(&flags.throttlerEnabled, "throttler-enabled", true, "Pause schema migrations and VReplication workflows when replication lag rises above the threshold.")
+	cmd.Flags().Float64Var(&flags.throttlerThreshold, "throttler-threshold", 5, "Replication lag in seconds above which migrations and workflows are paused.")
 	cmd.Flags().BoolVarP(&flags.interactive, "interactive", "i", false, "Run the command in interactive mode")
 
 	return cmd
 }
 
-func setInitialSettings(ctx context.Context, client *ps.Client, req *ps.UpdateKeyspaceSettingsRequest, includeDurability, includeVReplication bool) error {
+func setInitialSettings(ctx context.Context, client *ps.Client, req *ps.UpdateKeyspaceSettingsRequest, includeDurability, includeVReplication, includeThrottler bool) error {
 	organization := req.Organization
 	database := req.Database
 	branch := req.Branch
@@ -162,6 +190,11 @@ func setInitialSettings(ctx context.Context, client *ps.Client, req *ps.UpdateKe
 		req.VReplicationFlags = &vreplicationFlags
 	}
 
+	if includeThrottler && ks.Throttler != nil {
+		throttler := *ks.Throttler
+		req.Throttler = &throttler
+	}
+
 	return nil
 }
 
@@ -171,7 +204,7 @@ func updateInteractive(ctx context.Context, ch *cmdutil.Helper, updateReq *ps.Up
 		return err
 	}
 
-	if err := setInitialSettings(ctx, client, updateReq, true, true); err != nil {
+	if err := setInitialSettings(ctx, client, updateReq, true, true, true); err != nil {
 		return err
 	}
 
@@ -181,6 +214,20 @@ func updateInteractive(ctx context.Context, ch *cmdutil.Helper, updateReq *ps.Up
 
 	if updateReq.VReplicationFlags == nil {
 		updateReq.VReplicationFlags = &ps.VReplicationFlags{}
+	}
+
+	if updateReq.Throttler == nil {
+		updateReq.Throttler = &ps.KeyspaceThrottler{}
+	}
+
+	throttlerEnabled := true
+	if updateReq.Throttler.Enabled != nil {
+		throttlerEnabled = *updateReq.Throttler.Enabled
+	}
+
+	throttlerThreshold := "5"
+	if updateReq.Throttler.Threshold != nil {
+		throttlerThreshold = strconv.FormatFloat(*updateReq.Throttler.Threshold, 'g', -1, 64)
 	}
 
 	form := huh.NewForm(
@@ -217,11 +264,40 @@ func updateInteractive(ctx context.Context, ch *cmdutil.Helper, updateReq *ps.Up
 				Description("When enabled, sends fewer queries to MySQL to improve performance.").
 				Value(&updateReq.VReplicationFlags.VPlayerBatching),
 		).Title("VReplication").Description("Options for improving performance during deploy requests and workflows"),
+
+		huh.NewGroup(
+			huh.NewConfirm().
+				Title("Enable the throttler?").
+				Description("Pauses schema migrations and VReplication workflows when replication lag rises above the threshold.").
+				Value(&throttlerEnabled),
+
+			huh.NewInput().
+				Title("Replication lag threshold (seconds)").
+				Description("Migrations and workflows are paused while replication lag is above this value.").
+				Value(&throttlerThreshold).
+				Validate(func(s string) error {
+					v, err := strconv.ParseFloat(s, 64)
+					if err != nil {
+						return errors.New("threshold must be a number")
+					}
+					if v < 0 {
+						return errors.New("threshold must be greater than or equal to 0")
+					}
+					return nil
+				}),
+		).Title("Throttler"),
 	).WithTheme(huh.ThemeBase16())
 
 	if err := form.Run(); err != nil {
 		return err
 	}
+
+	threshold, err := strconv.ParseFloat(throttlerThreshold, 64)
+	if err != nil {
+		return err
+	}
+	updateReq.Throttler.Enabled = &throttlerEnabled
+	updateReq.Throttler.Threshold = &threshold
 
 	ks, err := updateKeyspaceSettings(ctx, client, updateReq)
 	if err != nil {

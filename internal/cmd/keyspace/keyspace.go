@@ -56,6 +56,7 @@ type KeyspaceSettings struct {
 	ReplicationDurabilityConstraintStrategy string            `header:"replication durability constraint strategy" json:"replication_durability_constraint"`
 	VReplicationFlags                       VReplicationFlags `header:"inline" json:"vreplication_flags"`
 	MaxRollout                              int               `header:"max rollout" json:"max_rollout"`
+	Throttler                               Throttler         `header:"inline" json:"throttler"`
 
 	orig *ps.Keyspace
 }
@@ -72,6 +73,11 @@ type VReplicationFlags struct {
 	OptimizeInserts           bool `header:"optimize inserts" json:"optimize_inserts"`
 	AllowNoBlobBinlogRowImage bool `header:"no blob binlog row image" json:"allow_no_blob_binlog_row_image"`
 	VPlayerBatching           bool `header:"vplayer batching" json:"vplayer_batching"`
+}
+
+type Throttler struct {
+	Enabled   bool   `header:"throttler enabled" json:"enabled"`
+	Threshold string `header:"throttler threshold" json:"threshold"`
 }
 
 func toKeyspaces(keyspaces []*ps.Keyspace) []*Keyspace {
