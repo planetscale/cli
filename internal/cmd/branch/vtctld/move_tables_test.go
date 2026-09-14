@@ -118,7 +118,13 @@ func TestMoveTablesCreate(t *testing.T) {
 	c.Assert(err, qt.IsNil)
 	c.Assert(svc.CreateFnInvoked, qt.IsTrue)
 	c.Assert(vtctldSvc.GetOperationFnInvoked, qt.IsTrue)
-	c.Assert(buf.String(), qt.JSONEquals, map[string]string{"summary": "created"})
+	c.Assert(buf.String(), qt.JSONEquals, map[string]any{
+		"summary": "created",
+		"next_steps": []any{map[string]any{
+			"command": "pscale branch vtctld move-tables status my-db my-branch --org my-org --workflow my-workflow --target-keyspace target-ks --format json",
+			"reason":  "Monitor copy and replication progress",
+		}},
+	})
 }
 
 func TestMoveTablesCreateWithDeferSecondaryKeysFalse(t *testing.T) {
@@ -226,7 +232,13 @@ func TestMoveTablesCreateWithAllFlags(t *testing.T) {
 	c.Assert(err, qt.IsNil)
 	c.Assert(svc.CreateFnInvoked, qt.IsTrue)
 	c.Assert(vtctldSvc.GetOperationFnInvoked, qt.IsTrue)
-	c.Assert(buf.String(), qt.JSONEquals, map[string]string{"summary": "created"})
+	c.Assert(buf.String(), qt.JSONEquals, map[string]any{
+		"summary": "created",
+		"next_steps": []any{map[string]any{
+			"command": "pscale branch vtctld move-tables status my-db my-branch --org my-org --workflow my-workflow --target-keyspace target-ks --format json",
+			"reason":  "Monitor copy and replication progress",
+		}},
+	})
 }
 
 func TestMoveTablesSwitchTrafficWithMaxLag(t *testing.T) {
@@ -286,7 +298,13 @@ func TestMoveTablesSwitchTrafficWithMaxLag(t *testing.T) {
 	c.Assert(svc.SwitchTrafficFnInvoked, qt.IsTrue)
 	c.Assert(vtctldSvc.GetOperationFnInvoked, qt.IsTrue)
 	c.Assert(getOperationCalls, qt.Equals, 2)
-	c.Assert(buf.String(), qt.JSONEquals, map[string]string{"summary": "switched"})
+	c.Assert(buf.String(), qt.JSONEquals, map[string]any{
+		"summary": "switched",
+		"next_steps": []any{map[string]any{
+			"command": "pscale branch vtctld move-tables status my-db my-branch --org my-org --workflow my-workflow --target-keyspace target-ks --format json",
+			"reason":  "Confirm the new traffic state",
+		}},
+	})
 }
 
 func TestMoveTablesSwitchTrafficRequiresTabletTypes(t *testing.T) {
@@ -361,7 +379,13 @@ func TestMoveTablesReverseTrafficWithFlags(t *testing.T) {
 	c.Assert(err, qt.IsNil)
 	c.Assert(svc.ReverseTrafficFnInvoked, qt.IsTrue)
 	c.Assert(vtctldSvc.GetOperationFnInvoked, qt.IsTrue)
-	c.Assert(buf.String(), qt.JSONEquals, map[string]string{"summary": "reversed"})
+	c.Assert(buf.String(), qt.JSONEquals, map[string]any{
+		"summary": "reversed",
+		"next_steps": []any{map[string]any{
+			"command": "pscale branch vtctld move-tables status my-db my-branch --org my-org --workflow my-workflow --target-keyspace target-ks --format json",
+			"reason":  "Confirm the new traffic state",
+		}},
+	})
 }
 
 func TestMoveTablesCompleteWithFlags(t *testing.T) {
@@ -421,7 +445,13 @@ func TestMoveTablesCompleteWithFlags(t *testing.T) {
 	c.Assert(err, qt.IsNil)
 	c.Assert(svc.CompleteFnInvoked, qt.IsTrue)
 	c.Assert(vtctldSvc.GetOperationFnInvoked, qt.IsTrue)
-	c.Assert(buf.String(), qt.JSONEquals, map[string]string{"summary": "completed"})
+	c.Assert(buf.String(), qt.JSONEquals, map[string]any{
+		"summary": "completed",
+		"next_steps": []any{map[string]any{
+			"command": "pscale branch vtctld move-tables complete my-db my-branch --org my-org --workflow my-workflow --target-keyspace target-ks --keep-data=true --keep-routing-rules=true --rename-tables --format json",
+			"reason":  "Complete the workflow after reviewing the dry run and getting operator approval",
+		}},
+	})
 }
 
 func TestMoveTablesSwitchTrafficOperationFailure(t *testing.T) {
@@ -556,6 +586,66 @@ func TestMoveTablesCancelWithFlags(t *testing.T) {
 	c.Assert(buf.String(), qt.JSONEquals, map[string]string{"summary": "cancelled"})
 }
 
+func TestMoveTablesList(t *testing.T) {
+	c := qt.New(t)
+
+	org := "my-org"
+	db := "my-db"
+	branch := "my-branch"
+
+	svc := &mock.MoveTablesService{
+		ListFn: func(ctx context.Context, req *ps.MoveTablesListRequest) (json.RawMessage, error) {
+			c.Assert(req.Organization, qt.Equals, org)
+			c.Assert(req.Database, qt.Equals, db)
+			c.Assert(req.Branch, qt.Equals, branch)
+			c.Assert(req.TargetKeyspace, qt.Equals, "target-ks")
+			return json.RawMessage(`[{"name":"my-workflow","target_keyspace":"target-ks"}]`), nil
+		},
+	}
+
+	var buf bytes.Buffer
+	ch := moveTablesTestHelper(org, svc, nil, &buf)
+
+	cmd := MoveTablesCmd(ch)
+	cmd.SetArgs([]string{"list", db, branch, "--target-keyspace", "target-ks"})
+	err := cmd.Execute()
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.ListFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.JSONEquals, []any{map[string]any{
+		"name":            "my-workflow",
+		"target_keyspace": "target-ks",
+		"next_steps": []any{map[string]any{
+			"command": "pscale branch vtctld move-tables status my-db my-branch --org my-org --workflow my-workflow --target-keyspace target-ks --format json",
+			"reason":  "Check workflow copy and traffic state",
+		}},
+	}})
+}
+
+func TestMoveTablesListWithoutTargetKeyspace(t *testing.T) {
+	c := qt.New(t)
+
+	org := "my-org"
+	db := "my-db"
+	branch := "my-branch"
+
+	svc := &mock.MoveTablesService{
+		ListFn: func(ctx context.Context, req *ps.MoveTablesListRequest) (json.RawMessage, error) {
+			c.Assert(req.TargetKeyspace, qt.Equals, "")
+			return json.RawMessage(`[]`), nil
+		},
+	}
+
+	var buf bytes.Buffer
+	ch := moveTablesTestHelper(org, svc, nil, &buf)
+
+	cmd := MoveTablesCmd(ch)
+	cmd.SetArgs([]string{"list", db, branch})
+	err := cmd.Execute()
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.ListFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.JSONEquals, []any{})
+}
+
 func TestMoveTablesShow(t *testing.T) {
 	c := qt.New(t)
 
@@ -597,4 +687,49 @@ func TestMoveTablesShow(t *testing.T) {
 	err := cmd.Execute()
 	c.Assert(err, qt.IsNil)
 	c.Assert(svc.ShowFnInvoked, qt.IsTrue)
+}
+
+func TestMoveTablesStatusAddsNextSteps(t *testing.T) {
+	c := qt.New(t)
+
+	org := "my-org"
+	db := "my-db"
+	branch := "my-branch"
+
+	svc := &mock.MoveTablesService{
+		StatusFn: func(ctx context.Context, req *ps.MoveTablesStatusRequest) (json.RawMessage, error) {
+			c.Assert(req.Organization, qt.Equals, org)
+			c.Assert(req.Database, qt.Equals, db)
+			c.Assert(req.Branch, qt.Equals, branch)
+			c.Assert(req.Workflow, qt.Equals, "my-workflow")
+			c.Assert(req.TargetKeyspace, qt.Equals, "target-ks")
+			return json.RawMessage(`{"table_copy_state":{},"traffic_state":"All Reads Switched. Writes Not Switched"}`), nil
+		},
+	}
+
+	var buf bytes.Buffer
+	ch := moveTablesTestHelper(org, svc, nil, &buf)
+
+	cmd := MoveTablesCmd(ch)
+	cmd.SetArgs([]string{
+		"status",
+		db,
+		branch,
+		"--workflow",
+		"my-workflow",
+		"--target-keyspace",
+		"target-ks",
+	})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.StatusFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.JSONEquals, map[string]any{
+		"table_copy_state": map[string]any{},
+		"traffic_state":    "All Reads Switched. Writes Not Switched",
+		"next_steps": []any{map[string]any{
+			"command": "pscale branch vtctld move-tables switch-traffic my-db my-branch --org my-org --workflow my-workflow --target-keyspace target-ks --tablet-types PRIMARY --format json",
+			"reason":  "Switch primary traffic after validating replica traffic",
+		}},
+	})
 }
