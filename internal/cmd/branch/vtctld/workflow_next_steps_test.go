@@ -33,9 +33,35 @@ func TestMoveTablesStatusNextSteps(t *testing.T) {
 			wantSteps:   1,
 		},
 		{
+			// The wording Vitess uses for a fully switched workflow.
 			name:        "all traffic switched",
+			data:        `{"traffic_state":"All Reads Switched. Writes Switched"}`,
+			wantCommand: "pscale branch vtctld move-tables complete my-db my-branch --org my-org --workflow my-workflow --target-keyspace target-ks --keep-data=false --keep-routing-rules=false --dry-run --format json",
+			wantSteps:   1,
+		},
+		{
+			// The wording a partial, per-shard migration uses instead.
+			name:        "all traffic switched for a partial migration",
 			data:        `{"traffic_state":"All Reads Switched. All Writes Switched"}`,
 			wantCommand: "pscale branch vtctld move-tables complete my-db my-branch --org my-org --workflow my-workflow --target-keyspace target-ks --keep-data=false --keep-routing-rules=false --dry-run --format json",
+			wantSteps:   1,
+		},
+		{
+			name:        "writes switched but reads not",
+			data:        `{"traffic_state":"Reads Not Switched. Writes Switched"}`,
+			wantCommand: "pscale branch vtctld move-tables switch-traffic my-db my-branch --org my-org --workflow my-workflow --target-keyspace target-ks --tablet-types REPLICA,RDONLY --format json",
+			wantSteps:   1,
+		},
+		{
+			name:        "reads partially switched",
+			data:        `{"traffic_state":"Reads partially switched. All Replica Reads Switched. Rdonly not switched. Writes Not Switched"}`,
+			wantCommand: "pscale branch vtctld move-tables switch-traffic my-db my-branch --org my-org --workflow my-workflow --target-keyspace target-ks --tablet-types REPLICA,RDONLY --format json",
+			wantSteps:   1,
+		},
+		{
+			name:        "unrecognized traffic state",
+			data:        `{"traffic_state":"Not Created"}`,
+			wantCommand: "pscale branch vtctld move-tables status my-db my-branch --org my-org --workflow my-workflow --target-keyspace target-ks --format json",
 			wantSteps:   1,
 		},
 	}
@@ -74,6 +100,32 @@ func TestMoveTablesRunningOffersReplicaSwitchAfterVDiff(t *testing.T) {
 	c.Assert(steps, qt.HasLen, 2)
 	c.Assert(steps[1].Command, qt.Equals, "pscale branch vtctld move-tables switch-traffic my-db my-branch --org my-org --workflow my-workflow --target-keyspace target-ks --tablet-types REPLICA,RDONLY --format json")
 	c.Assert(steps[1].Reason, qt.Equals, "Alternatively, skip VDiff and switch replica traffic directly")
+}
+
+func TestParseTrafficState(t *testing.T) {
+	c := qt.New(t)
+
+	tests := []struct {
+		state      string
+		wantReads  readTrafficState
+		wantWrites bool
+	}{
+		{"Reads Not Switched. Writes Not Switched", trafficNotSwitched, false},
+		{"All Reads Switched. Writes Not Switched", trafficSwitched, false},
+		{"Reads Not Switched. Writes Switched", trafficNotSwitched, true},
+		{"All Reads Switched. Writes Switched", trafficSwitched, true},
+		{"All Reads Switched. All Writes Switched", trafficSwitched, true},
+		{"Reads partially switched. Replica not switched. All Rdonly Reads Switched. Writes Not Switched", trafficPartiallySwitched, false},
+		{"Reads partially switched. All Replica Reads Switched. Rdonly not switched. Writes Not Switched", trafficPartiallySwitched, false},
+		{"Not Created", trafficUnknown, false},
+		{"", trafficUnknown, false},
+	}
+
+	for _, tt := range tests {
+		reads, writes := parseTrafficState(tt.state)
+		c.Assert(reads, qt.Equals, tt.wantReads, qt.Commentf("reads for %q", tt.state))
+		c.Assert(writes, qt.Equals, tt.wantWrites, qt.Commentf("writes for %q", tt.state))
+	}
 }
 
 func TestWithNextStepsPreservesResponseShape(t *testing.T) {
