@@ -185,74 +185,50 @@ func moveTablesStatusNextSteps(data json.RawMessage, org, database, branch, work
 		}
 	}
 
-	reads, writes := parseTrafficState(status.TrafficState)
-
-	switch {
-	case reads == trafficUnknown:
-		return []workflowNextStep{
-			moveTablesStatusStep(org, database, branch, workflow, targetKeyspace, "Check workflow copy and traffic state again"),
-		}
-	case reads == trafficSwitched && writes:
+	switch strings.ToLower(strings.TrimSpace(status.TrafficState)) {
+	case trafficStateAllSwitched:
 		return []workflowNextStep{
 			moveTablesCompleteStep(org, database, branch, workflow, targetKeyspace),
 		}
-	case reads == trafficSwitched:
+	case trafficStateReadsSwitched:
 		return []workflowNextStep{
 			moveTablesSwitchPrimaryStep(org, database, branch, workflow, targetKeyspace),
 		}
-	case reads == trafficPartiallySwitched:
-		return []workflowNextStep{
-			moveTablesSwitchReadsStep(org, database, branch, workflow, targetKeyspace, "Finish switching read traffic to the target keyspace"),
-		}
-	case writes:
+	case trafficStateWritesSwitched:
 		return []workflowNextStep{
 			moveTablesSwitchReadsStep(org, database, branch, workflow, targetKeyspace, "Switch replica traffic to the target keyspace"),
 		}
-	case !hasStreams:
-		return []workflowNextStep{
-			moveTablesStatusStep(org, database, branch, workflow, targetKeyspace, "Wait for workflow streams to start"),
+	case trafficStateNotSwitched:
+		if !hasStreams {
+			return []workflowNextStep{
+				moveTablesStatusStep(org, database, branch, workflow, targetKeyspace, "Wait for workflow streams to start"),
+			}
 		}
-	default:
 		return []workflowNextStep{
 			moveTablesVDiffCreateStep(org, database, branch, workflow, targetKeyspace),
 			moveTablesSwitchReadsStep(org, database, branch, workflow, targetKeyspace, "Alternatively, skip VDiff and switch replica traffic directly"),
 		}
-	}
-}
-
-type readTrafficState int
-
-const (
-	trafficUnknown readTrafficState = iota
-	trafficNotSwitched
-	trafficPartiallySwitched
-	trafficSwitched
-)
-
-// parseTrafficState reads the read and write halves out of the traffic state
-// sentence Vitess assembles in workflow.State.String(). It matches on the
-// individual phrases rather than the whole sentence because the wording varies:
-// a fully switched workflow reads "All Reads Switched. Writes Switched", a
-// partial (per-shard) migration reads "All Reads Switched. All Writes
-// Switched", and partially switched reads carry extra per-cell detail.
-func parseTrafficState(trafficState string) (readTrafficState, bool) {
-	state := strings.ToLower(trafficState)
-
-	// "writes not switched" does not contain "writes switched", so this
-	// distinguishes the two without a negative lookahead.
-	writes := strings.Contains(state, "writes switched")
-
-	switch {
-	case strings.Contains(state, "all reads switched"):
-		return trafficSwitched, writes
-	case strings.Contains(state, "reads partially switched"):
-		return trafficPartiallySwitched, writes
-	case strings.Contains(state, "reads not switched"):
-		return trafficNotSwitched, writes
+	case trafficStateNotCreated:
+		return []workflowNextStep{
+			moveTablesStatusStep(org, database, branch, workflow, targetKeyspace, "Workflow is not routing traffic yet; check status again"),
+		}
 	default:
-		return trafficUnknown, writes
+		return []workflowNextStep{
+			moveTablesStatusStep(org, database, branch, workflow, targetKeyspace, "Check workflow copy and traffic state again"),
+		}
 	}
 }
+
+// The traffic states a workflow reports, lowercased so the comparison is
+// case-insensitive. Any other value falls through to suggesting another status
+// check rather than guessing at a lifecycle step.
+const (
+	trafficStateNotCreated     = "not created"
+	trafficStateNotSwitched    = "reads not switched. writes not switched"
+	trafficStateReadsSwitched  = "all reads switched. writes not switched"
+	trafficStateWritesSwitched = "reads not switched. writes switched"
+	trafficStateAllSwitched    = "all reads switched. writes switched"
+)
 
 func moveTablesStreamState(status moveTablesStatus) (bool, bool) {
 	hasStreams := false

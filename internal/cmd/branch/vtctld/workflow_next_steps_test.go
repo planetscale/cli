@@ -2,6 +2,7 @@ package vtctld
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	qt "github.com/frankban/quicktest"
@@ -33,16 +34,8 @@ func TestMoveTablesStatusNextSteps(t *testing.T) {
 			wantSteps:   1,
 		},
 		{
-			// The wording Vitess uses for a fully switched workflow.
 			name:        "all traffic switched",
 			data:        `{"traffic_state":"All Reads Switched. Writes Switched"}`,
-			wantCommand: "pscale branch vtctld move-tables complete my-db my-branch --org my-org --workflow my-workflow --target-keyspace target-ks --keep-data=false --keep-routing-rules=false --dry-run --format json",
-			wantSteps:   1,
-		},
-		{
-			// The wording a partial, per-shard migration uses instead.
-			name:        "all traffic switched for a partial migration",
-			data:        `{"traffic_state":"All Reads Switched. All Writes Switched"}`,
 			wantCommand: "pscale branch vtctld move-tables complete my-db my-branch --org my-org --workflow my-workflow --target-keyspace target-ks --keep-data=false --keep-routing-rules=false --dry-run --format json",
 			wantSteps:   1,
 		},
@@ -53,14 +46,14 @@ func TestMoveTablesStatusNextSteps(t *testing.T) {
 			wantSteps:   1,
 		},
 		{
-			name:        "reads partially switched",
-			data:        `{"traffic_state":"Reads partially switched. All Replica Reads Switched. Rdonly not switched. Writes Not Switched"}`,
-			wantCommand: "pscale branch vtctld move-tables switch-traffic my-db my-branch --org my-org --workflow my-workflow --target-keyspace target-ks --tablet-types REPLICA,RDONLY --format json",
+			name:        "traffic not created",
+			data:        `{"traffic_state":"Not Created"}`,
+			wantCommand: "pscale branch vtctld move-tables status my-db my-branch --org my-org --workflow my-workflow --target-keyspace target-ks --format json",
 			wantSteps:   1,
 		},
 		{
 			name:        "unrecognized traffic state",
-			data:        `{"traffic_state":"Not Created"}`,
+			data:        `{"traffic_state":"Something Vitess Has Not Told Us About"}`,
 			wantCommand: "pscale branch vtctld move-tables status my-db my-branch --org my-org --workflow my-workflow --target-keyspace target-ks --format json",
 			wantSteps:   1,
 		},
@@ -102,29 +95,28 @@ func TestMoveTablesRunningOffersReplicaSwitchAfterVDiff(t *testing.T) {
 	c.Assert(steps[1].Reason, qt.Equals, "Alternatively, skip VDiff and switch replica traffic directly")
 }
 
-func TestParseTrafficState(t *testing.T) {
+// The constants must match the traffic states the API reports verbatim, aside
+// from case.
+func TestTrafficStateConstantsMatchAPI(t *testing.T) {
 	c := qt.New(t)
 
-	tests := []struct {
-		state      string
-		wantReads  readTrafficState
-		wantWrites bool
-	}{
-		{"Reads Not Switched. Writes Not Switched", trafficNotSwitched, false},
-		{"All Reads Switched. Writes Not Switched", trafficSwitched, false},
-		{"Reads Not Switched. Writes Switched", trafficNotSwitched, true},
-		{"All Reads Switched. Writes Switched", trafficSwitched, true},
-		{"All Reads Switched. All Writes Switched", trafficSwitched, true},
-		{"Reads partially switched. Replica not switched. All Rdonly Reads Switched. Writes Not Switched", trafficPartiallySwitched, false},
-		{"Reads partially switched. All Replica Reads Switched. Rdonly not switched. Writes Not Switched", trafficPartiallySwitched, false},
-		{"Not Created", trafficUnknown, false},
-		{"", trafficUnknown, false},
+	apiStates := []string{
+		"Not Created",
+		"Reads Not Switched. Writes Not Switched",
+		"All Reads Switched. Writes Not Switched",
+		"Reads Not Switched. Writes Switched",
+		"All Reads Switched. Writes Switched",
+	}
+	cliStates := []string{
+		trafficStateNotCreated,
+		trafficStateNotSwitched,
+		trafficStateReadsSwitched,
+		trafficStateWritesSwitched,
+		trafficStateAllSwitched,
 	}
 
-	for _, tt := range tests {
-		reads, writes := parseTrafficState(tt.state)
-		c.Assert(reads, qt.Equals, tt.wantReads, qt.Commentf("reads for %q", tt.state))
-		c.Assert(writes, qt.Equals, tt.wantWrites, qt.Commentf("writes for %q", tt.state))
+	for i, state := range apiStates {
+		c.Assert(strings.ToLower(state), qt.Equals, cliStates[i])
 	}
 }
 
