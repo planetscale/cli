@@ -1,6 +1,7 @@
 package vtctld
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -32,22 +33,7 @@ type vdiffResult struct {
 }
 
 func printWorkflowJSON(p *printer.Printer, data json.RawMessage, steps []workflowNextStep) error {
-	if len(steps) == 0 {
-		return p.PrettyPrintJSON(data)
-	}
-
-	var payload map[string]json.RawMessage
-	if err := json.Unmarshal(data, &payload); err != nil {
-		return err
-	}
-
-	rawSteps, err := json.Marshal(steps)
-	if err != nil {
-		return err
-	}
-	payload["next_steps"] = rawSteps
-
-	enriched, err := json.Marshal(payload)
+	enriched, err := withNextSteps(data, steps)
 	if err != nil {
 		return err
 	}
@@ -55,35 +41,82 @@ func printWorkflowJSON(p *printer.Printer, data json.RawMessage, steps []workflo
 }
 
 func printMoveTablesListJSON(p *printer.Printer, data json.RawMessage, org, database, branch string) error {
-	var workflows []map[string]json.RawMessage
+	// A response that is not an array of workflows is passed through as-is.
+	var workflows []json.RawMessage
 	if err := json.Unmarshal(data, &workflows); err != nil {
-		return err
+		return p.PrettyPrintJSON(data)
 	}
 
+	enriched := make([][]byte, 0, len(workflows))
 	for _, workflow := range workflows {
-		var name string
-		var targetKeyspace string
-		if err := json.Unmarshal(workflow["name"], &name); err != nil || name == "" {
-			continue
-		}
-		if err := json.Unmarshal(workflow["target_keyspace"], &targetKeyspace); err != nil || targetKeyspace == "" {
+		name, targetKeyspace := moveTablesListEntryTarget(workflow)
+		if name == "" || targetKeyspace == "" {
+			enriched = append(enriched, workflow)
 			continue
 		}
 
-		steps, err := json.Marshal([]workflowNextStep{
+		withSteps, err := withNextSteps(workflow, []workflowNextStep{
 			moveTablesStatusStep(org, database, branch, name, targetKeyspace, "Check workflow copy and traffic state"),
 		})
 		if err != nil {
 			return err
 		}
-		workflow["next_steps"] = steps
+		enriched = append(enriched, withSteps)
 	}
 
-	enriched, err := json.Marshal(workflows)
-	if err != nil {
-		return err
+	var buf bytes.Buffer
+	buf.WriteByte('[')
+	buf.Write(bytes.Join(enriched, []byte(",")))
+	buf.WriteByte(']')
+	return p.PrettyPrintJSON(buf.Bytes())
+}
+
+func moveTablesListEntryTarget(workflow json.RawMessage) (string, string) {
+	var entry struct {
+		Name           string `json:"name"`
+		TargetKeyspace string `json:"target_keyspace"`
 	}
-	return p.PrettyPrintJSON(enriched)
+	if err := json.Unmarshal(workflow, &entry); err != nil {
+		return "", ""
+	}
+	return entry.Name, entry.TargetKeyspace
+}
+
+// withNextSteps adds a next_steps field to a JSON object, splicing it in rather
+// than re-encoding so that every field the API returned, and the order it
+// returned them in, survives untouched. Payloads that are not JSON objects, and
+// those that already carry a next_steps field, are returned unchanged.
+func withNextSteps(data json.RawMessage, steps []workflowNextStep) (json.RawMessage, error) {
+	if len(steps) == 0 {
+		return data, nil
+	}
+
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil || fields == nil {
+		return data, nil
+	}
+	if _, ok := fields["next_steps"]; ok {
+		return data, nil
+	}
+
+	encoded, err := json.Marshal(steps)
+	if err != nil {
+		return nil, err
+	}
+
+	object := bytes.TrimSpace(data)
+	body := bytes.TrimSpace(object[1 : len(object)-1])
+
+	var buf bytes.Buffer
+	buf.WriteByte('{')
+	if len(body) > 0 {
+		buf.Write(body)
+		buf.WriteByte(',')
+	}
+	buf.WriteString(`"next_steps":`)
+	buf.Write(encoded)
+	buf.WriteByte('}')
+	return buf.Bytes(), nil
 }
 
 func moveTablesCommand(org, action, database, branch, workflow, targetKeyspace string, flags ...string) string {

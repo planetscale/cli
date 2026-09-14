@@ -621,6 +621,32 @@ func TestMoveTablesList(t *testing.T) {
 	}})
 }
 
+func TestMoveTablesListLeavesEntriesWithoutTargetAlone(t *testing.T) {
+	c := qt.New(t)
+
+	org := "my-org"
+	db := "my-db"
+	branch := "my-branch"
+
+	svc := &mock.MoveTablesService{
+		ListFn: func(ctx context.Context, req *ps.MoveTablesListRequest) (json.RawMessage, error) {
+			return json.RawMessage(`[{"name":"my-workflow","target_keyspace":null}]`), nil
+		},
+	}
+
+	var buf bytes.Buffer
+	ch := moveTablesTestHelper(org, svc, nil, &buf)
+
+	cmd := MoveTablesCmd(ch)
+	cmd.SetArgs([]string{"list", db, branch})
+	err := cmd.Execute()
+	c.Assert(err, qt.IsNil)
+	c.Assert(buf.String(), qt.JSONEquals, []any{map[string]any{
+		"name":            "my-workflow",
+		"target_keyspace": nil,
+	}})
+}
+
 func TestMoveTablesListWithoutTargetKeyspace(t *testing.T) {
 	c := qt.New(t)
 
@@ -724,6 +750,9 @@ func TestMoveTablesStatusAddsNextSteps(t *testing.T) {
 
 	c.Assert(err, qt.IsNil)
 	c.Assert(svc.StatusFnInvoked, qt.IsTrue)
+	// The vtctld fields stay in the order the API returned them, with next_steps
+	// appended after them.
+	c.Assert(buf.String(), qt.Matches, `(?s).*"table_copy_state".*"traffic_state".*"next_steps".*`)
 	c.Assert(buf.String(), qt.JSONEquals, map[string]any{
 		"table_copy_state": map[string]any{},
 		"traffic_state":    "All Reads Switched. Writes Not Switched",

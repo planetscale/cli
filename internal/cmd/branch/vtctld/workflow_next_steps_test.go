@@ -76,6 +76,52 @@ func TestMoveTablesRunningOffersReplicaSwitchAfterVDiff(t *testing.T) {
 	c.Assert(steps[1].Reason, qt.Equals, "Alternatively, skip VDiff and switch replica traffic directly")
 }
 
+func TestWithNextStepsPreservesResponseShape(t *testing.T) {
+	c := qt.New(t)
+
+	steps := []workflowNextStep{{Command: "pscale ...", Reason: "check status"}}
+
+	// Fields keep the order the API sent them in, and next_steps is appended
+	// last rather than sorted into the middle of the response.
+	enriched, err := withNextSteps(json.RawMessage(`{"workflow":"wf","traffic_state":"Not Switched","alpha":1}`), steps)
+	c.Assert(err, qt.IsNil)
+	c.Assert(string(enriched), qt.Equals, `{"workflow":"wf","traffic_state":"Not Switched","alpha":1,"next_steps":[{"command":"pscale ...","reason":"check status"}]}`)
+
+	empty, err := withNextSteps(json.RawMessage(`{}`), steps)
+	c.Assert(err, qt.IsNil)
+	c.Assert(string(empty), qt.Equals, `{"next_steps":[{"command":"pscale ...","reason":"check status"}]}`)
+
+	// Values are copied verbatim, so deep nesting and large integers that
+	// would lose precision through a decode/encode round trip are unaffected.
+	nested, err := withNextSteps(json.RawMessage(`{"rows_copied":90071992547409929,"shard_streams":{"ks/-":{"streams":[{"id":1}]}}}`), steps)
+	c.Assert(err, qt.IsNil)
+	c.Assert(string(nested), qt.Contains, `"rows_copied":90071992547409929`)
+	c.Assert(string(nested), qt.Contains, `"shard_streams":{"ks/-":{"streams":[{"id":1}]}}`)
+}
+
+func TestWithNextStepsLeavesUnexpectedPayloadsAlone(t *testing.T) {
+	c := qt.New(t)
+
+	steps := []workflowNextStep{{Command: "pscale ...", Reason: "check status"}}
+
+	for _, data := range []string{`null`, `[]`, `"a string"`, `12`, `not json`} {
+		enriched, err := withNextSteps(json.RawMessage(data), steps)
+		c.Assert(err, qt.IsNil)
+		c.Assert(string(enriched), qt.Equals, data)
+	}
+
+	// An API that starts returning its own next_steps wins over ours.
+	existing := `{"next_steps":["do the thing"]}`
+	enriched, err := withNextSteps(json.RawMessage(existing), steps)
+	c.Assert(err, qt.IsNil)
+	c.Assert(string(enriched), qt.Equals, existing)
+
+	// No steps to add means the response is returned byte for byte.
+	unchanged, err := withNextSteps(json.RawMessage(`{"workflow":"wf"}`), nil)
+	c.Assert(err, qt.IsNil)
+	c.Assert(string(unchanged), qt.Equals, `{"workflow":"wf"}`)
+}
+
 func TestVDiffNextSteps(t *testing.T) {
 	c := qt.New(t)
 
