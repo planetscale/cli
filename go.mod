@@ -31,8 +31,8 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/muesli/termenv v0.16.0
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
-	github.com/planetscale/psdb v0.0.0-20250717190954-65c6661ab6e4
-	github.com/planetscale/psdbproxy v0.0.0-20250728082226-3f4ea3a74ec7
+	github.com/planetscale/psdb v0.0.0-20260313223120-d44ec59fda55
+	github.com/planetscale/psdbproxy v0.0.0-20260914155823-96fb80c390e1
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
@@ -46,7 +46,7 @@ require (
 	golang.org/x/sys v0.43.0
 	golang.org/x/text v0.36.0
 	gopkg.in/yaml.v2 v2.4.0
-	vitess.io/vitess v0.21.7-0.20251209092004-e61fcef693fb
+	vitess.io/vitess v0.23.6
 )
 
 require (
@@ -95,7 +95,7 @@ require (
 	github.com/muesli/cancelreader v0.2.2 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
 	github.com/pires/go-proxyproto v0.8.1 // indirect
-	github.com/planetscale/vitess-types v0.0.0-20250728133330-81b28fd54ee5 // indirect
+	github.com/planetscale/vitess-types v0.0.0-20260313221731-c96dbf730f7d // indirect
 	github.com/planetscale/vtprotobuf v0.6.1-0.20250313105119-ba97887b0a25 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
