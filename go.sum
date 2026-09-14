@@ -295,5 +295,5 @@ gopkg.in/yaml.v2 v2.4.0/go.mod h1:RDklbk79AGWmwhnvt/jBztapEOGDOx6ZbXqjP6csGnQ=
 gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
 gopkg.in/yaml.v3 v3.0.1 h1:fxVm/GzAzEWqLHuvctI91KS9hhNmmWOoWu0XTYJS7CA=
 gopkg.in/yaml.v3 v3.0.1/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
-vitess.io/vitess v0.22.4 h1:XMTCKsHbSB8P31ldR4tL2cZl5FPLt36o1xN8xId/SMI=
-vitess.io/vitess v0.22.4/go.mod h1:LZJLJOHYNxqyQ5tUF7jY/T/rUBNc15cjOgo3u0BAc0w=
+vitess.io/vitess v0.23.6 h1:tcQJb5pehQQQapsIv1jJDQpKFiLZY4Ia8QC9cXDm24g=
+vitess.io/vitess v0.23.6/go.mod h1:c0UiHZHpfKaMSv7844dJIOJPdF9724zAL85ilOuJtEQ=

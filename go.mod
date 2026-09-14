@@ -46,7 +46,7 @@ require (
 	golang.org/x/sys v0.43.0
 	golang.org/x/text v0.36.0
 	gopkg.in/yaml.v2 v2.4.0
-	vitess.io/vitess v0.22.4
+	vitess.io/vitess v0.23.6
 )
 
 require (
