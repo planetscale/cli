@@ -154,7 +154,11 @@ func VDiffCreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			end()
-			return ch.Printer.PrettyPrintJSON(data)
+			return printWorkflowJSON(
+				ch.Printer,
+				data,
+				vdiffCreateNextSteps(data, ch.Config.Organization, database, branch, flags.workflow, flags.targetKeyspace),
+			)
 		},
 	}
 
@@ -218,7 +222,11 @@ func VDiffShowCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			end()
-			return ch.Printer.PrettyPrintJSON(data)
+			return printWorkflowJSON(
+				ch.Printer,
+				data,
+				vdiffShowNextSteps(data, ch.Config.Organization, database, branch, flags.workflow, flags.targetKeyspace, flags.uuid),
+			)
 		},
 	}
 
