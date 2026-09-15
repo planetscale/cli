@@ -150,6 +150,10 @@ func (s *moveTablesService) List(ctx context.Context, req *MoveTablesListRequest
 	if err := s.client.do(ctx, httpReq, &resp); err != nil {
 		return nil, err
 	}
+	var envelope vtctldDataResponse
+	if err := json.Unmarshal(resp, &envelope); err == nil && len(envelope.Data) > 0 {
+		return envelope.Data, nil
+	}
 	return resp, nil
 }
 

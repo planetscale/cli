@@ -166,6 +166,16 @@ func TestWithNextStepsLeavesUnexpectedPayloadsAlone(t *testing.T) {
 	c.Assert(string(unchanged), qt.Equals, `{"workflow":"wf"}`)
 }
 
+func TestWithMoveTablesListNextStepsPreservesRawResponseShape(t *testing.T) {
+	c := qt.New(t)
+
+	data := json.RawMessage(`{"metadata":{"large":90071992547409929},"workflows":[{"name":"wf","target":{"keyspace":"target-ks"},"state":"Running"}],"extra":true}`)
+	enriched, err := withMoveTablesListNextSteps(data, "my-org", "my-db", "my-branch")
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(string(enriched), qt.Equals, `{"metadata":{"large":90071992547409929},"workflows":[{"name":"wf","target":{"keyspace":"target-ks"},"state":"Running","next_steps":[{"command":"pscale branch vtctld move-tables status my-db my-branch --org my-org --workflow wf --target-keyspace target-ks --format json","reason":"Check workflow copy and traffic state"}]}],"extra":true}`)
+}
+
 func TestVDiffNextSteps(t *testing.T) {
 	c := qt.New(t)
 

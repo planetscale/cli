@@ -41,10 +41,48 @@ func printWorkflowJSON(p *printer.Printer, data json.RawMessage, steps []workflo
 }
 
 func printMoveTablesListJSON(p *printer.Printer, data json.RawMessage, org, database, branch string) error {
-	// A response that is not an array of workflows is passed through as-is.
+	enriched, err := withMoveTablesListNextSteps(data, org, database, branch)
+	if err != nil {
+		return err
+	}
+	return p.PrettyPrintJSON(enriched)
+}
+
+func withMoveTablesListNextSteps(data json.RawMessage, org, database, branch string) (json.RawMessage, error) {
+	if bytes.HasPrefix(bytes.TrimSpace(data), []byte("[")) {
+		return withMoveTablesWorkflowArrayNextSteps(data, org, database, branch)
+	}
+
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil || fields == nil {
+		return data, nil
+	}
+	workflows, ok := fields["workflows"]
+	if !ok || !bytes.HasPrefix(bytes.TrimSpace(workflows), []byte("[")) {
+		return data, nil
+	}
+
+	enriched, err := withMoveTablesWorkflowArrayNextSteps(workflows, org, database, branch)
+	if err != nil {
+		return nil, err
+	}
+
+	index := bytes.Index(data, workflows)
+	if index < 0 {
+		return data, nil
+	}
+
+	result := make([]byte, 0, len(data)+len(enriched)-len(workflows))
+	result = append(result, data[:index]...)
+	result = append(result, enriched...)
+	result = append(result, data[index+len(workflows):]...)
+	return result, nil
+}
+
+func withMoveTablesWorkflowArrayNextSteps(data json.RawMessage, org, database, branch string) (json.RawMessage, error) {
 	var workflows []json.RawMessage
 	if err := json.Unmarshal(data, &workflows); err != nil {
-		return p.PrettyPrintJSON(data)
+		return data, nil
 	}
 
 	enriched := make([][]byte, 0, len(workflows))
@@ -59,7 +97,7 @@ func printMoveTablesListJSON(p *printer.Printer, data json.RawMessage, org, data
 			moveTablesStatusStep(org, database, branch, name, targetKeyspace, "Check workflow copy and traffic state"),
 		})
 		if err != nil {
-			return err
+			return nil, err
 		}
 		enriched = append(enriched, withSteps)
 	}
@@ -68,16 +106,22 @@ func printMoveTablesListJSON(p *printer.Printer, data json.RawMessage, org, data
 	buf.WriteByte('[')
 	buf.Write(bytes.Join(enriched, []byte(",")))
 	buf.WriteByte(']')
-	return p.PrettyPrintJSON(buf.Bytes())
+	return buf.Bytes(), nil
 }
 
 func moveTablesListEntryTarget(workflow json.RawMessage) (string, string) {
 	var entry struct {
 		Name           string `json:"name"`
 		TargetKeyspace string `json:"target_keyspace"`
+		Target         struct {
+			Keyspace string `json:"keyspace"`
+		} `json:"target"`
 	}
 	if err := json.Unmarshal(workflow, &entry); err != nil {
 		return "", ""
+	}
+	if entry.TargetKeyspace == "" {
+		entry.TargetKeyspace = entry.Target.Keyspace
 	}
 	return entry.Name, entry.TargetKeyspace
 }

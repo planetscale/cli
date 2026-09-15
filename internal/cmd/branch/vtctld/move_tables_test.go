@@ -599,7 +599,7 @@ func TestMoveTablesList(t *testing.T) {
 			c.Assert(req.Database, qt.Equals, db)
 			c.Assert(req.Branch, qt.Equals, branch)
 			c.Assert(req.TargetKeyspace, qt.Equals, "target-ks")
-			return json.RawMessage(`[{"name":"my-workflow","target_keyspace":"target-ks"}]`), nil
+			return json.RawMessage(`{"workflows":[{"name":"my-workflow","target":{"keyspace":"target-ks"}}]}`), nil
 		},
 	}
 
@@ -611,14 +611,16 @@ func TestMoveTablesList(t *testing.T) {
 	err := cmd.Execute()
 	c.Assert(err, qt.IsNil)
 	c.Assert(svc.ListFnInvoked, qt.IsTrue)
-	c.Assert(buf.String(), qt.JSONEquals, []any{map[string]any{
-		"name":            "my-workflow",
-		"target_keyspace": "target-ks",
-		"next_steps": []any{map[string]any{
-			"command": "pscale branch vtctld move-tables status my-db my-branch --org my-org --workflow my-workflow --target-keyspace target-ks --format json",
-			"reason":  "Check workflow copy and traffic state",
+	c.Assert(buf.String(), qt.JSONEquals, map[string]any{
+		"workflows": []any{map[string]any{
+			"name":   "my-workflow",
+			"target": map[string]any{"keyspace": "target-ks"},
+			"next_steps": []any{map[string]any{
+				"command": "pscale branch vtctld move-tables status my-db my-branch --org my-org --workflow my-workflow --target-keyspace target-ks --format json",
+				"reason":  "Check workflow copy and traffic state",
+			}},
 		}},
-	}})
+	})
 }
 
 func TestMoveTablesListLeavesEntriesWithoutTargetAlone(t *testing.T) {

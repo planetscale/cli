@@ -217,7 +217,7 @@ func TestMoveTables_List(t *testing.T) {
 		c.Assert(r.URL.Query().Get("target_keyspace"), qt.Equals, "target")
 
 		w.WriteHeader(200)
-		_, err := w.Write([]byte(`[{"name":"my-workflow"}]`))
+		_, err := w.Write([]byte(`{"data":{"workflows":[{"name":"my-workflow"}]}}`))
 		c.Assert(err, qt.IsNil)
 	}))
 	defer ts.Close()
@@ -233,10 +233,10 @@ func TestMoveTables_List(t *testing.T) {
 		TargetKeyspace: "target",
 	})
 	c.Assert(err, qt.IsNil)
-	c.Assert(string(data), qt.Equals, `[{"name":"my-workflow"}]`)
+	c.Assert(string(data), qt.Equals, `{"workflows":[{"name":"my-workflow"}]}`)
 }
 
-func TestMoveTables_ListWithoutTargetKeyspace(t *testing.T) {
+func TestMoveTables_ListSupportsLegacyResponseWithoutTargetKeyspace(t *testing.T) {
 	c := qt.New(t)
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
