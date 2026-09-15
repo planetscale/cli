@@ -153,6 +153,48 @@ func TestReportCmd_NoColorProducesPlainSectionHeadings(t *testing.T) {
 	c.Assert(buf.String(), qt.Contains, "Latency and execution time\n")
 }
 
+func TestReportCmd_NekiJSONIncludesSeriesAndInstantSections(t *testing.T) {
+	c := qt.New(t)
+	var seriesRequests []*ps.GetMetricSeriesRequest
+	var instantRequests []*ps.GetInstantMetricsRequest
+	service := &mock.MetricsService{
+		GetSeriesFn: func(_ context.Context, req *ps.GetMetricSeriesRequest) (*ps.MetricSeries, error) {
+			seriesRequests = append(seriesRequests, req)
+			return sampleSeries(), nil
+		},
+		GetInstantFn: func(_ context.Context, req *ps.GetInstantMetricsRequest) (*ps.InstantMetrics, error) {
+			instantRequests = append(instantRequests, req)
+			return sampleInstantMetrics(), nil
+		},
+	}
+
+	var buf bytes.Buffer
+	cmd := ReportCmd(metricsTestHelper(&buf, printer.JSON, reportClient(ps.DatabaseEngineNeki, service)))
+	cmd.SetArgs([]string{"mydb", "main", "--period", "1d"})
+	c.Assert(cmd.Execute(), qt.IsNil)
+
+	wantSeries, wantInstant := 0, 0
+	for _, definition := range nekiReportSections {
+		switch definition.Kind {
+		case reportSeriesSection:
+			c.Assert(seriesRequests[wantSeries].Metrics, qt.DeepEquals, definition.Metrics)
+			wantSeries++
+		case reportInstantSection:
+			c.Assert(instantRequests[wantInstant].Metrics, qt.DeepEquals, definition.Metrics)
+			wantInstant++
+		}
+	}
+	c.Assert(seriesRequests, qt.HasLen, wantSeries)
+	c.Assert(instantRequests, qt.HasLen, wantInstant)
+
+	var report metricsReport
+	c.Assert(json.Unmarshal(buf.Bytes(), &report), qt.IsNil)
+	c.Assert(report.Engine, qt.Equals, ps.DatabaseEngineNeki)
+	c.Assert(report.Sections, qt.HasLen, len(nekiReportSections))
+	c.Assert(report.Sections[0].Name, qt.Equals, "Workload, errors, and traffic control")
+	c.Assert(report.Sections[len(report.Sections)-1].Kind, qt.Equals, reportInstantSection)
+}
+
 func TestReportCmd_RejectsUnsupportedEngineBeforeFetchingMetrics(t *testing.T) {
 	c := qt.New(t)
 	service := &mock.MetricsService{}
