@@ -7,6 +7,7 @@ import (
 	"github.com/planetscale/cli/internal/cmd/admin"
 	"github.com/planetscale/cli/internal/cmd/branch/vtctld"
 	"github.com/planetscale/cli/internal/cmd/configprofile"
+	"github.com/planetscale/cli/internal/cmd/nekichanges"
 	"github.com/planetscale/cli/internal/cmd/router"
 	"github.com/planetscale/cli/internal/cmd/shard"
 	"github.com/planetscale/cli/internal/cmd/sidecar"
@@ -77,6 +78,7 @@ func BranchCmd(ch *cmdutil.Helper) *cobra.Command {
 	add(branchGroupPostgres, SwitchoverCmd(ch))
 	add(branchGroupPostgresNeki, MaintenanceCmd(ch))
 	add(branchGroupNeki, DataTopologyCmd(ch))
+	add(branchGroupNeki, nekichanges.ChangesCmd(ch))
 	add(branchGroupNeki, admin.AdminCmd(ch))
 	add(branchGroupNeki, configprofile.ConfigProfileCmd(ch))
 	add(branchGroupNeki, router.RouterCmd(ch))

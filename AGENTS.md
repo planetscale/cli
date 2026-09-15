@@ -603,6 +603,26 @@ pscale branch data-topology update <database> <branch> --org <org> --format json
 - `get` returns the API's cached topology with `synced_at`. When the cached value is stale, the API schedules a refresh asynchronously, so the response may briefly contain the previous topology.
 - The command is only supported for Neki branches. Other branches return `NOT_FOUND`.
 
+## Neki change requests
+
+Use `pscale branch changes` to list, show, and cancel change requests across a Neki branch (admin, cluster, configuration profile, router, and sidecar). Per-resource `changes` commands still exist on those resources. Neki only.
+
+```bash
+# List every change, or filter by state and target
+pscale branch changes list <database> <branch> --org <org> --format json
+pscale branch changes list <database> <branch> --org <org> --format json --state pending --target-type admin
+pscale branch changes list <database> <branch> --org <org> --format json --target-type config-profile --target-type sidecar --target-id <profile-id>
+
+# Show one change or cancel a request that is still cancelable
+pscale branch changes show <database> <branch> <change-id> --org <org> --format json
+pscale branch changes cancel <database> <branch> <change-id> --org <org> --format json
+```
+
+- `--target-type` is `admin`, `cluster`, `config-profile`, `router`, or `sidecar`. Repeat or comma-separate to combine types. `--target-id` requires `--target-type`.
+- `--state` may be repeated or comma-separated. `--period` and `--completed-at` match the per-resource change list filters.
+- JSON preserves the API object, including resource-specific fields such as size and parameters. Human output shows id, state, target, name, and created time.
+- `cancel` is rejected for maintenance and other uncancellable states. Ask the user before canceling.
+
 ## Neki shards
 
 Use `pscale branch shard` to manage the physical shards of a Neki branch:
