@@ -835,6 +835,7 @@ func TestKeyspace_UpdateSettingsCmd_RejectsNegativeThrottlerThreshold(t *testing
 	cmd.SetArgs([]string{db, branch, keyspace, "--throttler-threshold=-1"})
 	err := cmd.Execute()
 	c.Assert(err, qt.ErrorMatches, ".*throttler-threshold must be greater than or equal to 0")
+	c.Assert(svc.GetFnInvoked, qt.IsFalse)
 	c.Assert(svc.UpdateSettingsFnInvoked, qt.IsFalse)
 }
 
@@ -858,6 +859,7 @@ func TestKeyspace_UpdateSettingsCmd_MaxRollout(t *testing.T) {
 		UpdateSettingsFn: func(_ context.Context, req *ps.UpdateKeyspaceSettingsRequest) (*ps.Keyspace, error) {
 			c.Assert(req.ReplicationDurabilityConstraints, qt.IsNil)
 			c.Assert(req.VReplicationFlags, qt.IsNil)
+			c.Assert(req.Throttler, qt.IsNil)
 			c.Assert(req.MaxRollout, qt.Not(qt.IsNil))
 			c.Assert(*req.MaxRollout, qt.Not(qt.IsNil))
 			c.Assert(**req.MaxRollout, qt.Equals, maxRollout)
@@ -882,6 +884,68 @@ func TestKeyspace_UpdateSettingsCmd_MaxRollout(t *testing.T) {
 	c.Assert(buf.String(), qt.Contains, `"max_rollout": 8`)
 }
 
+func TestKeyspace_UpdateSettingsCmd_MaxRolloutWithNestedSettings(t *testing.T) {
+	c := qt.New(t)
+	format := printer.JSON
+	maxRollout := 8
+	throttlerEnabled := true
+	throttlerThreshold := 5.0
+	getCalls := 0
+	initial := &ps.Keyspace{
+		VReplicationFlags: &ps.VReplicationFlags{
+			OptimizeInserts:           true,
+			AllowNoBlobBinlogRowImage: true,
+			VPlayerBatching:           false,
+		},
+		Throttler: &ps.KeyspaceThrottler{
+			Enabled:   &throttlerEnabled,
+			Threshold: &throttlerThreshold,
+		},
+	}
+
+	svc := &mock.KeyspacesService{
+		GetFn: func(_ context.Context, _ *ps.GetKeyspaceRequest) (*ps.Keyspace, error) {
+			getCalls++
+			return initial, nil
+		},
+		UpdateSettingsFn: func(_ context.Context, req *ps.UpdateKeyspaceSettingsRequest) (*ps.Keyspace, error) {
+			c.Assert(req.ReplicationDurabilityConstraints, qt.IsNil)
+			c.Assert(req.VReplicationFlags.OptimizeInserts, qt.IsFalse)
+			c.Assert(req.VReplicationFlags.AllowNoBlobBinlogRowImage, qt.IsTrue)
+			c.Assert(req.VReplicationFlags.VPlayerBatching, qt.IsFalse)
+			c.Assert(req.Throttler.Enabled, qt.Not(qt.IsNil))
+			c.Assert(*req.Throttler.Enabled, qt.IsTrue)
+			c.Assert(req.Throttler.Threshold, qt.Not(qt.IsNil))
+			c.Assert(*req.Throttler.Threshold, qt.Equals, 10.0)
+			c.Assert(req.MaxRollout, qt.Not(qt.IsNil))
+			c.Assert(*req.MaxRollout, qt.Not(qt.IsNil))
+			c.Assert(**req.MaxRollout, qt.Equals, maxRollout)
+			return &ps.Keyspace{MaxRollout: &maxRollout}, nil
+		},
+	}
+	ch := &cmdutil.Helper{
+		Printer: printer.NewPrinter(&format),
+		Config:  &config.Config{Organization: "planetscale"},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{Keyspaces: svc}, nil
+		},
+	}
+
+	cmd := UpdateSettingsCmd(ch)
+	cmd.SetArgs([]string{
+		"database",
+		"main",
+		"keyspace",
+		"--max-rollout=8",
+		"--vreplication-optimize-inserts=false",
+		"--throttler-threshold=10",
+	})
+
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(getCalls, qt.Equals, 1)
+	c.Assert(svc.UpdateSettingsFnInvoked, qt.IsTrue)
+}
+
 func TestKeyspace_UpdateSettingsCmd_ResetMaxRollout(t *testing.T) {
 	c := qt.New(t)
 	var buf bytes.Buffer
@@ -891,6 +955,7 @@ func TestKeyspace_UpdateSettingsCmd_ResetMaxRollout(t *testing.T) {
 		UpdateSettingsFn: func(_ context.Context, req *ps.UpdateKeyspaceSettingsRequest) (*ps.Keyspace, error) {
 			c.Assert(req.ReplicationDurabilityConstraints, qt.IsNil)
 			c.Assert(req.VReplicationFlags, qt.IsNil)
+			c.Assert(req.Throttler, qt.IsNil)
 			c.Assert(req.MaxRollout, qt.Not(qt.IsNil))
 			c.Assert(*req.MaxRollout, qt.IsNil)
 			return &ps.Keyspace{}, nil

@@ -432,10 +432,7 @@ pscale keyspace update-settings <database> <branch> <keyspace> --org <org> --for
 `--max-rollout` accepts 1–32. Resetting removes the configured value and uses
 the default of 1. In JSON, `max_rollout` is the stored configured value and is
 `null` when unset; it is not a computed effective concurrency value. The
-service caps effective rollout concurrency at 32. Values above 32 may appear
-when an administrator has stored an override, but customer updates remain
-limited to 32. An administrator's force override can also supersede the
-configured value for the next rollout.
+service caps effective rollout concurrency at 32.
 
 ## Vitess deploy requests (inspect + throttler)
 

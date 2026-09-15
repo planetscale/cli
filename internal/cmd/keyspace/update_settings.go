@@ -47,6 +47,9 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 			if maxRolloutChanged && (flags.maxRollout < 1 || flags.maxRollout > 32) {
 				return fmt.Errorf("--max-rollout must be between 1 and 32")
 			}
+			if cmd.Flags().Changed("throttler-threshold") && flags.throttlerThreshold < 0 {
+				return errors.New("--throttler-threshold must be greater than or equal to 0")
+			}
 
 			updateReq := &ps.UpdateKeyspaceSettingsRequest{
 				Organization: ch.Config.Organization,
@@ -87,10 +90,13 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 				}
 			}
 
-			if vrfChanged {
-				if err := setInitialSettings(ctx, client, updateReq, false, true, false); err != nil {
+			if vrfChanged || throttlerChanged {
+				if err := setInitialSettings(ctx, client, updateReq, false, vrfChanged, throttlerChanged); err != nil {
 					return err
 				}
+			}
+
+			if vrfChanged {
 				if updateReq.VReplicationFlags == nil {
 					updateReq.VReplicationFlags = &ps.VReplicationFlags{}
 				}
@@ -109,9 +115,6 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			if throttlerChanged {
-				if err := setInitialSettings(ctx, client, updateReq, false, false, true); err != nil {
-					return err
-				}
 				if updateReq.Throttler == nil {
 					updateReq.Throttler = &ps.KeyspaceThrottler{}
 				}
@@ -121,9 +124,6 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 				}
 
 				if cmd.Flags().Changed("throttler-threshold") {
-					if flags.throttlerThreshold < 0 {
-						return errors.New("--throttler-threshold must be greater than or equal to 0")
-					}
 					updateReq.Throttler.Threshold = &flags.throttlerThreshold
 				}
 			}
