@@ -151,7 +151,7 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().BoolVar(&flags.vreplicationFlags.OptimizeInserts, "vreplication-optimize-inserts", true, "When enabled, skips sending INSERT events for rows that have yet to be replicated.")
 	cmd.Flags().BoolVar(&flags.vreplicationFlags.AllowNoBlobBinlogRowImage, "vreplication-enable-noblob-binlog-mode", true, "When enabled, omits changed BLOB and TEXT columns from replication events, which reduces binlog sizes.")
 	cmd.Flags().BoolVar(&flags.vreplicationFlags.VPlayerBatching, "vreplication-batch-replication-events", false, "When enabled, sends fewer queries to MySQL to improve performance.")
-	cmd.Flags().IntVar(&flags.maxRollout, "max-rollout", 0, "Maximum number of concurrent shard rollouts (1-32). The effective service cap is 32.")
+	cmd.Flags().IntVar(&flags.maxRollout, "max-rollout", 1, "Maximum number of concurrent shard rollouts (1-32). The effective service cap is 32.")
 	cmd.Flags().BoolVar(&flags.resetMaxRollout, "reset-max-rollout", false, "Reset the configured maximum concurrent shard rollouts to the default (1).")
 	cmd.Flags().BoolVar(&flags.throttlerEnabled, "throttler-enabled", true, "Pause schema migrations and VReplication workflows when replication lag rises above the threshold.")
 	cmd.Flags().Float64Var(&flags.throttlerThreshold, "throttler-threshold", 5, "Replication lag in seconds above which migrations and workflows are paused.")

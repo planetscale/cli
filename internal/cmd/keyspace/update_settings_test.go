@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -1010,6 +1011,26 @@ func TestKeyspace_UpdateSettingsCmd_MaxRolloutValidationBeforeAPI(t *testing.T) 
 			c.Assert(clientCalled, qt.IsFalse)
 		})
 	}
+}
+
+func TestKeyspace_UpdateSettingsCmd_MaxRolloutHelpDefault(t *testing.T) {
+	c := qt.New(t)
+	format := printer.Human
+	ch := &cmdutil.Helper{
+		Printer: printer.NewPrinter(&format),
+		Config:  &config.Config{Organization: "planetscale"},
+	}
+
+	cmd := UpdateSettingsCmd(ch)
+	var maxRolloutUsage string
+	for _, line := range strings.Split(cmd.Flags().FlagUsages(), "\n") {
+		if strings.Contains(line, "--max-rollout") {
+			maxRolloutUsage = line
+			break
+		}
+	}
+	c.Assert(maxRolloutUsage, qt.Not(qt.Equals), "")
+	c.Assert(maxRolloutUsage, qt.Contains, "(default 1)")
 }
 
 func TestKeyspace_UpdateSettingsCmd_ResetMaxRolloutFalseIsNoOp(t *testing.T) {
