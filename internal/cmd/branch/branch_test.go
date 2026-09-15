@@ -37,6 +37,7 @@ func TestBranchCmdGroupsCommandsByEngine(t *testing.T) {
 	c.Assert(got["parameters"], qt.Equals, branchGroupPostgres)
 	c.Assert(got["maintenance"], qt.Equals, branchGroupPostgresNeki)
 	c.Assert(got["data-topology"], qt.Equals, branchGroupNeki)
+	c.Assert(got["changes"], qt.Equals, branchGroupNeki)
 	c.Assert(got["admin"], qt.Equals, branchGroupNeki)
 	c.Assert(got["config-profile"], qt.Equals, branchGroupNeki)
 	c.Assert(got["router"], qt.Equals, branchGroupNeki)

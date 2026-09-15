@@ -69,6 +69,7 @@ type Client struct {
 	Metrics                        MetricsService
 	MoveTables                     MoveTablesService
 	NekiAdmins                     NekiAdminsService
+	NekiChanges                    NekiChangesService
 	NekiRouters                    NekiRoutersService
 	NekiSidecars                   NekiSidecarsService
 	NekiShardConfigurationProfiles NekiShardConfigurationProfilesService
@@ -365,6 +366,7 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 	c.Metrics = &metricsService{client: c}
 	c.MoveTables = &moveTablesService{client: c}
 	c.NekiAdmins = &nekiAdminsService{client: c}
+	c.NekiChanges = &nekiChangesService{client: c}
 	c.NekiRouters = &nekiRoutersService{client: c}
 	c.NekiSidecars = &nekiSidecarsService{client: c}
 	c.NekiShardConfigurationProfiles = &nekiShardConfigurationProfilesService{client: c}
