@@ -55,9 +55,10 @@ func ReportCmd(ch *cmdutil.Helper) *cobra.Command {
 		Short: "Produce a grouped performance metrics report",
 		Long: `Produce a curated performance report for a database branch.
 
-The database engine is detected automatically. MySQL and PostgreSQL reports use
-different metric sections, including current-value sections where applicable.
-Section headings are bold in human output and plain text with --no-color.`,
+The database engine is detected automatically. MySQL, PostgreSQL, and Neki
+reports use different metric sections, including current-value sections where
+applicable. Section headings are bold in human output and plain text with
+--no-color.`,
 		Example: `  # Daily human-readable performance report
   pscale metrics report mydb main --org myorg --period 1d
 

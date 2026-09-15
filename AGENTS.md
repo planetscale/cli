@@ -345,7 +345,7 @@ pscale metrics tags <database> <branch> --org <org> --format json --metric queri
 - `metrics tablets --workflow` applies only to `--metric vreplication_lag` and must name an existing workflow on the branch.
 - Filters that match nothing return zero-filled series rather than an empty response, so check the point values, not the series count.
 - `metrics tables` and `metrics keyspace-tables` preserve the untyped storage-metrics API response in JSON.
-- `metrics report` detects whether the database uses MySQL or PostgreSQL and queries a curated set of performance sections. It supports `--period`, custom `--from`/`--to` ranges, and `--steps`; JSON returns a composite report and CSV includes the section name on each row.
+- `metrics report` detects whether the database uses MySQL, PostgreSQL, or Neki and queries a curated set of performance sections. Neki sections include shard-grained resource metrics and router query/latency series. It supports `--period`, custom `--from`/`--to` ranges, and `--steps`; JSON returns a composite report and CSV includes the section name on each row.
 - Historical queries support `--period`, or a custom `--from`/`--to` ISO 8601 range, plus `--steps` and dimension filters such as `--tablet-type`, `--keyspace`, `--shard`, `--role`, `--pod`, and `--pods`.
 - JSON preserves the API response: historical results contain `start_date`, `end_date`, `interval`, and `series`; each series contains `metric`, `label`, `labels`, and `[Unix timestamp, value]` points. Instant results contain current values grouped by their dimensions.
 - Human output summarizes each historical series with latest/min/average/max values and a sparkline. CSV flattens historical samples or instant values to one row each.
