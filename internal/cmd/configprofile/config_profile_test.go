@@ -3,6 +3,7 @@ package configprofile
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -182,6 +183,7 @@ func TestConfigProfileUpdateCmd(t *testing.T) {
 		c.Assert(req.Branch, qt.Equals, "main")
 		c.Assert(req.ConfigurationProfile, qt.Equals, "metal")
 		c.Assert(req.Name, qt.IsNil)
+		c.Assert(req.Extensions, qt.IsNil)
 		c.Assert(req.Replicas, qt.IsNotNil)
 		c.Assert(*req.Replicas, qt.Equals, 2)
 		c.Assert(req.Parameters, qt.DeepEquals, map[string]map[string]string{
@@ -195,6 +197,54 @@ func TestConfigProfileUpdateCmd(t *testing.T) {
 	cmd.SetArgs([]string{"app", "main", "metal", "--replicas", "2", "--parameters", "pgconf.max_connections=200", "--parameters", "pgconf.work_mem=64MB", "--parameters", "pgbouncer.default_pool_size=20"})
 	c.Assert(cmd.Execute(), qt.IsNil)
 	c.Assert(svc.UpdateFnInvoked, qt.IsTrue)
+}
+
+func TestConfigProfileUpdateCmdSendsExtensionsAndParameters(t *testing.T) {
+	c := qt.New(t)
+	var out bytes.Buffer
+	svc := &mock.NekiShardConfigurationProfilesService{UpdateFn: func(_ context.Context, req *ps.UpdateNekiShardConfigurationProfileRequest) (*ps.NekiShardConfigurationProfile, error) {
+		body, err := json.Marshal(req)
+		c.Assert(err, qt.IsNil)
+		c.Assert(string(body), qt.JSONEquals, map[string]interface{}{
+			"extensions": []string{"hll", "pg_cron"},
+			"parameters": map[string]map[string]string{"pgconf": {"hll.force_groupagg": "on"}},
+		})
+		return testProfile(), nil
+	}}
+
+	cmd := UpdateCmd(configProfileTestHelper(svc, &out))
+	cmd.SetArgs([]string{"app", "main", "metal", "--extensions= hll, pg_cron ", "--parameters", "pgconf.hll.force_groupagg=on"})
+
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(svc.UpdateFnInvoked, qt.IsTrue)
+}
+
+func TestConfigProfileUpdateCmdSendsEmptyExtensions(t *testing.T) {
+	c := qt.New(t)
+	var out bytes.Buffer
+	svc := &mock.NekiShardConfigurationProfilesService{UpdateFn: func(_ context.Context, req *ps.UpdateNekiShardConfigurationProfileRequest) (*ps.NekiShardConfigurationProfile, error) {
+		body, err := json.Marshal(req)
+		c.Assert(err, qt.IsNil)
+		c.Assert(string(body), qt.JSONEquals, map[string]interface{}{"extensions": []string{}})
+		return testProfile(), nil
+	}}
+
+	cmd := UpdateCmd(configProfileTestHelper(svc, &out))
+	cmd.SetArgs([]string{"app", "main", "metal", "--extensions="})
+
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(svc.UpdateFnInvoked, qt.IsTrue)
+}
+
+func TestConfigProfileUpdateCmdRejectsBlankExtensionNames(t *testing.T) {
+	c := qt.New(t)
+	var out bytes.Buffer
+	svc := &mock.NekiShardConfigurationProfilesService{}
+	cmd := UpdateCmd(configProfileTestHelper(svc, &out))
+	cmd.SetArgs([]string{"app", "main", "metal", "--extensions= "})
+
+	c.Assert(cmd.Execute(), qt.ErrorMatches, "--extensions cannot contain blank names; use --extensions= to disable extensions")
+	c.Assert(svc.UpdateFnInvoked, qt.IsFalse)
 }
 
 func TestConfigProfileUpdateCmdNormalizesClusterSize(t *testing.T) {
