@@ -45,11 +45,6 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 				return updateInteractive(ctx, ch, updateReq)
 			}
 
-			client, err := ch.Client()
-			if err != nil {
-				return err
-			}
-
 			rdcChanged := cmd.Flags().Changed("replication-durability-constraints-strategy")
 
 			vrfChanged := cmd.Flags().Changed("vreplication-optimize-inserts") ||
@@ -72,6 +67,11 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			if maxRolloutChanged && (flags.maxRollout < 1 || flags.maxRollout > 32) {
 				return errors.New("--max-rollout must be between 1 and 32")
+			}
+
+			client, err := ch.Client()
+			if err != nil {
+				return err
 			}
 
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Updating settings for keyspace %s in %s/%s", printer.BoldBlue(keyspace), printer.BoldBlue(database), printer.BoldBlue(branch)))
