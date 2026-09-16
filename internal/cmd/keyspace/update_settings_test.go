@@ -846,6 +846,149 @@ func TestKeyspace_UpdateSettingsCmd_RejectsNegativeThrottlerThreshold(t *testing
 	c.Assert(svc.UpdateSettingsFnInvoked, qt.IsFalse)
 }
 
+func TestKeyspace_UpdateSettingsCmd_MaxRollout(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	db := "planetscale"
+	branch := "main"
+	keyspace := "sharded"
+
+	ts := time.Now()
+	maxRollout := 8
+
+	updatedKs := &ps.Keyspace{
+		ID:         "ks1",
+		Name:       keyspace,
+		CreatedAt:  ts,
+		UpdatedAt:  ts,
+		MaxRollout: &maxRollout,
+	}
+
+	svc := &mock.KeyspacesService{
+		GetFn: func(ctx context.Context, req *ps.GetKeyspaceRequest) (*ps.Keyspace, error) {
+			return &ps.Keyspace{ID: "ks1", Name: keyspace}, nil
+		},
+		UpdateSettingsFn: func(ctx context.Context, req *ps.UpdateKeyspaceSettingsRequest) (*ps.Keyspace, error) {
+			c.Assert(req.MaxRollout, qt.Not(qt.IsNil))
+			c.Assert(*req.MaxRollout, qt.Equals, 8)
+			c.Assert(req.Throttler, qt.IsNil)
+
+			return updatedKs, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: org,
+		},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{
+				Keyspaces: svc,
+			}, nil
+		},
+	}
+
+	cmd := UpdateSettingsCmd(ch)
+	cmd.SetArgs([]string{db, branch, keyspace, "--max-rollout=8"})
+	err := cmd.Execute()
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.UpdateSettingsFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.JSONEquals, updatedKs)
+}
+
+func TestKeyspace_UpdateSettingsCmd_RejectsOutOfRangeMaxRollout(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	db := "planetscale"
+	branch := "main"
+	keyspace := "sharded"
+
+	for _, arg := range []string{"--max-rollout=0", "--max-rollout=33"} {
+		svc := &mock.KeyspacesService{
+			GetFn: func(ctx context.Context, req *ps.GetKeyspaceRequest) (*ps.Keyspace, error) {
+				return &ps.Keyspace{ID: "ks1", Name: keyspace}, nil
+			},
+		}
+
+		ch := &cmdutil.Helper{
+			Printer: p,
+			Config: &config.Config{
+				Organization: org,
+			},
+			Client: func() (*ps.Client, error) {
+				return &ps.Client{
+					Keyspaces: svc,
+				}, nil
+			},
+		}
+
+		cmd := UpdateSettingsCmd(ch)
+		cmd.SetArgs([]string{db, branch, keyspace, arg})
+		err := cmd.Execute()
+		c.Assert(err, qt.ErrorMatches, ".*max-rollout must be between 1 and 32")
+		c.Assert(svc.UpdateSettingsFnInvoked, qt.IsFalse)
+	}
+}
+
+func TestKeyspace_UpdateSettingsCmd_OmittedMaxRolloutIsNotSent(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	db := "planetscale"
+	branch := "main"
+	keyspace := "sharded"
+
+	svc := &mock.KeyspacesService{
+		GetFn: func(ctx context.Context, req *ps.GetKeyspaceRequest) (*ps.Keyspace, error) {
+			return &ps.Keyspace{ID: "ks1", Name: keyspace}, nil
+		},
+		UpdateSettingsFn: func(ctx context.Context, req *ps.UpdateKeyspaceSettingsRequest) (*ps.Keyspace, error) {
+			c.Assert(req.MaxRollout, qt.IsNil)
+
+			return &ps.Keyspace{ID: "ks1", Name: keyspace}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: org,
+		},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{
+				Keyspaces: svc,
+			}, nil
+		},
+	}
+
+	cmd := UpdateSettingsCmd(ch)
+	cmd.SetArgs([]string{db, branch, keyspace, "--throttler-threshold=10"})
+	err := cmd.Execute()
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.UpdateSettingsFnInvoked, qt.IsTrue)
+}
+
 func TestKeyspace_ConstraintsToStrategy(t *testing.T) {
 	c := qt.New(t)
 

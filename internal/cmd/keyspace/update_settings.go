@@ -21,6 +21,7 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 		vreplicationFlags                *ps.VReplicationFlags
 		throttlerEnabled                 bool
 		throttlerThreshold               float64
+		maxRollout                       int
 		interactive                      bool
 	}
 
@@ -108,7 +109,16 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 				}
 			}
 
-			if !rdcChanged && !vrfChanged && !throttlerChanged {
+			maxRolloutChanged := cmd.Flags().Changed("max-rollout")
+
+			if maxRolloutChanged {
+				if flags.maxRollout < 1 || flags.maxRollout > 32 {
+					return errors.New("--max-rollout must be between 1 and 32")
+				}
+				updateReq.MaxRollout = &flags.maxRollout
+			}
+
+			if !rdcChanged && !vrfChanged && !throttlerChanged && !maxRolloutChanged {
 				end()
 				ch.Printer.Println("No changes were requested. No update performed.")
 				return nil
@@ -131,6 +141,7 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().BoolVar(&flags.vreplicationFlags.VPlayerBatching, "vreplication-batch-replication-events", false, "When enabled, sends fewer queries to MySQL to improve performance.")
 	cmd.Flags().BoolVar(&flags.throttlerEnabled, "throttler-enabled", true, "Pause schema migrations and VReplication workflows when replication lag rises above the threshold.")
 	cmd.Flags().Float64Var(&flags.throttlerThreshold, "throttler-threshold", 5, "Replication lag in seconds above which migrations and workflows are paused.")
+	cmd.Flags().IntVar(&flags.maxRollout, "max-rollout", 1, "Maximum number of shards to roll out changes to concurrently (1-32).")
 	cmd.Flags().BoolVarP(&flags.interactive, "interactive", "i", false, "Run the command in interactive mode")
 
 	return cmd

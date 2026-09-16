@@ -3,8 +3,10 @@ package planetscale
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	qt "github.com/frankban/quicktest"
@@ -478,4 +480,42 @@ func TestKeyspaces_UpdateSettings(t *testing.T) {
 	c.Assert(keyspace.VReplicationFlags.AllowNoBlobBinlogRowImage, qt.Equals, true)
 	c.Assert(keyspace.VReplicationFlags.VPlayerBatching, qt.Equals, true)
 	c.Assert(keyspace.ReplicationDurabilityConstraints.Strategy, qt.Equals, "maximum")
+}
+
+func TestKeyspaces_UpdateSettingsMaxRollout(t *testing.T) {
+	c := qt.New(t)
+
+	var body string
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodPatch)
+
+		raw, err := io.ReadAll(r.Body)
+		c.Assert(err, qt.IsNil)
+		body = string(raw)
+
+		w.WriteHeader(200)
+		out := `{"type":"Keyspace","id":"thisisanid","name":"planetscale","max_rollout":8}`
+		_, err = w.Write([]byte(out))
+		c.Assert(err, qt.IsNil)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	ctx := context.Background()
+	maxRollout := 8
+
+	keyspace, err := client.Keyspaces.UpdateSettings(ctx, &UpdateKeyspaceSettingsRequest{
+		Organization: "foo",
+		Database:     "bar",
+		Branch:       "baz",
+		Keyspace:     "qux",
+		MaxRollout:   &maxRollout,
+	})
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(strings.TrimSpace(body), qt.Equals, `{"max_rollout":8}`)
+	c.Assert(keyspace.MaxRollout, qt.Not(qt.IsNil))
+	c.Assert(*keyspace.MaxRollout, qt.Equals, 8)
 }

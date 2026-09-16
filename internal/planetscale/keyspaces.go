@@ -24,6 +24,7 @@ type Keyspace struct {
 	UpdatedAt                        time.Time                         `json:"updated_at"`
 	VReplicationFlags                *VReplicationFlags                `json:"vreplication_flags"`
 	ReplicationDurabilityConstraints *ReplicationDurabilityConstraints `json:"replication_durability_constraints"`
+	MaxRollout                       *int                              `json:"max_rollout"`
 	Throttler                        *KeyspaceThrottler                `json:"throttler"`
 	ReadOnlyRegions                  []*ReadOnlyRegionKeyspace         `json:"read_only_regions"`
 }
@@ -176,6 +177,7 @@ type UpdateKeyspaceSettingsRequest struct {
 	ReplicationDurabilityConstraints *ReplicationDurabilityConstraints `json:"replication_durability_constraints,omitempty"`
 	VReplicationFlags                *VReplicationFlags                `json:"vreplication_flags,omitempty"`
 	Throttler                        *KeyspaceThrottler                `json:"throttler,omitempty"`
+	MaxRollout                       *int                              `json:"max_rollout,omitempty"`
 }
 
 type ReplicationDurabilityConstraints struct {

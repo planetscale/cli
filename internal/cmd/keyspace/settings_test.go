@@ -200,8 +200,12 @@ func TestBuildKeyspaceSettings(t *testing.T) {
 		},
 	}
 
+	maxRollout := 8
+	fullKs.MaxRollout = &maxRollout
+
 	settings := toKeyspaceSettings(fullKs)
 	c.Assert(settings.ReplicationDurabilityConstraintStrategy, qt.Equals, "maximum") // Should be translated
+	c.Assert(settings.MaxRollout, qt.Equals, "8")
 	c.Assert(settings.VReplicationFlags.OptimizeInserts, qt.Equals, true)
 	c.Assert(settings.VReplicationFlags.AllowNoBlobBinlogRowImage, qt.Equals, true)
 	c.Assert(settings.VReplicationFlags.VPlayerBatching, qt.Equals, false)
@@ -218,6 +222,7 @@ func TestBuildKeyspaceSettings(t *testing.T) {
 
 	nilSettings := toKeyspaceSettings(nilKs)
 	c.Assert(nilSettings.ReplicationDurabilityConstraintStrategy, qt.Equals, "not set")
+	c.Assert(nilSettings.MaxRollout, qt.Equals, "not set")
 	c.Assert(nilSettings.VReplicationFlags.OptimizeInserts, qt.Equals, false) // Default values
 	c.Assert(nilSettings.VReplicationFlags.AllowNoBlobBinlogRowImage, qt.Equals, false)
 	c.Assert(nilSettings.VReplicationFlags.VPlayerBatching, qt.Equals, false)
