@@ -489,6 +489,12 @@ pscale role get <database> <branch> <role-id> --org <org> --format json --replic
 pscale role get <database> <branch> <role-id> --org <org> --format json --read-only-replica <replica-name>
 pscale role get <database> <branch> <role-id> --org <org> --format json --bouncer <bouncer-name>
 
+# Neki: router is a username suffix; replica and shard are libpq options on the URL
+pscale role get <database> <branch> <role-id> --org <org> --format json --router <router>
+pscale role get <database> <branch> <role-id> --org <org> --format json --replica
+pscale role get <database> <branch> <role-id> --org <org> --format json --shard <shard_name>
+pscale role get <database> <branch> <role-id> --org <org> --format json --replica --shard <shard_name> --router <router>
+
 # Change parameters (repeat --parameters; keys are namespace.name)
 pscale branch resize <database> <branch> --org <org> --format json --parameters pgconf.max_connections=200
 
@@ -505,7 +511,7 @@ pscale branch resize cancel <database> <branch> --org <org> --format json
 ```
 
 - At least one of `--cluster-size`, `--replicas`, or `--parameters` is required.
-- The `role get` connection target flags are mutually exclusive. Targeted role responses keep the same shape while changing `username`, `access_host_url`, and `database_url` as needed.
+- `--replica`, `--read-only-replica`, and `--bouncer` are mutually exclusive. `--read-only-replica` and `--bouncer` are Postgres-only and cannot combine with `--router` or `--shard`. On Neki, `--replica`, `--shard`, and `--router` can be combined. `--router` rewrites `username` to `user|<name>`. `--replica` and `--shard` set `options` (`-c __neki.target=REPLICA`, `-c __neki.shard=…`) and add them to `database_url`. List names with `pscale branch router list` and `pscale branch shard list` (use the shard name, not the API id).
 - `--parameters` values are validated against the catalog before submission; unknown or immutable parameters fail fast. Parameters with `"restart": true` in the catalog restart the database when applied — surface this to the user before changing them.
 - Change request `state` is one of `queued`, `pending`, `resizing`, `completed`, `canceled`. Only `completed` and `canceled` are terminal. Without `--wait`, poll `resize status` instead of assuming completion.
 - A no-op (branch already matches the requested configuration) prints `{"result": "no_change", "branch": "<branch>"}` in JSON mode instead of a change request.

@@ -19,6 +19,7 @@ type PostgresRole struct {
 	Password        string     `json:"password"`
 	Actor           Actor      `json:"actor"`
 	Username        string     `json:"username"`
+	Options         string     `json:"options,omitempty"`
 	WithReplication bool       `json:"with_replication"`
 	CreatedAt       time.Time  `json:"created_at"`
 	DisabledAt      *time.Time `json:"disabled_at"`
@@ -47,6 +48,8 @@ type GetPostgresRoleRequest struct {
 	Replica         bool
 	ReadOnlyReplica string
 	Bouncer         string
+	Router          string
+	Shard           string
 }
 
 // CreatePostgresRoleRequest encapsulates the request for creating role credentials for a database branch.
@@ -212,6 +215,12 @@ func (p *postgresRolesService) Get(ctx context.Context, getReq *GetPostgresRoleR
 	}
 	if getReq.Bouncer != "" {
 		query.Set("bouncer", getReq.Bouncer)
+	}
+	if getReq.Router != "" {
+		query.Set("router", getReq.Router)
+	}
+	if getReq.Shard != "" {
+		query.Set("shard", getReq.Shard)
 	}
 
 	req, err := p.client.newRequest(http.MethodGet, pathStr, nil, WithQueryParams(query))
