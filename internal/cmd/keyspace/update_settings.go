@@ -45,6 +45,30 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 				return updateInteractive(ctx, ch, updateReq)
 			}
 
+			rdcChanged := cmd.Flags().Changed("replication-durability-constraints-strategy")
+
+			vrfChanged := cmd.Flags().Changed("vreplication-optimize-inserts") ||
+				cmd.Flags().Changed("vreplication-enable-noblob-binlog-mode") ||
+				cmd.Flags().Changed("vreplication-batch-replication-events")
+
+			throttlerChanged := cmd.Flags().Changed("throttler-enabled") ||
+				cmd.Flags().Changed("throttler-threshold")
+
+			maxRolloutChanged := cmd.Flags().Changed("max-rollout")
+
+			if !rdcChanged && !vrfChanged && !throttlerChanged && !maxRolloutChanged {
+				ch.Printer.Println("No changes were requested. No update performed.")
+				return nil
+			}
+
+			if cmd.Flags().Changed("throttler-threshold") && flags.throttlerThreshold < 0 {
+				return errors.New("--throttler-threshold must be greater than or equal to 0")
+			}
+
+			if maxRolloutChanged && (flags.maxRollout < 1 || flags.maxRollout > 32) {
+				return errors.New("--max-rollout must be between 1 and 32")
+			}
+
 			client, err := ch.Client()
 			if err != nil {
 				return err
@@ -53,28 +77,25 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Updating settings for keyspace %s in %s/%s", printer.BoldBlue(keyspace), printer.BoldBlue(database), printer.BoldBlue(branch)))
 			defer end()
 
-			if err := setInitialSettings(ctx, ch, updateReq); err != nil {
-				return err
-			}
-
-			// Check if any relevant flags are changing replication durability constraints
-			rdcChanged := cmd.Flags().Changed("replication-durability-constraints-strategy")
 			if rdcChanged {
-				if updateReq.ReplicationDurabilityConstraints == nil {
-					updateReq.ReplicationDurabilityConstraints = &ps.ReplicationDurabilityConstraints{}
+				updateReq.ReplicationDurabilityConstraints = &ps.ReplicationDurabilityConstraints{
+					Strategy: constraintsToStrategy(flags.replicationDurabilityConstraints.Strategy),
 				}
-				updateReq.ReplicationDurabilityConstraints.Strategy = constraintsToStrategy(flags.replicationDurabilityConstraints.Strategy)
 			}
 
-			// Check if any relevant flags are changing VReplication flags
-			vrfChanged := cmd.Flags().Changed("vreplication-optimize-inserts") ||
-				cmd.Flags().Changed("vreplication-enable-noblob-binlog-mode") ||
-				cmd.Flags().Changed("vreplication-batch-replication-events")
-
+			// The API replaces the whole VReplication group, so flags that were
+			// not passed have to be carried over from the current settings.
 			if vrfChanged {
-				if updateReq.VReplicationFlags == nil {
-					updateReq.VReplicationFlags = &ps.VReplicationFlags{}
+				ks, err := fetchKeyspace(ctx, ch, updateReq)
+				if err != nil {
+					return err
 				}
+
+				vreplicationFlags := ps.VReplicationFlags{}
+				if ks.VReplicationFlags != nil {
+					vreplicationFlags = *ks.VReplicationFlags
+				}
+				updateReq.VReplicationFlags = &vreplicationFlags
 
 				if cmd.Flags().Changed("vreplication-optimize-inserts") {
 					updateReq.VReplicationFlags.OptimizeInserts = flags.vreplicationFlags.OptimizeInserts
@@ -89,39 +110,21 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 				}
 			}
 
-			throttlerChanged := cmd.Flags().Changed("throttler-enabled") ||
-				cmd.Flags().Changed("throttler-threshold")
-
+			// Throttler fields that are left out keep their current values.
 			if throttlerChanged {
-				if updateReq.Throttler == nil {
-					updateReq.Throttler = &ps.KeyspaceThrottler{}
-				}
+				updateReq.Throttler = &ps.KeyspaceThrottler{}
 
 				if cmd.Flags().Changed("throttler-enabled") {
 					updateReq.Throttler.Enabled = &flags.throttlerEnabled
 				}
 
 				if cmd.Flags().Changed("throttler-threshold") {
-					if flags.throttlerThreshold < 0 {
-						return errors.New("--throttler-threshold must be greater than or equal to 0")
-					}
 					updateReq.Throttler.Threshold = &flags.throttlerThreshold
 				}
 			}
 
-			maxRolloutChanged := cmd.Flags().Changed("max-rollout")
-
 			if maxRolloutChanged {
-				if flags.maxRollout < 1 || flags.maxRollout > 32 {
-					return errors.New("--max-rollout must be between 1 and 32")
-				}
 				updateReq.MaxRollout = &flags.maxRollout
-			}
-
-			if !rdcChanged && !vrfChanged && !throttlerChanged && !maxRolloutChanged {
-				end()
-				ch.Printer.Println("No changes were requested. No update performed.")
-				return nil
 			}
 
 			k, err := updateKeyspaceSettings(ctx, client, updateReq)
@@ -147,10 +150,10 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 	return cmd
 }
 
-func setInitialSettings(ctx context.Context, ch *cmdutil.Helper, req *ps.UpdateKeyspaceSettingsRequest) error {
+func fetchKeyspace(ctx context.Context, ch *cmdutil.Helper, req *ps.UpdateKeyspaceSettingsRequest) (*ps.Keyspace, error) {
 	client, err := ch.Client()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	organization := req.Organization
@@ -167,26 +170,13 @@ func setInitialSettings(ctx context.Context, ch *cmdutil.Helper, req *ps.UpdateK
 	if err != nil {
 		switch cmdutil.ErrCode(err) {
 		case ps.ErrNotFound:
-			return fmt.Errorf("keyspace %s does not exist in branch %s (database: %s, organization: %s)", printer.BoldBlue(keyspace), printer.BoldBlue(branch), printer.BoldBlue(database), printer.BoldBlue(organization))
+			return nil, fmt.Errorf("keyspace %s does not exist in branch %s (database: %s, organization: %s)", printer.BoldBlue(keyspace), printer.BoldBlue(branch), printer.BoldBlue(database), printer.BoldBlue(organization))
 		default:
-			return cmdutil.HandleError(err)
+			return nil, cmdutil.HandleError(err)
 		}
 	}
 
-	// Get initial defaults from the API
-	if ks.ReplicationDurabilityConstraints != nil {
-		req.ReplicationDurabilityConstraints = ks.ReplicationDurabilityConstraints
-	}
-
-	if ks.VReplicationFlags != nil {
-		req.VReplicationFlags = ks.VReplicationFlags
-	}
-
-	if ks.Throttler != nil {
-		req.Throttler = ks.Throttler
-	}
-
-	return nil
+	return ks, nil
 }
 
 func updateInteractive(ctx context.Context, ch *cmdutil.Helper, updateReq *ps.UpdateKeyspaceSettingsRequest) error {
@@ -195,8 +185,26 @@ func updateInteractive(ctx context.Context, ch *cmdutil.Helper, updateReq *ps.Up
 		return err
 	}
 
-	if err := setInitialSettings(ctx, ch, updateReq); err != nil {
+	// The interactive form shows and submits every setting, so all of them are
+	// read up front.
+	current, err := fetchKeyspace(ctx, ch, updateReq)
+	if err != nil {
 		return err
+	}
+
+	if current.ReplicationDurabilityConstraints != nil {
+		replicationDurabilityConstraints := *current.ReplicationDurabilityConstraints
+		updateReq.ReplicationDurabilityConstraints = &replicationDurabilityConstraints
+	}
+
+	if current.VReplicationFlags != nil {
+		vreplicationFlags := *current.VReplicationFlags
+		updateReq.VReplicationFlags = &vreplicationFlags
+	}
+
+	if current.Throttler != nil {
+		throttler := *current.Throttler
+		updateReq.Throttler = &throttler
 	}
 
 	if updateReq.ReplicationDurabilityConstraints == nil {

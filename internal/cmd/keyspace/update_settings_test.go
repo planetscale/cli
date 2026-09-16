@@ -79,7 +79,7 @@ func TestKeyspace_UpdateSettingsCmd_OnlyVReplicationFlags(t *testing.T) {
 			c.Assert(req.Organization, qt.Equals, org)
 			c.Assert(req.Branch, qt.Equals, branch)
 			c.Assert(req.Keyspace, qt.Equals, keyspace)
-			c.Assert(req.ReplicationDurabilityConstraints.Strategy, qt.Equals, rdcStrategy)
+			c.Assert(req.ReplicationDurabilityConstraints, qt.IsNil)
 			c.Assert(req.VReplicationFlags.OptimizeInserts, qt.Equals, false)
 			c.Assert(req.VReplicationFlags.AllowNoBlobBinlogRowImage, qt.Equals, false)
 			c.Assert(req.VReplicationFlags.VPlayerBatching, qt.Equals, true)
@@ -289,9 +289,7 @@ func TestKeyspace_UpdateSettingsCmd_OnlyDurabilityConstraints(t *testing.T) {
 			c.Assert(req.Branch, qt.Equals, branch)
 			c.Assert(req.Keyspace, qt.Equals, keyspace)
 			c.Assert(req.ReplicationDurabilityConstraints.Strategy, qt.Equals, updatedRdcStrategy)
-			c.Assert(req.VReplicationFlags.OptimizeInserts, qt.Equals, true)
-			c.Assert(req.VReplicationFlags.AllowNoBlobBinlogRowImage, qt.Equals, true)
-			c.Assert(req.VReplicationFlags.VPlayerBatching, qt.Equals, false)
+			c.Assert(req.VReplicationFlags, qt.IsNil)
 
 			return updatedKs, nil
 		},
@@ -318,7 +316,7 @@ func TestKeyspace_UpdateSettingsCmd_OnlyDurabilityConstraints(t *testing.T) {
 	})
 	err := cmd.Execute()
 	c.Assert(err, qt.IsNil)
-	c.Assert(svc.GetFnInvoked, qt.IsTrue)
+	c.Assert(svc.GetFnInvoked, qt.IsFalse)
 	c.Assert(svc.UpdateSettingsFnInvoked, qt.IsTrue)
 	c.Assert(buf.String(), qt.JSONEquals, updatedKs)
 }
@@ -384,9 +382,8 @@ func TestKeyspace_UpdateSettingsCmd_NilVReplicationFlags(t *testing.T) {
 			c.Assert(req.Branch, qt.Equals, branch)
 			c.Assert(req.Keyspace, qt.Equals, keyspace)
 
-			// Check that ReplicationDurabilityConstraints is unchanged and not nil
-			c.Assert(req.ReplicationDurabilityConstraints, qt.Not(qt.IsNil))
-			c.Assert(req.ReplicationDurabilityConstraints.Strategy, qt.Equals, rdcStrategy)
+			// Durability constraints were not changed, so they are not sent.
+			c.Assert(req.ReplicationDurabilityConstraints, qt.IsNil)
 
 			// Check that VReplication flags are initialized (since flags were provided)
 			c.Assert(req.VReplicationFlags, qt.Not(qt.IsNil))
@@ -493,11 +490,8 @@ func TestKeyspace_UpdateSettingsCmd_NilReplicationDurabilityConstraints(t *testi
 			c.Assert(req.ReplicationDurabilityConstraints, qt.Not(qt.IsNil))
 			c.Assert(req.ReplicationDurabilityConstraints.Strategy, qt.Equals, updatedRdcStrategy)
 
-			// VReplication flags should be maintained and not nil
-			c.Assert(req.VReplicationFlags, qt.Not(qt.IsNil))
-			c.Assert(req.VReplicationFlags.OptimizeInserts, qt.Equals, true)
-			c.Assert(req.VReplicationFlags.AllowNoBlobBinlogRowImage, qt.Equals, true)
-			c.Assert(req.VReplicationFlags.VPlayerBatching, qt.Equals, false)
+			// VReplication flags were not changed, so they are not sent.
+			c.Assert(req.VReplicationFlags, qt.IsNil)
 
 			return updatedKs, nil
 		},
@@ -524,7 +518,7 @@ func TestKeyspace_UpdateSettingsCmd_NilReplicationDurabilityConstraints(t *testi
 	})
 	err := cmd.Execute()
 	c.Assert(err, qt.IsNil)
-	c.Assert(svc.GetFnInvoked, qt.IsTrue)
+	c.Assert(svc.GetFnInvoked, qt.IsFalse)
 	c.Assert(svc.UpdateSettingsFnInvoked, qt.IsTrue)
 	c.Assert(buf.String(), qt.JSONEquals, updatedKs)
 }
@@ -614,7 +608,7 @@ func TestKeyspace_UpdateSettingsCmd_PreserveNilValues(t *testing.T) {
 	})
 	err := cmd.Execute()
 	c.Assert(err, qt.IsNil)
-	c.Assert(svc.GetFnInvoked, qt.IsTrue)
+	c.Assert(svc.GetFnInvoked, qt.IsFalse)
 	c.Assert(svc.UpdateSettingsFnInvoked, qt.IsTrue)
 	c.Assert(buf.String(), qt.JSONEquals, updatedKs)
 }
@@ -712,8 +706,8 @@ func TestKeyspace_UpdateSettingsCmd_DisableThrottler(t *testing.T) {
 			c.Assert(req.Throttler, qt.Not(qt.IsNil))
 			c.Assert(req.Throttler.Enabled, qt.Not(qt.IsNil))
 			c.Assert(*req.Throttler.Enabled, qt.Equals, false)
-			c.Assert(req.Throttler.Threshold, qt.Not(qt.IsNil))
-			c.Assert(*req.Throttler.Threshold, qt.Equals, 5.0)
+			// The threshold was not changed, so the API keeps its current value.
+			c.Assert(req.Throttler.Threshold, qt.IsNil)
 
 			return updatedKs, nil
 		},
@@ -779,8 +773,7 @@ func TestKeyspace_UpdateSettingsCmd_ThrottlerThresholdOnly(t *testing.T) {
 		},
 		UpdateSettingsFn: func(ctx context.Context, req *ps.UpdateKeyspaceSettingsRequest) (*ps.Keyspace, error) {
 			// Changing only the threshold must not disable the throttler.
-			c.Assert(req.Throttler.Enabled, qt.Not(qt.IsNil))
-			c.Assert(*req.Throttler.Enabled, qt.Equals, true)
+			c.Assert(req.Throttler.Enabled, qt.IsNil)
 			c.Assert(*req.Throttler.Threshold, qt.Equals, 10.0)
 
 			return updatedKs, nil
@@ -843,6 +836,7 @@ func TestKeyspace_UpdateSettingsCmd_RejectsNegativeThrottlerThreshold(t *testing
 	cmd.SetArgs([]string{db, branch, keyspace, "--throttler-threshold=-1"})
 	err := cmd.Execute()
 	c.Assert(err, qt.ErrorMatches, ".*throttler-threshold must be greater than or equal to 0")
+	c.Assert(svc.GetFnInvoked, qt.IsFalse)
 	c.Assert(svc.UpdateSettingsFnInvoked, qt.IsFalse)
 }
 
@@ -873,12 +867,20 @@ func TestKeyspace_UpdateSettingsCmd_MaxRollout(t *testing.T) {
 
 	svc := &mock.KeyspacesService{
 		GetFn: func(ctx context.Context, req *ps.GetKeyspaceRequest) (*ps.Keyspace, error) {
-			return &ps.Keyspace{ID: "ks1", Name: keyspace}, nil
+			return &ps.Keyspace{
+				ID:   "ks1",
+				Name: keyspace,
+				ReplicationDurabilityConstraints: &ps.ReplicationDurabilityConstraints{
+					Strategy: "",
+				},
+			}, nil
 		},
 		UpdateSettingsFn: func(ctx context.Context, req *ps.UpdateKeyspaceSettingsRequest) (*ps.Keyspace, error) {
 			c.Assert(req.MaxRollout, qt.Not(qt.IsNil))
 			c.Assert(*req.MaxRollout, qt.Equals, 8)
 			c.Assert(req.Throttler, qt.IsNil)
+			c.Assert(req.ReplicationDurabilityConstraints, qt.IsNil)
+			c.Assert(req.VReplicationFlags, qt.IsNil)
 
 			return updatedKs, nil
 		},
@@ -900,6 +902,7 @@ func TestKeyspace_UpdateSettingsCmd_MaxRollout(t *testing.T) {
 	cmd.SetArgs([]string{db, branch, keyspace, "--max-rollout=8"})
 	err := cmd.Execute()
 	c.Assert(err, qt.IsNil)
+	c.Assert(svc.GetFnInvoked, qt.IsFalse)
 	c.Assert(svc.UpdateSettingsFnInvoked, qt.IsTrue)
 	c.Assert(buf.String(), qt.JSONEquals, updatedKs)
 }
@@ -941,6 +944,7 @@ func TestKeyspace_UpdateSettingsCmd_RejectsOutOfRangeMaxRollout(t *testing.T) {
 		cmd.SetArgs([]string{db, branch, keyspace, arg})
 		err := cmd.Execute()
 		c.Assert(err, qt.ErrorMatches, ".*max-rollout must be between 1 and 32")
+		c.Assert(svc.GetFnInvoked, qt.IsFalse)
 		c.Assert(svc.UpdateSettingsFnInvoked, qt.IsFalse)
 	}
 }
@@ -965,6 +969,8 @@ func TestKeyspace_UpdateSettingsCmd_OmittedMaxRolloutIsNotSent(t *testing.T) {
 		},
 		UpdateSettingsFn: func(ctx context.Context, req *ps.UpdateKeyspaceSettingsRequest) (*ps.Keyspace, error) {
 			c.Assert(req.MaxRollout, qt.IsNil)
+			c.Assert(req.ReplicationDurabilityConstraints, qt.IsNil)
+			c.Assert(*req.Throttler.Threshold, qt.Equals, 10.0)
 
 			return &ps.Keyspace{ID: "ks1", Name: keyspace}, nil
 		},
@@ -986,7 +992,183 @@ func TestKeyspace_UpdateSettingsCmd_OmittedMaxRolloutIsNotSent(t *testing.T) {
 	cmd.SetArgs([]string{db, branch, keyspace, "--throttler-threshold=10"})
 	err := cmd.Execute()
 	c.Assert(err, qt.IsNil)
+	c.Assert(svc.GetFnInvoked, qt.IsFalse)
 	c.Assert(svc.UpdateSettingsFnInvoked, qt.IsTrue)
+}
+
+func TestKeyspace_UpdateSettingsCmd_ThrottlerOnlyOmitsEmptyDurabilityStrategy(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	db := "planetscale"
+	branch := "main"
+	keyspace := "sharded"
+
+	ks := &ps.Keyspace{
+		ID:   "ks1",
+		Name: keyspace,
+		ReplicationDurabilityConstraints: &ps.ReplicationDurabilityConstraints{
+			Strategy: "",
+		},
+	}
+
+	svc := &mock.KeyspacesService{
+		GetFn: func(ctx context.Context, req *ps.GetKeyspaceRequest) (*ps.Keyspace, error) {
+			return ks, nil
+		},
+		UpdateSettingsFn: func(ctx context.Context, req *ps.UpdateKeyspaceSettingsRequest) (*ps.Keyspace, error) {
+			c.Assert(req.ReplicationDurabilityConstraints, qt.IsNil)
+			c.Assert(req.VReplicationFlags, qt.IsNil)
+			c.Assert(req.MaxRollout, qt.IsNil)
+			c.Assert(*req.Throttler.Threshold, qt.Equals, 6.0)
+
+			return ks, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: org,
+		},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{
+				Keyspaces: svc,
+			}, nil
+		},
+	}
+
+	cmd := UpdateSettingsCmd(ch)
+	cmd.SetArgs([]string{db, branch, keyspace, "--throttler-threshold=6"})
+	err := cmd.Execute()
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.GetFnInvoked, qt.IsFalse)
+	c.Assert(svc.UpdateSettingsFnInvoked, qt.IsTrue)
+}
+
+func TestKeyspace_UpdateSettingsCmd_MaxRolloutAndThrottlerSkipGet(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	svc := &mock.KeyspacesService{
+		GetFn: func(ctx context.Context, req *ps.GetKeyspaceRequest) (*ps.Keyspace, error) {
+			return &ps.Keyspace{
+				ID: "ks1",
+				ReplicationDurabilityConstraints: &ps.ReplicationDurabilityConstraints{
+					Strategy: "",
+				},
+			}, nil
+		},
+		UpdateSettingsFn: func(ctx context.Context, req *ps.UpdateKeyspaceSettingsRequest) (*ps.Keyspace, error) {
+			c.Assert(*req.MaxRollout, qt.Equals, 4)
+			c.Assert(*req.Throttler.Threshold, qt.Equals, 6.0)
+			c.Assert(req.Throttler.Enabled, qt.IsNil)
+			c.Assert(req.ReplicationDurabilityConstraints, qt.IsNil)
+			c.Assert(req.VReplicationFlags, qt.IsNil)
+			return &ps.Keyspace{ID: "ks1"}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: "planetscale"},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{Keyspaces: svc}, nil
+		},
+	}
+
+	cmd := UpdateSettingsCmd(ch)
+	cmd.SetArgs([]string{"planetscale", "main", "sharded", "--max-rollout=4", "--throttler-threshold=6"})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(svc.GetFnInvoked, qt.IsFalse)
+	c.Assert(svc.UpdateSettingsFnInvoked, qt.IsTrue)
+}
+
+func TestKeyspace_UpdateSettingsCmd_MaxRolloutAndVReplicationFetchesOnce(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	svc := &mock.KeyspacesService{
+		GetFn: func(ctx context.Context, req *ps.GetKeyspaceRequest) (*ps.Keyspace, error) {
+			return &ps.Keyspace{
+				ID: "ks1",
+				VReplicationFlags: &ps.VReplicationFlags{
+					OptimizeInserts:           true,
+					AllowNoBlobBinlogRowImage: true,
+					VPlayerBatching:           true,
+				},
+				ReplicationDurabilityConstraints: &ps.ReplicationDurabilityConstraints{
+					Strategy: "",
+				},
+			}, nil
+		},
+		UpdateSettingsFn: func(ctx context.Context, req *ps.UpdateKeyspaceSettingsRequest) (*ps.Keyspace, error) {
+			c.Assert(*req.MaxRollout, qt.Equals, 4)
+			c.Assert(req.VReplicationFlags.OptimizeInserts, qt.Equals, true)
+			c.Assert(req.VReplicationFlags.AllowNoBlobBinlogRowImage, qt.Equals, true)
+			c.Assert(req.VReplicationFlags.VPlayerBatching, qt.Equals, false)
+			c.Assert(req.ReplicationDurabilityConstraints, qt.IsNil)
+			c.Assert(req.Throttler, qt.IsNil)
+			return &ps.Keyspace{ID: "ks1"}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: "planetscale"},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{Keyspaces: svc}, nil
+		},
+	}
+
+	cmd := UpdateSettingsCmd(ch)
+	cmd.SetArgs([]string{"planetscale", "main", "sharded", "--max-rollout=4", "--vreplication-batch-replication-events=false"})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(svc.GetFnInvoked, qt.IsTrue)
+	c.Assert(svc.UpdateSettingsFnInvoked, qt.IsTrue)
+}
+
+func TestKeyspace_UpdateSettingsCmd_NoFlagsMakesNoRequests(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	svc := &mock.KeyspacesService{
+		GetFn: func(ctx context.Context, req *ps.GetKeyspaceRequest) (*ps.Keyspace, error) {
+			return &ps.Keyspace{ID: "ks1", Name: "sharded"}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: "planetscale"},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{Keyspaces: svc}, nil
+		},
+	}
+
+	cmd := UpdateSettingsCmd(ch)
+	cmd.SetArgs([]string{"planetscale", "main", "sharded"})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(svc.GetFnInvoked, qt.IsFalse)
+	c.Assert(svc.UpdateSettingsFnInvoked, qt.IsFalse)
 }
 
 func TestKeyspace_ConstraintsToStrategy(t *testing.T) {
@@ -1034,7 +1216,7 @@ func TestKeyspace_UpdateSettingsCmd_ErrorNotFound(t *testing.T) {
 	}
 
 	cmd := UpdateSettingsCmd(ch)
-	cmd.SetArgs([]string{db, branch, keyspace})
+	cmd.SetArgs([]string{db, branch, keyspace, "--vreplication-batch-replication-events=true"})
 	err := cmd.Execute()
 	c.Assert(err, qt.Not(qt.IsNil)) // Just check that there is an error
 	c.Assert(svc.GetFnInvoked, qt.IsTrue)
