@@ -2,6 +2,7 @@ package planetscale
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -20,6 +21,7 @@ type Keyspace struct {
 	Resizing                         bool                              `json:"resizing"`
 	Ready                            bool                              `json:"ready"`
 	ClusterSize                      string                            `json:"cluster_name"`
+	External                         bool                              `json:"external"`
 	CreatedAt                        time.Time                         `json:"created_at"`
 	UpdatedAt                        time.Time                         `json:"updated_at"`
 	VReplicationFlags                *VReplicationFlags                `json:"vreplication_flags"`
@@ -62,6 +64,50 @@ type CreateKeyspaceRequest struct {
 	ClusterSize   string `json:"cluster_size"`
 	ExtraReplicas int    `json:"extra_replicas"`
 	Shards        int    `json:"shards"`
+}
+
+type ExternalDatasource struct {
+	DatabaseName  string `json:"database_name,omitempty"`
+	Hostname      string `json:"hostname,omitempty"`
+	Port          int    `json:"port,omitempty"`
+	Username      string `json:"username,omitempty"`
+	Password      string `json:"password,omitempty"`
+	SSLMode       string `json:"ssl_mode,omitempty"`
+	SSLCA         string `json:"ssl_ca,omitempty"`
+	SSLCert       string `json:"ssl_cert,omitempty"`
+	SSLKey        string `json:"ssl_key,omitempty"`
+	SSLServerName string `json:"ssl_server_name,omitempty"`
+	MinTLSVersion string `json:"min_tls_version,omitempty"`
+	TabletCell    string `json:"tablet_cell,omitempty"`
+}
+
+type CreateExternalKeyspaceRequest struct {
+	Organization       string             `json:"-"`
+	Database           string             `json:"-"`
+	Branch             string             `json:"-"`
+	Name               string             `json:"name"`
+	ClusterSize        string             `json:"cluster_size,omitempty"`
+	SkipLintErrors     bool               `json:"skip_lint_errors,omitempty"`
+	ExternalDatasource ExternalDatasource `json:"external_datasource"`
+}
+
+type LintExternalKeyspaceRequest struct {
+	Organization       string             `json:"-"`
+	Database           string             `json:"-"`
+	Branch             string             `json:"-"`
+	ExternalDatasource ExternalDatasource `json:"external_datasource"`
+}
+
+type LintExternalKeyspaceResponse struct {
+	CanConnect                    bool            `json:"can_connect"`
+	AllowSkipFailedTestConnection bool            `json:"allow_skip_failed_test_connection"`
+	Error                         string          `json:"error,omitempty"`
+	HasForeignKeys                bool            `json:"has_foreign_keys"`
+	LintErrors                    json.RawMessage `json:"lint_errors"`
+	MaxPoolSize                   int             `json:"max_pool_size"`
+	ServerVersion                 string          `json:"server_version"`
+	TotalStorageBytes             int64           `json:"total_storage_bytes"`
+	DefaultKeyspaceStorageBytes   int64           `json:"default_keyspace_storage_bytes"`
 }
 
 type GetKeyspaceRequest struct {
@@ -198,6 +244,8 @@ type KeyspaceThrottler struct {
 // KeyspacesService is an interface for interacting with the keyspace endpoints of the PlanetScale API
 type KeyspacesService interface {
 	Create(context.Context, *CreateKeyspaceRequest) (*Keyspace, error)
+	CreateExternal(context.Context, *CreateExternalKeyspaceRequest) (*Keyspace, error)
+	LintExternal(context.Context, *LintExternalKeyspaceRequest) (*LintExternalKeyspaceResponse, error)
 	List(context.Context, *ListKeyspacesRequest) ([]*Keyspace, error)
 	Get(context.Context, *GetKeyspaceRequest) (*Keyspace, error)
 	Delete(context.Context, *DeleteKeyspaceRequest) error
@@ -287,6 +335,34 @@ func (s *keyspacesService) Create(ctx context.Context, createReq *CreateKeyspace
 	return keyspace, nil
 }
 
+func (s *keyspacesService) CreateExternal(ctx context.Context, createReq *CreateExternalKeyspaceRequest) (*Keyspace, error) {
+	req, err := s.client.newRequest(http.MethodPost, keyspacesExternalAPIPath(createReq.Organization, createReq.Database, createReq.Branch), createReq)
+	if err != nil {
+		return nil, fmt.Errorf("error creating http request: %w", err)
+	}
+
+	keyspace := &Keyspace{}
+	if err := s.client.do(ctx, req, keyspace); err != nil {
+		return nil, err
+	}
+
+	return keyspace, nil
+}
+
+func (s *keyspacesService) LintExternal(ctx context.Context, lintReq *LintExternalKeyspaceRequest) (*LintExternalKeyspaceResponse, error) {
+	req, err := s.client.newRequest(http.MethodPost, keyspacesExternalLintAPIPath(lintReq.Organization, lintReq.Database, lintReq.Branch), lintReq)
+	if err != nil {
+		return nil, fmt.Errorf("error creating http request: %w", err)
+	}
+
+	resp := &LintExternalKeyspaceResponse{}
+	if err := s.client.do(ctx, req, resp); err != nil {
+		return nil, err
+	}
+
+	return resp, nil
+}
+
 // Delete deletes a keyspace from a branch.
 func (s *keyspacesService) Delete(ctx context.Context, deleteReq *DeleteKeyspaceRequest) error {
 	req, err := s.client.newRequest(http.MethodDelete, keyspaceAPIPath(deleteReq.Organization, deleteReq.Database, deleteReq.Branch, deleteReq.Keyspace), nil)
@@ -355,6 +431,14 @@ func (s *keyspacesService) CancelResize(ctx context.Context, cancelReq *CancelKe
 
 func keyspacesAPIPath(org, db, branch string) string {
 	return path.Join(databaseBranchAPIPath(org, db, branch), "keyspaces")
+}
+
+func keyspacesExternalAPIPath(org, db, branch string) string {
+	return path.Join(keyspacesAPIPath(org, db, branch), "external")
+}
+
+func keyspacesExternalLintAPIPath(org, db, branch string) string {
+	return path.Join(keyspacesExternalAPIPath(org, db, branch), "lint")
 }
 
 func keyspaceAPIPath(org, db, branch, keyspace string) string {

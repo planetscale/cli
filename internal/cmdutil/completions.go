@@ -9,6 +9,14 @@ import (
 )
 
 func ClusterSizesCompletionFunc(ch *Helper, cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
+	return clusterSizesCompletionFunc(ch, cmd, toComplete)
+}
+
+func ExternalClusterSizesCompletionFunc(ch *Helper, cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
+	return clusterSizesCompletionFunc(ch, cmd, toComplete, ps.WithExternal())
+}
+
+func clusterSizesCompletionFunc(ch *Helper, cmd *cobra.Command, toComplete string, extraOpts ...ps.ListOption) ([]cobra.Completion, cobra.ShellCompDirective) {
 	ctx := cmd.Context()
 
 	org := ch.Config.Organization // --org flag
@@ -30,6 +38,7 @@ func ClusterSizesCompletionFunc(ch *Helper, cmd *cobra.Command, args []string, t
 
 	// Build list options
 	listOpts := []ps.ListOption{ps.WithRates()}
+	listOpts = append(listOpts, extraOpts...)
 	if region != "" {
 		listOpts = append(listOpts, ps.WithRegion(region))
 	}
