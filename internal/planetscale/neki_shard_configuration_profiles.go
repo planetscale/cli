@@ -67,6 +67,7 @@ type UpdateNekiShardConfigurationProfileRequest struct {
 	Name                 *string                      `json:"name,omitempty"`
 	ClusterSize          *string                      `json:"cluster_size,omitempty"`
 	Replicas             *int                         `json:"replicas,omitempty"`
+	Extensions           *[]string                    `json:"extensions,omitempty"`
 	Parameters           map[string]map[string]string `json:"parameters,omitempty"`
 	PostgresMajorVersion *string                      `json:"postgres_major_version,omitempty"`
 	PostgresMinorVersion *string                      `json:"postgres_minor_version,omitempty"`

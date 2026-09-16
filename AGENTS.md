@@ -684,6 +684,8 @@ pscale branch config-profile create <database> <branch> <profile> --org <org> --
 pscale branch config-profile create <database> <branch> <profile> --org <org> --min-storage 10737418240 --max-storage 107374182400 --storage-autoscaling --format json
 pscale branch config-profile update <database> <branch> <profile> --org <org> --cluster-size <size> --replicas 2 --format json
 pscale branch config-profile update <database> <branch> <profile> --org <org> --parameters pgconf.max_connections=200 --format json
+pscale branch config-profile update <database> <branch> <profile> --org <org> --extensions=hll --parameters pgconf.hll.force_groupagg=on --format json
+pscale branch config-profile update <database> <branch> <profile> --org <org> --extensions= --format json
 pscale branch config-profile update <database> <branch> <profile> --org <org> --min-storage 21474836480 --storage-autoscaling=false --format json
 
 # Select the default used for new shards
@@ -707,6 +709,7 @@ pscale branch config-profile delete <database> <branch> <profile> --org <org> --
 ```
 
 - Create and update flags are optional in the API request unless explicitly supplied. Repeat `--parameters namespace.name=value` to update multiple settings together.
+- `--extensions` replaces the enabled extension set. Omit it to leave extensions unchanged, or pass `--extensions=` to disable all customer-managed extensions. Do not combine it with preload library parameters.
 - Storage flags are `--min-storage` and `--max-storage` in bytes, `--storage-autoscaling`, `--storage-iops`, and `--storage-throughput` (MiB/s). `list` and `show` include the current storage configuration.
 - `parameters` accepts `--namespace`, `--extension`, and `--internal` filters.
 - `extensions enable` / `extensions disable` toggle an extension that the catalog marks as enablable. Not every listed extension can be toggled.
