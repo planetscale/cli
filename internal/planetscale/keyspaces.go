@@ -177,9 +177,7 @@ type UpdateKeyspaceSettingsRequest struct {
 	ReplicationDurabilityConstraints *ReplicationDurabilityConstraints `json:"replication_durability_constraints,omitempty"`
 	VReplicationFlags                *VReplicationFlags                `json:"vreplication_flags,omitempty"`
 	Throttler                        *KeyspaceThrottler                `json:"throttler,omitempty"`
-	// MaxRollout is a tri-state PATCH field: nil omits max_rollout, a pointer
-	// to an integer sets it, and a pointer to nil sends JSON null to reset it.
-	MaxRollout **int `json:"max_rollout,omitempty"`
+	MaxRollout                       *int                              `json:"max_rollout,omitempty"`
 }
 
 type ReplicationDurabilityConstraints struct {

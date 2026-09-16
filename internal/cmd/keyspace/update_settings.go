@@ -14,13 +14,14 @@ import (
 )
 
 func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
+	updateReq := &ps.UpdateKeyspaceSettingsRequest{}
+
 	var flags struct {
 		replicationDurabilityConstraints *ps.ReplicationDurabilityConstraints
 		vreplicationFlags                *ps.VReplicationFlags
-		maxRollout                       int
-		resetMaxRollout                  bool
 		throttlerEnabled                 bool
 		throttlerThreshold               float64
+		maxRollout                       int
 		interactive                      bool
 	}
 
@@ -34,46 +35,14 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			database, branch, keyspace := args[0], args[1], args[2]
-			maxRolloutChanged := cmd.Flags().Changed("max-rollout")
-			resetMaxRolloutChanged := cmd.Flags().Changed("reset-max-rollout")
-			resetMaxRolloutRequested := resetMaxRolloutChanged && flags.resetMaxRollout
 
-			if maxRolloutChanged && resetMaxRolloutRequested {
-				return fmt.Errorf("--max-rollout and --reset-max-rollout are mutually exclusive")
-			}
-			if flags.interactive && (maxRolloutChanged || resetMaxRolloutChanged) {
-				return fmt.Errorf("--max-rollout and --reset-max-rollout cannot be used with --interactive")
-			}
-			if maxRolloutChanged && (flags.maxRollout < 1 || flags.maxRollout > 32) {
-				return fmt.Errorf("--max-rollout must be between 1 and 32")
-			}
-			if cmd.Flags().Changed("throttler-threshold") && flags.throttlerThreshold < 0 {
-				return errors.New("--throttler-threshold must be greater than or equal to 0")
-			}
-
-			updateReq := &ps.UpdateKeyspaceSettingsRequest{
-				Organization: ch.Config.Organization,
-				Database:     database,
-				Branch:       branch,
-				Keyspace:     keyspace,
-			}
+			updateReq.Organization = ch.Config.Organization
+			updateReq.Database = database
+			updateReq.Branch = branch
+			updateReq.Keyspace = keyspace
 
 			if flags.interactive {
 				return updateInteractive(ctx, ch, updateReq)
-			}
-
-			// Nested VReplication and throttler updates read current settings
-			// first so unspecified flags in that group can be preserved.
-			rdcChanged := cmd.Flags().Changed("replication-durability-constraints-strategy")
-			vrfChanged := cmd.Flags().Changed("vreplication-optimize-inserts") ||
-				cmd.Flags().Changed("vreplication-enable-noblob-binlog-mode") ||
-				cmd.Flags().Changed("vreplication-batch-replication-events")
-			throttlerChanged := cmd.Flags().Changed("throttler-enabled") ||
-				cmd.Flags().Changed("throttler-threshold")
-
-			if !rdcChanged && !vrfChanged && !throttlerChanged && !maxRolloutChanged && !resetMaxRolloutRequested {
-				ch.Printer.Println("No changes were requested. No update performed.")
-				return nil
 			}
 
 			client, err := ch.Client()
@@ -84,17 +53,23 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Updating settings for keyspace %s in %s/%s", printer.BoldBlue(keyspace), printer.BoldBlue(database), printer.BoldBlue(branch)))
 			defer end()
 
-			if rdcChanged {
-				updateReq.ReplicationDurabilityConstraints = &ps.ReplicationDurabilityConstraints{
-					Strategy: constraintsToStrategy(flags.replicationDurabilityConstraints.Strategy),
-				}
+			if err := setInitialSettings(ctx, ch, updateReq); err != nil {
+				return err
 			}
 
-			if vrfChanged || throttlerChanged {
-				if err := setInitialSettings(ctx, client, updateReq, false, vrfChanged, throttlerChanged); err != nil {
-					return err
+			// Check if any relevant flags are changing replication durability constraints
+			rdcChanged := cmd.Flags().Changed("replication-durability-constraints-strategy")
+			if rdcChanged {
+				if updateReq.ReplicationDurabilityConstraints == nil {
+					updateReq.ReplicationDurabilityConstraints = &ps.ReplicationDurabilityConstraints{}
 				}
+				updateReq.ReplicationDurabilityConstraints.Strategy = constraintsToStrategy(flags.replicationDurabilityConstraints.Strategy)
 			}
+
+			// Check if any relevant flags are changing VReplication flags
+			vrfChanged := cmd.Flags().Changed("vreplication-optimize-inserts") ||
+				cmd.Flags().Changed("vreplication-enable-noblob-binlog-mode") ||
+				cmd.Flags().Changed("vreplication-batch-replication-events")
 
 			if vrfChanged {
 				if updateReq.VReplicationFlags == nil {
@@ -114,6 +89,9 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 				}
 			}
 
+			throttlerChanged := cmd.Flags().Changed("throttler-enabled") ||
+				cmd.Flags().Changed("throttler-threshold")
+
 			if throttlerChanged {
 				if updateReq.Throttler == nil {
 					updateReq.Throttler = &ps.KeyspaceThrottler{}
@@ -124,16 +102,26 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 				}
 
 				if cmd.Flags().Changed("throttler-threshold") {
+					if flags.throttlerThreshold < 0 {
+						return errors.New("--throttler-threshold must be greater than or equal to 0")
+					}
 					updateReq.Throttler.Threshold = &flags.throttlerThreshold
 				}
 			}
 
+			maxRolloutChanged := cmd.Flags().Changed("max-rollout")
+
 			if maxRolloutChanged {
-				maxRollout := &flags.maxRollout
-				updateReq.MaxRollout = &maxRollout
-			} else if resetMaxRolloutRequested {
-				var maxRollout *int
-				updateReq.MaxRollout = &maxRollout
+				if flags.maxRollout < 1 || flags.maxRollout > 32 {
+					return errors.New("--max-rollout must be between 1 and 32")
+				}
+				updateReq.MaxRollout = &flags.maxRollout
+			}
+
+			if !rdcChanged && !vrfChanged && !throttlerChanged && !maxRolloutChanged {
+				end()
+				ch.Printer.Println("No changes were requested. No update performed.")
+				return nil
 			}
 
 			k, err := updateKeyspaceSettings(ctx, client, updateReq)
@@ -151,16 +139,20 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().BoolVar(&flags.vreplicationFlags.OptimizeInserts, "vreplication-optimize-inserts", true, "When enabled, skips sending INSERT events for rows that have yet to be replicated.")
 	cmd.Flags().BoolVar(&flags.vreplicationFlags.AllowNoBlobBinlogRowImage, "vreplication-enable-noblob-binlog-mode", true, "When enabled, omits changed BLOB and TEXT columns from replication events, which reduces binlog sizes.")
 	cmd.Flags().BoolVar(&flags.vreplicationFlags.VPlayerBatching, "vreplication-batch-replication-events", false, "When enabled, sends fewer queries to MySQL to improve performance.")
-	cmd.Flags().IntVar(&flags.maxRollout, "max-rollout", 1, "Maximum number of concurrent shard rollouts (1-32). The effective service cap is 32.")
-	cmd.Flags().BoolVar(&flags.resetMaxRollout, "reset-max-rollout", false, "Reset the configured maximum concurrent shard rollouts to the default (1).")
 	cmd.Flags().BoolVar(&flags.throttlerEnabled, "throttler-enabled", true, "Pause schema migrations and VReplication workflows when replication lag rises above the threshold.")
 	cmd.Flags().Float64Var(&flags.throttlerThreshold, "throttler-threshold", 5, "Replication lag in seconds above which migrations and workflows are paused.")
+	cmd.Flags().IntVar(&flags.maxRollout, "max-rollout", 1, "Maximum number of shards to roll out changes to concurrently (1-32).")
 	cmd.Flags().BoolVarP(&flags.interactive, "interactive", "i", false, "Run the command in interactive mode")
 
 	return cmd
 }
 
-func setInitialSettings(ctx context.Context, client *ps.Client, req *ps.UpdateKeyspaceSettingsRequest, includeDurability, includeVReplication, includeThrottler bool) error {
+func setInitialSettings(ctx context.Context, ch *cmdutil.Helper, req *ps.UpdateKeyspaceSettingsRequest) error {
+	client, err := ch.Client()
+	if err != nil {
+		return err
+	}
+
 	organization := req.Organization
 	database := req.Database
 	branch := req.Branch
@@ -181,18 +173,17 @@ func setInitialSettings(ctx context.Context, client *ps.Client, req *ps.UpdateKe
 		}
 	}
 
-	if includeDurability && ks.ReplicationDurabilityConstraints != nil {
+	// Get initial defaults from the API
+	if ks.ReplicationDurabilityConstraints != nil {
 		req.ReplicationDurabilityConstraints = ks.ReplicationDurabilityConstraints
 	}
 
-	if includeVReplication && ks.VReplicationFlags != nil {
-		vreplicationFlags := *ks.VReplicationFlags
-		req.VReplicationFlags = &vreplicationFlags
+	if ks.VReplicationFlags != nil {
+		req.VReplicationFlags = ks.VReplicationFlags
 	}
 
-	if includeThrottler && ks.Throttler != nil {
-		throttler := *ks.Throttler
-		req.Throttler = &throttler
+	if ks.Throttler != nil {
+		req.Throttler = ks.Throttler
 	}
 
 	return nil
@@ -204,7 +195,7 @@ func updateInteractive(ctx context.Context, ch *cmdutil.Helper, updateReq *ps.Up
 		return err
 	}
 
-	if err := setInitialSettings(ctx, client, updateReq, true, true, true); err != nil {
+	if err := setInitialSettings(ctx, ch, updateReq); err != nil {
 		return err
 	}
 

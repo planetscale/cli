@@ -55,7 +55,7 @@ type Keyspace struct {
 type KeyspaceSettings struct {
 	ReplicationDurabilityConstraintStrategy string            `header:"replication durability constraint strategy" json:"replication_durability_constraint"`
 	VReplicationFlags                       VReplicationFlags `header:"inline" json:"vreplication_flags"`
-	MaxRollout                              int               `header:"max rollout" json:"max_rollout"`
+	MaxRollout                              string            `header:"max rollout" json:"max_rollout"`
 	Throttler                               Throttler         `header:"inline" json:"throttler"`
 
 	orig *ps.Keyspace
