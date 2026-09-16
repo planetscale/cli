@@ -14,6 +14,7 @@ func UpdateCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
 		name, clusterSize string
 		replicas          int
+		extensions        []string
 		parameters        []string
 		major, minor      string
 		storage           storageFlags
@@ -25,7 +26,7 @@ func UpdateCmd(ch *cmdutil.Helper) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			database, branch, profileName := args[0], args[1], args[2]
 			changed := false
-			for _, name := range []string{"name", "cluster-size", "replicas", "parameters", "postgres-major-version", "postgres-minor-version"} {
+			for _, name := range []string{"name", "cluster-size", "replicas", "extensions", "parameters", "postgres-major-version", "postgres-minor-version"} {
 				changed = changed || cmd.Flags().Changed(name)
 			}
 			changed = changed || storageFlagChanged(cmd)
@@ -39,6 +40,17 @@ func UpdateCmd(ch *cmdutil.Helper) *cobra.Command {
 			parameters, err := parseParameters(flags.parameters)
 			if err != nil {
 				return err
+			}
+			var extensions *[]string
+			if cmd.Flags().Changed("extensions") {
+				for i, name := range flags.extensions {
+					name = strings.TrimSpace(name)
+					if name == "" {
+						return fmt.Errorf("--extensions cannot contain blank names; use --extensions= to disable extensions")
+					}
+					flags.extensions[i] = name
+				}
+				extensions = &flags.extensions
 			}
 			client, err := ch.Client()
 			if err != nil {
@@ -55,6 +67,7 @@ func UpdateCmd(ch *cmdutil.Helper) *cobra.Command {
 				Name:                 stringPointerIfChanged(cmd, "name", flags.name),
 				ClusterSize:          stringPointerIfChanged(cmd, "cluster-size", cmdutil.ToSizeSKUName(flags.clusterSize)),
 				Replicas:             intPointerIfChanged(cmd, "replicas", flags.replicas),
+				Extensions:           extensions,
 				Parameters:           parameters,
 				PostgresMajorVersion: stringPointerIfChanged(cmd, "postgres-major-version", flags.major),
 				PostgresMinorVersion: stringPointerIfChanged(cmd, "postgres-minor-version", flags.minor),
@@ -70,6 +83,7 @@ func UpdateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().StringVar(&flags.name, "name", "", "New name for the configuration profile")
 	cmd.Flags().StringVar(&flags.clusterSize, "cluster-size", "", "New cluster size for shards in the profile")
 	cmd.Flags().IntVar(&flags.replicas, "replicas", 0, "New number of replicas for shards in the profile")
+	cmd.Flags().StringSliceVar(&flags.extensions, "extensions", []string{}, "Extensions to enable; replaces the current set. Use --extensions= to disable extensions")
 	cmd.Flags().StringArrayVar(&flags.parameters, "parameters", nil, "Set a parameter as namespace.name=value; repeatable")
 	cmd.Flags().StringVar(&flags.major, "postgres-major-version", "", "PostgreSQL major version")
 	cmd.Flags().StringVar(&flags.minor, "postgres-minor-version", "", "PostgreSQL minor version")
