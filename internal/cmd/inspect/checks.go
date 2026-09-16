@@ -35,6 +35,10 @@ type check struct {
 // schemas from results.
 const mysqlSystemSchemas = `('information_schema', 'performance_schema', 'mysql', 'sys', '_vt')`
 
+// postgresHiddenSchemas excludes Postgres catalogs and Neki internals from
+// customer-facing inspect results. Same schemas the Neki schema snapshot hides.
+const postgresHiddenSchemas = `('pg_catalog', 'information_schema', '__neki')`
+
 var checks = []check{
 	{
 		Name:         "table-sizes",
@@ -79,7 +83,7 @@ var checks = []check{
 					JOIN pg_class root ON root.oid = COALESCE(pg_partition_root(c.oid), c.oid)
 					JOIN pg_namespace n ON n.oid = root.relnamespace
 					WHERE c.relkind IN ('r', 'm', 'p')
-						AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+						AND n.nspname NOT IN ` + postgresHiddenSchemas + `
 						AND n.nspname !~ '^pg_toast'
 					GROUP BY n.nspname, root.relname, root.relkind
 				) sizes
@@ -114,7 +118,7 @@ var checks = []check{
 				JOIN pg_index i ON i.indexrelid = c.oid
 				JOIN pg_class t ON t.oid = i.indrelid
 				LEFT JOIN pg_namespace n ON n.oid = c.relnamespace
-				WHERE n.nspname NOT IN ('pg_catalog', 'information_schema')
+				WHERE n.nspname NOT IN ` + postgresHiddenSchemas + `
 					AND n.nspname !~ '^pg_toast'
 					AND c.relkind = 'i'
 				ORDER BY pg_relation_size(c.oid) DESC
@@ -148,6 +152,7 @@ var checks = []check{
 				JOIN pg_index i ON i.indexrelid = s.indexrelid
 				WHERE NOT i.indisunique
 					AND NOT i.indisprimary
+					AND s.schemaname NOT IN ` + postgresHiddenSchemas + `
 					AND s.idx_scan < 50
 				ORDER BY pg_relation_size(s.indexrelid) DESC, s.idx_scan ASC
 				LIMIT 50;`,
@@ -190,7 +195,7 @@ var checks = []check{
 				JOIN pg_class t ON t.oid = i.indrelid
 				JOIN pg_namespace n ON n.oid = c.relnamespace
 				WHERE NOT i.indisvalid
-					AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+					AND n.nspname NOT IN ` + postgresHiddenSchemas + `
 					AND n.nspname !~ '^pg_toast'
 				ORDER BY pg_relation_size(c.oid) DESC
 				LIMIT 50;`,
@@ -221,6 +226,7 @@ var checks = []check{
 					seq_scan AS count
 				FROM pg_stat_user_tables
 				WHERE seq_scan > 0
+					AND schemaname NOT IN ` + postgresHiddenSchemas + `
 				ORDER BY seq_scan DESC
 				LIMIT 25;`,
 		},
@@ -249,19 +255,21 @@ var checks = []check{
 		},
 		Postgres: &engineSQL{
 			// walsenders are excluded: replication connections stay "active"
-			// forever and would always appear here.
+			// forever and would always appear here. clock_timestamp() instead
+			// of now(): now() is router-owned and cannot be forwarded when a
+			// Neki shard is pinned.
 			SQL: `
 				SELECT
 					pid,
-					(now() - query_start)::text AS duration,
+					(clock_timestamp() - query_start)::text AS duration,
 					state,
 					left(query, 200) AS query
 				FROM pg_stat_activity
 				WHERE state <> 'idle'
 					AND backend_type <> 'walsender'
 					AND query NOT ILIKE '%pg_stat_activity%'
-					AND now() - query_start > interval '5 minutes'
-				ORDER BY now() - query_start DESC
+					AND clock_timestamp() - query_start > interval '5 minutes'
+				ORDER BY clock_timestamp() - query_start DESC
 				LIMIT 100;`,
 		},
 	},
@@ -282,15 +290,28 @@ var checks = []check{
 				LIMIT 100;`,
 		},
 		Postgres: &engineSQL{
-			// Reports only the roots of blocking trees (via pg_blocking_pids)
-			// with a count of sessions stuck behind each, instead of every
-			// granted lock — most locks are routine and non-blocking.
+			// Reports only the roots of blocking trees with a count of
+			// sessions stuck behind each. Built from pg_locks rather than
+			// pg_blocking_pids / now(): those are router-owned and cannot
+			// be forwarded when a Neki shard is pinned.
 			SQL: `
 				WITH RECURSIVE waiters AS (
-					SELECT a.pid AS blocked_pid, b.pid AS blocking_pid
-					FROM pg_stat_activity a
-					CROSS JOIN LATERAL unnest(pg_blocking_pids(a.pid)) AS b(pid)
-					WHERE a.wait_event_type = 'Lock'
+					SELECT waiting.pid AS blocked_pid, holding.pid AS blocking_pid
+					FROM pg_locks waiting
+					JOIN pg_locks holding
+						ON holding.locktype = waiting.locktype
+						AND holding.database IS NOT DISTINCT FROM waiting.database
+						AND holding.relation IS NOT DISTINCT FROM waiting.relation
+						AND holding.page IS NOT DISTINCT FROM waiting.page
+						AND holding.tuple IS NOT DISTINCT FROM waiting.tuple
+						AND holding.virtualxid IS NOT DISTINCT FROM waiting.virtualxid
+						AND holding.transactionid IS NOT DISTINCT FROM waiting.transactionid
+						AND holding.classid IS NOT DISTINCT FROM waiting.classid
+						AND holding.objid IS NOT DISTINCT FROM waiting.objid
+						AND holding.objsubid IS NOT DISTINCT FROM waiting.objsubid
+						AND holding.pid IS DISTINCT FROM waiting.pid
+					WHERE NOT waiting.granted
+						AND holding.granted
 				),
 				locks AS MATERIALIZED (
 					SELECT * FROM pg_locks
@@ -310,7 +331,7 @@ var checks = []check{
 					string_agg(DISTINCT wc.relname, ', ')  AS relation,
 					string_agg(DISTINCT hl.mode, ', ')     AS lock_mode,
 					string_agg(DISTINCT hl.locktype, ', ') AS lock_type,
-					(now() - a.query_start)::text          AS age,
+					(clock_timestamp() - a.query_start)::text AS age,
 					count(DISTINCT ch.blocked_pid)         AS blocked_count,
 					left(a.query, 200)                     AS query
 				FROM chain ch
@@ -403,10 +424,12 @@ var checks = []check{
 		Postgres: &engineSQL{
 			// Statistical estimate covering both tables and indexes. The
 			// index estimate is rough: it assumes the index holds all table
-			// columns.
+			// columns. block_size is 8KB (the PlanetScale page size) rather
+			// than current_setting: that GUC is router-owned and cannot be
+			// forwarded when a Neki shard is pinned.
 			SQL: `
 				WITH constants AS (
-					SELECT current_setting('block_size')::numeric AS bs, 23 AS hdr, 8 AS ma
+					SELECT 8192::numeric AS bs, 23 AS hdr, 8 AS ma
 				),
 				bloat_info AS (
 					SELECT
@@ -420,6 +443,7 @@ var checks = []check{
 							MAX(null_frac) AS maxfracsum,
 							hdr + 1 + count(*) FILTER (WHERE null_frac <> 0) / 8 AS nullhdr
 						FROM pg_stats s, constants
+						WHERE s.schemaname NOT IN ` + postgresHiddenSchemas + `
 						GROUP BY schemaname, tablename, hdr, ma, bs
 					) AS foo
 				),
@@ -433,7 +457,7 @@ var checks = []check{
 					JOIN pg_class cc ON cc.relname = bloat_info.tablename
 					JOIN pg_namespace nn ON cc.relnamespace = nn.oid
 						AND nn.nspname = bloat_info.schemaname
-						AND nn.nspname NOT IN ('information_schema', 'pg_catalog')
+						AND nn.nspname NOT IN ` + postgresHiddenSchemas + `
 					WHERE cc.relkind = 'r'
 				),
 				index_bloat AS (
@@ -446,7 +470,7 @@ var checks = []check{
 					JOIN pg_class cc ON cc.relname = bloat_info.tablename
 					JOIN pg_namespace nn ON cc.relnamespace = nn.oid
 						AND nn.nspname = bloat_info.schemaname
-						AND nn.nspname NOT IN ('information_schema', 'pg_catalog')
+						AND nn.nspname NOT IN ` + postgresHiddenSchemas + `
 					JOIN pg_index i ON i.indrelid = cc.oid
 					JOIN pg_class c2 ON c2.oid = i.indexrelid
 					WHERE cc.relkind = 'r'
@@ -490,8 +514,10 @@ var checks = []check{
 		MySQLHint:    "Vacuum is a PostgreSQL concept; for MySQL fragmentation see: pscale inspect bloat",
 		Postgres: &engineSQL{
 			// Thresholds honor per-table reloptions (including
-			// autovacuum_enabled=false, reported as "disabled"), not just the
-			// global settings.
+			// autovacuum_enabled=false, reported as "disabled"). Cluster-wide
+			// GUC fallbacks use the PostgreSQL defaults rather than
+			// current_setting: that function is router-owned and cannot be
+			// forwarded when a Neki shard is pinned.
 			SQL: `
 				SELECT
 					psut.schemaname AS schema,
@@ -522,24 +548,25 @@ var checks = []check{
 						COALESCE((SELECT split_part(o, '=', 2)::bigint
 									FROM unnest(c.reloptions) AS o
 									WHERE o LIKE 'autovacuum_vacuum_threshold=%'),
-								current_setting('autovacuum_vacuum_threshold')::bigint)     AS vac_threshold,
+								50) AS vac_threshold,
 						COALESCE((SELECT split_part(o, '=', 2)::numeric
 									FROM unnest(c.reloptions) AS o
 									WHERE o LIKE 'autovacuum_vacuum_scale_factor=%'),
-								current_setting('autovacuum_vacuum_scale_factor')::numeric) AS vac_scale,
+								0.2) AS vac_scale,
 						COALESCE((SELECT split_part(o, '=', 2)::bigint
 									FROM unnest(c.reloptions) AS o
 									WHERE o LIKE 'autovacuum_analyze_threshold=%'),
-								current_setting('autovacuum_analyze_threshold')::bigint)    AS an_threshold,
+								50) AS an_threshold,
 						COALESCE((SELECT split_part(o, '=', 2)::numeric
 									FROM unnest(c.reloptions) AS o
 									WHERE o LIKE 'autovacuum_analyze_scale_factor=%'),
-								current_setting('autovacuum_analyze_scale_factor')::numeric) AS an_scale,
+								0.1) AS an_scale,
 						COALESCE((SELECT split_part(o, '=', 2)
 									FROM unnest(c.reloptions) AS o
 									WHERE o LIKE 'autovacuum_enabled=%'),
 								'true') AS enabled
 				) opts
+				WHERE psut.schemaname NOT IN ` + postgresHiddenSchemas + `
 				ORDER BY psut.n_dead_tup DESC
 				LIMIT 25;`,
 		},

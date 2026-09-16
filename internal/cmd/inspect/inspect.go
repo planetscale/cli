@@ -25,6 +25,8 @@ type inspectFlags struct {
 	postgresDB string
 	role       string
 	replica    bool
+	shard      string
+	router     string
 }
 
 // InspectCmd runs read-only diagnostic checks against a database branch.
@@ -49,6 +51,11 @@ per run. Pass --keyspace to pick the keyspace, or target an exact shard with
 pscale sql). Databases can have hundreds of shards, so no check fans out
 across shards automatically.
 
+On Neki, statistics reflect one connection target per run. Pass --shard to
+pin a shard, or --router to pick a router group (enumerate with
+pscale branch shard list and pscale branch router list). No check fans out
+across shards automatically.
+
 On PostgreSQL, statistics are scoped to one database. Pass --dbname to target
 the database your application uses (defaults to postgres).
 
@@ -62,6 +69,10 @@ anomalies), see pscale insights.`,
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
 	cmd.PersistentFlags().StringVar(&flags.keyspace, "keyspace", "",
 		"Vitess keyspace to inspect, optionally with a shard and tablet type (e.g. mykeyspace, mykeyspace/-80, mykeyspace/-80@replica). List shards with: pscale sql <database> <branch> --query \"SHOW VITESS_SHARDS\". Defaults to @primary.")
+	cmd.PersistentFlags().StringVar(&flags.shard, "shard", "",
+		"Neki shard ID to inspect. Pins the session to that shard. List shards with: pscale branch shard list <database> <branch>. Only supported for Neki databases.")
+	cmd.PersistentFlags().StringVar(&flags.router, "router", "",
+		"Neki router group to inspect through. List routers with: pscale branch router list <database> <branch>. Only supported for Neki databases.")
 	cmd.PersistentFlags().StringVar(&flags.postgresDB, "dbname", "postgres",
 		"PostgreSQL database name to inspect")
 	cmd.PersistentFlags().StringVar(&flags.role, "role", "",
@@ -134,15 +145,15 @@ func checkCmd(ch *cmdutil.Helper, c check, flags *inspectFlags) *cobra.Command {
 			ctx := cmd.Context()
 			database, branch := args[0], args[1]
 
-			end := ch.Printer.PrintProgress(fmt.Sprintf("Inspecting %s in %s...",
-				printer.BoldBlue(branch), printer.BoldBlue(database)))
-			defer end()
-
 			sess, err := newSession(ctx, ch, database, branch, flags)
 			if err != nil {
 				return cmdutil.HandleError(err)
 			}
 			defer sess.Close()
+
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Inspecting %s in %s...",
+				printer.BoldBlue(branch), printer.BoldBlue(database)))
+			defer end()
 
 			result, err := runCheck(ctx, sess, c, ch.Config.Organization, database, branch)
 			if err != nil {
@@ -176,16 +187,11 @@ func allCmd(ch *cmdutil.Helper, flags *inspectFlags) *cobra.Command {
 			ctx := cmd.Context()
 			database, branch := args[0], args[1]
 
-			end := ch.Printer.PrintProgress(fmt.Sprintf("Inspecting %s in %s...",
-				printer.BoldBlue(branch), printer.BoldBlue(database)))
-			defer end()
-
 			sess, err := newSession(ctx, ch, database, branch, flags)
 			if err != nil {
 				return cmdutil.HandleError(err)
 			}
 			defer sess.Close()
-			end()
 
 			var results []*CheckResult
 			for _, c := range checks {
@@ -271,6 +277,8 @@ func newSession(ctx context.Context, ch *cmdutil.Helper, database, branch string
 		Database:                database,
 		Branch:                  branch,
 		Keyspace:                flags.keyspace,
+		Shard:                   flags.shard,
+		Router:                  flags.router,
 		PostgresDB:              flags.postgresDB,
 		PostgresAdditionalRoles: []string{"pg_read_all_stats"},
 		Role:                    flags.role,
