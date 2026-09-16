@@ -213,7 +213,7 @@ func TestConfigProfileUpdateCmdSendsExtensionsAndParameters(t *testing.T) {
 	}}
 
 	cmd := UpdateCmd(configProfileTestHelper(svc, &out))
-	cmd.SetArgs([]string{"app", "main", "metal", "--extensions=hll,pg_cron", "--parameters", "pgconf.hll.force_groupagg=on"})
+	cmd.SetArgs([]string{"app", "main", "metal", "--extensions= hll, pg_cron ", "--parameters", "pgconf.hll.force_groupagg=on"})
 
 	c.Assert(cmd.Execute(), qt.IsNil)
 	c.Assert(svc.UpdateFnInvoked, qt.IsTrue)
@@ -234,6 +234,17 @@ func TestConfigProfileUpdateCmdSendsEmptyExtensions(t *testing.T) {
 
 	c.Assert(cmd.Execute(), qt.IsNil)
 	c.Assert(svc.UpdateFnInvoked, qt.IsTrue)
+}
+
+func TestConfigProfileUpdateCmdRejectsBlankExtensionNames(t *testing.T) {
+	c := qt.New(t)
+	var out bytes.Buffer
+	svc := &mock.NekiShardConfigurationProfilesService{}
+	cmd := UpdateCmd(configProfileTestHelper(svc, &out))
+	cmd.SetArgs([]string{"app", "main", "metal", "--extensions= "})
+
+	c.Assert(cmd.Execute(), qt.ErrorMatches, "--extensions cannot contain blank names; use --extensions= to disable extensions")
+	c.Assert(svc.UpdateFnInvoked, qt.IsFalse)
 }
 
 func TestConfigProfileUpdateCmdNormalizesClusterSize(t *testing.T) {

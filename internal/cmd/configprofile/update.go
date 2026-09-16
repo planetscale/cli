@@ -43,6 +43,13 @@ func UpdateCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 			var extensions *[]string
 			if cmd.Flags().Changed("extensions") {
+				for i, name := range flags.extensions {
+					name = strings.TrimSpace(name)
+					if name == "" {
+						return fmt.Errorf("--extensions cannot contain blank names; use --extensions= to disable extensions")
+					}
+					flags.extensions[i] = name
+				}
 				extensions = &flags.extensions
 			}
 			client, err := ch.Client()
@@ -76,7 +83,7 @@ func UpdateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().StringVar(&flags.name, "name", "", "New name for the configuration profile")
 	cmd.Flags().StringVar(&flags.clusterSize, "cluster-size", "", "New cluster size for shards in the profile")
 	cmd.Flags().IntVar(&flags.replicas, "replicas", 0, "New number of replicas for shards in the profile")
-	cmd.Flags().StringSliceVar(&flags.extensions, "extensions", []string{}, "Extensions to enable; replaces the current set. Use --extensions= to disable all")
+	cmd.Flags().StringSliceVar(&flags.extensions, "extensions", []string{}, "Extensions to enable; replaces the current set. Use --extensions= to disable extensions")
 	cmd.Flags().StringArrayVar(&flags.parameters, "parameters", nil, "Set a parameter as namespace.name=value; repeatable")
 	cmd.Flags().StringVar(&flags.major, "postgres-major-version", "", "PostgreSQL major version")
 	cmd.Flags().StringVar(&flags.minor, "postgres-minor-version", "", "PostgreSQL minor version")
