@@ -12,6 +12,7 @@ import (
 // MoveTablesService is an interface for interacting with the MoveTables endpoints of the
 // PlanetScale API.
 type MoveTablesService interface {
+	List(context.Context, *MoveTablesListRequest) (json.RawMessage, error)
 	Create(context.Context, *MoveTablesCreateRequest) (*VtctldOperationReference, error)
 	Show(context.Context, *MoveTablesShowRequest) (json.RawMessage, error)
 	Status(context.Context, *MoveTablesStatusRequest) (json.RawMessage, error)
@@ -19,6 +20,14 @@ type MoveTablesService interface {
 	ReverseTraffic(context.Context, *MoveTablesReverseTrafficRequest) (*VtctldOperationReference, error)
 	Cancel(context.Context, *MoveTablesCancelRequest) (*VtctldOperationReference, error)
 	Complete(context.Context, *MoveTablesCompleteRequest) (*VtctldOperationReference, error)
+}
+
+// MoveTablesListRequest is a request for listing MoveTables workflows.
+type MoveTablesListRequest struct {
+	Organization   string `json:"-"`
+	Database       string `json:"-"`
+	Branch         string `json:"-"`
+	TargetKeyspace string `json:"-"`
 }
 
 // MoveTablesCreateRequest is a request for creating a MoveTables workflow.
@@ -125,6 +134,27 @@ func moveTablesWorkflowsAPIPath(org, db, branch string) string {
 
 func moveTablesWorkflowAPIPath(org, db, branch, workflow string) string {
 	return path.Join(moveTablesWorkflowsAPIPath(org, db, branch), workflow)
+}
+
+func (s *moveTablesService) List(ctx context.Context, req *MoveTablesListRequest) (json.RawMessage, error) {
+	p := moveTablesWorkflowsAPIPath(req.Organization, req.Database, req.Branch)
+	v := url.Values{}
+	if req.TargetKeyspace != "" {
+		v.Set("target_keyspace", req.TargetKeyspace)
+	}
+	httpReq, err := s.client.newRequest(http.MethodGet, p, nil, WithQueryParams(v))
+	if err != nil {
+		return nil, fmt.Errorf("error creating http request: %w", err)
+	}
+	var resp json.RawMessage
+	if err := s.client.do(ctx, httpReq, &resp); err != nil {
+		return nil, err
+	}
+	var envelope vtctldDataResponse
+	if err := json.Unmarshal(resp, &envelope); err == nil && len(envelope.Data) > 0 {
+		return envelope.Data, nil
+	}
+	return resp, nil
 }
 
 func (s *moveTablesService) Create(ctx context.Context, req *MoveTablesCreateRequest) (*VtctldOperationReference, error) {

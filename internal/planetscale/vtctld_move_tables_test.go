@@ -208,6 +208,61 @@ func TestMoveTables_CreateWithExplicitFalseValues(t *testing.T) {
 	c.Assert(ref, qt.DeepEquals, &VtctldOperationReference{ID: "create-op"})
 }
 
+func TestMoveTables_List(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodGet)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/my-db/branches/my-branch/move-tables/workflows")
+		c.Assert(r.URL.Query().Get("target_keyspace"), qt.Equals, "target")
+
+		w.WriteHeader(200)
+		_, err := w.Write([]byte(`{"data":{"workflows":[{"name":"my-workflow"}]}}`))
+		c.Assert(err, qt.IsNil)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	ctx := context.Background()
+	data, err := client.MoveTables.List(ctx, &MoveTablesListRequest{
+		Organization:   "my-org",
+		Database:       "my-db",
+		Branch:         "my-branch",
+		TargetKeyspace: "target",
+	})
+	c.Assert(err, qt.IsNil)
+	c.Assert(string(data), qt.Equals, `{"workflows":[{"name":"my-workflow"}]}`)
+}
+
+func TestMoveTables_ListSupportsLegacyResponseWithoutTargetKeyspace(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodGet)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/my-db/branches/my-branch/move-tables/workflows")
+		c.Assert(r.URL.Query().Get("target_keyspace"), qt.Equals, "")
+
+		w.WriteHeader(200)
+		_, err := w.Write([]byte(`[]`))
+		c.Assert(err, qt.IsNil)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	ctx := context.Background()
+	data, err := client.MoveTables.List(ctx, &MoveTablesListRequest{
+		Organization: "my-org",
+		Database:     "my-db",
+		Branch:       "my-branch",
+	})
+	c.Assert(err, qt.IsNil)
+	c.Assert(string(data), qt.Equals, `[]`)
+}
+
 func TestMoveTables_Show(t *testing.T) {
 	c := qt.New(t)
 

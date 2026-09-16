@@ -134,6 +134,7 @@ type NekiRole struct {
 	Password        string  `header:"password" json:"password"`
 	AccessHostURL   string  `header:"access_host_url" json:"access_host_url"`
 	DatabaseURL     string  `header:"database_url" json:"database_url"`
+	Options         string  `header:"options" json:"options,omitempty"`
 	WithReplication bool    `header:"with_replication" json:"with_replication"`
 
 	orig *ps.PostgresRole
@@ -148,7 +149,7 @@ func toPostgresRole(role *ps.PostgresRole) *PostgresRole {
 		ExpiresAt:       postgresRoleExpiresAt(role),
 		Password:        role.Password,
 		AccessHostURL:   role.AccessHostURL,
-		DatabaseURL:     buildPostgresConnectionURL(role.Username, role.Password, role.AccessHostURL),
+		DatabaseURL:     buildRoleConnectionURL(role.Username, role.Password, role.AccessHostURL, "5432", role.Options),
 		WithReplication: role.WithReplication,
 		orig:            role,
 	}
@@ -164,7 +165,8 @@ func toNekiRole(role *ps.PostgresRole) *NekiRole {
 		ExpiresAt:       postgresRoleExpiresAt(role),
 		Password:        role.Password,
 		AccessHostURL:   role.AccessHostURL,
-		DatabaseURL:     buildPostgresConnectionURL(role.Username, role.Password, role.AccessHostURL),
+		DatabaseURL:     buildRoleConnectionURL(role.Username, role.Password, role.AccessHostURL, "5432", role.Options),
+		Options:         role.Options,
 		WithReplication: role.WithReplication,
 		orig:            role,
 	}
@@ -219,22 +221,21 @@ func roleAttributes(role *PostgresRole) string {
 	return "None"
 }
 
-// buildPostgresConnectionURL constructs a PostgreSQL connection URL from role credentials.
-func buildPostgresConnectionURL(username, password, accessHostURL string) string {
-	return buildPostgresConnectionURLWithDefaultPort(username, password, accessHostURL, "5432")
-}
-
-func buildPostgresConnectionURLWithDefaultPort(username, password, accessHostURL, defaultPort string) string {
+func buildRoleConnectionURL(username, password, accessHostURL, defaultPort, options string) string {
 	host, port, err := net.SplitHostPort(accessHostURL)
 	if err != nil {
 		host = accessHostURL
 		port = defaultPort
 	}
 
-	return fmt.Sprintf("postgresql://%s:%s@%s:%s/postgres?sslmode=verify-full",
+	conn := fmt.Sprintf("postgresql://%s:%s@%s:%s/postgres?sslmode=verify-full",
 		url.PathEscape(username),
 		url.PathEscape(password),
 		host,
 		port,
 	)
+	if options != "" {
+		conn += "&options=" + url.PathEscape(options)
+	}
+	return conn
 }

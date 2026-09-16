@@ -19,11 +19,11 @@ This repository is public. Do not include internal or sensitive information in c
 
 ## Concepts
 
-PlanetScale is a serverless database platform for **MySQL** (via Vitess) and **PostgreSQL**. Resources are namespaced: an **organization** (org) owns **databases**, and each database contains **branches** — isolated copies of schema (and, for Postgres, data) that work like git branches. The default branch is typically `main` (production). Most commands target a database + branch and take `--org` to say which organization they belong to. Throughout this guide, `<org>`, `<database>`, and `<branch>` are placeholders for those names — pick a branch with `"ready": true` from `branch list`.
+PlanetScale is a serverless database platform for **MySQL** (via Vitess), **PostgreSQL**, and **Neki** (sharded Postgres). Resources are namespaced: an **organization** (org) owns **databases**, and each database contains **branches** — isolated copies of schema (and, for Postgres and Neki, data) that work like git branches. The default branch is typically `main` (production). Most commands target a database + branch and take `--org` to say which organization they belong to. Throughout this guide, `<org>`, `<database>`, and `<branch>` are placeholders for those names — pick a branch with `"ready": true` from `branch list`.
 
 On Vitess/MySQL, schema changes ship via **deploy requests**: online, non-blocking migrations you review and then deploy.
 
-Many commands are engine-specific, and some operations use different commands per engine. Schema changes: Vitess/MySQL uses `deploy-request`; Postgres branches apply DDL directly. Access: Vitess/MySQL uses `password`; Postgres uses `role`. Resize: Vitess/MySQL uses `keyspace resize`; Postgres uses `branch resize`. Vitess/MySQL-only: `deploy-request`, `keyspace`, `workflow`, `connect`, `password`. Postgres-only: `role`, `traffic-control`, branch `switchover`/`maintenance`/`parameters`, and `import d1`. The rest (`database`, `branch`, `sql`, `shell`, `insights`, `metrics`, `backup`, `org`, `auth`, `api`) work on both.
+Many commands are engine-specific, and some operations use different commands per engine. Schema changes: Vitess/MySQL uses `deploy-request`; Postgres and Neki branches apply DDL directly. Access: Vitess/MySQL uses `password`; Postgres and Neki use `role`. Resize: Vitess/MySQL uses `keyspace resize`; Postgres uses `branch resize`; Neki uses `branch config-profile`, `router`, and `shard`. Vitess/MySQL-only: `deploy-request`, `keyspace`, `workflow`, `connect`, `password`. Postgres-only: `traffic-control`, branch `switchover`/`parameters`, and `import d1`. Postgres and Neki: `role`, branch `maintenance`. Neki-only: `branch shard`, `config-profile`, `router`, `sidecar`, `admin`, `data-topology`, `changes`. The rest (`database`, `branch`, `sql`, `shell`, `insights`, `metrics`, `backup`, `org`, `auth`, `api`) work on all three.
 
 When a database is "weird" (slow, erroring, locked, bloated):
 
@@ -345,7 +345,7 @@ pscale metrics tags <database> <branch> --org <org> --format json --metric queri
 - `metrics tablets --workflow` applies only to `--metric vreplication_lag` and must name an existing workflow on the branch.
 - Filters that match nothing return zero-filled series rather than an empty response, so check the point values, not the series count.
 - `metrics tables` and `metrics keyspace-tables` preserve the untyped storage-metrics API response in JSON.
-- `metrics report` detects whether the database uses MySQL or PostgreSQL and queries a curated set of performance sections. It supports `--period`, custom `--from`/`--to` ranges, and `--steps`; JSON returns a composite report and CSV includes the section name on each row.
+- `metrics report` detects whether the database uses MySQL, PostgreSQL, or Neki and queries a curated set of performance sections. Neki sections include shard-grained resource metrics and router query/latency series. It supports `--period`, custom `--from`/`--to` ranges, and `--steps`; JSON returns a composite report and CSV includes the section name on each row.
 - Historical queries support `--period`, or a custom `--from`/`--to` ISO 8601 range, plus `--steps` and dimension filters such as `--tablet-type`, `--keyspace`, `--shard`, `--role`, `--pod`, and `--pods`.
 - JSON preserves the API response: historical results contain `start_date`, `end_date`, `interval`, and `series`; each series contains `metric`, `label`, `labels`, and `[Unix timestamp, value]` points. Instant results contain current values grouped by their dimensions.
 - Human output summarizes each historical series with latest/min/average/max values and a sparkline. CSV flattens historical samples or instant values to one row each.
@@ -385,12 +385,14 @@ pscale branch query-patterns delete <database> <branch> <report-id> --org <org> 
 ```bash
 pscale inspect all <database> <branch> --org <org> --format json    # every applicable check, one report
 pscale inspect <check> <database> <branch> --org <org> --format json
+pscale inspect all <database> <branch> --org <org> --format json --shard <shard-id>   # Neki: pin one shard
+pscale inspect locks <database> <branch> --org <org> --format json --router <router>  # Neki: pin a router group
 ```
 
 Checks: `table-sizes`, `index-sizes`, `unused-indexes`, `redundant-indexes`, `seq-scans`, `long-running-queries`, `locks`, `outliers`, `calls`, `bloat`, `vacuum-stats`, `replication-slots`, `subscriptions`. Checks adapt per engine; ones that don't apply explain the alternative. JSON results include `next_steps` pointing at the matching `insights` command — follow them.
 
 Caveats:
-- Statistics are since last server restart and per-connection-target: on sharded Vitess databases they reflect a single shard's MySQL instance. Use `--keyspace` to pick a keyspace, or pin an exact shard with `--keyspace 'mykeyspace/-80'` (enumerate with `pscale sql <database> <branch> --org <org> --format json --query "SHOW VITESS_SHARDS"`; rows are `keyspace/shard`). Databases can have hundreds of shards — inspect one shard at a time rather than fanning out. On PostgreSQL, stats are scoped to one database (use `--dbname`; if CONNECT is denied, retry with `--role admin`).
+- Statistics are since last server restart and per-connection-target: on sharded Vitess databases they reflect a single shard's MySQL instance. Use `--keyspace` to pick a keyspace, or pin an exact shard with `--keyspace 'mykeyspace/-80'` (enumerate with `pscale sql <database> <branch> --org <org> --format json --query "SHOW VITESS_SHARDS"`; rows are `keyspace/shard`). On Neki, use `--shard` to pin a shard (list with `pscale branch shard list <database> <branch> --org <org> --format json`) or `--router` to pick a router group (`pscale branch router list`). Databases can have hundreds of shards — inspect one shard at a time rather than fanning out. On PostgreSQL, stats are scoped to one database (use `--dbname`; if CONNECT is denied, retry with `--role admin`).
 - `outliers`/`calls` need `pg_stat_statements` on PostgreSQL; if missing, use `pscale insights queries` instead (no extension needed).
 - Rule of thumb: start with `insights` (traffic-aware, historical), use `inspect` for live state (locks, in-flight queries) and physical layout (sizes, bloat, index usage).
 
@@ -482,10 +484,21 @@ pscale branch extensions list <database> <branch> --org <org> --format json
 pscale role default <database> <branch> --org <org> --format json
 pscale role reset-default <database> <branch> --org <org> --format json --force
 
+# Create a role. Neki also accepts neki_viewer (with pg_read_all_data) and neki_operator (with postgres)
+pscale role create <database> <branch> <name> --org <org> --format json --inherited-roles pg_read_all_data
+pscale role create <database> <branch> <name> --org <org> --format json --inherited-roles neki_viewer,pg_read_all_data
+pscale role create <database> <branch> <name> --org <org> --format json --inherited-roles neki_operator,postgres
+
 # Role connection details for a branch replica, read-only replica, or PgBouncer
 pscale role get <database> <branch> <role-id> --org <org> --format json --replica
 pscale role get <database> <branch> <role-id> --org <org> --format json --read-only-replica <replica-name>
 pscale role get <database> <branch> <role-id> --org <org> --format json --bouncer <bouncer-name>
+
+# Neki: router is a username suffix; replica and shard are libpq options on the URL
+pscale role get <database> <branch> <role-id> --org <org> --format json --router <router>
+pscale role get <database> <branch> <role-id> --org <org> --format json --replica
+pscale role get <database> <branch> <role-id> --org <org> --format json --shard <shard_name>
+pscale role get <database> <branch> <role-id> --org <org> --format json --replica --shard <shard_name> --router <router>
 
 # Change parameters (repeat --parameters; keys are namespace.name)
 pscale branch resize <database> <branch> --org <org> --format json --parameters pgconf.max_connections=200
@@ -503,7 +516,8 @@ pscale branch resize cancel <database> <branch> --org <org> --format json
 ```
 
 - At least one of `--cluster-size`, `--replicas`, or `--parameters` is required.
-- The `role get` connection target flags are mutually exclusive. Targeted role responses keep the same shape while changing `username`, `access_host_url`, and `database_url` as needed.
+- Neki `--inherited-roles` may include `neki_viewer` (must also include `pg_read_all_data`) and `neki_operator` (must also include `postgres`). The API rejects those pairings if the required role is missing.
+- `--replica`, `--read-only-replica`, and `--bouncer` are mutually exclusive. `--read-only-replica` and `--bouncer` are Postgres-only and cannot combine with `--router` or `--shard`. On Neki, `--replica`, `--shard`, and `--router` can be combined. `--router` rewrites `username` to `user|<name>`. `--replica` and `--shard` set `options` (`-c __neki.target=REPLICA`, `-c __neki.shard=…`) and add them to `database_url`. List names with `pscale branch router list` and `pscale branch shard list` (use the shard name, not the API id).
 - `--parameters` values are validated against the catalog before submission; unknown or immutable parameters fail fast. Parameters with `"restart": true` in the catalog restart the database when applied — surface this to the user before changing them.
 - Change request `state` is one of `queued`, `pending`, `resizing`, `completed`, `canceled`. Only `completed` and `canceled` are terminal. Without `--wait`, poll `resize status` instead of assuming completion.
 - A no-op (branch already matches the requested configuration) prints `{"result": "no_change", "branch": "<branch>"}` in JSON mode instead of a change request.
@@ -602,6 +616,26 @@ pscale branch data-topology update <database> <branch> --org <org> --format json
 - The input must be a JSON object. Empty input, arrays, scalar values, and malformed JSON are rejected before the API request.
 - `get` returns the API's cached topology with `synced_at`. When the cached value is stale, the API schedules a refresh asynchronously, so the response may briefly contain the previous topology.
 - The command is only supported for Neki branches. Other branches return `NOT_FOUND`.
+
+## Neki change requests
+
+Use `pscale branch changes` to list, show, and cancel change requests across a Neki branch (admin, cluster, configuration profile, router, and sidecar). Per-resource `changes` commands still exist on those resources. Neki only.
+
+```bash
+# List every change, or filter by state and target
+pscale branch changes list <database> <branch> --org <org> --format json
+pscale branch changes list <database> <branch> --org <org> --format json --state pending --target-type admin
+pscale branch changes list <database> <branch> --org <org> --format json --target-type config-profile --target-type sidecar --target-id <profile-id>
+
+# Show one change or cancel a request that is still cancelable
+pscale branch changes show <database> <branch> <change-id> --org <org> --format json
+pscale branch changes cancel <database> <branch> <change-id> --org <org> --format json
+```
+
+- `--target-type` is `admin`, `cluster`, `config-profile`, `router`, or `sidecar`. Repeat or comma-separate to combine types. `--target-id` requires `--target-type`.
+- `--state` may be repeated or comma-separated. `--period` and `--completed-at` match the per-resource change list filters.
+- JSON preserves the API object, including resource-specific fields such as size and parameters. Human output shows id, state, target, name, and created time.
+- `cancel` is rejected for maintenance and other uncancellable states. Ask the user before canceling.
 
 ## Neki shards
 

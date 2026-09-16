@@ -298,12 +298,190 @@ var postgresReportSections = []reportSectionDefinition{
 	},
 }
 
+var nekiReportSections = []reportSectionDefinition{
+	{
+		Name: "Workload, errors, and traffic control",
+		Kind: reportSeriesSection,
+		Metrics: []string{
+			"queries",
+			"query_errors",
+			"rows_read",
+			"rows_returned",
+			"rows_written",
+			"violations",
+			"traffic_control_warnings",
+			"traffic_control_throttled",
+			"planetscale_neki_router_queries",
+			"planetscale_neki_router_query_errors",
+		},
+	},
+	{
+		Name: "Latency and execution time",
+		Kind: reportSeriesSection,
+		Metrics: []string{
+			"latency_p50",
+			"latency_p95",
+			"latency_p99",
+			"latency_p999",
+			"latency_max",
+			"total_duration_millis",
+			"cpu_duration_millis",
+			"io_duration_millis",
+			"planetscale_neki_router_query_latency_p50",
+			"planetscale_neki_router_query_latency_p95",
+			"planetscale_neki_router_query_latency_p99",
+			"planetscale_neki_router_query_latency_avg",
+		},
+	},
+	{
+		Name: "Query efficiency and distribution",
+		Kind: reportSeriesSection,
+		Metrics: []string{
+			"rows_read_per_query",
+			"rows_returned_per_query",
+			"rows_affected_per_query",
+			"rows_read_per_returned",
+			"avg_shard_queries",
+			"max_shard_queries",
+			"avg_parallel_workers",
+		},
+	},
+	{
+		Name: "Buffer and block activity",
+		Kind: reportSeriesSection,
+		Metrics: []string{
+			"blocks_hit",
+			"blocks_read",
+			"block_cache_hit_ratio",
+			"blocks_dirtied",
+			"blocks_written",
+		},
+	},
+	{
+		Name: "Query network traffic",
+		Kind: reportSeriesSection,
+		Metrics: []string{
+			"ingress_bytes",
+			"ingress_bytes_per_query",
+			"max_ingress_bytes",
+			"egress_bytes",
+			"egress_bytes_per_query",
+			"max_egress_bytes",
+		},
+	},
+	{
+		Name: "Connections",
+		Kind: reportSeriesSection,
+		Metrics: []string{
+			"planetscale_primary_postgres_connection_state",
+			"planetscale_replica_postgres_connection_state",
+		},
+	},
+	{
+		Name: "CPU, memory utilization, and IOPS",
+		Kind: reportSeriesSection,
+		Metrics: []string{
+			"planetscale_primary_pods_cpu_util_percentages",
+			"planetscale_primary_pods_mem_util_percentages",
+			"planetscale_primary_pods_iops_total",
+			"planetscale_replica_pods_cpu_util_percentages",
+			"planetscale_replica_pods_mem_util_percentages",
+			"planetscale_replica_pods_iops_total",
+			"planetscale_neki_router_pods_cpu_util_percentages",
+			"planetscale_neki_router_pods_mem_util_percentages",
+		},
+	},
+	{
+		Name: "PostgreSQL memory composition",
+		Kind: reportSeriesSection,
+		Metrics: []string{
+			"planetscale_primary_memory_rss_bytes",
+			"planetscale_primary_memory_mmap_bytes",
+			"planetscale_primary_memory_active_cache_bytes",
+			"planetscale_primary_memory_inactive_cache_bytes",
+			"planetscale_replica_memory_rss_bytes",
+			"planetscale_replica_memory_mmap_bytes",
+			"planetscale_replica_memory_active_cache_bytes",
+			"planetscale_replica_memory_inactive_cache_bytes",
+		},
+	},
+	{
+		Name: "Storage utilization",
+		Kind: reportSeriesSection,
+		Metrics: []string{
+			"planetscale_primary_storage_usage_bytes",
+			"planetscale_replica_storage_usage_bytes",
+			"planetscale_primary_volume_usage_percentages",
+			"planetscale_replica_volume_usage_percentages",
+		},
+	},
+	{
+		Name: "Transactions, replication, and WAL",
+		Kind: reportSeriesSection,
+		Metrics: []string{
+			"planetscale_primary_xact_commit_rate",
+			"planetscale_replica_lag_seconds",
+			"planetscale_wal_archiver_succeeded_rate",
+			"planetscale_wal_archiver_failed_rate",
+			"planetscale_wal_archiver_last_age_succeeded",
+			"planetscale_wal_archiver_lag_bytes",
+			"planetscale_wal_size_bytes",
+		},
+	},
+	{
+		Name: "Locks",
+		Kind: reportSeriesSection,
+		Metrics: []string{
+			"planetscale_primary_postgres_locks",
+			"planetscale_replica_postgres_locks",
+		},
+	},
+	{
+		Name: "Pod health",
+		Kind: reportSeriesSection,
+		Metrics: []string{
+			"planetscale_pods_container_ooms",
+			"planetscale_pods_container_restarts",
+			"planetscale_neki_router_pods_container_ooms",
+			"planetscale_neki_router_pods_container_restarts",
+		},
+	},
+	{
+		Name: "Current connection capacity",
+		Kind: reportInstantSection,
+		Metrics: []string{
+			"planetscale_postgres_connection_state",
+			"planetscale_postgres_settings_max_connections",
+		},
+	},
+	{
+		Name: "Current storage capacity",
+		Kind: reportInstantSection,
+		Metrics: []string{
+			"planetscale_volume_disk_usage_bytes",
+			"planetscale_volume_usage_percentage",
+			"planetscale_volume_capacity_bytes",
+			"planetscale_postgres_settings_max_wal_size_bytes",
+		},
+	},
+	{
+		Name: "Backup activity",
+		Kind: reportInstantSection,
+		Metrics: []string{
+			"planetscale_backup_restore_active",
+			"planetscale_backup_fetch_percent",
+		},
+	},
+}
+
 func reportSectionsForEngine(engine ps.DatabaseEngine) ([]reportSectionDefinition, error) {
 	switch engine {
 	case ps.DatabaseEngineMySQL:
 		return mysqlReportSections, nil
 	case ps.DatabaseEnginePostgres:
 		return postgresReportSections, nil
+	case ps.DatabaseEngineNeki:
+		return nekiReportSections, nil
 	default:
 		return nil, fmt.Errorf("database engine %q is not supported by metrics report", engine)
 	}

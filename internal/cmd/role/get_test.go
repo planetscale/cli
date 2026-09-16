@@ -177,6 +177,124 @@ func TestRole_GetCmdRejectsMultipleConnectionTargets(t *testing.T) {
 
 	c.Assert(cmd.Execute(), qt.IsNotNil)
 	c.Assert(svc.GetFnInvoked, qt.IsFalse)
+
+	cmd = GetCmd(ch)
+	cmd.SetArgs([]string{"mydb", "main", "role-id", "--bouncer", "pool", "--router", "default"})
+	c.Assert(cmd.Execute(), qt.IsNotNil)
+	c.Assert(svc.GetFnInvoked, qt.IsFalse)
+}
+
+func TestRole_GetCmdNekiConnectionTargets(t *testing.T) {
+	tests := []struct {
+		name        string
+		args        []string
+		request     ps.GetPostgresRoleRequest
+		username    string
+		options     string
+		databaseURL string
+	}{
+		{
+			name: "router",
+			args: []string{"mydb", "main", "role-id", "--router", "default"},
+			request: ps.GetPostgresRoleRequest{
+				Router: "default",
+			},
+			username:    "app.branch|default",
+			databaseURL: "postgresql://app.branch%7Cdefault:@pg.psdb.cloud:5432/postgres?sslmode=verify-full",
+		},
+		{
+			name: "replica",
+			args: []string{"mydb", "main", "role-id", "--replica"},
+			request: ps.GetPostgresRoleRequest{
+				Replica: true,
+			},
+			username:    "app.branch",
+			options:     "-c __neki.target=REPLICA",
+			databaseURL: "postgresql://app.branch:@pg.psdb.cloud:5432/postgres?sslmode=verify-full&options=-c%20__neki.target=REPLICA",
+		},
+		{
+			name: "shard",
+			args: []string{"mydb", "main", "role-id", "--shard", "shzabc"},
+			request: ps.GetPostgresRoleRequest{
+				Shard: "shzabc",
+			},
+			username:    "app.branch",
+			options:     "-c __neki.shard=shzabc",
+			databaseURL: "postgresql://app.branch:@pg.psdb.cloud:5432/postgres?sslmode=verify-full&options=-c%20__neki.shard=shzabc",
+		},
+		{
+			name: "replica shard and router",
+			args: []string{"mydb", "main", "role-id", "--replica", "--shard", "shzabc", "--router", "default"},
+			request: ps.GetPostgresRoleRequest{
+				Replica: true,
+				Shard:   "shzabc",
+				Router:  "default",
+			},
+			username:    "app.branch|default",
+			options:     "-c __neki.target=REPLICA -c __neki.shard=shzabc",
+			databaseURL: "postgresql://app.branch%7Cdefault:@pg.psdb.cloud:5432/postgres?sslmode=verify-full&options=-c%20__neki.target=REPLICA%20-c%20__neki.shard=shzabc",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := qt.New(t)
+
+			var buf bytes.Buffer
+			format := printer.JSON
+			p := printer.NewPrinter(&format)
+			p.SetResourceOutput(&buf)
+
+			svc := &mock.PostgresRolesService{
+				GetFn: func(ctx context.Context, req *ps.GetPostgresRoleRequest) (*ps.PostgresRole, error) {
+					test.request.Organization = "planetscale"
+					test.request.Database = "mydb"
+					test.request.Branch = "main"
+					test.request.RoleId = "role-id"
+					c.Assert(req, qt.DeepEquals, &test.request)
+
+					return &ps.PostgresRole{
+						Type:          "NekiRole",
+						ID:            "role-id",
+						Name:          "app",
+						Username:      test.username,
+						AccessHostURL: "pg.psdb.cloud",
+						Ready:         true,
+						Options:       test.options,
+					}, nil
+				},
+			}
+
+			ch := &cmdutil.Helper{
+				Printer: p,
+				Config:  &config.Config{Organization: "planetscale"},
+				Client: func() (*ps.Client, error) {
+					return &ps.Client{PostgresRoles: svc}, nil
+				},
+			}
+
+			cmd := GetCmd(ch)
+			cmd.SetArgs(test.args)
+			c.Assert(cmd.Execute(), qt.IsNil)
+
+			want := map[string]any{
+				"id":               "role-id",
+				"name":             "app",
+				"username":         test.username,
+				"ready":            true,
+				"status":           "active",
+				"expires_at":       nil,
+				"password":         "",
+				"access_host_url":  "pg.psdb.cloud",
+				"database_url":     test.databaseURL,
+				"with_replication": false,
+			}
+			if test.options != "" {
+				want["options"] = test.options
+			}
+			c.Assert(buf.String(), qt.JSONEquals, want)
+		})
+	}
 }
 
 func TestRole_GetCmdConnectionTargetNotFound(t *testing.T) {
@@ -197,6 +315,18 @@ func TestRole_GetCmdConnectionTargetNotFound(t *testing.T) {
 			args:       []string{"mydb", "main", "role-id", "--bouncer", "missing-bouncer"},
 			targetType: "PgBouncer",
 			target:     "missing-bouncer",
+		},
+		{
+			name:       "router",
+			args:       []string{"mydb", "main", "role-id", "--router", "missing-router"},
+			targetType: "router",
+			target:     "missing-router",
+		},
+		{
+			name:       "shard",
+			args:       []string{"mydb", "main", "role-id", "--shard", "missing-shard"},
+			targetType: "shard",
+			target:     "missing-shard",
 		},
 	}
 
@@ -230,4 +360,29 @@ func TestRole_GetCmdConnectionTargetNotFound(t *testing.T) {
 			c.Assert(strings.Contains(err.Error(), test.target), qt.IsTrue)
 		})
 	}
+
+	c := qt.New(t)
+	format := printer.Human
+	p := printer.NewPrinter(&format)
+	svc := &mock.PostgresRolesService{
+		GetFn: func(ctx context.Context, req *ps.GetPostgresRoleRequest) (*ps.PostgresRole, error) {
+			return nil, &ps.Error{Code: ps.ErrNotFound}
+		},
+	}
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: "planetscale"},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{PostgresRoles: svc}, nil
+		},
+	}
+
+	cmd := GetCmd(ch)
+	cmd.SetArgs([]string{"mydb", "main", "role-id", "--router", "missing-router", "--shard", "missing-shard"})
+	err := cmd.Execute()
+	c.Assert(err, qt.IsNotNil)
+	c.Assert(strings.Contains(err.Error(), "router"), qt.IsTrue)
+	c.Assert(strings.Contains(err.Error(), "missing-router"), qt.IsTrue)
+	c.Assert(strings.Contains(err.Error(), "shard"), qt.IsTrue)
+	c.Assert(strings.Contains(err.Error(), "missing-shard"), qt.IsTrue)
 }
