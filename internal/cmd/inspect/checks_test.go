@@ -52,6 +52,29 @@ func TestCheckCatalog(t *testing.T) {
 				c.Assert(strings.Contains(impl.SQL, "pg_table_size"), qt.IsTrue)
 				c.Assert(strings.Contains(impl.SQL, "pg_total_relation_size"), qt.IsFalse)
 			}
+			// locks must be forwardable under Neki --shard: now() and
+			// pg_blocking_pids are router-owned and cannot mix with table reads.
+			if chk.Name == "locks" && engine == "postgres" {
+				c.Assert(strings.Contains(impl.SQL, "now()"), qt.IsFalse)
+				c.Assert(strings.Contains(impl.SQL, "pg_blocking_pids"), qt.IsFalse)
+				c.Assert(strings.Contains(impl.SQL, "current_setting"), qt.IsFalse)
+			}
+			if chk.Name == "long-running-queries" && engine == "postgres" {
+				c.Assert(strings.Contains(impl.SQL, "now()"), qt.IsFalse)
+			}
+			if chk.Name == "bloat" && engine == "postgres" {
+				c.Assert(strings.Contains(impl.SQL, "current_setting"), qt.IsFalse)
+			}
+			if chk.Name == "vacuum-stats" && engine == "postgres" {
+				c.Assert(strings.Contains(impl.SQL, "current_setting"), qt.IsFalse)
+			}
+			switch chk.Name {
+			case "table-sizes", "index-sizes", "unused-indexes", "invalid-indexes", "seq-scans", "bloat", "vacuum-stats":
+				if engine == "postgres" {
+					c.Assert(strings.Contains(impl.SQL, "__neki"), qt.IsTrue,
+						qt.Commentf("%s: customer-facing table lists must hide the __neki schema", chk.Name))
+				}
+			}
 		}
 
 		for _, step := range chk.NextSteps {

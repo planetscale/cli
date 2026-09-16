@@ -25,6 +25,7 @@ func MoveTablesCmd(ch *cmdutil.Helper) *cobra.Command {
 		Short: "Manage MoveTables workflows",
 	}
 
+	cmd.AddCommand(MoveTablesListCmd(ch))
 	cmd.AddCommand(MoveTablesCreateCmd(ch))
 	cmd.AddCommand(MoveTablesShowCmd(ch))
 	cmd.AddCommand(MoveTablesStatusCmd(ch))
@@ -120,7 +121,9 @@ func MoveTablesCreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			end()
-			return ch.Printer.PrettyPrintJSON(data)
+			return printWorkflowJSON(ch.Printer, data, []workflowNextStep{
+				moveTablesStatusStep(ch.Config.Organization, database, branch, flags.workflow, flags.targetKeyspace, "Monitor copy and replication progress"),
+			})
 		},
 	}
 
@@ -147,6 +150,50 @@ func MoveTablesCreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.MarkFlagRequired("source-keyspace") // nolint:errcheck
 	cmd.MarkFlagsMutuallyExclusive("tables", "all-tables")
 	cmd.MarkFlagsMutuallyExclusive("tables", "exclude-tables")
+
+	return cmd
+}
+
+func MoveTablesListCmd(ch *cmdutil.Helper) *cobra.Command {
+	var flags struct {
+		targetKeyspace string
+	}
+
+	cmd := &cobra.Command{
+		Use:     "list <database> <branch>",
+		Short:   "List MoveTables workflows",
+		Aliases: []string{"ls"},
+		Args:    cmdutil.RequiredArgs("database", "branch"),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			database, branch := args[0], args[1]
+
+			client, err := ch.Client()
+			if err != nil {
+				return err
+			}
+
+			end := ch.Printer.PrintProgress(
+				fmt.Sprintf("Fetching MoveTables workflows on %s\u2026",
+					progressTarget(ch.Config.Organization, database, branch)))
+			defer end()
+
+			data, err := client.MoveTables.List(ctx, &ps.MoveTablesListRequest{
+				Organization:   ch.Config.Organization,
+				Database:       database,
+				Branch:         branch,
+				TargetKeyspace: flags.targetKeyspace,
+			})
+			if err != nil {
+				return cmdutil.HandleError(err)
+			}
+
+			end()
+			return printMoveTablesListJSON(ch.Printer, data, ch.Config.Organization, database, branch)
+		},
+	}
+
+	cmd.Flags().StringVar(&flags.targetKeyspace, "target-keyspace", "", "Target keyspace (defaults to the branch's default keyspace)")
 
 	return cmd
 }
@@ -187,7 +234,9 @@ func MoveTablesShowCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			end()
-			return ch.Printer.PrettyPrintJSON(data)
+			return printWorkflowJSON(ch.Printer, data, []workflowNextStep{
+				moveTablesStatusStep(ch.Config.Organization, database, branch, flags.workflow, flags.targetKeyspace, "Check workflow copy and traffic state"),
+			})
 		},
 	}
 
@@ -235,7 +284,11 @@ func MoveTablesStatusCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			end()
-			return ch.Printer.PrettyPrintJSON(data)
+			return printWorkflowJSON(
+				ch.Printer,
+				data,
+				moveTablesStatusNextSteps(data, ch.Config.Organization, database, branch, flags.workflow, flags.targetKeyspace),
+			)
 		},
 	}
 
@@ -305,7 +358,9 @@ func MoveTablesSwitchTrafficCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			end()
-			return ch.Printer.PrettyPrintJSON(data)
+			return printWorkflowJSON(ch.Printer, data, []workflowNextStep{
+				moveTablesStatusStep(ch.Config.Organization, database, branch, flags.workflow, flags.targetKeyspace, "Confirm the new traffic state"),
+			})
 		},
 	}
 
@@ -376,7 +431,9 @@ func MoveTablesReverseTrafficCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			end()
-			return ch.Printer.PrettyPrintJSON(data)
+			return printWorkflowJSON(ch.Printer, data, []workflowNextStep{
+				moveTablesStatusStep(ch.Config.Organization, database, branch, flags.workflow, flags.targetKeyspace, "Confirm the new traffic state"),
+			})
 		},
 	}
 
@@ -519,6 +576,27 @@ func MoveTablesCompleteCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			end()
+			if flags.dryRun {
+				nextFlags := []string{
+					fmt.Sprintf("--keep-data=%t", flags.keepData),
+					fmt.Sprintf("--keep-routing-rules=%t", flags.keepRoutingRules),
+				}
+				if flags.renameTables {
+					nextFlags = append(nextFlags, "--rename-tables")
+				}
+				return printWorkflowJSON(ch.Printer, data, []workflowNextStep{{
+					Command: moveTablesCommand(
+						ch.Config.Organization,
+						"complete",
+						database,
+						branch,
+						flags.workflow,
+						flags.targetKeyspace,
+						nextFlags...,
+					),
+					Reason: "Complete the workflow after reviewing the dry run and getting operator approval",
+				}})
+			}
 			return ch.Printer.PrettyPrintJSON(data)
 		},
 	}

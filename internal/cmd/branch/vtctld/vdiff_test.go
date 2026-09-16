@@ -56,6 +56,13 @@ func TestVDiffCreate(t *testing.T) {
 	err := cmd.Execute()
 	c.Assert(err, qt.IsNil)
 	c.Assert(svc.CreateFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.JSONEquals, map[string]any{
+		"uuid": "abc-123",
+		"next_steps": []any{map[string]any{
+			"command": "pscale branch vtctld vdiff show my-db my-branch --org my-org --workflow my-workflow --target-keyspace target-ks --uuid abc-123 --format json",
+			"reason":  "Check VDiff progress",
+		}},
+	})
 }
 
 func TestVDiffList(t *testing.T) {
@@ -116,7 +123,7 @@ func TestVDiffShow(t *testing.T) {
 			c.Assert(req.Workflow, qt.Equals, "my-workflow")
 			c.Assert(req.UUID, qt.Equals, "abc-123")
 			c.Assert(req.TargetKeyspace, qt.Equals, "target-ks")
-			return json.RawMessage(`{"uuid":"abc-123"}`), nil
+			return json.RawMessage(`{"summary":{"state":"STATE_COMPLETED","has_mismatch":false}}`), nil
 		},
 	}
 
@@ -144,6 +151,16 @@ func TestVDiffShow(t *testing.T) {
 	err := cmd.Execute()
 	c.Assert(err, qt.IsNil)
 	c.Assert(svc.ShowFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.JSONEquals, map[string]any{
+		"summary": map[string]any{
+			"state":        "STATE_COMPLETED",
+			"has_mismatch": false,
+		},
+		"next_steps": []any{map[string]any{
+			"command": "pscale branch vtctld move-tables switch-traffic my-db my-branch --org my-org --workflow my-workflow --target-keyspace target-ks --tablet-types REPLICA,RDONLY --format json",
+			"reason":  "Switch replica traffic to the target keyspace",
+		}},
+	})
 }
 
 func TestVDiffDelete(t *testing.T) {

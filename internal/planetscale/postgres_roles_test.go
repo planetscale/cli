@@ -411,6 +411,35 @@ func TestPostgresRoles_GetConnectionTargets(t *testing.T) {
 			username:   "test-user.branch-id|pool",
 			accessHost: "primary.planetscale.com",
 		},
+		{
+			name:       "router",
+			request:    GetPostgresRoleRequest{Router: "default"},
+			query:      url.Values{"router": []string{"default"}},
+			username:   "test-user.branch-id|default",
+			accessHost: "primary.planetscale.com",
+		},
+		{
+			name:       "shard",
+			request:    GetPostgresRoleRequest{Shard: "shzabc"},
+			query:      url.Values{"shard": []string{"shzabc"}},
+			username:   "test-user.branch-id",
+			accessHost: "primary.planetscale.com",
+		},
+		{
+			name: "replica shard and router",
+			request: GetPostgresRoleRequest{
+				Replica: true,
+				Shard:   "shzabc",
+				Router:  "default",
+			},
+			query: url.Values{
+				"replica": []string{"true"},
+				"shard":   []string{"shzabc"},
+				"router":  []string{"default"},
+			},
+			username:   "test-user.branch-id|default",
+			accessHost: "primary.planetscale.com",
+		},
 	}
 
 	for _, test := range tests {

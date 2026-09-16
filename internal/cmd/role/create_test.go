@@ -113,3 +113,34 @@ func TestRole_CreateCmd_WithReplication(t *testing.T) {
 	c.Assert(err, qt.IsNil)
 	c.Assert(svc.CreateFnInvoked, qt.IsTrue)
 }
+
+func TestRole_CreateCmd_NekiInheritedRoles(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	svc := &mock.PostgresRolesService{
+		CreateFn: func(ctx context.Context, req *ps.CreatePostgresRoleRequest) (*ps.PostgresRole, error) {
+			c.Assert(req.InheritedRoles, qt.DeepEquals, []string{"neki_viewer", "pg_read_all_data"})
+			return &ps.PostgresRole{Type: "NekiRole", ID: "role-id", Name: "viewer", Username: "u"}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: "planetscale"},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{PostgresRoles: svc}, nil
+		},
+	}
+
+	cmd := CreateCmd(ch)
+	cmd.SetArgs([]string{"mydb", "main", "viewer", "--inherited-roles", "neki_viewer,pg_read_all_data"})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(svc.CreateFnInvoked, qt.IsTrue)
+	c.Assert(cmd.Flags().Lookup("inherited-roles").Usage, qt.Contains, "neki_viewer")
+	c.Assert(cmd.Flags().Lookup("inherited-roles").Usage, qt.Contains, "neki_operator")
+}
