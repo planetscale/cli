@@ -63,6 +63,9 @@ func NewSession(ctx context.Context, ch *cmdutil.Helper, opts Options) (*Session
 	if !dbBranch.Ready {
 		return nil, fmt.Errorf("database branch is not ready yet")
 	}
+	if err := validateEngineOptions(dbInfo.Kind, opts); err != nil {
+		return nil, err
+	}
 
 	var db *sql.DB
 	var cleanup func()
@@ -75,7 +78,7 @@ func NewSession(ctx context.Context, ch *cmdutil.Helper, opts Options) (*Session
 		if pgDB == "" {
 			pgDB = "postgres"
 		}
-		db, cleanup, err = openPostgres(ctx, ch, opts, pgDB, role)
+		db, cleanup, err = openPostgres(ctx, ch, opts, pgDB, role, dbInfo.Kind)
 	default:
 		return nil, fmt.Errorf("unsupported database kind %q", dbInfo.Kind)
 	}

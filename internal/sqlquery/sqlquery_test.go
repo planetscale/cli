@@ -5,6 +5,8 @@ import (
 	"errors"
 	"testing"
 
+	qt "github.com/frankban/quicktest"
+
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/config"
 	"github.com/planetscale/cli/internal/mock"
@@ -156,7 +158,7 @@ func TestOpenPostgresCleansUpRoleWhenReadinessWaitIsCanceled(t *testing.T) {
 		Organization: "org",
 		Database:     "database",
 		Branch:       "main",
-	}, "postgres", cmdutil.ReaderRole)
+	}, "postgres", cmdutil.ReaderRole, ps.DatabaseEnginePostgres)
 
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("error = %v, want context cancellation", err)
@@ -172,5 +174,118 @@ func TestOpenPostgresCleansUpRoleWhenReadinessWaitIsCanceled(t *testing.T) {
 	}
 	if deleteCalls != 1 {
 		t.Fatalf("role deletions = %d, want 1", deleteCalls)
+	}
+}
+
+func TestValidateEngineOptions(t *testing.T) {
+	c := qt.New(t)
+
+	c.Assert(validateEngineOptions(ps.DatabaseEngineNeki, Options{Shard: "shard-1"}), qt.IsNil)
+	c.Assert(validateEngineOptions(ps.DatabaseEngineNeki, Options{Router: "default"}), qt.IsNil)
+	c.Assert(validateEngineOptions(ps.DatabaseEngineNeki, Options{Shard: "shard-1", Router: "default"}), qt.IsNil)
+
+	c.Assert(validateEngineOptions(ps.DatabaseEnginePostgres, Options{Shard: "shard-1"}), qt.ErrorMatches, `--shard/--router are only supported for Neki databases`)
+	c.Assert(validateEngineOptions(ps.DatabaseEngineMySQL, Options{Router: "default"}), qt.ErrorMatches, `--shard/--router are only supported for Neki databases`)
+	c.Assert(validateEngineOptions(ps.DatabaseEngineNeki, Options{Shard: "commerce/-80"}), qt.ErrorMatches, `--shard must be a Neki shard ID \(from pscale branch shard list\), not a Vitess keyspace/shard`)
+	c.Assert(validateEngineOptions(ps.DatabaseEngineNeki, Options{Shard: "bad shard"}), qt.ErrorMatches, `invalid --shard "bad shard"`)
+}
+
+func TestPostgresUsername(t *testing.T) {
+	c := qt.New(t)
+
+	username, err := postgresUsername("role-abc", Options{}, ps.DatabaseEngineNeki)
+	c.Assert(err, qt.IsNil)
+	c.Assert(username, qt.Equals, "role-abc")
+
+	username, err = postgresUsername("role-abc", Options{Replica: true}, ps.DatabaseEnginePostgres)
+	c.Assert(err, qt.IsNil)
+	c.Assert(username, qt.Equals, "role-abc|replica")
+
+	username, err = postgresUsername("role-abc", Options{Replica: true}, ps.DatabaseEngineNeki)
+	c.Assert(err, qt.IsNil)
+	c.Assert(username, qt.Equals, "role-abc")
+
+	username, err = postgresUsername("role-abc", Options{Router: "analytics"}, ps.DatabaseEngineNeki)
+	c.Assert(err, qt.IsNil)
+	c.Assert(username, qt.Equals, "role-abc|analytics")
+
+	username, err = postgresUsername("role-abc", Options{Replica: true, Router: "analytics"}, ps.DatabaseEngineNeki)
+	c.Assert(err, qt.IsNil)
+	c.Assert(username, qt.Equals, "role-abc|analytics")
+
+	_, err = postgresUsername("role-abc", Options{Router: "analytics"}, ps.DatabaseEnginePostgres)
+	c.Assert(err, qt.ErrorMatches, "--router is only supported for Neki databases")
+}
+
+func TestPostgresOptions(t *testing.T) {
+	c := qt.New(t)
+
+	options, err := postgresOptions(Options{Replica: true}, ps.DatabaseEngineNeki)
+	c.Assert(err, qt.IsNil)
+	c.Assert(options, qt.Equals, "-c __neki.target=REPLICA")
+
+	options, err = postgresOptions(Options{Shard: "shard-1"}, ps.DatabaseEngineNeki)
+	c.Assert(err, qt.IsNil)
+	c.Assert(options, qt.Equals, "-c __neki.shard=shard-1")
+
+	options, err = postgresOptions(Options{Replica: true, Shard: "shard-1"}, ps.DatabaseEngineNeki)
+	c.Assert(err, qt.IsNil)
+	c.Assert(options, qt.Equals, "-c __neki.target=REPLICA -c __neki.shard=shard-1")
+
+	options, err = postgresOptions(Options{Replica: true, Shard: "shard-1"}, ps.DatabaseEnginePostgres)
+	c.Assert(err, qt.ErrorMatches, "--shard is only supported for Neki databases")
+	c.Assert(options, qt.Equals, "")
+
+	options, err = postgresOptions(Options{Replica: true}, ps.DatabaseEnginePostgres)
+	c.Assert(err, qt.IsNil)
+	c.Assert(options, qt.Equals, "")
+}
+
+func TestPostgresConnStrIncludesOptions(t *testing.T) {
+	c := qt.New(t)
+	c.Assert(postgresConnStr("db.example", "5432", "role-abc|default", "secret", "postgres", "-c __neki.shard=shard-1"),
+		qt.Equals, "host=db.example port=5432 user=role-abc|default password=secret dbname=postgres sslmode=verify-full options='-c __neki.shard=shard-1'")
+}
+
+func TestNewSessionRejectsNekiFlagsBeforeMintingRole(t *testing.T) {
+	createCalled := false
+	ch := &cmdutil.Helper{
+		Config: &config.Config{Organization: "org"},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{
+				Databases: &mock.DatabaseService{
+					GetFn: func(context.Context, *ps.GetDatabaseRequest) (*ps.Database, error) {
+						return &ps.Database{Name: "app", Kind: ps.DatabaseEnginePostgres}, nil
+					},
+				},
+				DatabaseBranches: &mock.DatabaseBranchesService{
+					GetFn: func(context.Context, *ps.GetDatabaseBranchRequest) (*ps.DatabaseBranch, error) {
+						return &ps.DatabaseBranch{Name: "main", Ready: true}, nil
+					},
+				},
+				PostgresRoles: &mock.PostgresRolesService{
+					CreateFn: func(context.Context, *ps.CreatePostgresRoleRequest) (*ps.PostgresRole, error) {
+						createCalled = true
+						return nil, errors.New("should not create a role")
+					},
+				},
+			}, nil
+		},
+	}
+
+	_, err := NewSession(context.Background(), ch, Options{
+		Organization: "org",
+		Database:     "app",
+		Branch:       "main",
+		Shard:        "shard-1",
+	})
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if err.Error() != "--shard/--router are only supported for Neki databases" {
+		t.Fatalf("error = %q", err.Error())
+	}
+	if createCalled {
+		t.Fatal("created a role before rejecting --shard")
 	}
 }

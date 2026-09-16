@@ -385,12 +385,14 @@ pscale branch query-patterns delete <database> <branch> <report-id> --org <org> 
 ```bash
 pscale inspect all <database> <branch> --org <org> --format json    # every applicable check, one report
 pscale inspect <check> <database> <branch> --org <org> --format json
+pscale inspect all <database> <branch> --org <org> --format json --shard <shard-id>   # Neki: pin one shard
+pscale inspect locks <database> <branch> --org <org> --format json --router <router>  # Neki: pin a router group
 ```
 
 Checks: `table-sizes`, `index-sizes`, `unused-indexes`, `redundant-indexes`, `seq-scans`, `long-running-queries`, `locks`, `outliers`, `calls`, `bloat`, `vacuum-stats`, `replication-slots`, `subscriptions`. Checks adapt per engine; ones that don't apply explain the alternative. JSON results include `next_steps` pointing at the matching `insights` command — follow them.
 
 Caveats:
-- Statistics are since last server restart and per-connection-target: on sharded Vitess databases they reflect a single shard's MySQL instance. Use `--keyspace` to pick a keyspace, or pin an exact shard with `--keyspace 'mykeyspace/-80'` (enumerate with `pscale sql <database> <branch> --org <org> --format json --query "SHOW VITESS_SHARDS"`; rows are `keyspace/shard`). Databases can have hundreds of shards — inspect one shard at a time rather than fanning out. On PostgreSQL, stats are scoped to one database (use `--dbname`; if CONNECT is denied, retry with `--role admin`).
+- Statistics are since last server restart and per-connection-target: on sharded Vitess databases they reflect a single shard's MySQL instance. Use `--keyspace` to pick a keyspace, or pin an exact shard with `--keyspace 'mykeyspace/-80'` (enumerate with `pscale sql <database> <branch> --org <org> --format json --query "SHOW VITESS_SHARDS"`; rows are `keyspace/shard`). On Neki, use `--shard` to pin a shard (list with `pscale branch shard list <database> <branch> --org <org> --format json`) or `--router` to pick a router group (`pscale branch router list`). Databases can have hundreds of shards — inspect one shard at a time rather than fanning out. On PostgreSQL, stats are scoped to one database (use `--dbname`; if CONNECT is denied, retry with `--role admin`).
 - `outliers`/`calls` need `pg_stat_statements` on PostgreSQL; if missing, use `pscale insights queries` instead (no extension needed).
 - Rule of thumb: start with `insights` (traffic-aware, historical), use `inspect` for live state (locks, in-flight queries) and physical layout (sizes, bloat, index usage).
 

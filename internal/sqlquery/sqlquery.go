@@ -3,6 +3,7 @@ package sqlquery
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"net"
 	"slices"
@@ -36,6 +37,10 @@ type Options struct {
 	Role string
 	// Replica routes reads to replicas when true (same as pscale shell --replica).
 	Replica bool
+	// Shard pins a Neki session to one shard via __neki.shard (PGOPTIONS).
+	Shard string
+	// Router selects a Neki router group via a username |<name> suffix.
+	Router string
 	// Force allows destructive SQL (DELETE, DROP, TRUNCATE) after explicit user approval.
 	Force bool
 }
@@ -105,6 +110,9 @@ func Execute(ctx context.Context, ch *cmdutil.Helper, opts Options) (*Result, er
 	if !dbBranch.Ready {
 		return nil, fmt.Errorf("database branch is not ready yet")
 	}
+	if err := validateEngineOptions(dbInfo.Kind, opts); err != nil {
+		return nil, err
+	}
 
 	result := &Result{
 		Status:   "ok",
@@ -125,7 +133,7 @@ func Execute(ctx context.Context, ch *cmdutil.Helper, opts Options) (*Result, er
 		if pgDB == "" {
 			pgDB = "postgres"
 		}
-		outcome, err = queryPostgres(ctx, ch, opts, pgDB, role)
+		outcome, err = queryPostgres(ctx, ch, opts, pgDB, role, dbInfo.Kind)
 	default:
 		return nil, fmt.Errorf("unsupported database kind %q", dbInfo.Kind)
 	}
@@ -243,8 +251,79 @@ func mysqlDSNDatabase(opts Options) string {
 	return "@primary"
 }
 
-func queryPostgres(ctx context.Context, ch *cmdutil.Helper, opts Options, pgDB string, role cmdutil.PasswordRole) (*queryOutcome, error) {
-	db, cleanup, err := openPostgres(ctx, ch, opts, pgDB, role)
+func validateEngineOptions(kind ps.DatabaseEngine, opts Options) error {
+	if kind != ps.DatabaseEngineNeki && (opts.Shard != "" || opts.Router != "") {
+		return errors.New("--shard/--router are only supported for Neki databases")
+	}
+	if opts.Shard != "" {
+		if err := validateNekiToken("--shard", opts.Shard); err != nil {
+			return err
+		}
+		if strings.Contains(opts.Shard, "/") {
+			return errors.New("--shard must be a Neki shard ID (from pscale branch shard list), not a Vitess keyspace/shard")
+		}
+	}
+	if opts.Router != "" {
+		return validateNekiToken("--router", opts.Router)
+	}
+	return nil
+}
+
+func validateNekiToken(flag, value string) error {
+	if value == "" || strings.TrimSpace(value) != value || strings.ContainsAny(value, " \t\n'\"\\=") {
+		return fmt.Errorf("invalid %s %q", flag, value)
+	}
+	return nil
+}
+
+// postgresUsername applies routing suffixes. Neki selects a router group with
+// |<name>; replica reads on Neki use PGOPTIONS instead of |replica.
+func postgresUsername(username string, opts Options, kind ps.DatabaseEngine) (string, error) {
+	if opts.Router != "" && kind != ps.DatabaseEngineNeki {
+		return "", errors.New("--router is only supported for Neki databases")
+	}
+	if opts.Replica && kind != ps.DatabaseEngineNeki {
+		username += "|replica"
+	}
+	if opts.Router != "" {
+		username += "|" + opts.Router
+	}
+	return username, nil
+}
+
+// postgresOptions builds the libpq options string (same as PGOPTIONS). Neki
+// replica reads set __neki.target; --shard pins __neki.shard.
+func postgresOptions(opts Options, kind ps.DatabaseEngine) (string, error) {
+	if opts.Shard != "" && kind != ps.DatabaseEngineNeki {
+		return "", errors.New("--shard is only supported for Neki databases")
+	}
+	var parts []string
+	if opts.Replica && kind == ps.DatabaseEngineNeki {
+		parts = append(parts, "-c __neki.target=REPLICA")
+	}
+	if opts.Shard != "" {
+		if err := validateNekiToken("--shard", opts.Shard); err != nil {
+			return "", err
+		}
+		if strings.Contains(opts.Shard, "/") {
+			return "", errors.New("--shard must be a Neki shard ID (from pscale branch shard list), not a Vitess keyspace/shard")
+		}
+		parts = append(parts, "-c __neki.shard="+opts.Shard)
+	}
+	return strings.Join(parts, " "), nil
+}
+
+func postgresConnStr(host, port, username, password, dbname, options string) string {
+	connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=verify-full",
+		host, port, username, password, dbname)
+	if options != "" {
+		connStr += " options='" + options + "'"
+	}
+	return connStr
+}
+
+func queryPostgres(ctx context.Context, ch *cmdutil.Helper, opts Options, pgDB string, role cmdutil.PasswordRole, kind ps.DatabaseEngine) (*queryOutcome, error) {
+	db, cleanup, err := openPostgres(ctx, ch, opts, pgDB, role, kind)
 	if err != nil {
 		return nil, err
 	}
@@ -255,7 +334,7 @@ func queryPostgres(ctx context.Context, ch *cmdutil.Helper, opts Options, pgDB s
 
 // openPostgres mints an ephemeral role and opens a direct connection to the
 // branch. The returned cleanup closes the connection and deletes the role.
-func openPostgres(ctx context.Context, ch *cmdutil.Helper, opts Options, pgDB string, role cmdutil.PasswordRole) (*sql.DB, func(), error) {
+func openPostgres(ctx context.Context, ch *cmdutil.Helper, opts Options, pgDB string, role cmdutil.PasswordRole, kind ps.DatabaseEngine) (*sql.DB, func(), error) {
 	client, err := ch.Client()
 	if err != nil {
 		return nil, nil, err
@@ -291,9 +370,15 @@ func openPostgres(ctx context.Context, ch *cmdutil.Helper, opts Options, pgDB st
 		}
 	}
 
-	username := pgRole.Role.Username
-	if opts.Replica {
-		username = username + "|replica"
+	username, err := postgresUsername(pgRole.Role.Username, opts, kind)
+	if err != nil {
+		cleanupRole()
+		return nil, nil, err
+	}
+	options, err := postgresOptions(opts, kind)
+	if err != nil {
+		cleanupRole()
+		return nil, nil, err
 	}
 
 	remoteHost, remotePort, err := net.SplitHostPort(pgRole.Role.AccessHostURL)
@@ -302,8 +387,7 @@ func openPostgres(ctx context.Context, ch *cmdutil.Helper, opts Options, pgDB st
 		remotePort = "5432"
 	}
 
-	connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=verify-full",
-		remoteHost, remotePort, username, pgRole.Role.Password, pgDB)
+	connStr := postgresConnStr(remoteHost, remotePort, username, pgRole.Role.Password, pgDB, options)
 
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
