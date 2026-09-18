@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/dustin/go-humanize"
 	"github.com/planetscale/cli/internal/cmdutil"
 	ps "github.com/planetscale/cli/internal/planetscale"
 	"github.com/planetscale/cli/internal/printer"
@@ -55,7 +56,12 @@ func SettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 func toKeyspaceSettings(ks *ps.Keyspace) *KeyspaceSettings {
 	settings := &KeyspaceSettings{
 		MaxRollout: "not set",
-		orig:       ks,
+		Storage: Storage{
+			DiskScalingStrategy: "not set",
+			StorageBytes:        "not set",
+			MaxStorageBytes:     "not set",
+		},
+		orig: ks,
 	}
 
 	if ks.MaxRollout != nil {
@@ -97,6 +103,19 @@ func toKeyspaceSettings(ks *ps.Keyspace) *KeyspaceSettings {
 		}
 		if ks.Throttler.Threshold != nil {
 			settings.Throttler.Threshold = fmt.Sprintf("%gs", *ks.Throttler.Threshold)
+		}
+	}
+
+	// Set the disk storage settings if available
+	if ks.Storage != nil {
+		if ks.Storage.DiskScalingStrategy != "" {
+			settings.Storage.DiskScalingStrategy = ks.Storage.DiskScalingStrategy
+		}
+		if ks.Storage.StorageBytes > 0 {
+			settings.Storage.StorageBytes = humanize.IBytes(uint64(ks.Storage.StorageBytes))
+		}
+		if ks.Storage.MaxStorageBytes > 0 {
+			settings.Storage.MaxStorageBytes = humanize.IBytes(uint64(ks.Storage.MaxStorageBytes))
 		}
 	}
 

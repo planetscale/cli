@@ -1142,6 +1142,383 @@ func TestKeyspace_UpdateSettingsCmd_MaxRolloutAndVReplicationFetchesOnce(t *test
 	c.Assert(svc.UpdateSettingsFnInvoked, qt.IsTrue)
 }
 
+func TestKeyspace_UpdateSettingsCmd_Storage(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	db := "planetscale"
+	branch := "main"
+	keyspace := "sharded"
+
+	ts := time.Now()
+
+	updatedKs := &ps.Keyspace{
+		ID:        "ks1",
+		Name:      keyspace,
+		CreatedAt: ts,
+		UpdatedAt: ts,
+		Storage: &ps.KeyspaceStorage{
+			StorageBytes:        107374182400,
+			MaxStorageBytes:     4398046511104,
+			DiskScalingStrategy: "grow",
+		},
+	}
+
+	svc := &mock.KeyspacesService{
+		GetFn: func(ctx context.Context, req *ps.GetKeyspaceRequest) (*ps.Keyspace, error) {
+			return &ps.Keyspace{ID: "ks1", Name: keyspace}, nil
+		},
+		UpdateSettingsFn: func(ctx context.Context, req *ps.UpdateKeyspaceSettingsRequest) (*ps.Keyspace, error) {
+			c.Assert(req.Storage, qt.Not(qt.IsNil))
+			c.Assert(req.Storage.DiskScalingStrategy, qt.Not(qt.IsNil))
+			c.Assert(*req.Storage.DiskScalingStrategy, qt.Equals, "grow")
+			c.Assert(req.Storage.MaxStorageBytes, qt.Not(qt.IsNil))
+			c.Assert(*req.Storage.MaxStorageBytes, qt.Equals, int64(4398046511104))
+			c.Assert(req.Storage.StorageBytes, qt.IsNil)
+			c.Assert(req.ReplicationDurabilityConstraints, qt.IsNil)
+			c.Assert(req.VReplicationFlags, qt.IsNil)
+			c.Assert(req.Throttler, qt.IsNil)
+			c.Assert(req.MaxRollout, qt.IsNil)
+
+			return updatedKs, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: org,
+		},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{
+				Keyspaces: svc,
+			}, nil
+		},
+	}
+
+	cmd := UpdateSettingsCmd(ch)
+	cmd.SetArgs([]string{db, branch, keyspace, "--disk-scaling-strategy=grow", "--max-storage=4398046511104"})
+	err := cmd.Execute()
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.GetFnInvoked, qt.IsFalse)
+	c.Assert(svc.UpdateSettingsFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.JSONEquals, updatedKs)
+}
+
+func TestKeyspace_UpdateSettingsCmd_ShrinkStorage(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	db := "planetscale"
+	branch := "main"
+	keyspace := "sharded"
+
+	updatedKs := &ps.Keyspace{
+		ID:   "ks1",
+		Name: keyspace,
+		Storage: &ps.KeyspaceStorage{
+			StorageBytes:        214748364800,
+			DiskScalingStrategy: "shrink",
+		},
+	}
+
+	svc := &mock.KeyspacesService{
+		GetFn: func(ctx context.Context, req *ps.GetKeyspaceRequest) (*ps.Keyspace, error) {
+			return &ps.Keyspace{ID: "ks1", Name: keyspace}, nil
+		},
+		UpdateSettingsFn: func(ctx context.Context, req *ps.UpdateKeyspaceSettingsRequest) (*ps.Keyspace, error) {
+			c.Assert(req.Storage, qt.Not(qt.IsNil))
+			c.Assert(*req.Storage.DiskScalingStrategy, qt.Equals, "shrink")
+			c.Assert(req.Storage.StorageBytes, qt.Not(qt.IsNil))
+			c.Assert(*req.Storage.StorageBytes, qt.Equals, int64(214748364800))
+			c.Assert(req.Storage.MaxStorageBytes, qt.IsNil)
+
+			return updatedKs, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: org,
+		},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{
+				Keyspaces: svc,
+			}, nil
+		},
+	}
+
+	cmd := UpdateSettingsCmd(ch)
+	cmd.SetArgs([]string{db, branch, keyspace, "--disk-scaling-strategy=shrink", "--storage=214748364800"})
+	err := cmd.Execute()
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.GetFnInvoked, qt.IsFalse)
+	c.Assert(svc.UpdateSettingsFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.JSONEquals, updatedKs)
+}
+
+func TestKeyspace_UpdateSettingsCmd_DisableDiskScaling(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	db := "planetscale"
+	branch := "main"
+	keyspace := "sharded"
+
+	svc := &mock.KeyspacesService{
+		GetFn: func(ctx context.Context, req *ps.GetKeyspaceRequest) (*ps.Keyspace, error) {
+			return &ps.Keyspace{ID: "ks1", Name: keyspace}, nil
+		},
+		UpdateSettingsFn: func(ctx context.Context, req *ps.UpdateKeyspaceSettingsRequest) (*ps.Keyspace, error) {
+			c.Assert(req.Storage, qt.Not(qt.IsNil))
+			c.Assert(*req.Storage.DiskScalingStrategy, qt.Equals, "disable")
+			c.Assert(req.Storage.MaxStorageBytes, qt.IsNil)
+			c.Assert(req.Storage.StorageBytes, qt.IsNil)
+
+			return &ps.Keyspace{
+				ID:   "ks1",
+				Name: keyspace,
+				Storage: &ps.KeyspaceStorage{
+					DiskScalingStrategy: "disable",
+				},
+			}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: org,
+		},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{
+				Keyspaces: svc,
+			}, nil
+		},
+	}
+
+	cmd := UpdateSettingsCmd(ch)
+	cmd.SetArgs([]string{db, branch, keyspace, "--disk-scaling-strategy=disable"})
+	err := cmd.Execute()
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.GetFnInvoked, qt.IsFalse)
+	c.Assert(svc.UpdateSettingsFnInvoked, qt.IsTrue)
+}
+
+func TestKeyspace_UpdateSettingsCmd_RejectsInvalidDiskScalingStrategy(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	svc := &mock.KeyspacesService{
+		GetFn: func(ctx context.Context, req *ps.GetKeyspaceRequest) (*ps.Keyspace, error) {
+			return &ps.Keyspace{ID: "ks1", Name: "sharded"}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: "planetscale"},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{Keyspaces: svc}, nil
+		},
+	}
+
+	cmd := UpdateSettingsCmd(ch)
+	cmd.SetArgs([]string{"planetscale", "main", "sharded", "--disk-scaling-strategy=nonsense"})
+	err := cmd.Execute()
+	c.Assert(err, qt.ErrorMatches, `invalid --disk-scaling-strategy "nonsense", must be one of: grow, disable, shrink`)
+	c.Assert(svc.GetFnInvoked, qt.IsFalse)
+	c.Assert(svc.UpdateSettingsFnInvoked, qt.IsFalse)
+}
+
+func TestKeyspace_UpdateSettingsCmd_RejectsStorageWithoutShrink(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	args := [][]string{
+		{"--storage=214748364800"},
+		{"--disk-scaling-strategy=grow", "--storage=214748364800"},
+	}
+
+	for _, extra := range args {
+		svc := &mock.KeyspacesService{
+			GetFn: func(ctx context.Context, req *ps.GetKeyspaceRequest) (*ps.Keyspace, error) {
+				return &ps.Keyspace{ID: "ks1", Name: "sharded"}, nil
+			},
+		}
+
+		ch := &cmdutil.Helper{
+			Printer: p,
+			Config:  &config.Config{Organization: "planetscale"},
+			Client: func() (*ps.Client, error) {
+				return &ps.Client{Keyspaces: svc}, nil
+			},
+		}
+
+		cmd := UpdateSettingsCmd(ch)
+		cmd.SetArgs(append([]string{"planetscale", "main", "sharded"}, extra...))
+		err := cmd.Execute()
+		c.Assert(err, qt.ErrorMatches, "--storage can only be set when --disk-scaling-strategy is shrink")
+		c.Assert(svc.GetFnInvoked, qt.IsFalse)
+		c.Assert(svc.UpdateSettingsFnInvoked, qt.IsFalse)
+	}
+}
+
+func TestKeyspace_UpdateSettingsCmd_RejectsInvalidStorageSizes(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	tests := []struct {
+		args []string
+		err  string
+	}{
+		{
+			args: []string{"--disk-scaling-strategy=shrink", "--storage=53687091201"},
+			err:  "--storage must be a multiple of 1 GiB",
+		},
+		{
+			args: []string{"--disk-scaling-strategy=shrink", "--storage=0"},
+			err:  "--storage must be greater than 0",
+		},
+		{
+			args: []string{"--max-storage=0"},
+			err:  "--max-storage must be greater than 0",
+		},
+	}
+
+	for _, tt := range tests {
+		svc := &mock.KeyspacesService{
+			GetFn: func(ctx context.Context, req *ps.GetKeyspaceRequest) (*ps.Keyspace, error) {
+				return &ps.Keyspace{ID: "ks1", Name: "sharded"}, nil
+			},
+		}
+
+		ch := &cmdutil.Helper{
+			Printer: p,
+			Config:  &config.Config{Organization: "planetscale"},
+			Client: func() (*ps.Client, error) {
+				return &ps.Client{Keyspaces: svc}, nil
+			},
+		}
+
+		cmd := UpdateSettingsCmd(ch)
+		cmd.SetArgs(append([]string{"planetscale", "main", "sharded"}, tt.args...))
+		err := cmd.Execute()
+		c.Assert(err, qt.ErrorMatches, tt.err)
+		c.Assert(svc.GetFnInvoked, qt.IsFalse)
+		c.Assert(svc.UpdateSettingsFnInvoked, qt.IsFalse)
+	}
+}
+
+func TestKeyspace_UpdateSettingsCmd_StorageAndThrottlerSkipGet(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	svc := &mock.KeyspacesService{
+		GetFn: func(ctx context.Context, req *ps.GetKeyspaceRequest) (*ps.Keyspace, error) {
+			return &ps.Keyspace{ID: "ks1", Name: "sharded"}, nil
+		},
+		UpdateSettingsFn: func(ctx context.Context, req *ps.UpdateKeyspaceSettingsRequest) (*ps.Keyspace, error) {
+			c.Assert(req.Storage, qt.Not(qt.IsNil))
+			c.Assert(*req.Storage.DiskScalingStrategy, qt.Equals, "grow")
+			c.Assert(req.Throttler, qt.Not(qt.IsNil))
+			c.Assert(*req.Throttler.Enabled, qt.IsFalse)
+			c.Assert(req.VReplicationFlags, qt.IsNil)
+
+			return &ps.Keyspace{ID: "ks1", Name: "sharded"}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: "planetscale"},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{Keyspaces: svc}, nil
+		},
+	}
+
+	cmd := UpdateSettingsCmd(ch)
+	cmd.SetArgs([]string{"planetscale", "main", "sharded", "--disk-scaling-strategy=grow", "--throttler-enabled=false"})
+	err := cmd.Execute()
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.GetFnInvoked, qt.IsFalse)
+	c.Assert(svc.UpdateSettingsFnInvoked, qt.IsTrue)
+}
+
+func TestKeyspace_UpdateSettingsCmd_OmittedStorageIsNotSent(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	svc := &mock.KeyspacesService{
+		GetFn: func(ctx context.Context, req *ps.GetKeyspaceRequest) (*ps.Keyspace, error) {
+			return &ps.Keyspace{ID: "ks1", Name: "sharded"}, nil
+		},
+		UpdateSettingsFn: func(ctx context.Context, req *ps.UpdateKeyspaceSettingsRequest) (*ps.Keyspace, error) {
+			c.Assert(req.Storage, qt.IsNil)
+
+			return &ps.Keyspace{ID: "ks1", Name: "sharded"}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: "planetscale"},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{Keyspaces: svc}, nil
+		},
+	}
+
+	cmd := UpdateSettingsCmd(ch)
+	cmd.SetArgs([]string{"planetscale", "main", "sharded", "--max-rollout=4"})
+	err := cmd.Execute()
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.UpdateSettingsFnInvoked, qt.IsTrue)
+}
+
 func TestKeyspace_UpdateSettingsCmd_NoFlagsMakesNoRequests(t *testing.T) {
 	c := qt.New(t)
 
