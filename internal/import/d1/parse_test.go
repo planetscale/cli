@@ -163,3 +163,67 @@ func TestParseTableBodyIgnoresSmuggledSQLAfterClose(t *testing.T) {
 		t.Fatalf("ForeignKey must not include injected DROP: %q", cols[0].ForeignKey)
 	}
 }
+
+// TestMatchingParenEndClosesStringAtBackslash is a regression test for
+// planetscale/surfaces#4141. PostgreSQL (standard_conforming_strings=on, the default since
+// 9.1) and SQLite do not treat backslash as a string-literal escape character: '\' is a
+// complete, valid string literal containing one backslash. matchingParenEnd used to treat
+// backslash as an escape (`s[i-1] != '\\'`), so it kept scanning past this literal's real end
+// looking for a closing quote, absorbing the ')' that a real SQL parser closes CHECK(...) and
+// CREATE TABLE(...) with. That let a later ';' in the dump start a new, attacker-controlled
+// statement that psql would execute. The fix must close the string at the first quote that
+// isn't doubled, exactly like PostgreSQL/SQLite do, regardless of a preceding backslash.
+func TestMatchingParenEndClosesStringAtBackslash(t *testing.T) {
+	s := `(name <> '\'))`
+	end, ok := matchingParenEnd(s, 0)
+	if !ok {
+		t.Fatalf("matchingParenEnd(%q) = not found, want a match", s)
+	}
+	want := strings.Index(s, ")")
+	if end != want {
+		t.Fatalf("matchingParenEnd(%q) = %d, want %d (the first ')' right after the closed string literal)", s, end, want)
+	}
+}
+
+// TestParseTableBodyBackslashQuoteCheckDoesNotSmuggleSQL is the end-to-end regression test
+// for planetscale/surfaces#4141: a CHECK expression containing the literal '\' used to fool
+// matchingParenEnd into treating the attacker's "); DROP TABLE ...; --" tail as still being
+// inside the string literal, pulling it into the parsed column list instead of stopping at
+// the real close of CREATE TABLE(...).
+func TestParseTableBodyBackslashQuoteCheckDoesNotSmuggleSQL(t *testing.T) {
+	ddl := `CREATE TABLE t (id INTEGER PRIMARY KEY, name TEXT CHECK (name <> '\')); DROP TABLE users; --'));`
+	cols, constraints := parseTableBody(ddl)
+	if len(constraints) != 0 {
+		t.Fatalf("constraints = %#v, want none", constraints)
+	}
+	if len(cols) != 2 {
+		t.Fatalf("cols = %#v, want 2 columns (id, name)", cols)
+	}
+	if cols[1].Name != "name" {
+		t.Fatalf("cols[1].Name = %q, want %q", cols[1].Name, "name")
+	}
+	if len(cols[1].CheckExprs) != 1 || cols[1].CheckExprs[0] != `name <> '\'` {
+		t.Fatalf("CheckExprs = %#v, want [%q]", cols[1].CheckExprs, `name <> '\'`)
+	}
+	for _, col := range cols {
+		for _, check := range col.CheckExprs {
+			if strings.Contains(strings.ToUpper(check), "DROP") {
+				t.Fatalf("CheckExprs must not include smuggled DROP: %q", check)
+			}
+		}
+	}
+}
+
+// TestMatchingParenEndRealBackslashNotNearQuoteBoundary confirms the fix doesn't regress
+// legitimate CHECK expressions that contain real backslashes elsewhere in a string literal
+// (i.e. not immediately before the closing quote, the pattern above).
+func TestMatchingParenEndRealBackslashNotNearQuoteBoundary(t *testing.T) {
+	s := `(path <> 'C:\Users\foo')`
+	end, ok := matchingParenEnd(s, 0)
+	if !ok {
+		t.Fatalf("matchingParenEnd(%q) = not found, want a match", s)
+	}
+	if want := len(s) - 1; end != want {
+		t.Fatalf("matchingParenEnd(%q) = %d, want %d (the final ')')", s, end, want)
+	}
+}

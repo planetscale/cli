@@ -739,7 +739,23 @@ func matchingParenEnd(s string, open int) (int, bool) {
 	for i := open; i < len(s); i++ {
 		c := s[i]
 		if inQuote != 0 {
-			if c == inQuote && (i == 0 || s[i-1] != '\\') {
+			if c == inQuote {
+				// A doubled quote char ('', "", ``) is the SQL-standard escape for a
+				// literal quote inside the string/identifier, not its end — consume
+				// both bytes and stay in the quote. Backslash is NOT an escape
+				// character here: PostgreSQL parses these DDL statements with
+				// standard_conforming_strings=on (the default since 9.1), under which
+				// '\' closes a single-quoted literal immediately (it is a one-character
+				// string containing a backslash), and SQLite string literals are the
+				// same. Treating backslash as an escape, as this used to, let a CHECK
+				// expression containing '\' desynchronize this scanner from what psql
+				// actually parses, smuggling `)`/`;` past the real end of the
+				// CHECK(...)/CREATE TABLE(...) and into a new, attacker-controlled
+				// statement.
+				if i+1 < len(s) && s[i+1] == inQuote {
+					i++
+					continue
+				}
 				inQuote = 0
 			}
 			continue

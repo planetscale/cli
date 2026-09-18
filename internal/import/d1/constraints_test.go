@@ -71,6 +71,41 @@ func TestConvertCheckConstraintDoubleQuotedLiterals(t *testing.T) {
 	assertValidPostgresDDL(t, ddl)
 }
 
+// TestConvertCheckConstraintBackslashQuoteDoesNotSmuggleSQL is the full-pipeline regression
+// test for planetscale/surfaces#4141: a D1 dump containing a CHECK expression with the
+// literal '\' (single-quote, backslash, single-quote), followed by content that would be SQL
+// injection if matchingParenEnd didn't close that string at the same point psql does. Before
+// the fix, matchingParenEnd treated the backslash as escaping the quote, kept scanning past
+// the real end of CREATE TABLE(...), and pulled the attacker's "); DROP TABLE users; --" tail
+// into the parsed table, which the (also-buggy) unescaped pass-through in convertCheckExpr
+// would then have emitted verbatim into DDL executed by psql. The generated DDL must consist
+// of exactly the one legitimate CREATE TABLE statement, with the attacker payload inert.
+func TestConvertCheckConstraintBackslashQuoteDoesNotSmuggleSQL(t *testing.T) {
+	sql := `CREATE TABLE t (id INTEGER PRIMARY KEY, name TEXT CHECK (name <> '\')); DROP TABLE users; --'));`
+	ddl := convertTablesDDL(t, sql)
+	if strings.Contains(strings.ToUpper(ddl), "DROP") {
+		t.Fatalf("generated DDL must not contain a smuggled DROP statement:\n%s", ddl)
+	}
+	if got := strings.Count(ddl, "CREATE TABLE"); got != 1 {
+		t.Fatalf("expected exactly one CREATE TABLE statement, got %d:\n%s", got, ddl)
+	}
+	if !strings.Contains(ddl, `CHECK ("name" <> '\')`) {
+		t.Fatalf("expected the CHECK expression's string literal preserved intact:\n%s", ddl)
+	}
+	assertValidPostgresDDL(t, ddl)
+}
+
+// TestConvertCheckExprPreservesRealBackslashes confirms the fix doesn't regress legitimate
+// CHECK expressions containing real backslashes that aren't part of the '\' pattern above.
+func TestConvertCheckExprPreservesRealBackslashes(t *testing.T) {
+	table := TableSchema{Name: "t", Columns: []ColumnSchema{{Name: "path", Type: "TEXT"}}}
+	got := convertCheckExpr(`path <> 'C:\Users\foo'`, table, nil)
+	want := `"path" <> 'C:\Users\foo'`
+	if got != want {
+		t.Fatalf("convertCheckExpr = %q, want %q", got, want)
+	}
+}
+
 func TestConvertReferencesClauseCanonicalizesCase(t *testing.T) {
 	sql := `CREATE TABLE Users (id INTEGER PRIMARY KEY);
 CREATE TABLE Posts (id INTEGER PRIMARY KEY, user_id INTEGER REFERENCES USERS(ID));
