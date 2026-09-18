@@ -2,7 +2,6 @@ package planetscale
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -98,16 +97,22 @@ type LintExternalKeyspaceRequest struct {
 	ExternalDatasource ExternalDatasource `json:"external_datasource"`
 }
 
+type ExternalKeyspaceLintError struct {
+	LintError        string `json:"lint_error"`
+	TableName        string `json:"table_name"`
+	ErrorDescription string `json:"error_description"`
+}
+
 type LintExternalKeyspaceResponse struct {
-	CanConnect                    bool            `json:"can_connect"`
-	AllowSkipFailedTestConnection bool            `json:"allow_skip_failed_test_connection"`
-	Error                         string          `json:"error,omitempty"`
-	HasForeignKeys                bool            `json:"has_foreign_keys"`
-	LintErrors                    json.RawMessage `json:"lint_errors"`
-	MaxPoolSize                   int             `json:"max_pool_size"`
-	ServerVersion                 string          `json:"server_version"`
-	TotalStorageBytes             int64           `json:"total_storage_bytes"`
-	DefaultKeyspaceStorageBytes   int64           `json:"default_keyspace_storage_bytes"`
+	CanConnect                    bool                         `json:"can_connect"`
+	AllowSkipFailedTestConnection bool                         `json:"allow_skip_failed_test_connection"`
+	Error                         string                       `json:"error,omitempty"`
+	HasForeignKeys                bool                         `json:"has_foreign_keys"`
+	LintErrors                    []*ExternalKeyspaceLintError `json:"lint_errors"`
+	MaxPoolSize                   int                          `json:"max_pool_size"`
+	ServerVersion                 string                       `json:"server_version"`
+	TotalStorageBytes             int64                        `json:"total_storage_bytes"`
+	DefaultKeyspaceStorageBytes   int64                        `json:"default_keyspace_storage_bytes"`
 }
 
 type GetKeyspaceRequest struct {

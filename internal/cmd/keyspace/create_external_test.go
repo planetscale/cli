@@ -130,3 +130,53 @@ func TestKeyspace_CreateExternalCmdDryRun(t *testing.T) {
 	c.Assert(svc.CreateExternalFnInvoked, qt.IsFalse)
 	c.Assert(buf.String(), qt.JSONEquals, resp)
 }
+
+func TestKeyspace_CreateExternalCmdDryRunReportsLintErrors(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.Human
+	p := printer.NewPrinter(&format)
+	p.SetHumanOutput(&buf)
+
+	org := "planetscale"
+	resp := &ps.LintExternalKeyspaceResponse{
+		CanConnect: true,
+		LintErrors: []*ps.ExternalKeyspaceLintError{
+			{LintError: "NO_PRIMARY_KEY", TableName: "orders", ErrorDescription: "orders is missing a primary key"},
+		},
+	}
+
+	svc := &mock.KeyspacesService{
+		LintExternalFn: func(ctx context.Context, req *ps.LintExternalKeyspaceRequest) (*ps.LintExternalKeyspaceResponse, error) {
+			return resp, nil
+		},
+		CreateExternalFn: func(ctx context.Context, req *ps.CreateExternalKeyspaceRequest) (*ps.Keyspace, error) {
+			c.Fatalf("create should not be called during dry-run")
+			return nil, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: org},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{Keyspaces: svc}, nil
+		},
+	}
+
+	cmd := CreateExternalCmd(ch)
+	cmd.SetArgs([]string{
+		"planetscale", "main", "commerce",
+		"--host", "db.example.com",
+		"--source-database", "commerce",
+		"--username", "import",
+		"--password", "secret",
+		"--ssl-mode", "required",
+		"--dry-run",
+	})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(svc.CreateExternalFnInvoked, qt.IsFalse)
+	c.Assert(buf.String(), qt.Contains, "orders is missing a primary key")
+	c.Assert(buf.String(), qt.Not(qt.Contains), "is compatible with keyspace")
+}

@@ -109,6 +109,14 @@ size from pscale size cluster list.`,
 				}
 
 				if ch.Printer.Format() == printer.Human {
+					if len(resp.LintErrors) > 0 {
+						ch.Printer.Printf("External database %s can be reached, but reported %d schema lint error(s):\n", printer.BoldBlue(flags.sourceDatabase), len(resp.LintErrors))
+						for _, lintError := range resp.LintErrors {
+							ch.Printer.Printf("  %s: %s\n", printer.BoldRed(lintError.TableName), lintError.ErrorDescription)
+						}
+						return nil
+					}
+
 					ch.Printer.Printf("External database %s is compatible with keyspace %s.\n", printer.BoldBlue(flags.sourceDatabase), printer.BoldBlue(keyspace))
 					return nil
 				}
