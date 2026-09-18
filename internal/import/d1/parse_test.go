@@ -164,15 +164,6 @@ func TestParseTableBodyIgnoresSmuggledSQLAfterClose(t *testing.T) {
 	}
 }
 
-// TestMatchingParenEndClosesStringAtBackslash is a regression test for
-// planetscale/surfaces#4141. PostgreSQL (standard_conforming_strings=on, the default since
-// 9.1) and SQLite do not treat backslash as a string-literal escape character: '\' is a
-// complete, valid string literal containing one backslash. matchingParenEnd used to treat
-// backslash as an escape (`s[i-1] != '\\'`), so it kept scanning past this literal's real end
-// looking for a closing quote, absorbing the ')' that a real SQL parser closes CHECK(...) and
-// CREATE TABLE(...) with. That let a later ';' in the dump start a new, attacker-controlled
-// statement that psql would execute. The fix must close the string at the first quote that
-// isn't doubled, exactly like PostgreSQL/SQLite do, regardless of a preceding backslash.
 func TestMatchingParenEndClosesStringAtBackslash(t *testing.T) {
 	s := `(name <> '\'))`
 	end, ok := matchingParenEnd(s, 0)
@@ -185,11 +176,6 @@ func TestMatchingParenEndClosesStringAtBackslash(t *testing.T) {
 	}
 }
 
-// TestParseTableBodyBackslashQuoteCheckDoesNotSmuggleSQL is the end-to-end regression test
-// for planetscale/surfaces#4141: a CHECK expression containing the literal '\' used to fool
-// matchingParenEnd into treating the attacker's "); DROP TABLE ...; --" tail as still being
-// inside the string literal, pulling it into the parsed column list instead of stopping at
-// the real close of CREATE TABLE(...).
 func TestParseTableBodyBackslashQuoteCheckDoesNotSmuggleSQL(t *testing.T) {
 	ddl := `CREATE TABLE t (id INTEGER PRIMARY KEY, name TEXT CHECK (name <> '\')); DROP TABLE users; --'));`
 	cols, constraints := parseTableBody(ddl)
@@ -214,9 +200,6 @@ func TestParseTableBodyBackslashQuoteCheckDoesNotSmuggleSQL(t *testing.T) {
 	}
 }
 
-// TestMatchingParenEndRealBackslashNotNearQuoteBoundary confirms the fix doesn't regress
-// legitimate CHECK expressions that contain real backslashes elsewhere in a string literal
-// (i.e. not immediately before the closing quote, the pattern above).
 func TestMatchingParenEndRealBackslashNotNearQuoteBoundary(t *testing.T) {
 	s := `(path <> 'C:\Users\foo')`
 	end, ok := matchingParenEnd(s, 0)

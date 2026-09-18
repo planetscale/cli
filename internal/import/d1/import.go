@@ -673,9 +673,7 @@ func runPsqlFile(ctx context.Context, destURI, path string) error {
 	}
 
 	return withConnectionRetry(ctx, func() error {
-		// --single-transaction wraps the whole file in BEGIN/COMMIT so a statement that
-		// fails partway (including one smuggled past a converter bug into the generated
-		// DDL) rolls back instead of leaving earlier statements in the file autocommitted.
+		// --single-transaction: roll back the whole file if any statement fails.
 		cmd := execabs.CommandContext(ctx, psqlPath, destURI, "-v", "ON_ERROR_STOP=1", "--single-transaction", "-f", path)
 		out, err := cmd.CombinedOutput()
 		if err != nil {
