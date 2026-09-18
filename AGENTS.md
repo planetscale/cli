@@ -23,7 +23,7 @@ PlanetScale is a serverless database platform for **MySQL** (via Vitess), **Post
 
 On Vitess/MySQL, schema changes ship via **deploy requests**: online, non-blocking migrations you review and then deploy.
 
-Many commands are engine-specific, and some operations use different commands per engine. Schema changes: Vitess/MySQL uses `deploy-request`; Postgres and Neki branches apply DDL directly. Access: Vitess/MySQL uses `password`; Postgres and Neki use `role`. Resize: Vitess/MySQL uses `keyspace resize`; Postgres uses `branch resize`; Neki uses `branch config-profile`, `router`, and `shard`. Vitess/MySQL-only: `deploy-request`, `keyspace`, `workflow`, `connect`, `password`. Postgres-only: `traffic-control`, branch `switchover`/`parameters`, and `import d1`. Postgres and Neki: `role`, branch `maintenance`. Neki-only: `branch shard`, `config-profile`, `router`, `sidecar`, `admin`, `data-topology`, `changes`. The rest (`database`, `branch`, `sql`, `shell`, `insights`, `metrics`, `backup`, `org`, `auth`, `api`) work on all three.
+Many commands are engine-specific, and some operations use different commands per engine. Schema changes: Vitess/MySQL uses `deploy-request`; Postgres and Neki branches apply DDL directly. Access: Vitess/MySQL uses `password`; Postgres and Neki use `role`. Resize: Vitess/MySQL uses `keyspace resize`; Postgres uses `branch resize`; Neki uses `branch config-profile`, `router`, and `shard`. Vitess/MySQL-only: `deploy-request`, `keyspace` (including `keyspace create-external`), `branch vtctld move-tables`, `connect`, `password`. Do not use `pscale workflow` to move tables — use `pscale branch vtctld move-tables`. Postgres-only: `traffic-control`, branch `switchover`/`parameters`, and `import d1`. Postgres and Neki: `role`, branch `maintenance`. Neki-only: `branch shard`, `config-profile`, `router`, `sidecar`, `admin`, `data-topology`, `changes`. The rest (`database`, `branch`, `sql`, `shell`, `insights`, `metrics`, `backup`, `org`, `auth`, `api`) work on all three.
 
 When a database is "weird" (slow, erroring, locked, bloated):
 
@@ -455,6 +455,53 @@ After a failed deploy or revert (`complete_error` / `complete_revert_error`), un
 pscale deploy-request unblock <database> <number> --org <org> --format json
 ```
 
+## Vitess keyspaces
+
+List and show keyspaces on a branch. Create an **internal** keyspace with `keyspace create`. Attach an existing MySQL database as an **external** keyspace on a **production** branch with `keyspace create-external`. `--source-database` is the remote MySQL database name, not the PlanetScale database. `--cluster-size` is optional; when omitted, PlanetScale chooses a size from the source storage. List external sizes with `pscale size cluster list --org <org> --format json --external`. Do not pass `--additional-replicas` for external keyspaces.
+
+Ask the user for the source password; do not invent credentials. `--dry-run` checks connectivity and prints schema lint errors without creating the keyspace. A source can still be created when it connects, even if lint reports table-level errors.
+
+```bash
+pscale keyspace list <database> <branch> --org <org> --format json
+pscale keyspace show <database> <branch> <keyspace> --org <org> --format json
+pscale size cluster list --org <org> --format json --external
+pscale keyspace create-external <database> <branch> <keyspace> --org <org> --format json \
+  --host <host> --source-database <remote-db> --username <user> --password <password> \
+  --ssl-mode required --cluster-size PS_10E --wait
+pscale keyspace create-external <database> <branch> <keyspace> --org <org> --format json \
+  --host <host> --source-database <remote-db> --username <user> --password <password> \
+  --ssl-mode required --dry-run
+pscale keyspace resize <database> <branch> <keyspace> --org <org> --format json --cluster-size PS_20E
+pscale keyspace resize status <database> <branch> <keyspace> --org <org> --format json
+```
+
+External create required flags: `--host`, `--source-database`, `--username`, `--password`, `--ssl-mode` (`disabled`, `preferred`, `required`, `verify_ca`, `verify_identity`). Default `--port` is `3306`.
+
+## Vitess MoveTables
+
+Copy tables between keyspaces with `pscale branch vtctld move-tables`. Do **not** use `pscale workflow` for this. JSON output includes `next_steps` — follow those commands. Typical order: create the target keyspace (`keyspace create` or `keyspace create-external`), create the workflow, poll `status`, switch replica traffic, then primary traffic (ask the user first), then `complete --dry-run` and `complete` after approval.
+
+`--workflow` is the workflow name you choose. `--source-keyspace` and `--target-keyspace` are required on create. Pass `--tables t1,t2` or `--all-tables` (mutually exclusive).
+
+```bash
+pscale branch vtctld move-tables list <database> <branch> --org <org> --format json
+pscale branch vtctld move-tables create <database> <branch> --org <org> --format json \
+  --workflow <workflow> --source-keyspace <source> --target-keyspace <target> --tables <table>
+pscale branch vtctld move-tables status <database> <branch> --org <org> --format json \
+  --workflow <workflow> --target-keyspace <target>
+pscale branch vtctld move-tables switch-traffic <database> <branch> --org <org> --format json \
+  --workflow <workflow> --target-keyspace <target> --tablet-types REPLICA,RDONLY
+pscale branch vtctld move-tables switch-traffic <database> <branch> --org <org> --format json \
+  --workflow <workflow> --target-keyspace <target> --tablet-types PRIMARY
+pscale branch vtctld move-tables reverse-traffic <database> <branch> --org <org> --format json \
+  --workflow <workflow> --target-keyspace <target>
+pscale branch vtctld move-tables complete <database> <branch> --org <org> --format json \
+  --workflow <workflow> --target-keyspace <target> --keep-data=false --keep-routing-rules=false --dry-run
+pscale branch vtctld move-tables cancel <database> <branch> --org <org> --format json \
+  --workflow <workflow> --target-keyspace <target> --keep-data=false --keep-routing-rules=false
+```
+
+Ask the user before `switch-traffic` with `PRIMARY`, `complete` without `--dry-run`, and `cancel`.
 
 ## Maintenance schedules (Vitess Enterprise)
 
