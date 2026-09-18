@@ -457,21 +457,20 @@ pscale deploy-request unblock <database> <number> --org <org> --format json
 
 ## Vitess keyspaces
 
-List and show keyspaces on a branch. Create an **internal** keyspace with `keyspace create`. Attach an existing MySQL database as an **external** keyspace on a **production** branch with `keyspace create-external`. `--source-database` is the remote MySQL database name, not the PlanetScale database. `--cluster-size` is optional; when omitted, PlanetScale chooses a size from the source storage. List external sizes with `pscale size cluster list --org <org> --format json --external`. Do not pass `--additional-replicas` for external keyspaces.
+List and show keyspaces on a branch. Create an **internal** keyspace with `keyspace create`. Attach an existing MySQL database as an **external** keyspace on a **production** branch with `keyspace create-external`. `--source-database` is the remote MySQL database name, not the PlanetScale database. `--cluster-size` is optional; when omitted, PlanetScale chooses a size from the source storage. Do not pass `--additional-replicas` for external keyspaces.
 
 Ask the user for the source password; do not invent credentials. `--dry-run` checks connectivity and prints schema lint errors without creating the keyspace. A source can still be created when it connects, even if lint reports table-level errors.
 
 ```bash
 pscale keyspace list <database> <branch> --org <org> --format json
 pscale keyspace show <database> <branch> <keyspace> --org <org> --format json
-pscale size cluster list --org <org> --format json --external
 pscale keyspace create-external <database> <branch> <keyspace> --org <org> --format json \
   --host <host> --source-database <remote-db> --username <user> --password <password> \
-  --ssl-mode required --cluster-size PS_10E --wait
+  --ssl-mode required --wait
 pscale keyspace create-external <database> <branch> <keyspace> --org <org> --format json \
   --host <host> --source-database <remote-db> --username <user> --password <password> \
   --ssl-mode required --dry-run
-pscale keyspace resize <database> <branch> <keyspace> --org <org> --format json --cluster-size PS_20E
+pscale keyspace resize <database> <branch> <keyspace> --org <org> --format json --cluster-size <SIZE>
 pscale keyspace resize status <database> <branch> <keyspace> --org <org> --format json
 ```
 
