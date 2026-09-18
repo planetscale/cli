@@ -41,7 +41,7 @@ type response struct {
 func SkillDoc() string {
 	return "---\n" +
 		"name: pscale-cli\n" +
-		"description: \"Automate PlanetScale with the pscale CLI. Use when the user asks to run pscale commands or manage PlanetScale databases, branches, deploy requests, or SQL from scripts or agents. Always pass --format json.\"\n" +
+		"description: \"Automate PlanetScale with the pscale CLI. Use when the user asks to run pscale commands or manage PlanetScale databases, branches, keyspaces, MoveTables, deploy requests, or SQL from scripts or agents. Always pass --format json.\"\n" +
 		"---\n\n" +
 		clicontent.AgentGuide
 }
