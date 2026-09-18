@@ -673,7 +673,8 @@ func runPsqlFile(ctx context.Context, destURI, path string) error {
 	}
 
 	return withConnectionRetry(ctx, func() error {
-		cmd := execabs.CommandContext(ctx, psqlPath, destURI, "-v", "ON_ERROR_STOP=1", "-f", path)
+		// --single-transaction: roll back the whole file if any statement fails.
+		cmd := execabs.CommandContext(ctx, psqlPath, destURI, "-v", "ON_ERROR_STOP=1", "--single-transaction", "-f", path)
 		out, err := cmd.CombinedOutput()
 		if err != nil {
 			return fmt.Errorf("psql %s: %w: %s", filepath.Base(path), err, string(out))

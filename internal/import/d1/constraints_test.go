@@ -71,6 +71,30 @@ func TestConvertCheckConstraintDoubleQuotedLiterals(t *testing.T) {
 	assertValidPostgresDDL(t, ddl)
 }
 
+func TestConvertCheckConstraintBackslashQuoteDoesNotSmuggleSQL(t *testing.T) {
+	sql := `CREATE TABLE t (id INTEGER PRIMARY KEY, name TEXT CHECK (name <> '\')); DROP TABLE users; --'));`
+	ddl := convertTablesDDL(t, sql)
+	if strings.Contains(strings.ToUpper(ddl), "DROP") {
+		t.Fatalf("generated DDL must not contain a smuggled DROP statement:\n%s", ddl)
+	}
+	if got := strings.Count(ddl, "CREATE TABLE"); got != 1 {
+		t.Fatalf("expected exactly one CREATE TABLE statement, got %d:\n%s", got, ddl)
+	}
+	if !strings.Contains(ddl, `CHECK ("name" <> '\')`) {
+		t.Fatalf("expected the CHECK expression's string literal preserved intact:\n%s", ddl)
+	}
+	assertValidPostgresDDL(t, ddl)
+}
+
+func TestConvertCheckExprPreservesRealBackslashes(t *testing.T) {
+	table := TableSchema{Name: "t", Columns: []ColumnSchema{{Name: "path", Type: "TEXT"}}}
+	got := convertCheckExpr(`path <> 'C:\Users\foo'`, table, nil)
+	want := `"path" <> 'C:\Users\foo'`
+	if got != want {
+		t.Fatalf("convertCheckExpr = %q, want %q", got, want)
+	}
+}
+
 func TestConvertReferencesClauseCanonicalizesCase(t *testing.T) {
 	sql := `CREATE TABLE Users (id INTEGER PRIMARY KEY);
 CREATE TABLE Posts (id INTEGER PRIMARY KEY, user_id INTEGER REFERENCES USERS(ID));
