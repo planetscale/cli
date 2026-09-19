@@ -714,7 +714,7 @@ func postgresRowSignature(ctx context.Context, db *sql.DB, table TableSchema, pk
 	)
 	var sig sql.NullString
 	if err := db.QueryRowContext(ctx, query, pkVal).Scan(&sig); err != nil {
-		return "", err
+		return "", fmt.Errorf("postgres row signature %s (%s=%s): %w", table.Name, pkCol, pkVal, err)
 	}
 	if !sig.Valid {
 		return "", fmt.Errorf("row not found in %s where %s = %s", table.Name, pkCol, pkVal)

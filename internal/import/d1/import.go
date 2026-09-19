@@ -449,7 +449,8 @@ func ResolveDestURI(ctx context.Context, psClient *ps.Client, opts ImportOptions
 		Password: role.Role.Password,
 		Database: dbName,
 		SSLMode:  "verify-full",
-		Options:  map[string]string{},
+		// libpq falls back to ~/.postgresql/root.crt without this, which most machines lack.
+		Options: map[string]string{"sslrootcert": "system"},
 	})
 
 	return uri, func() error { return role.Cleanup(ctx, "postgres") }, nil
