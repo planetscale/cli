@@ -82,6 +82,12 @@ var ormMetadataRules = []ormMetadataRule{
 		remediation: "After import, re-baseline Goose version table on Postgres; goose_db_version from SQLite is not portable",
 		match:       matchTableName("goose_db_version"),
 	},
+	{
+		code:        "CLOUDFLARE_D1_METADATA",
+		orm:         "Cloudflare D1",
+		remediation: "_cf_METADATA is Cloudflare D1-internal bookkeeping and is not imported into Postgres",
+		match:       matchTableName("_cf_METADATA"),
+	},
 }
 
 func matchTableName(name string) func(string) bool {
