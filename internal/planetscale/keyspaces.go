@@ -27,7 +27,21 @@ type Keyspace struct {
 	ReplicationDurabilityConstraints *ReplicationDurabilityConstraints `json:"replication_durability_constraints"`
 	MaxRollout                       *int                              `json:"max_rollout"`
 	Throttler                        *KeyspaceThrottler                `json:"throttler"`
+	Storage                          *KeyspaceStorage                  `json:"storage"`
 	ReadOnlyRegions                  []*ReadOnlyRegionKeyspace         `json:"read_only_regions"`
+}
+
+// KeyspaceStorage describes the disk storage configuration for a keyspace's
+// dedicated disks.
+type KeyspaceStorage struct {
+	// StorageBytes is the provisioned disk size in bytes. Disks grow from and
+	// shrink to this size.
+	StorageBytes int64 `json:"storage_bytes"`
+	// MaxStorageBytes is the maximum size in bytes disks may autoscale to.
+	MaxStorageBytes int64 `json:"max_storage_bytes"`
+	// DiskScalingStrategy is the disk scaling strategy: "grow", "disable" or
+	// "shrink".
+	DiskScalingStrategy string `json:"disk_scaling_strategy"`
 }
 
 type ReadOnlyRegionKeyspace struct {
@@ -229,6 +243,7 @@ type UpdateKeyspaceSettingsRequest struct {
 	VReplicationFlags                *VReplicationFlags                `json:"vreplication_flags,omitempty"`
 	Throttler                        *KeyspaceThrottler                `json:"throttler,omitempty"`
 	MaxRollout                       *int                              `json:"max_rollout,omitempty"`
+	Storage                          *KeyspaceStorageUpdate            `json:"storage,omitempty"`
 }
 
 type ReplicationDurabilityConstraints struct {
@@ -244,6 +259,14 @@ type VReplicationFlags struct {
 type KeyspaceThrottler struct {
 	Enabled   *bool    `json:"enabled,omitempty"`
 	Threshold *float64 `json:"threshold,omitempty"`
+}
+
+// KeyspaceStorageUpdate changes a keyspace's disk storage settings. Only the
+// fields that are set are sent to the API.
+type KeyspaceStorageUpdate struct {
+	DiskScalingStrategy *string `json:"disk_scaling_strategy,omitempty"`
+	MaxStorageBytes     *int64  `json:"max_storage_bytes,omitempty"`
+	StorageBytes        *int64  `json:"storage_bytes,omitempty"`
 }
 
 // KeyspacesService is an interface for interacting with the keyspace endpoints of the PlanetScale API

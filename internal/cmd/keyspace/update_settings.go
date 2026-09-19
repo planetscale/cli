@@ -4,14 +4,25 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
+	"strings"
 
 	"github.com/charmbracelet/huh"
+	"github.com/dustin/go-humanize"
 	"github.com/planetscale/cli/internal/cmdutil"
 	ps "github.com/planetscale/cli/internal/planetscale"
 	"github.com/planetscale/cli/internal/printer"
 	"github.com/spf13/cobra"
 )
+
+// diskScalingStrategies are the disk scaling strategies accepted by the
+// --disk-scaling-strategy flag.
+var diskScalingStrategies = []string{"grow", "disable", "shrink"}
+
+// shrinkStrategy recreates disks at the requested size and then disables
+// autoscaling. It is the only strategy that accepts --storage.
+const shrinkStrategy = "shrink"
 
 func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 	updateReq := &ps.UpdateKeyspaceSettingsRequest{}
@@ -22,6 +33,9 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 		throttlerEnabled                 bool
 		throttlerThreshold               float64
 		maxRollout                       int
+		diskScalingStrategy              string
+		maxStorage                       int64
+		storage                          int64
 		interactive                      bool
 	}
 
@@ -56,7 +70,12 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			maxRolloutChanged := cmd.Flags().Changed("max-rollout")
 
-			if !rdcChanged && !vrfChanged && !throttlerChanged && !maxRolloutChanged {
+			strategyChanged := cmd.Flags().Changed("disk-scaling-strategy")
+			maxStorageChanged := cmd.Flags().Changed("max-storage")
+			storageChanged := cmd.Flags().Changed("storage")
+			diskStorageChanged := strategyChanged || maxStorageChanged || storageChanged
+
+			if !rdcChanged && !vrfChanged && !throttlerChanged && !maxRolloutChanged && !diskStorageChanged {
 				ch.Printer.Println("No changes were requested. No update performed.")
 				return nil
 			}
@@ -67,6 +86,30 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			if maxRolloutChanged && (flags.maxRollout < 1 || flags.maxRollout > 32) {
 				return errors.New("--max-rollout must be between 1 and 32")
+			}
+
+			if strategyChanged && !slices.Contains(diskScalingStrategies, flags.diskScalingStrategy) {
+				return fmt.Errorf("invalid --disk-scaling-strategy %q, must be one of: %s", flags.diskScalingStrategy, strings.Join(diskScalingStrategies, ", "))
+			}
+
+			if maxStorageChanged && flags.maxStorage <= 0 {
+				return errors.New("--max-storage must be greater than 0")
+			}
+
+			if storageChanged {
+				// The API only recreates disks at a new size when shrinking, so
+				// the strategy has to be part of the same request.
+				if !strategyChanged || flags.diskScalingStrategy != shrinkStrategy {
+					return fmt.Errorf("--storage can only be set when --disk-scaling-strategy is %s", shrinkStrategy)
+				}
+
+				if flags.storage <= 0 {
+					return errors.New("--storage must be greater than 0")
+				}
+
+				if flags.storage%humanize.GiByte != 0 {
+					return errors.New("--storage must be a multiple of 1 GiB")
+				}
 			}
 
 			client, err := ch.Client()
@@ -127,6 +170,23 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 				updateReq.MaxRollout = &flags.maxRollout
 			}
 
+			// Disk storage fields that are left out keep their current values.
+			if diskStorageChanged {
+				updateReq.Storage = &ps.KeyspaceStorageUpdate{}
+
+				if strategyChanged {
+					updateReq.Storage.DiskScalingStrategy = &flags.diskScalingStrategy
+				}
+
+				if maxStorageChanged {
+					updateReq.Storage.MaxStorageBytes = &flags.maxStorage
+				}
+
+				if storageChanged {
+					updateReq.Storage.StorageBytes = &flags.storage
+				}
+			}
+
 			k, err := updateKeyspaceSettings(ctx, client, updateReq)
 			if err != nil {
 				return err
@@ -145,7 +205,12 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().BoolVar(&flags.throttlerEnabled, "throttler-enabled", true, "Pause schema migrations and VReplication workflows when replication lag rises above the threshold.")
 	cmd.Flags().Float64Var(&flags.throttlerThreshold, "throttler-threshold", 5, "Replication lag in seconds above which migrations and workflows are paused.")
 	cmd.Flags().IntVar(&flags.maxRollout, "max-rollout", 1, "Maximum number of shards to roll out changes to concurrently (1-32).")
+	cmd.Flags().StringVar(&flags.diskScalingStrategy, "disk-scaling-strategy", "grow", fmt.Sprintf("The disk scaling strategy (%s). 'grow' lets dedicated disks grow automatically up to --max-storage; 'disable' turns autoscaling off; 'shrink' recreates disks at --storage and then disables autoscaling.", strings.Join(diskScalingStrategies, ", ")))
+	cmd.Flags().Int64Var(&flags.maxStorage, "max-storage", 0, "The maximum size in bytes that dedicated disks may autoscale to.")
+	cmd.Flags().Int64Var(&flags.storage, "storage", 0, fmt.Sprintf("The disk size in bytes to recreate disks at. Must be a multiple of 1 GiB and requires --disk-scaling-strategy %s.", shrinkStrategy))
 	cmd.Flags().BoolVarP(&flags.interactive, "interactive", "i", false, "Run the command in interactive mode")
+
+	_ = cmd.RegisterFlagCompletionFunc("disk-scaling-strategy", cobra.FixedCompletions(diskScalingStrategies, cobra.ShellCompDirectiveNoFileComp))
 
 	return cmd
 }

@@ -202,6 +202,11 @@ func TestBuildKeyspaceSettings(t *testing.T) {
 
 	maxRollout := 8
 	fullKs.MaxRollout = &maxRollout
+	fullKs.Storage = &ps.KeyspaceStorage{
+		StorageBytes:        107374182400,
+		MaxStorageBytes:     4398046511104,
+		DiskScalingStrategy: "grow",
+	}
 
 	settings := toKeyspaceSettings(fullKs)
 	c.Assert(settings.ReplicationDurabilityConstraintStrategy, qt.Equals, "maximum") // Should be translated
@@ -209,6 +214,9 @@ func TestBuildKeyspaceSettings(t *testing.T) {
 	c.Assert(settings.VReplicationFlags.OptimizeInserts, qt.Equals, true)
 	c.Assert(settings.VReplicationFlags.AllowNoBlobBinlogRowImage, qt.Equals, true)
 	c.Assert(settings.VReplicationFlags.VPlayerBatching, qt.Equals, false)
+	c.Assert(settings.Storage.DiskScalingStrategy, qt.Equals, "grow")
+	c.Assert(settings.Storage.StorageBytes, qt.Equals, "100 GiB")
+	c.Assert(settings.Storage.MaxStorageBytes, qt.Equals, "4.0 TiB")
 
 	// Test with nil settings
 	nilKs := &ps.Keyspace{
@@ -226,4 +234,22 @@ func TestBuildKeyspaceSettings(t *testing.T) {
 	c.Assert(nilSettings.VReplicationFlags.OptimizeInserts, qt.Equals, false) // Default values
 	c.Assert(nilSettings.VReplicationFlags.AllowNoBlobBinlogRowImage, qt.Equals, false)
 	c.Assert(nilSettings.VReplicationFlags.VPlayerBatching, qt.Equals, false)
+	c.Assert(nilSettings.Storage.DiskScalingStrategy, qt.Equals, "not set")
+	c.Assert(nilSettings.Storage.StorageBytes, qt.Equals, "not set")
+	c.Assert(nilSettings.Storage.MaxStorageBytes, qt.Equals, "not set")
+
+	// Test with a storage object that only carries a strategy, which is what
+	// the API returns once autoscaling is disabled.
+	disabledKs := &ps.Keyspace{
+		ID:   "ks1",
+		Name: "test",
+		Storage: &ps.KeyspaceStorage{
+			DiskScalingStrategy: "disable",
+		},
+	}
+
+	disabledSettings := toKeyspaceSettings(disabledKs)
+	c.Assert(disabledSettings.Storage.DiskScalingStrategy, qt.Equals, "disable")
+	c.Assert(disabledSettings.Storage.StorageBytes, qt.Equals, "not set")
+	c.Assert(disabledSettings.Storage.MaxStorageBytes, qt.Equals, "not set")
 }
