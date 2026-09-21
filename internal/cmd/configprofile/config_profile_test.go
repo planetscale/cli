@@ -459,24 +459,33 @@ func TestConfigProfileMaintenanceCmdBulk(t *testing.T) {
 func TestConfigProfileExtensionsEnableCmd(t *testing.T) {
 	c := qt.New(t)
 	var out bytes.Buffer
-	svc := &mock.NekiShardConfigurationProfilesService{UpdateExtensionFn: func(_ context.Context, req *ps.UpdateNekiShardConfigurationProfileExtensionRequest) (*ps.NekiExtension, error) {
-		c.Assert(req, qt.DeepEquals, &ps.UpdateNekiShardConfigurationProfileExtensionRequest{
+	svc := &mock.NekiShardConfigurationProfilesService{ListExtensionsFn: func(_ context.Context, req *ps.ListNekiShardConfigurationProfileExtensionsRequest) ([]*ps.NekiExtension, error) {
+		c.Assert(req, qt.DeepEquals, &ps.ListNekiShardConfigurationProfileExtensionsRequest{
 			Organization:         "acme",
 			Database:             "app",
 			Branch:               "main",
 			ConfigurationProfile: "metal",
-			Extension:            "pg_stat_statements",
-			Enabled:              true,
 		})
-		return &ps.NekiExtension{Name: "pg_stat_statements", Enabled: true, Loader: "shared_preload_libraries"}, nil
+		return []*ps.NekiExtension{
+			{Name: "pg_cron", CanEnable: true, Loader: "shared_preload_libraries"},
+			{Name: "hll", CanEnable: true, Enabled: true},
+			{Name: "pgextwlist", Internal: true, Enabled: true},
+		}, nil
+	}, UpdateFn: func(_ context.Context, req *ps.UpdateNekiShardConfigurationProfileRequest) (*ps.NekiShardConfigurationProfile, error) {
+		selection := []string{"hll", "pgextwlist", "pg_cron"}
+		c.Assert(req, qt.DeepEquals, &ps.UpdateNekiShardConfigurationProfileRequest{
+			Organization: "acme", Database: "app", Branch: "main", ConfigurationProfile: "metal", Extensions: &selection,
+		})
+		return testProfile(), nil
 	}}
 
 	cmd := ExtensionsCmd(configProfileTestHelper(svc, &out))
-	cmd.SetArgs([]string{"enable", "app", "main", "metal", "pg_stat_statements"})
+	cmd.SetArgs([]string{"enable", "app", "main", "metal", "pg_cron"})
 	c.Assert(cmd.Execute(), qt.IsNil)
-	c.Assert(svc.UpdateExtensionFnInvoked, qt.IsTrue)
+	c.Assert(svc.UpdateFnInvoked, qt.IsTrue)
 	c.Assert(out.String(), qt.JSONEquals, map[string]interface{}{
-		"name":        "pg_stat_statements",
+		"name":        "pg_cron",
+		"can_enable":  true,
 		"description": "",
 		"enabled":     true,
 		"internal":    false,
@@ -489,15 +498,47 @@ func TestConfigProfileExtensionsEnableCmd(t *testing.T) {
 func TestConfigProfileExtensionsDisableCmd(t *testing.T) {
 	c := qt.New(t)
 	var out bytes.Buffer
-	svc := &mock.NekiShardConfigurationProfilesService{UpdateExtensionFn: func(_ context.Context, req *ps.UpdateNekiShardConfigurationProfileExtensionRequest) (*ps.NekiExtension, error) {
-		c.Assert(req.Enabled, qt.IsFalse)
-		return &ps.NekiExtension{Name: req.Extension, Enabled: false}, nil
+	svc := &mock.NekiShardConfigurationProfilesService{ListExtensionsFn: func(_ context.Context, _ *ps.ListNekiShardConfigurationProfileExtensionsRequest) ([]*ps.NekiExtension, error) {
+		return []*ps.NekiExtension{{Name: "hll", CanEnable: true, Enabled: true}}, nil
+	}, UpdateFn: func(_ context.Context, req *ps.UpdateNekiShardConfigurationProfileRequest) (*ps.NekiShardConfigurationProfile, error) {
+		c.Assert(req.Extensions, qt.IsNotNil)
+		c.Assert(*req.Extensions, qt.DeepEquals, []string{})
+		return testProfile(), nil
 	}}
 
 	cmd := ExtensionsCmd(configProfileTestHelper(svc, &out))
-	cmd.SetArgs([]string{"disable", "app", "main", "metal", "vector"})
+	cmd.SetArgs([]string{"disable", "app", "main", "metal", "hll"})
 	c.Assert(cmd.Execute(), qt.IsNil)
-	c.Assert(svc.UpdateExtensionFnInvoked, qt.IsTrue)
+	c.Assert(svc.UpdateFnInvoked, qt.IsTrue)
+	var extension ps.NekiExtension
+	c.Assert(json.Unmarshal(out.Bytes(), &extension), qt.IsNil)
+	c.Assert(extension.Enabled, qt.IsFalse)
+}
+
+func TestConfigProfileExtensionsRejectsUnknownExtension(t *testing.T) {
+	c := qt.New(t)
+	var out bytes.Buffer
+	svc := &mock.NekiShardConfigurationProfilesService{ListExtensionsFn: func(_ context.Context, _ *ps.ListNekiShardConfigurationProfileExtensionsRequest) ([]*ps.NekiExtension, error) {
+		return []*ps.NekiExtension{}, nil
+	}}
+
+	cmd := ExtensionsCmd(configProfileTestHelper(svc, &out))
+	cmd.SetArgs([]string{"enable", "app", "main", "metal", "missing"})
+	c.Assert(cmd.Execute(), qt.ErrorMatches, "extension missing does not exist in configuration profile metal")
+	c.Assert(svc.UpdateFnInvoked, qt.IsFalse)
+}
+
+func TestConfigProfileExtensionsRejectsRequiredExtension(t *testing.T) {
+	c := qt.New(t)
+	var out bytes.Buffer
+	svc := &mock.NekiShardConfigurationProfilesService{ListExtensionsFn: func(_ context.Context, _ *ps.ListNekiShardConfigurationProfileExtensionsRequest) ([]*ps.NekiExtension, error) {
+		return []*ps.NekiExtension{{Name: "pgextwlist", Internal: true, Enabled: true}}, nil
+	}}
+
+	cmd := ExtensionsCmd(configProfileTestHelper(svc, &out))
+	cmd.SetArgs([]string{"disable", "app", "main", "metal", "pgextwlist"})
+	c.Assert(cmd.Execute(), qt.ErrorMatches, "extension pgextwlist cannot be enabled or disabled")
+	c.Assert(svc.UpdateFnInvoked, qt.IsFalse)
 }
 
 func TestConfigProfileDeleteCmd(t *testing.T) {
