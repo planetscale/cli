@@ -396,7 +396,7 @@ Caveats:
 
 ## Vitess database throttler
 
-Database-level default for future deploy request migrations (not per-DR, not tablet/vtctld):
+Database-level default for future deploy request migrations (not per-DR, not tablet/vtctl):
 
 ```bash
 pscale database throttler show <database> --org <org> --format json
