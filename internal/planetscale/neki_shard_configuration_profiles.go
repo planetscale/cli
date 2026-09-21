@@ -134,6 +134,7 @@ type NekiExtension struct {
 	Name        string           `json:"name"`
 	Description string           `json:"description"`
 	Enabled     bool             `json:"enabled"`
+	CanEnable   bool             `json:"can_enable"`
 	Internal    bool             `json:"internal"`
 	Loader      string           `json:"loader"`
 	URL         string           `json:"url"`
@@ -145,15 +146,6 @@ type ListNekiShardConfigurationProfileExtensionsRequest struct {
 	Database             string `json:"-"`
 	Branch               string `json:"-"`
 	ConfigurationProfile string `json:"-"`
-}
-
-type UpdateNekiShardConfigurationProfileExtensionRequest struct {
-	Organization         string `json:"-"`
-	Database             string `json:"-"`
-	Branch               string `json:"-"`
-	ConfigurationProfile string `json:"-"`
-	Extension            string `json:"-"`
-	Enabled              bool   `json:"enabled"`
 }
 
 type RunNekiShardConfigurationProfileMaintenanceRequest struct {
@@ -232,7 +224,6 @@ type NekiShardConfigurationProfilesService interface {
 	SetDefault(context.Context, *SetDefaultNekiShardConfigurationProfileRequest) (*NekiShardConfigurationProfile, error)
 	ListParameters(context.Context, *ListNekiShardConfigurationProfileParametersRequest) ([]*NekiParameter, error)
 	ListExtensions(context.Context, *ListNekiShardConfigurationProfileExtensionsRequest) ([]*NekiExtension, error)
-	UpdateExtension(context.Context, *UpdateNekiShardConfigurationProfileExtensionRequest) (*NekiExtension, error)
 	RunMaintenance(context.Context, *RunNekiShardConfigurationProfileMaintenanceRequest) error
 	RunBulkMaintenance(context.Context, *RunNekiShardConfigurationProfilesMaintenanceRequest) error
 	ListChanges(context.Context, *ListNekiShardConfigurationProfileChangesRequest) ([]*NekiShardConfigurationProfileChange, error)
@@ -313,18 +304,6 @@ func (s *nekiShardConfigurationProfilesService) ListExtensions(ctx context.Conte
 		return nil, err
 	}
 	return extensions, nil
-}
-
-func (s *nekiShardConfigurationProfilesService) UpdateExtension(ctx context.Context, r *UpdateNekiShardConfigurationProfileExtensionRequest) (*NekiExtension, error) {
-	request, err := s.client.newRequest(http.MethodPatch, path.Join(nekiShardConfigurationProfileAPIPath(r.Organization, r.Database, r.Branch, r.ConfigurationProfile), "extensions", r.Extension), r)
-	if err != nil {
-		return nil, fmt.Errorf("error creating request to update shard configuration profile extension: %w", err)
-	}
-	extension := &NekiExtension{}
-	if err := s.client.do(ctx, request, extension); err != nil {
-		return nil, err
-	}
-	return extension, nil
 }
 
 func (s *nekiShardConfigurationProfilesService) RunMaintenance(ctx context.Context, r *RunNekiShardConfigurationProfileMaintenanceRequest) error {
