@@ -20,6 +20,9 @@ type MoveTablesService struct {
 	StatusFn        func(context.Context, *ps.MoveTablesStatusRequest) (json.RawMessage, error)
 	StatusFnInvoked bool
 
+	StartFn        func(context.Context, *ps.MoveTablesStartRequest) (json.RawMessage, error)
+	StartFnInvoked bool
+
 	SwitchTrafficFn        func(context.Context, *ps.MoveTablesSwitchTrafficRequest) (*ps.VtctldOperationReference, error)
 	SwitchTrafficFnInvoked bool
 
@@ -51,6 +54,11 @@ func (s *MoveTablesService) Show(ctx context.Context, req *ps.MoveTablesShowRequ
 func (s *MoveTablesService) Status(ctx context.Context, req *ps.MoveTablesStatusRequest) (json.RawMessage, error) {
 	s.StatusFnInvoked = true
 	return s.StatusFn(ctx, req)
+}
+
+func (s *MoveTablesService) Start(ctx context.Context, req *ps.MoveTablesStartRequest) (json.RawMessage, error) {
+	s.StartFnInvoked = true
+	return s.StartFn(ctx, req)
 }
 
 func (s *MoveTablesService) SwitchTraffic(ctx context.Context, req *ps.MoveTablesSwitchTrafficRequest) (*ps.VtctldOperationReference, error) {
