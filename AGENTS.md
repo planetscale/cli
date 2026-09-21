@@ -491,6 +491,8 @@ pscale branch vtctld move-tables create <database> <branch> --org <org> --format
   --workflow <workflow> --source-keyspace <source> --target-keyspace <target> --tables <table> --auto-start=false
 pscale branch vtctld move-tables start <database> <branch> --org <org> --format json \
   --workflow <workflow> --target-keyspace <target>
+pscale branch vtctld move-tables stop <database> <branch> --org <org> --format json \
+  --workflow <workflow> --target-keyspace <target>
 pscale branch vtctld move-tables status <database> <branch> --org <org> --format json \
   --workflow <workflow> --target-keyspace <target>
 pscale branch vtctld move-tables switch-traffic <database> <branch> --org <org> --format json \

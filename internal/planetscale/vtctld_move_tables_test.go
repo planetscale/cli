@@ -354,6 +354,39 @@ func TestMoveTables_Start(t *testing.T) {
 	c.Assert(string(data), qt.Equals, `{"summary":"Streams started"}`)
 }
 
+func TestMoveTables_Stop(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodPost)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/my-db/branches/my-branch/move-tables/workflows/my-workflow/stop")
+
+		var body map[string]interface{}
+		err := json.NewDecoder(r.Body).Decode(&body)
+		c.Assert(err, qt.IsNil)
+		c.Assert(body["target_keyspace"], qt.Equals, "target")
+
+		w.WriteHeader(http.StatusOK)
+		_, err = w.Write([]byte(`{"data":{"summary":"Streams stopped"}}`))
+		c.Assert(err, qt.IsNil)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	ctx := context.Background()
+	data, err := client.MoveTables.Stop(ctx, &MoveTablesStopRequest{
+		Organization:   "my-org",
+		Database:       "my-db",
+		Branch:         "my-branch",
+		Workflow:       "my-workflow",
+		TargetKeyspace: "target",
+	})
+	c.Assert(err, qt.IsNil)
+	c.Assert(string(data), qt.Equals, `{"summary":"Streams stopped"}`)
+}
+
 func TestMoveTables_SwitchTraffic(t *testing.T) {
 	c := qt.New(t)
 

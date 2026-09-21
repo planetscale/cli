@@ -17,6 +17,7 @@ type MoveTablesService interface {
 	Show(context.Context, *MoveTablesShowRequest) (json.RawMessage, error)
 	Status(context.Context, *MoveTablesStatusRequest) (json.RawMessage, error)
 	Start(context.Context, *MoveTablesStartRequest) (json.RawMessage, error)
+	Stop(context.Context, *MoveTablesStopRequest) (json.RawMessage, error)
 	SwitchTraffic(context.Context, *MoveTablesSwitchTrafficRequest) (*VtctldOperationReference, error)
 	ReverseTraffic(context.Context, *MoveTablesReverseTrafficRequest) (*VtctldOperationReference, error)
 	Cancel(context.Context, *MoveTablesCancelRequest) (*VtctldOperationReference, error)
@@ -76,6 +77,15 @@ type MoveTablesStatusRequest struct {
 
 // MoveTablesStartRequest is a request for starting a MoveTables workflow.
 type MoveTablesStartRequest struct {
+	Organization   string `json:"-"`
+	Database       string `json:"-"`
+	Branch         string `json:"-"`
+	Workflow       string `json:"-"`
+	TargetKeyspace string `json:"target_keyspace"`
+}
+
+// MoveTablesStopRequest is a request for stopping a MoveTables workflow.
+type MoveTablesStopRequest struct {
 	Organization   string `json:"-"`
 	Database       string `json:"-"`
 	Branch         string `json:"-"`
@@ -204,6 +214,19 @@ func (s *moveTablesService) Status(ctx context.Context, req *MoveTablesStatusReq
 
 func (s *moveTablesService) Start(ctx context.Context, req *MoveTablesStartRequest) (json.RawMessage, error) {
 	p := path.Join(moveTablesWorkflowAPIPath(req.Organization, req.Database, req.Branch, req.Workflow), "start")
+	httpReq, err := s.client.newRequest(http.MethodPost, p, req)
+	if err != nil {
+		return nil, fmt.Errorf("error creating http request: %w", err)
+	}
+	resp := &vtctldDataResponse{}
+	if err := s.client.do(ctx, httpReq, resp); err != nil {
+		return nil, err
+	}
+	return resp.Data, nil
+}
+
+func (s *moveTablesService) Stop(ctx context.Context, req *MoveTablesStopRequest) (json.RawMessage, error) {
+	p := path.Join(moveTablesWorkflowAPIPath(req.Organization, req.Database, req.Branch, req.Workflow), "stop")
 	httpReq, err := s.client.newRequest(http.MethodPost, p, req)
 	if err != nil {
 		return nil, fmt.Errorf("error creating http request: %w", err)
