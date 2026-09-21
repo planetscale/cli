@@ -29,6 +29,8 @@ func MoveTablesCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.AddCommand(MoveTablesCreateCmd(ch))
 	cmd.AddCommand(MoveTablesShowCmd(ch))
 	cmd.AddCommand(MoveTablesStatusCmd(ch))
+	cmd.AddCommand(MoveTablesStartCmd(ch))
+	cmd.AddCommand(MoveTablesStopCmd(ch))
 	cmd.AddCommand(MoveTablesSwitchTrafficCmd(ch))
 	cmd.AddCommand(MoveTablesReverseTrafficCmd(ch))
 	cmd.AddCommand(MoveTablesCancelCmd(ch))
@@ -121,9 +123,15 @@ func MoveTablesCreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			end()
-			return printWorkflowJSON(ch.Printer, data, []workflowNextStep{
+			nextSteps := []workflowNextStep{
 				moveTablesStatusStep(ch.Config.Organization, database, branch, flags.workflow, flags.targetKeyspace, "Monitor copy and replication progress"),
-			})
+			}
+			if cmd.Flags().Changed("auto-start") && !flags.autoStart {
+				nextSteps = []workflowNextStep{
+					moveTablesStartStep(ch.Config.Organization, database, branch, flags.workflow, flags.targetKeyspace, "Start the workflow after creating it with --auto-start=false"),
+				}
+			}
+			return printWorkflowJSON(ch.Printer, data, nextSteps)
 		},
 	}
 
@@ -289,6 +297,106 @@ func MoveTablesStatusCmd(ch *cmdutil.Helper) *cobra.Command {
 				data,
 				moveTablesStatusNextSteps(data, ch.Config.Organization, database, branch, flags.workflow, flags.targetKeyspace),
 			)
+		},
+	}
+
+	cmd.Flags().StringVar(&flags.workflow, "workflow", "", "Name of the workflow")
+	cmd.Flags().StringVar(&flags.targetKeyspace, "target-keyspace", "", "Target keyspace")
+	cmd.MarkFlagRequired("workflow")        // nolint:errcheck
+	cmd.MarkFlagRequired("target-keyspace") // nolint:errcheck
+
+	return cmd
+}
+
+func MoveTablesStartCmd(ch *cmdutil.Helper) *cobra.Command {
+	var flags struct {
+		workflow       string
+		targetKeyspace string
+	}
+
+	cmd := &cobra.Command{
+		Use:   "start <database> <branch>",
+		Short: "Start a MoveTables workflow",
+		Args:  cmdutil.RequiredArgs("database", "branch"),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			database, branch := args[0], args[1]
+
+			client, err := ch.Client()
+			if err != nil {
+				return err
+			}
+
+			end := ch.Printer.PrintProgress(
+				fmt.Sprintf("Starting MoveTables workflow %s on %s\u2026",
+					printer.BoldBlue(flags.workflow), progressTarget(ch.Config.Organization, database, branch)))
+			defer end()
+
+			data, err := client.Vtctld.StartWorkflow(ctx, &ps.VtctldStartWorkflowRequest{
+				Organization: ch.Config.Organization,
+				Database:     database,
+				Branch:       branch,
+				Workflow:     flags.workflow,
+				Keyspace:     flags.targetKeyspace,
+			})
+			if err != nil {
+				return cmdutil.HandleError(err)
+			}
+
+			end()
+			return printWorkflowJSON(ch.Printer, data, []workflowNextStep{
+				moveTablesStatusStep(ch.Config.Organization, database, branch, flags.workflow, flags.targetKeyspace, "Monitor copy and replication progress"),
+			})
+		},
+	}
+
+	cmd.Flags().StringVar(&flags.workflow, "workflow", "", "Name of the workflow")
+	cmd.Flags().StringVar(&flags.targetKeyspace, "target-keyspace", "", "Target keyspace")
+	cmd.MarkFlagRequired("workflow")        // nolint:errcheck
+	cmd.MarkFlagRequired("target-keyspace") // nolint:errcheck
+
+	return cmd
+}
+
+func MoveTablesStopCmd(ch *cmdutil.Helper) *cobra.Command {
+	var flags struct {
+		workflow       string
+		targetKeyspace string
+	}
+
+	cmd := &cobra.Command{
+		Use:   "stop <database> <branch>",
+		Short: "Stop a MoveTables workflow",
+		Args:  cmdutil.RequiredArgs("database", "branch"),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			database, branch := args[0], args[1]
+
+			client, err := ch.Client()
+			if err != nil {
+				return err
+			}
+
+			end := ch.Printer.PrintProgress(
+				fmt.Sprintf("Stopping MoveTables workflow %s on %s\u2026",
+					printer.BoldBlue(flags.workflow), progressTarget(ch.Config.Organization, database, branch)))
+			defer end()
+
+			data, err := client.Vtctld.StopWorkflow(ctx, &ps.VtctldStopWorkflowRequest{
+				Organization: ch.Config.Organization,
+				Database:     database,
+				Branch:       branch,
+				Workflow:     flags.workflow,
+				Keyspace:     flags.targetKeyspace,
+			})
+			if err != nil {
+				return cmdutil.HandleError(err)
+			}
+
+			end()
+			return printWorkflowJSON(ch.Printer, data, []workflowNextStep{
+				moveTablesStartStep(ch.Config.Organization, database, branch, flags.workflow, flags.targetKeyspace, "Resume the workflow when you are ready to continue"),
+			})
 		},
 	}
 

@@ -241,6 +241,55 @@ func TestMoveTablesCreateWithAllFlags(t *testing.T) {
 	})
 }
 
+func TestMoveTablesCreateWithAutoStartFalse(t *testing.T) {
+	c := qt.New(t)
+	setMoveTablesPollInterval(t, 0)
+
+	org := "my-org"
+	db := "my-db"
+	branch := "my-branch"
+
+	svc := &mock.MoveTablesService{
+		CreateFn: func(ctx context.Context, req *ps.MoveTablesCreateRequest) (*ps.VtctldOperationReference, error) {
+			c.Assert(req.AutoStart, qt.IsNotNil)
+			c.Assert(*req.AutoStart, qt.IsFalse)
+			return &ps.VtctldOperationReference{ID: "create-op"}, nil
+		},
+	}
+
+	vtctldSvc := &mock.VtctldService{
+		GetOperationFn: func(ctx context.Context, req *ps.GetVtctldOperationRequest) (*ps.VtctldOperation, error) {
+			return &ps.VtctldOperation{
+				ID:        "create-op",
+				State:     "completed",
+				Completed: true,
+				Result:    json.RawMessage(`{"summary":"created"}`),
+			}, nil
+		},
+	}
+
+	var buf bytes.Buffer
+	ch := moveTablesTestHelper(org, svc, vtctldSvc, &buf)
+
+	cmd := MoveTablesCmd(ch)
+	cmd.SetArgs([]string{"create", db, branch,
+		"--workflow", "my-workflow",
+		"--target-keyspace", "target-ks",
+		"--source-keyspace", "source-ks",
+		"--auto-start=false",
+	})
+	err := cmd.Execute()
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.CreateFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.JSONEquals, map[string]any{
+		"summary": "created",
+		"next_steps": []any{map[string]any{
+			"command": "pscale branch vtctld move-tables start my-db my-branch --org my-org --workflow my-workflow --target-keyspace target-ks --format json",
+			"reason":  "Start the workflow after creating it with --auto-start=false",
+		}},
+	})
+}
+
 func TestMoveTablesSwitchTrafficWithMaxLag(t *testing.T) {
 	c := qt.New(t)
 	setMoveTablesPollInterval(t, 0)
@@ -763,4 +812,122 @@ func TestMoveTablesStatusAddsNextSteps(t *testing.T) {
 			"reason":  "Switch primary traffic after validating replica traffic",
 		}},
 	})
+}
+
+func TestMoveTablesStart(t *testing.T) {
+	c := qt.New(t)
+
+	org := "my-org"
+	db := "my-db"
+	branch := "my-branch"
+
+	vtctldSvc := &mock.VtctldService{
+		StartWorkflowFn: func(ctx context.Context, req *ps.VtctldStartWorkflowRequest) (json.RawMessage, error) {
+			c.Assert(req.Organization, qt.Equals, org)
+			c.Assert(req.Database, qt.Equals, db)
+			c.Assert(req.Branch, qt.Equals, branch)
+			c.Assert(req.Workflow, qt.Equals, "my-workflow")
+			c.Assert(req.Keyspace, qt.Equals, "target-ks")
+			return json.RawMessage(`{"summary":"started"}`), nil
+		},
+	}
+
+	var buf bytes.Buffer
+	ch := moveTablesTestHelper(org, nil, vtctldSvc, &buf)
+
+	cmd := MoveTablesCmd(ch)
+	cmd.SetArgs([]string{"start", db, branch,
+		"--workflow", "my-workflow",
+		"--target-keyspace", "target-ks",
+	})
+	err := cmd.Execute()
+	c.Assert(err, qt.IsNil)
+	c.Assert(vtctldSvc.StartWorkflowFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.JSONEquals, map[string]any{
+		"summary": "started",
+		"next_steps": []any{map[string]any{
+			"command": "pscale branch vtctld move-tables status my-db my-branch --org my-org --workflow my-workflow --target-keyspace target-ks --format json",
+			"reason":  "Monitor copy and replication progress",
+		}},
+	})
+}
+
+func TestMoveTablesStartRequiresFlags(t *testing.T) {
+	c := qt.New(t)
+
+	org := "my-org"
+	db := "my-db"
+	branch := "my-branch"
+
+	vtctldSvc := &mock.VtctldService{}
+	var buf bytes.Buffer
+	ch := moveTablesTestHelper(org, nil, vtctldSvc, &buf)
+
+	cmd := MoveTablesCmd(ch)
+	cmd.SetArgs([]string{"start", db, branch})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNotNil)
+	c.Assert(err.Error(), qt.Contains, "required flag")
+	c.Assert(vtctldSvc.StartWorkflowFnInvoked, qt.IsFalse)
+	c.Assert(buf.String(), qt.Equals, "")
+}
+
+func TestMoveTablesStop(t *testing.T) {
+	c := qt.New(t)
+
+	org := "my-org"
+	db := "my-db"
+	branch := "my-branch"
+
+	vtctldSvc := &mock.VtctldService{
+		StopWorkflowFn: func(ctx context.Context, req *ps.VtctldStopWorkflowRequest) (json.RawMessage, error) {
+			c.Assert(req.Organization, qt.Equals, org)
+			c.Assert(req.Database, qt.Equals, db)
+			c.Assert(req.Branch, qt.Equals, branch)
+			c.Assert(req.Workflow, qt.Equals, "my-workflow")
+			c.Assert(req.Keyspace, qt.Equals, "target-ks")
+			return json.RawMessage(`{"summary":"stopped"}`), nil
+		},
+	}
+
+	var buf bytes.Buffer
+	ch := moveTablesTestHelper(org, nil, vtctldSvc, &buf)
+
+	cmd := MoveTablesCmd(ch)
+	cmd.SetArgs([]string{"stop", db, branch,
+		"--workflow", "my-workflow",
+		"--target-keyspace", "target-ks",
+	})
+	err := cmd.Execute()
+	c.Assert(err, qt.IsNil)
+	c.Assert(vtctldSvc.StopWorkflowFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.JSONEquals, map[string]any{
+		"summary": "stopped",
+		"next_steps": []any{map[string]any{
+			"command": "pscale branch vtctld move-tables start my-db my-branch --org my-org --workflow my-workflow --target-keyspace target-ks --format json",
+			"reason":  "Resume the workflow when you are ready to continue",
+		}},
+	})
+}
+
+func TestMoveTablesStopRequiresFlags(t *testing.T) {
+	c := qt.New(t)
+
+	org := "my-org"
+	db := "my-db"
+	branch := "my-branch"
+
+	vtctldSvc := &mock.VtctldService{}
+	var buf bytes.Buffer
+	ch := moveTablesTestHelper(org, nil, vtctldSvc, &buf)
+
+	cmd := MoveTablesCmd(ch)
+	cmd.SetArgs([]string{"stop", db, branch, "--workflow", "my-workflow"})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNotNil)
+	c.Assert(err.Error(), qt.Contains, "required flag")
+	c.Assert(vtctldSvc.StopWorkflowFnInvoked, qt.IsFalse)
+	c.Assert(buf.String(), qt.Equals, "")
 }

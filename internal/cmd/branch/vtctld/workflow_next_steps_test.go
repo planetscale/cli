@@ -52,6 +52,12 @@ func TestMoveTablesStatusNextSteps(t *testing.T) {
 			wantSteps:   1,
 		},
 		{
+			name:        "stopped streams",
+			data:        `{"table_copy_state":{},"shard_streams":{"target/-":{"streams":[{"status":"Stopped"}]}},"traffic_state":"Reads Not Switched. Writes Not Switched"}`,
+			wantCommand: "pscale branch vtctld move-tables start my-db my-branch --org my-org --workflow my-workflow --target-keyspace target-ks --format json",
+			wantSteps:   1,
+		},
+		{
 			name:        "unrecognized traffic state",
 			data:        `{"traffic_state":"Something Vitess Has Not Told Us About"}`,
 			wantCommand: "pscale branch vtctld move-tables status my-db my-branch --org my-org --workflow my-workflow --target-keyspace target-ks --format json",

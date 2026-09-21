@@ -117,6 +117,56 @@ func TestMoveTablesShowProgressIncludesOrganization(t *testing.T) {
 	c.Assert(progress.String(), qt.Contains, "Fetching MoveTables workflow my-workflow on my-org/my-db/my-branch…")
 }
 
+func TestMoveTablesStartProgressIncludesOrganization(t *testing.T) {
+	c := qt.New(t)
+	setNonTTYProgress(t)
+
+	org := "my-org"
+	db := "my-db"
+	branch := "my-branch"
+
+	svc := &mock.VtctldService{
+		StartWorkflowFn: func(ctx context.Context, req *ps.VtctldStartWorkflowRequest) (json.RawMessage, error) {
+			return json.RawMessage(`{"summary":"started"}`), nil
+		},
+	}
+
+	var progress bytes.Buffer
+	ch := newHumanProgressHelper(org, &progress, &ps.Client{Vtctld: svc})
+
+	cmd := MoveTablesCmd(ch)
+	cmd.SetArgs([]string{"start", db, branch, "--workflow", "my-workflow", "--target-keyspace", "target-ks"})
+
+	err := cmd.Execute()
+	c.Assert(err, qt.IsNil)
+	c.Assert(progress.String(), qt.Contains, "Starting MoveTables workflow my-workflow on my-org/my-db/my-branch…")
+}
+
+func TestMoveTablesStopProgressIncludesOrganization(t *testing.T) {
+	c := qt.New(t)
+	setNonTTYProgress(t)
+
+	org := "my-org"
+	db := "my-db"
+	branch := "my-branch"
+
+	svc := &mock.VtctldService{
+		StopWorkflowFn: func(ctx context.Context, req *ps.VtctldStopWorkflowRequest) (json.RawMessage, error) {
+			return json.RawMessage(`{"summary":"stopped"}`), nil
+		},
+	}
+
+	var progress bytes.Buffer
+	ch := newHumanProgressHelper(org, &progress, &ps.Client{Vtctld: svc})
+
+	cmd := MoveTablesCmd(ch)
+	cmd.SetArgs([]string{"stop", db, branch, "--workflow", "my-workflow", "--target-keyspace", "target-ks"})
+
+	err := cmd.Execute()
+	c.Assert(err, qt.IsNil)
+	c.Assert(progress.String(), qt.Contains, "Stopping MoveTables workflow my-workflow on my-org/my-db/my-branch…")
+}
+
 func TestVDiffListProgressIncludesOrganization(t *testing.T) {
 	c := qt.New(t)
 	setNonTTYProgress(t)

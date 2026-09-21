@@ -182,6 +182,13 @@ func moveTablesStatusStep(org, database, branch, workflow, targetKeyspace, reaso
 	}
 }
 
+func moveTablesStartStep(org, database, branch, workflow, targetKeyspace, reason string) workflowNextStep {
+	return workflowNextStep{
+		Command: moveTablesCommand(org, "start", database, branch, workflow, targetKeyspace),
+		Reason:  reason,
+	}
+}
+
 func moveTablesVDiffCreateStep(org, database, branch, workflow, targetKeyspace string) workflowNextStep {
 	return workflowNextStep{
 		Command: fmt.Sprintf(
@@ -220,6 +227,12 @@ func moveTablesStatusNextSteps(data json.RawMessage, org, database, branch, work
 	var status moveTablesStatus
 	if err := json.Unmarshal(data, &status); err != nil {
 		return nil
+	}
+
+	if moveTablesStreamsAllStopped(status) {
+		return []workflowNextStep{
+			moveTablesStartStep(org, database, branch, workflow, targetKeyspace, "Resume the stopped workflow"),
+		}
 	}
 
 	hasStreams, streamsNeedMonitoring := moveTablesStreamState(status)
@@ -285,6 +298,19 @@ func moveTablesStreamState(status moveTablesStatus) (bool, bool) {
 		}
 	}
 	return hasStreams, false
+}
+
+func moveTablesStreamsAllStopped(status moveTablesStatus) bool {
+	count := 0
+	for _, shard := range status.ShardStreams {
+		for _, stream := range shard.Streams {
+			count++
+			if !strings.EqualFold(stream.Status, "Stopped") {
+				return false
+			}
+		}
+	}
+	return count > 0
 }
 
 func vdiffCreateNextSteps(data json.RawMessage, org, database, branch, workflow, targetKeyspace string) []workflowNextStep {
