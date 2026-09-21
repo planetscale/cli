@@ -479,7 +479,7 @@ External create required flags: `--host`, `--source-database`, `--username`, `--
 
 ## Vitess MoveTables
 
-Copy tables between keyspaces with `pscale branch vtctld move-tables`. `pscale workflow` will be deprecated soon; prefer `move-tables` for new work. JSON output includes `next_steps` — follow those commands. Typical order: create the target keyspace (`keyspace create` or `keyspace create-external`), create the workflow, poll `status`, switch replica traffic, then primary traffic (ask the user first), then `complete --dry-run` and `complete` after approval.
+Copy tables between keyspaces with `pscale branch vtctld move-tables`. `pscale workflow` will be deprecated soon; prefer `move-tables` for new work. JSON output includes `next_steps` — follow those commands. Typical order: create the target keyspace (`keyspace create` or `keyspace create-external`), create the workflow, poll `status`, switch replica traffic, then primary traffic (ask the user first), then `complete --dry-run` and `complete` after approval. Create with `--auto-start=false` to leave streams stopped, then `start` when you are ready.
 
 `--workflow` is the workflow name you choose. `--source-keyspace` and `--target-keyspace` are required on create. Pass `--tables t1,t2` or `--all-tables` (mutually exclusive).
 
@@ -487,6 +487,10 @@ Copy tables between keyspaces with `pscale branch vtctld move-tables`. `pscale w
 pscale branch vtctld move-tables list <database> <branch> --org <org> --format json
 pscale branch vtctld move-tables create <database> <branch> --org <org> --format json \
   --workflow <workflow> --source-keyspace <source> --target-keyspace <target> --tables <table>
+pscale branch vtctld move-tables create <database> <branch> --org <org> --format json \
+  --workflow <workflow> --source-keyspace <source> --target-keyspace <target> --tables <table> --auto-start=false
+pscale branch vtctld move-tables start <database> <branch> --org <org> --format json \
+  --workflow <workflow> --target-keyspace <target>
 pscale branch vtctld move-tables status <database> <branch> --org <org> --format json \
   --workflow <workflow> --target-keyspace <target>
 pscale branch vtctld move-tables switch-traffic <database> <branch> --org <org> --format json \
