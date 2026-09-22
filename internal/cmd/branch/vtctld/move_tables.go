@@ -195,7 +195,7 @@ func MoveTablesListCmd(ch *cmdutil.Helper) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&flags.targetKeyspace, "target-keyspace", "", "Target keyspace (defaults to the branch's default keyspace)")
+	cmd.Flags().StringVar(&flags.targetKeyspace, "target-keyspace", "", "Filter by target keyspace (lists all keyspaces if omitted)")
 
 	return cmd
 }

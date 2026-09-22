@@ -663,6 +663,9 @@ func TestMoveTablesListWithoutTargetKeyspace(t *testing.T) {
 		},
 	}
 
+	listCmd := MoveTablesListCmd(moveTablesTestHelper(org, svc, nil, nil))
+	c.Assert(listCmd.Flags().Lookup("target-keyspace").Usage, qt.Contains, "lists all keyspaces if omitted")
+
 	var buf bytes.Buffer
 	ch := moveTablesTestHelper(org, svc, nil, &buf)
 
