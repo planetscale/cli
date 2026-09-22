@@ -758,6 +758,44 @@ func TestMoveTablesStart(t *testing.T) {
 	})
 }
 
+func TestMoveTablesStop(t *testing.T) {
+	c := qt.New(t)
+
+	org := "my-org"
+	db := "my-db"
+	branch := "my-branch"
+
+	svc := &mock.MoveTablesService{
+		StopFn: func(ctx context.Context, req *ps.MoveTablesStopRequest) (json.RawMessage, error) {
+			c.Assert(req.Organization, qt.Equals, org)
+			c.Assert(req.Database, qt.Equals, db)
+			c.Assert(req.Branch, qt.Equals, branch)
+			c.Assert(req.Workflow, qt.Equals, "my-workflow")
+			c.Assert(req.TargetKeyspace, qt.Equals, "target-ks")
+			return json.RawMessage(`{"summary":"Streams stopped"}`), nil
+		},
+	}
+
+	var buf bytes.Buffer
+	ch := moveTablesTestHelper(org, svc, nil, &buf)
+
+	cmd := MoveTablesCmd(ch)
+	cmd.SetArgs([]string{"stop", db, branch,
+		"--workflow", "my-workflow",
+		"--target-keyspace", "target-ks",
+	})
+	err := cmd.Execute()
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.StopFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.JSONEquals, map[string]any{
+		"summary": "Streams stopped",
+		"next_steps": []any{map[string]any{
+			"command": "pscale branch vtctld move-tables status my-db my-branch --org my-org --workflow my-workflow --target-keyspace target-ks --format json",
+			"reason":  "Confirm streams are stopped",
+		}},
+	})
+}
+
 func TestMoveTablesStatusAddsNextSteps(t *testing.T) {
 	c := qt.New(t)
 
