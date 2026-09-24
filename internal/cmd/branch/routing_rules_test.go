@@ -2,6 +2,7 @@ package branch
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	qt "github.com/frankban/quicktest"
@@ -69,5 +70,37 @@ func TestRoutingRulesUpdateHelpDescribesReplace(t *testing.T) {
 	cmd := UpdateRoutingRulesCmd(ch)
 	c.Assert(cmd.Short, qt.Contains, "Replace")
 	c.Assert(cmd.Long, qt.Contains, "full replacement")
+	c.Assert(cmd.Long, qt.Contains, "fails when a routing change has not produced a new schema snapshot")
 	c.Assert(cmd.Long, qt.Contains, "vtctld get-routing-rules")
+}
+
+func TestRoutingRulesUpdateRejectsStaleSnapshot(t *testing.T) {
+	c := qt.New(t)
+
+	svc := &mock.DatabaseBranchesService{
+		UpdateRoutingRulesFn: func(_ context.Context, _ *ps.UpdateBranchRoutingRulesRequest) (*ps.RoutingRules, error) {
+			return nil, &ps.Error{APICode: "routing_rules_snapshot_stale"}
+		},
+	}
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: "my-org"},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{DatabaseBranches: svc}, nil
+		},
+	}
+
+	tmpFile, err := os.CreateTemp("", "routing-rules.json")
+	c.Assert(err, qt.IsNil)
+	_, err = tmpFile.Write([]byte(`{"rules":[]}`))
+	c.Assert(err, qt.IsNil)
+	c.Assert(tmpFile.Close(), qt.IsNil)
+
+	cmd := UpdateRoutingRulesCmd(ch)
+	cmd.SetArgs([]string{"my-db", "my-branch", "--routing-rules", tmpFile.Name()})
+
+	c.Assert(cmd.Execute(), qt.IsNotNil)
+	c.Assert(svc.UpdateRoutingRulesFnInvoked, qt.IsTrue)
 }

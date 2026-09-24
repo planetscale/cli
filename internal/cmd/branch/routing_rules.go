@@ -97,6 +97,7 @@ func UpdateRoutingRulesCmd(ch *cmdutil.Helper) *cobra.Command {
 		Use:   "update <database> <branch> --routing-rules <file>",
 		Short: "Replace the routing rules of a MySQL branch",
 		Long: "Replace the branch routing rules. This is a full replacement, not a merge. " +
+			"The request fails when a routing change has not produced a new schema snapshot. " +
 			"`pscale branch routing-rules get` returns a schema snapshot that can predate " +
 			"a traffic switch; applying that file can revert live routes. Use " +
 			"`pscale branch vtctld get-routing-rules` for live cluster state.",

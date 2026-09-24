@@ -182,6 +182,9 @@ func TestGlobalJSONErrorStaleRoutingRulesSnapshot(t *testing.T) {
 	if len(resp.NextSteps) != 2 {
 		t.Fatalf("next_steps = %#v", resp.NextSteps)
 	}
+	if resp.NextSteps[0] != "Wait for the routing change to produce a new schema snapshot, then retry" {
+		t.Fatalf("next_steps[0] = %q", resp.NextSteps[0])
+	}
 }
 
 func TestGlobalJSONErrorPreservesOtherAPICodes(t *testing.T) {

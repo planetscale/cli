@@ -186,8 +186,8 @@ func GlobalJSONError(err error) JSONErrorResponse {
 		case "routing_rules_snapshot_stale":
 			status = "action_required"
 			nextSteps = []string{
+				"Wait for the routing change to produce a new schema snapshot, then retry",
 				"Read live rules with `pscale branch vtctld get-routing-rules <database> <branch> --org <org> --format json`",
-				"Re-run without --reject-stale only if a schema snapshot is acceptable",
 			}
 		}
 	}
