@@ -17,6 +17,10 @@ func RoutingRulesCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "routing-rules <command>",
 		Short: "Fetch or update keyspace routing rules for a MySQL branch",
+		Long: "Fetch or update table routing rules for a MySQL branch. " +
+			"`get` and `update` use the schema-snapshot API: `get` can lag live cluster " +
+			"state after SwitchTraffic, and `update` replaces the entire routing map. " +
+			"For live cluster rules, use `pscale branch vtctld get-routing-rules`.",
 	}
 
 	cmd.AddCommand(GetRoutingRulesCmd(ch))
@@ -29,8 +33,12 @@ func RoutingRulesCmd(ch *cmdutil.Helper) *cobra.Command {
 func GetRoutingRulesCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "get <database> <branch>",
-		Short: "Show the routing rules of a MySQL branch",
-		Args:  cmdutil.RequiredArgs("database", "branch"),
+		Short: "Show routing rules from the branch schema snapshot",
+		Long: "Show routing rules from the branch schema snapshot, which can lag live " +
+			"cluster state after SwitchTraffic. For live rules, use " +
+			"`pscale branch vtctld get-routing-rules`. Applying a snapshot with " +
+			"`pscale branch routing-rules update` replaces the entire cluster routing map.",
+		Args: cmdutil.RequiredArgs("database", "branch"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			database, branch := args[0], args[1]
@@ -79,8 +87,12 @@ func UpdateRoutingRulesCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "update <database> <branch> --routing-rules <file>",
-		Short: "Update the routing rules of a MySQL branch",
-		Args:  cmdutil.RequiredArgs("database", "branch"),
+		Short: "Replace the routing rules of a MySQL branch",
+		Long: "Replace the branch routing rules. This is a full replacement, not a merge. " +
+			"`pscale branch routing-rules get` returns a schema snapshot that can predate " +
+			"a traffic switch; applying that file can revert live routes. Use " +
+			"`pscale branch vtctld get-routing-rules` for live cluster state.",
+		Args: cmdutil.RequiredArgs("database", "branch"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			database, branch := args[0], args[1]
