@@ -178,9 +178,16 @@ func GlobalJSONError(err error) JSONErrorResponse {
 
 	if apiCode != "" {
 		code = apiCode
-		if apiCode == "schema_mutation_blocked" {
+		switch apiCode {
+		case "schema_mutation_blocked":
 			nextSteps = []string{
 				"Wait for the active vtctld mutation or deploy to finish, then retry",
+			}
+		case "routing_rules_snapshot_stale":
+			status = "action_required"
+			nextSteps = []string{
+				"Read live rules with `pscale branch vtctld get-routing-rules <database> <branch> --org <org> --format json`",
+				"Re-run without --reject-stale only if a schema snapshot is acceptable",
 			}
 		}
 	}

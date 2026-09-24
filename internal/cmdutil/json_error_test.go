@@ -169,6 +169,21 @@ func TestGlobalJSONErrorSchemaMutationBlocked(t *testing.T) {
 	}
 }
 
+func TestGlobalJSONErrorStaleRoutingRulesSnapshot(t *testing.T) {
+	resp := GlobalJSONError(&planetscale.Error{
+		APICode: "routing_rules_snapshot_stale",
+	})
+	if resp.Status != "action_required" {
+		t.Fatalf("status = %q", resp.Status)
+	}
+	if resp.Code() != "routing_rules_snapshot_stale" {
+		t.Fatalf("code = %q", resp.Code())
+	}
+	if len(resp.NextSteps) != 2 {
+		t.Fatalf("next_steps = %#v", resp.NextSteps)
+	}
+}
+
 func TestGlobalJSONErrorPreservesOtherAPICodes(t *testing.T) {
 	resp := GlobalJSONError(&planetscale.Error{
 		APICode: "unprocessable",

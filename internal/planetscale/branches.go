@@ -103,6 +103,7 @@ type BranchRoutingRulesRequest struct {
 	Organization string `json:"-"`
 	Database     string `json:"-"`
 	Branch       string `json:"-"`
+	RejectStale  bool   `json:"-"`
 }
 
 type UpdateBranchRoutingRulesRequest struct {
@@ -263,7 +264,12 @@ func (d *databaseBranchesService) Schema(ctx context.Context, schemaReq *BranchS
 func (d *databaseBranchesService) RoutingRules(ctx context.Context, routingRulesReq *BranchRoutingRulesRequest) (*RoutingRules, error) {
 	path := path.Join(databaseBranchAPIPath(routingRulesReq.Organization, routingRulesReq.Database, routingRulesReq.Branch), "routing-rules")
 
-	req, err := d.client.newRequest(http.MethodGet, path, nil)
+	query := url.Values{}
+	if routingRulesReq.RejectStale {
+		query.Set("reject_stale", "true")
+	}
+
+	req, err := d.client.newRequest(http.MethodGet, path, nil, WithQueryParams(query))
 	if err != nil {
 		return nil, fmt.Errorf("error creating http request: %w", err)
 	}

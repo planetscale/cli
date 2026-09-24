@@ -508,7 +508,7 @@ pscale branch vtctld move-tables cancel <database> <branch> --org <org> --format
   --workflow <workflow> --target-keyspace <target> --keep-data=false --keep-routing-rules=false
 ```
 
-Ask the user before `switch-traffic` with `PRIMARY`, `complete` without `--dry-run`, and `cancel`. Prefer `--keep-routing-rules=false` on complete and cancel. Leaving rules behind after teardown can fail a later MoveTables complete: leftover from-keys from an earlier workflow still point at the current source. `pscale branch routing-rules get` reads a schema snapshot, which can lag live cluster state after SwitchTraffic. `pscale branch routing-rules update` replaces the entire routing map. For live rules, use `pscale branch vtctld get-routing-rules`.
+Ask the user before `switch-traffic` with `PRIMARY`, `complete` without `--dry-run`, and `cancel`. Prefer `--keep-routing-rules=false` on complete and cancel. Leaving rules behind after teardown can fail a later MoveTables complete: leftover from-keys from an earlier workflow still point at the current source. `pscale branch routing-rules get` reads a schema snapshot, which can lag live cluster state after SwitchTraffic; pass `--reject-stale` to fail when PlanetScale knows a routing change has not produced a new snapshot. `pscale branch routing-rules update` replaces the entire routing map. For live rules, use `pscale branch vtctld get-routing-rules`.
 
 ## Maintenance schedules (Vitess Enterprise)
 

@@ -180,6 +180,31 @@ func TestDatabaseBranches_ListWithDefaultPerPage(t *testing.T) {
 	c.Assert(db, qt.DeepEquals, want)
 }
 
+func TestDatabaseBranches_RoutingRulesRejectStale(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.URL.Query().Get("reject_stale"), qt.Equals, "true")
+		w.WriteHeader(http.StatusOK)
+		_, err := w.Write([]byte(`{"raw":"{\"rules\":[]}","html":""}`))
+		c.Assert(err, qt.IsNil)
+	}))
+	t.Cleanup(ts.Close)
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	rules, err := client.DatabaseBranches.RoutingRules(context.Background(), &BranchRoutingRulesRequest{
+		Organization: "my-org",
+		Database:     "my-db",
+		Branch:       "my-branch",
+		RejectStale:  true,
+	})
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(rules.Raw, qt.Equals, `{"rules":[]}`)
+}
+
 func TestDatabaseBranches_Get(t *testing.T) {
 	c := qt.New(t)
 

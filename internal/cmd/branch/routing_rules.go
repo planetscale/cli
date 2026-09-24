@@ -31,11 +31,16 @@ func RoutingRulesCmd(ch *cmdutil.Helper) *cobra.Command {
 
 // GetRoutingRulesCmd is the command for showing the routing rules of a branch.
 func GetRoutingRulesCmd(ch *cmdutil.Helper) *cobra.Command {
+	var flags struct {
+		rejectStale bool
+	}
+
 	cmd := &cobra.Command{
 		Use:   "get <database> <branch>",
 		Short: "Show routing rules from the branch schema snapshot",
 		Long: "Show routing rules from the branch schema snapshot, which can lag live " +
-			"cluster state after SwitchTraffic. For live rules, use " +
+			"cluster state after SwitchTraffic. Use `--reject-stale` to fail when a routing " +
+			"change has not produced a new snapshot. For live rules, use " +
 			"`pscale branch vtctld get-routing-rules`. Applying a snapshot with " +
 			"`pscale branch routing-rules update` replaces the entire cluster routing map.",
 		Args: cmdutil.RequiredArgs("database", "branch"),
@@ -52,6 +57,7 @@ func GetRoutingRulesCmd(ch *cmdutil.Helper) *cobra.Command {
 				Organization: ch.Config.Organization,
 				Database:     database,
 				Branch:       branch,
+				RejectStale:  flags.rejectStale,
 			})
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
@@ -75,6 +81,8 @@ func GetRoutingRulesCmd(ch *cmdutil.Helper) *cobra.Command {
 			return nil
 		},
 	}
+
+	cmd.Flags().BoolVar(&flags.rejectStale, "reject-stale", false, "Fail if a routing change has not produced a new schema snapshot")
 
 	return cmd
 }
