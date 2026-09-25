@@ -178,9 +178,16 @@ func GlobalJSONError(err error) JSONErrorResponse {
 
 	if apiCode != "" {
 		code = apiCode
-		if apiCode == "schema_mutation_blocked" {
+		switch apiCode {
+		case "schema_mutation_blocked":
+			status = "action_required"
 			nextSteps = []string{
 				"Wait for the active vtctld mutation or deploy to finish, then retry",
+			}
+		case "schema_snapshot_not_ready":
+			status = "action_required"
+			nextSteps = []string{
+				"Wait for the branch schema snapshot to become ready, then retry",
 			}
 		}
 	}

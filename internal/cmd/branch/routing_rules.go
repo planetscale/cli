@@ -16,7 +16,7 @@ import (
 func RoutingRulesCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "routing-rules <command>",
-		Short: "Fetch or update keyspace routing rules for a MySQL branch",
+		Short: "Fetch or update routing rules for a MySQL branch",
 	}
 
 	cmd.AddCommand(GetRoutingRulesCmd(ch))
@@ -79,8 +79,11 @@ func UpdateRoutingRulesCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "update <database> <branch> --routing-rules <file>",
-		Short: "Update the routing rules of a MySQL branch",
-		Args:  cmdutil.RequiredArgs("database", "branch"),
+		Short: "Replace the routing rules of a MySQL branch",
+		Long: "Replace the branch routing rules. This is a full replacement, not a merge. " +
+			"The request fails while a vtctld schema mutation is in progress or the branch schema snapshot is not ready, " +
+			"because the rules you read may not describe live routing.",
+		Args: cmdutil.RequiredArgs("database", "branch"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			database, branch := args[0], args[1]
