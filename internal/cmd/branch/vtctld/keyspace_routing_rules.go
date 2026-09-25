@@ -58,9 +58,7 @@ func ApplyKeyspaceRoutingRulesCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "apply-keyspace-routing-rules <database> <branch>",
 		Short: "Replace live keyspace routing rules for a branch",
-		Long: "Replace live keyspace routing rules for a branch. " +
-			"The request fails when there is an already in-progress modification to the routing rules.",
-		Args: cmdutil.RequiredArgs("database", "branch"),
+		Args:  cmdutil.RequiredArgs("database", "branch"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			rulesSet := cmd.Flags().Changed("rules")
 			rulesFileSet := cmd.Flags().Changed("rules-file")

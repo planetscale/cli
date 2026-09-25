@@ -14,7 +14,7 @@ import (
 	"github.com/planetscale/cli/internal/printer"
 )
 
-func TestRoutingRulesUpdateHelpDescribesStaleSnapshotBlock(t *testing.T) {
+func TestRoutingRulesUpdateHelpDescribesBlockedConditions(t *testing.T) {
 	c := qt.New(t)
 
 	format := printer.JSON
@@ -28,15 +28,16 @@ func TestRoutingRulesUpdateHelpDescribesStaleSnapshotBlock(t *testing.T) {
 
 	c.Assert(cmd.Short, qt.Contains, "Replace")
 	c.Assert(cmd.Long, qt.Contains, "full replacement")
-	c.Assert(cmd.Long, qt.Contains, "fails when there is an already in-progress modification to the routing rules")
+	c.Assert(cmd.Long, qt.Contains, "vtctld schema mutation is in progress")
+	c.Assert(cmd.Long, qt.Contains, "schema snapshot is not ready")
 }
 
-func TestRoutingRulesUpdateReturnsStaleSnapshotError(t *testing.T) {
+func TestRoutingRulesUpdateReturnsBlockedError(t *testing.T) {
 	c := qt.New(t)
 
 	svc := &mock.DatabaseBranchesService{
 		UpdateRoutingRulesFn: func(_ context.Context, _ *ps.UpdateBranchRoutingRulesRequest) (*ps.RoutingRules, error) {
-			return nil, &ps.Error{APICode: "routing_rules_modification_in_progress"}
+			return nil, &ps.Error{APICode: "schema_snapshot_not_ready"}
 		},
 	}
 	format := printer.JSON

@@ -81,7 +81,8 @@ func UpdateRoutingRulesCmd(ch *cmdutil.Helper) *cobra.Command {
 		Use:   "update <database> <branch> --routing-rules <file>",
 		Short: "Replace the routing rules of a MySQL branch",
 		Long: "Replace the branch routing rules. This is a full replacement, not a merge. " +
-			"The request fails when there is an already in-progress modification to the routing rules.",
+			"The request fails while a vtctld schema mutation is in progress or the branch schema snapshot is not ready, " +
+			"because the rules you read may not describe live routing.",
 		Args: cmdutil.RequiredArgs("database", "branch"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()

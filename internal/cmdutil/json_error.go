@@ -183,10 +183,10 @@ func GlobalJSONError(err error) JSONErrorResponse {
 			nextSteps = []string{
 				"Wait for the active vtctld mutation or deploy to finish, then retry",
 			}
-		case "routing_rules_modification_in_progress":
+		case "schema_snapshot_not_ready":
 			status = "action_required"
 			nextSteps = []string{
-				"Wait for the routing rules modification to finish, then retry",
+				"Wait for the branch schema snapshot to become ready, then retry",
 			}
 		}
 	}

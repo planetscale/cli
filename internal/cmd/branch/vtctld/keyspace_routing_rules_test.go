@@ -68,14 +68,6 @@ func TestApplyKeyspaceRoutingRules(t *testing.T) {
 	c.Assert(svc.ApplyKeyspaceRoutingRulesFnInvoked, qt.IsTrue)
 }
 
-func TestApplyKeyspaceRoutingRulesHelpDescribesStaleSnapshotBlock(t *testing.T) {
-	c := qt.New(t)
-
-	cmd := ApplyKeyspaceRoutingRulesCmd(keyspaceRoutingRulesHelper(&mock.VtctldService{}))
-
-	c.Assert(cmd.Long, qt.Contains, "fails when there is an already in-progress modification to the routing rules")
-}
-
 func TestApplyKeyspaceRoutingRulesFileClearsRules(t *testing.T) {
 	c := qt.New(t)
 

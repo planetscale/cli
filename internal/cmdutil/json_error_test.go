@@ -169,18 +169,18 @@ func TestGlobalJSONErrorSchemaMutationBlocked(t *testing.T) {
 	}
 }
 
-func TestGlobalJSONErrorRoutingRulesModificationInProgress(t *testing.T) {
+func TestGlobalJSONErrorSchemaSnapshotNotReady(t *testing.T) {
 	resp := GlobalJSONError(&planetscale.Error{
-		APICode: "routing_rules_modification_in_progress",
+		APICode: "schema_snapshot_not_ready",
 	})
 
 	if resp.Status != "action_required" {
 		t.Fatalf("status = %q", resp.Status)
 	}
-	if resp.Code() != "routing_rules_modification_in_progress" {
+	if resp.Code() != "schema_snapshot_not_ready" {
 		t.Fatalf("code = %q", resp.Code())
 	}
-	if len(resp.NextSteps) != 1 || resp.NextSteps[0] != "Wait for the routing rules modification to finish, then retry" {
+	if len(resp.NextSteps) != 1 || resp.NextSteps[0] != "Wait for the branch schema snapshot to become ready, then retry" {
 		t.Fatalf("next_steps = %#v", resp.NextSteps)
 	}
 }
