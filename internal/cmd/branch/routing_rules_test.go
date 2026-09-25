@@ -32,7 +32,7 @@ func TestRoutingRulesGetWarnsWhenSchemaMutationIsInProgress(t *testing.T) {
 	format := printer.Human
 	p := printer.NewPrinter(&format)
 	var output bytes.Buffer
-	p.SetHumanOutput(&output)
+	p.SetResourceOutput(&output)
 	ch := &cmdutil.Helper{
 		Printer: p,
 		Config:  &config.Config{Organization: "my-org"},
