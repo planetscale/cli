@@ -16,7 +16,7 @@ import (
 func RoutingRulesCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "routing-rules <command>",
-		Short: "Fetch or update keyspace routing rules for a MySQL branch",
+		Short: "Fetch or update routing rules for a MySQL branch",
 	}
 
 	cmd.AddCommand(GetRoutingRulesCmd(ch))
