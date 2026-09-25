@@ -68,6 +68,14 @@ func TestApplyKeyspaceRoutingRules(t *testing.T) {
 	c.Assert(svc.ApplyKeyspaceRoutingRulesFnInvoked, qt.IsTrue)
 }
 
+func TestApplyKeyspaceRoutingRulesHelpDescribesStaleSnapshotBlock(t *testing.T) {
+	c := qt.New(t)
+
+	cmd := ApplyKeyspaceRoutingRulesCmd(keyspaceRoutingRulesHelper(&mock.VtctldService{}))
+
+	c.Assert(cmd.Long, qt.Contains, "fails when a routing change has not produced a new schema snapshot")
+}
+
 func TestApplyKeyspaceRoutingRulesFileClearsRules(t *testing.T) {
 	c := qt.New(t)
 

@@ -79,8 +79,10 @@ func UpdateRoutingRulesCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "update <database> <branch> --routing-rules <file>",
-		Short: "Update the routing rules of a MySQL branch",
-		Args:  cmdutil.RequiredArgs("database", "branch"),
+		Short: "Replace the routing rules of a MySQL branch",
+		Long: "Replace the branch routing rules. This is a full replacement, not a merge. " +
+			"The request fails when a routing change has not produced a new schema snapshot.",
+		Args: cmdutil.RequiredArgs("database", "branch"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			database, branch := args[0], args[1]
