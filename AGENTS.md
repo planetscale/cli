@@ -503,10 +503,12 @@ pscale branch vtctld move-tables switch-traffic <database> <branch> --org <org> 
 pscale branch vtctld move-tables reverse-traffic <database> <branch> --org <org> --format json \
   --workflow <workflow> --target-keyspace <target>
 pscale branch vtctld move-tables complete <database> <branch> --org <org> --format json \
-  --workflow <workflow> --target-keyspace <target> --keep-data=false --keep-routing-rules=false --dry-run
+  --workflow <workflow> --target-keyspace <target> --keep-data=true --keep-routing-rules=false --dry-run
 pscale branch vtctld move-tables cancel <database> <branch> --org <org> --format json \
   --workflow <workflow> --target-keyspace <target> --keep-data=false --keep-routing-rules=false
 ```
+
+On `complete`, `--keep-data=true` keeps the source tables and `--keep-data=false` drops them. Always use `--keep-data=true` when the source is an external keyspace, since those tables are in the user's own database.
 
 Ask the user before `switch-traffic` with `PRIMARY`, `complete` without `--dry-run`, and `cancel`.
 
