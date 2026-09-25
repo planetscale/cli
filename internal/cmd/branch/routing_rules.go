@@ -59,6 +59,10 @@ func GetRoutingRulesCmd(ch *cmdutil.Helper) *cobra.Command {
 				return ch.Printer.PrintResource(routingRules)
 			}
 
+			for _, warning := range routingRules.Warnings {
+				fmt.Fprintf(cmd.ErrOrStderr(), "Warning: %s\n", warning.Message)
+			}
+
 			err = ch.Printer.PrettyPrintJSON([]byte(routingRules.Raw))
 			if err != nil {
 				return fmt.Errorf("reading routingRules raw: %s", err)

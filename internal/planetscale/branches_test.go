@@ -180,13 +180,12 @@ func TestDatabaseBranches_ListWithDefaultPerPage(t *testing.T) {
 	c.Assert(db, qt.DeepEquals, want)
 }
 
-func TestDatabaseBranches_RoutingRulesRejectStale(t *testing.T) {
+func TestDatabaseBranches_RoutingRulesWarnings(t *testing.T) {
 	c := qt.New(t)
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		c.Assert(r.URL.Query().Get("reject_stale"), qt.Equals, "true")
 		w.WriteHeader(http.StatusOK)
-		_, err := w.Write([]byte(`{"raw":"{\"rules\":[]}","html":""}`))
+		_, err := w.Write([]byte(`{"raw":"{\"rules\":[]}","html":"","warnings":[{"code":"schema_mutation_in_progress","message":"A vtctld schema mutation is in progress."}]}`))
 		c.Assert(err, qt.IsNil)
 	}))
 	t.Cleanup(ts.Close)
@@ -198,11 +197,14 @@ func TestDatabaseBranches_RoutingRulesRejectStale(t *testing.T) {
 		Organization: "my-org",
 		Database:     "my-db",
 		Branch:       "my-branch",
-		RejectStale:  true,
 	})
 
 	c.Assert(err, qt.IsNil)
 	c.Assert(rules.Raw, qt.Equals, `{"rules":[]}`)
+	c.Assert(rules.Warnings, qt.DeepEquals, []RoutingRulesWarning{{
+		Code:    "schema_mutation_in_progress",
+		Message: "A vtctld schema mutation is in progress.",
+	}})
 }
 
 func TestDatabaseBranches_Get(t *testing.T) {

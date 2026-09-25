@@ -103,7 +103,6 @@ type BranchRoutingRulesRequest struct {
 	Organization string `json:"-"`
 	Database     string `json:"-"`
 	Branch       string `json:"-"`
-	RejectStale  bool   `json:"-"`
 }
 
 type UpdateBranchRoutingRulesRequest struct {
@@ -170,9 +169,15 @@ type SchemaLintError struct {
 	DocsURL          string `json:"docs_url"`
 }
 
+type RoutingRulesWarning struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
+}
+
 type RoutingRules struct {
-	Raw  string `json:"raw"`
-	HTML string `json:"html"`
+	Raw      string                `json:"raw"`
+	HTML     string                `json:"html"`
+	Warnings []RoutingRulesWarning `json:"warnings"`
 }
 
 // DatabaseBranchesService is an interface for communicating with the PlanetScale
@@ -264,12 +269,7 @@ func (d *databaseBranchesService) Schema(ctx context.Context, schemaReq *BranchS
 func (d *databaseBranchesService) RoutingRules(ctx context.Context, routingRulesReq *BranchRoutingRulesRequest) (*RoutingRules, error) {
 	path := path.Join(databaseBranchAPIPath(routingRulesReq.Organization, routingRulesReq.Database, routingRulesReq.Branch), "routing-rules")
 
-	query := url.Values{}
-	if routingRulesReq.RejectStale {
-		query.Set("reject_stale", "true")
-	}
-
-	req, err := d.client.newRequest(http.MethodGet, path, nil, WithQueryParams(query))
+	req, err := d.client.newRequest(http.MethodGet, path, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating http request: %w", err)
 	}
