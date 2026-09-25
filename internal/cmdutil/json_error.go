@@ -180,6 +180,7 @@ func GlobalJSONError(err error) JSONErrorResponse {
 		code = apiCode
 		switch apiCode {
 		case "schema_mutation_blocked":
+			status = "action_required"
 			nextSteps = []string{
 				"Wait for the active vtctld mutation or deploy to finish, then retry",
 			}

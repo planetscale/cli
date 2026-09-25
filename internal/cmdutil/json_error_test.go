@@ -156,6 +156,10 @@ func TestGlobalJSONErrorSchemaMutationBlocked(t *testing.T) {
 	resp := GlobalJSONError(&planetscale.Error{
 		APICode: "schema_mutation_blocked",
 	})
+
+	if resp.Status != "action_required" {
+		t.Fatalf("status = %q", resp.Status)
+	}
 	if resp.Code() != "schema_mutation_blocked" {
 		t.Fatalf("code = %q", resp.Code())
 	}
