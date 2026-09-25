@@ -28,7 +28,7 @@ func TestRoutingRulesUpdateHelpDescribesStaleSnapshotBlock(t *testing.T) {
 
 	c.Assert(cmd.Short, qt.Contains, "Replace")
 	c.Assert(cmd.Long, qt.Contains, "full replacement")
-	c.Assert(cmd.Long, qt.Contains, "fails when a routing change has not produced a new schema snapshot")
+	c.Assert(cmd.Long, qt.Contains, "fails when there is an already in-progress modification to the routing rules")
 }
 
 func TestRoutingRulesUpdateReturnsStaleSnapshotError(t *testing.T) {
@@ -36,7 +36,7 @@ func TestRoutingRulesUpdateReturnsStaleSnapshotError(t *testing.T) {
 
 	svc := &mock.DatabaseBranchesService{
 		UpdateRoutingRulesFn: func(_ context.Context, _ *ps.UpdateBranchRoutingRulesRequest) (*ps.RoutingRules, error) {
-			return nil, &ps.Error{APICode: "routing_rules_snapshot_stale"}
+			return nil, &ps.Error{APICode: "routing_rules_modification_in_progress"}
 		},
 	}
 	format := printer.JSON

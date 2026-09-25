@@ -73,7 +73,7 @@ func TestApplyKeyspaceRoutingRulesHelpDescribesStaleSnapshotBlock(t *testing.T) 
 
 	cmd := ApplyKeyspaceRoutingRulesCmd(keyspaceRoutingRulesHelper(&mock.VtctldService{}))
 
-	c.Assert(cmd.Long, qt.Contains, "fails when a routing change has not produced a new schema snapshot")
+	c.Assert(cmd.Long, qt.Contains, "fails when there is an already in-progress modification to the routing rules")
 }
 
 func TestApplyKeyspaceRoutingRulesFileClearsRules(t *testing.T) {
