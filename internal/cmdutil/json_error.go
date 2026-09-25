@@ -180,14 +180,14 @@ func GlobalJSONError(err error) JSONErrorResponse {
 		code = apiCode
 		switch apiCode {
 		case "schema_mutation_blocked":
+			status = "action_required"
 			nextSteps = []string{
 				"Wait for the active vtctld mutation or deploy to finish, then retry",
 			}
-		case "routing_rules_snapshot_stale":
+		case "schema_snapshot_not_ready":
 			status = "action_required"
 			nextSteps = []string{
-				"Wait for the routing change to produce a new schema snapshot, then retry",
-				"Read live rules with `pscale branch vtctld get-routing-rules <database> <branch> --org <org> --format json`",
+				"Wait for the branch schema snapshot to become ready, then retry",
 			}
 		}
 	}

@@ -156,6 +156,10 @@ func TestGlobalJSONErrorSchemaMutationBlocked(t *testing.T) {
 	resp := GlobalJSONError(&planetscale.Error{
 		APICode: "schema_mutation_blocked",
 	})
+
+	if resp.Status != "action_required" {
+		t.Fatalf("status = %q", resp.Status)
+	}
 	if resp.Code() != "schema_mutation_blocked" {
 		t.Fatalf("code = %q", resp.Code())
 	}
@@ -169,21 +173,19 @@ func TestGlobalJSONErrorSchemaMutationBlocked(t *testing.T) {
 	}
 }
 
-func TestGlobalJSONErrorStaleRoutingRulesSnapshot(t *testing.T) {
+func TestGlobalJSONErrorSchemaSnapshotNotReady(t *testing.T) {
 	resp := GlobalJSONError(&planetscale.Error{
-		APICode: "routing_rules_snapshot_stale",
+		APICode: "schema_snapshot_not_ready",
 	})
+
 	if resp.Status != "action_required" {
 		t.Fatalf("status = %q", resp.Status)
 	}
-	if resp.Code() != "routing_rules_snapshot_stale" {
+	if resp.Code() != "schema_snapshot_not_ready" {
 		t.Fatalf("code = %q", resp.Code())
 	}
-	if len(resp.NextSteps) != 2 {
+	if len(resp.NextSteps) != 1 || resp.NextSteps[0] != "Wait for the branch schema snapshot to become ready, then retry" {
 		t.Fatalf("next_steps = %#v", resp.NextSteps)
-	}
-	if resp.NextSteps[0] != "Wait for the routing change to produce a new schema snapshot, then retry" {
-		t.Fatalf("next_steps[0] = %q", resp.NextSteps[0])
 	}
 }
 

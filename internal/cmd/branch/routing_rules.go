@@ -16,11 +16,7 @@ import (
 func RoutingRulesCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "routing-rules <command>",
-		Short: "Fetch or update keyspace routing rules for a MySQL branch",
-		Long: "Fetch or update table routing rules for a MySQL branch. " +
-			"`get` and `update` use the schema-snapshot API: `get` can lag live cluster " +
-			"state after SwitchTraffic, and `update` replaces the entire routing map. " +
-			"For live cluster rules, use `pscale branch vtctld get-routing-rules`.",
+		Short: "Fetch or update routing rules for a MySQL branch",
 	}
 
 	cmd.AddCommand(GetRoutingRulesCmd(ch))
@@ -31,19 +27,10 @@ func RoutingRulesCmd(ch *cmdutil.Helper) *cobra.Command {
 
 // GetRoutingRulesCmd is the command for showing the routing rules of a branch.
 func GetRoutingRulesCmd(ch *cmdutil.Helper) *cobra.Command {
-	var flags struct {
-		rejectStale bool
-	}
-
 	cmd := &cobra.Command{
 		Use:   "get <database> <branch>",
-		Short: "Show routing rules from the branch schema snapshot",
-		Long: "Show routing rules from the branch schema snapshot, which can lag live " +
-			"cluster state after SwitchTraffic. Use `--reject-stale` to fail when a routing " +
-			"change has not produced a new snapshot. For live rules, use " +
-			"`pscale branch vtctld get-routing-rules`. Applying a snapshot with " +
-			"`pscale branch routing-rules update` replaces the entire cluster routing map.",
-		Args: cmdutil.RequiredArgs("database", "branch"),
+		Short: "Show the routing rules of a MySQL branch",
+		Args:  cmdutil.RequiredArgs("database", "branch"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			database, branch := args[0], args[1]
@@ -57,7 +44,6 @@ func GetRoutingRulesCmd(ch *cmdutil.Helper) *cobra.Command {
 				Organization: ch.Config.Organization,
 				Database:     database,
 				Branch:       branch,
-				RejectStale:  flags.rejectStale,
 			})
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
@@ -82,8 +68,6 @@ func GetRoutingRulesCmd(ch *cmdutil.Helper) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().BoolVar(&flags.rejectStale, "reject-stale", false, "Fail if a routing change has not produced a new schema snapshot")
-
 	return cmd
 }
 
@@ -97,10 +81,8 @@ func UpdateRoutingRulesCmd(ch *cmdutil.Helper) *cobra.Command {
 		Use:   "update <database> <branch> --routing-rules <file>",
 		Short: "Replace the routing rules of a MySQL branch",
 		Long: "Replace the branch routing rules. This is a full replacement, not a merge. " +
-			"The request fails when a routing change has not produced a new schema snapshot. " +
-			"`pscale branch routing-rules get` returns a schema snapshot that can predate " +
-			"a traffic switch; applying that file can revert live routes. Use " +
-			"`pscale branch vtctld get-routing-rules` for live cluster state.",
+			"The request fails while a vtctld schema mutation is in progress or the branch schema snapshot is not ready, " +
+			"because the rules you read may not describe live routing.",
 		Args: cmdutil.RequiredArgs("database", "branch"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()

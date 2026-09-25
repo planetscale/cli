@@ -14,50 +14,7 @@ import (
 	"github.com/planetscale/cli/internal/printer"
 )
 
-func TestRoutingRulesGetHelpDescribesSnapshot(t *testing.T) {
-	c := qt.New(t)
-
-	format := printer.JSON
-	p := printer.NewPrinter(&format)
-	ch := &cmdutil.Helper{
-		Printer: p,
-		Config:  &config.Config{Organization: "my-org"},
-	}
-
-	cmd := GetRoutingRulesCmd(ch)
-	c.Assert(cmd.Short, qt.Contains, "schema snapshot")
-	c.Assert(cmd.Long, qt.Contains, "--reject-stale")
-	c.Assert(cmd.Long, qt.Contains, "vtctld get-routing-rules")
-	c.Assert(cmd.Long, qt.Contains, "replaces the entire cluster routing map")
-}
-
-func TestRoutingRulesGetRejectsStaleSnapshot(t *testing.T) {
-	c := qt.New(t)
-
-	svc := &mock.DatabaseBranchesService{
-		RoutingRulesFn: func(_ context.Context, req *ps.BranchRoutingRulesRequest) (*ps.RoutingRules, error) {
-			c.Assert(req.RejectStale, qt.IsTrue)
-			return &ps.RoutingRules{Raw: `{"rules":[]}`}, nil
-		},
-	}
-	format := printer.JSON
-	p := printer.NewPrinter(&format)
-	ch := &cmdutil.Helper{
-		Printer: p,
-		Config:  &config.Config{Organization: "my-org"},
-		Client: func() (*ps.Client, error) {
-			return &ps.Client{DatabaseBranches: svc}, nil
-		},
-	}
-
-	cmd := GetRoutingRulesCmd(ch)
-	cmd.SetArgs([]string{"my-db", "my-branch", "--reject-stale"})
-
-	c.Assert(cmd.Execute(), qt.IsNil)
-	c.Assert(svc.RoutingRulesFnInvoked, qt.IsTrue)
-}
-
-func TestRoutingRulesUpdateHelpDescribesReplace(t *testing.T) {
+func TestRoutingRulesUpdateHelpDescribesBlockedConditions(t *testing.T) {
 	c := qt.New(t)
 
 	format := printer.JSON
@@ -68,18 +25,19 @@ func TestRoutingRulesUpdateHelpDescribesReplace(t *testing.T) {
 	}
 
 	cmd := UpdateRoutingRulesCmd(ch)
+
 	c.Assert(cmd.Short, qt.Contains, "Replace")
 	c.Assert(cmd.Long, qt.Contains, "full replacement")
-	c.Assert(cmd.Long, qt.Contains, "fails when a routing change has not produced a new schema snapshot")
-	c.Assert(cmd.Long, qt.Contains, "vtctld get-routing-rules")
+	c.Assert(cmd.Long, qt.Contains, "vtctld schema mutation is in progress")
+	c.Assert(cmd.Long, qt.Contains, "schema snapshot is not ready")
 }
 
-func TestRoutingRulesUpdateRejectsStaleSnapshot(t *testing.T) {
+func TestRoutingRulesUpdateReturnsBlockedError(t *testing.T) {
 	c := qt.New(t)
 
 	svc := &mock.DatabaseBranchesService{
 		UpdateRoutingRulesFn: func(_ context.Context, _ *ps.UpdateBranchRoutingRulesRequest) (*ps.RoutingRules, error) {
-			return nil, &ps.Error{APICode: "routing_rules_snapshot_stale"}
+			return nil, &ps.Error{APICode: "schema_snapshot_not_ready"}
 		},
 	}
 	format := printer.JSON
@@ -94,13 +52,19 @@ func TestRoutingRulesUpdateRejectsStaleSnapshot(t *testing.T) {
 
 	tmpFile, err := os.CreateTemp("", "routing-rules.json")
 	c.Assert(err, qt.IsNil)
-	_, err = tmpFile.Write([]byte(`{"rules":[]}`))
+	t.Cleanup(func() {
+		os.Remove(tmpFile.Name())
+	})
+
+	_, err = tmpFile.WriteString(`{"rules":[]}`)
 	c.Assert(err, qt.IsNil)
 	c.Assert(tmpFile.Close(), qt.IsNil)
 
 	cmd := UpdateRoutingRulesCmd(ch)
 	cmd.SetArgs([]string{"my-db", "my-branch", "--routing-rules", tmpFile.Name()})
 
-	c.Assert(cmd.Execute(), qt.IsNotNil)
+	err = cmd.Execute()
+
+	c.Assert(err, qt.IsNotNil)
 	c.Assert(svc.UpdateRoutingRulesFnInvoked, qt.IsTrue)
 }
