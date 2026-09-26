@@ -589,3 +589,47 @@ func TestKeyspaces_UpdateSettingsMaxRollout(t *testing.T) {
 	c.Assert(keyspace.MaxRollout, qt.Not(qt.IsNil))
 	c.Assert(*keyspace.MaxRollout, qt.Equals, 8)
 }
+
+func TestKeyspaces_UpdateSettingsStorage(t *testing.T) {
+	c := qt.New(t)
+
+	var body string
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodPatch)
+
+		raw, err := io.ReadAll(r.Body)
+		c.Assert(err, qt.IsNil)
+		body = string(raw)
+
+		w.WriteHeader(200)
+		out := `{"type":"Keyspace","id":"thisisanid","name":"planetscale","storage":{"storage_bytes":214748364800,"max_storage_bytes":4398046511104,"disk_scaling_strategy":"shrink"}}`
+		_, err = w.Write([]byte(out))
+		c.Assert(err, qt.IsNil)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	ctx := context.Background()
+	strategy := "shrink"
+	storageBytes := int64(214748364800)
+
+	keyspace, err := client.Keyspaces.UpdateSettings(ctx, &UpdateKeyspaceSettingsRequest{
+		Organization: "foo",
+		Database:     "bar",
+		Branch:       "baz",
+		Keyspace:     "qux",
+		Storage: &KeyspaceStorageUpdate{
+			DiskScalingStrategy: &strategy,
+			StorageBytes:        &storageBytes,
+		},
+	})
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(strings.TrimSpace(body), qt.Equals, `{"storage":{"disk_scaling_strategy":"shrink","storage_bytes":214748364800}}`)
+	c.Assert(keyspace.Storage, qt.Not(qt.IsNil))
+	c.Assert(keyspace.Storage.DiskScalingStrategy, qt.Equals, "shrink")
+	c.Assert(keyspace.Storage.StorageBytes, qt.Equals, int64(214748364800))
+	c.Assert(keyspace.Storage.MaxStorageBytes, qt.Equals, int64(4398046511104))
+}
