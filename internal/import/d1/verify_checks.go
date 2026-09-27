@@ -528,6 +528,8 @@ func sqliteSignatureColumnExpr(col ColumnSchema, table TableSchema, all []TableS
 		return fmt.Sprintf(`COALESCE(json(%s), CAST(%s AS TEXT), '')`, name, name)
 	case "BYTEA":
 		return fmt.Sprintf(`COALESCE(hex(%s), '')`, name)
+	case "UUID":
+		return fmt.Sprintf(`COALESCE(LOWER(CAST(%s AS TEXT)), '')`, name)
 	default:
 		return fmt.Sprintf(`COALESCE(CAST(%s AS TEXT), '')`, name)
 	}
@@ -548,6 +550,9 @@ func postgresSignatureColumnExpr(col ColumnSchema, table TableSchema, all []Tabl
 	case "BYTEA":
 		name := postgres.QuoteIdentifier(col.Name)
 		return fmt.Sprintf(`COALESCE(encode(%s, 'hex'), '')`, name)
+	case "UUID":
+		name := postgres.QuoteIdentifier(col.Name)
+		return fmt.Sprintf(`COALESCE(LOWER(%s::text), '')`, name)
 	default:
 		return fmt.Sprintf(`COALESCE(%s::text, '')`, postgres.QuoteIdentifier(col.Name))
 	}
@@ -572,6 +577,10 @@ func rowSignaturesMatch(src, dest string, table TableSchema, all []TableSchema, 
 			}
 		case "TIMESTAMPTZ":
 			if !timestampValuesEqual(srcParts[i], destParts[i]) {
+				return false
+			}
+		case "UUID":
+			if !uuidValuesEqual(srcParts[i], destParts[i]) {
 				return false
 			}
 		default:
@@ -661,6 +670,10 @@ func timestampValuesEqual(a, b string) bool {
 		return false
 	}
 	return normalizeTimestamp(a) == normalizeTimestamp(b)
+}
+
+func uuidValuesEqual(a, b string) bool {
+	return strings.EqualFold(strings.TrimSpace(a), strings.TrimSpace(b))
 }
 
 func normalizeTimestamp(s string) string {
