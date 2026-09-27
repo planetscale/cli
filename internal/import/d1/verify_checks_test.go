@@ -287,6 +287,47 @@ func TestByteaValuesEqualBinaryHex(t *testing.T) {
 	}
 }
 
+func TestUUIDValuesEqual(t *testing.T) {
+	if !uuidValuesEqual("0000A011-D05A-4017-8FDE-E7948858C65F", "0000a011-d05a-4017-8fde-e7948858c65f") {
+		t.Fatal("expected UUIDs to match regardless of case")
+	}
+	if uuidValuesEqual("0000a011-d05a-4017-8fde-e7948858c65f", "11111111-1111-1111-1111-111111111111") {
+		t.Fatal("expected different UUIDs to mismatch")
+	}
+}
+
+func TestUUIDSignatureExprsNormalizeCase(t *testing.T) {
+	sql := `CREATE TABLE entities (
+  id TEXT PRIMARY KEY
+);
+INSERT INTO entities (id) VALUES ('0000A011-D05A-4017-8FDE-E7948858C65F');
+`
+	path := writeDump(t, sql)
+	tables, err := ParseDump(path)
+	if err != nil {
+		t.Fatalf("ParseDump: %v", err)
+	}
+	coerceCtx, err := BuildTypeCoercionContext(path, tables)
+	if err != nil {
+		t.Fatalf("BuildTypeCoercionContext: %v", err)
+	}
+	table := tables[0]
+	id := columnByName(table, "id")
+
+	if sqliteTypeToPostgres(id, table, tables, coerceCtx) != "UUID" {
+		t.Fatalf("expected id column to resolve to UUID")
+	}
+
+	sqliteExpr := sqliteSignatureColumnExpr(id, table, tables, coerceCtx)
+	pgExpr := postgresSignatureColumnExpr(id, table, tables, coerceCtx)
+	if !strings.Contains(sqliteExpr, "LOWER(") {
+		t.Fatalf("expected sqlite UUID signature to lowercase, got %q", sqliteExpr)
+	}
+	if !strings.Contains(pgExpr, "LOWER(") {
+		t.Fatalf("expected postgres UUID signature to lowercase, got %q", pgExpr)
+	}
+}
+
 func TestSummarizeRowSignatureForOutputOmitsBlobPayload(t *testing.T) {
 	table := TableSchema{
 		Name: "attachments",
