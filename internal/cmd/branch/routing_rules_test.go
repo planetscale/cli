@@ -24,7 +24,7 @@ func TestRoutingRulesGetWarnsWhenSchemaMutationIsInProgress(t *testing.T) {
 				Raw: `{"rules":[]}`,
 				Warnings: []ps.RoutingRulesWarning{{
 					Code:    "schema_mutation_in_progress",
-					Message: "The routing rules may be stale due to a vtctld schema migration in progress.",
+					Message: "stale snapshot from the API",
 				}},
 			}, nil
 		},
@@ -49,7 +49,8 @@ func TestRoutingRulesGetWarnsWhenSchemaMutationIsInProgress(t *testing.T) {
 	err := cmd.Execute()
 
 	c.Assert(err, qt.IsNil)
-	c.Assert(warnings.String(), qt.Contains, "Warning: The routing rules may be stale due to a vtctld schema migration in progress.")
+	c.Assert(warnings.String(), qt.Contains, "Warning: The routing rules may be stale due to an in-progress vtctld schema migration.")
+	c.Assert(warnings.String(), qt.Not(qt.Contains), "stale snapshot from the API")
 	c.Assert(output.String(), qt.Contains, `"rules": []`)
 }
 
