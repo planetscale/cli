@@ -552,10 +552,11 @@ func MoveTablesReverseTrafficCmd(ch *cmdutil.Helper) *cobra.Command {
 
 func MoveTablesCancelCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
-		workflow         string
-		targetKeyspace   string
-		keepData         bool
-		keepRoutingRules bool
+		workflow             string
+		targetKeyspace       string
+		keepData             bool
+		keepRoutingRules     bool
+		ignoreSourceKeyspace bool
 	}
 
 	cmd := &cobra.Command{
@@ -590,6 +591,9 @@ func MoveTablesCancelCmd(ch *cmdutil.Helper) *cobra.Command {
 			if cmd.Flags().Changed("keep-routing-rules") {
 				req.KeepRoutingRules = &flags.keepRoutingRules
 			}
+			if cmd.Flags().Changed("ignore-source-keyspace") {
+				req.IgnoreSourceKeyspace = &flags.ignoreSourceKeyspace
+			}
 
 			operation, err := client.MoveTables.Cancel(ctx, req)
 			if err != nil {
@@ -610,6 +614,7 @@ func MoveTablesCancelCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().StringVar(&flags.targetKeyspace, "target-keyspace", "", "Target keyspace")
 	cmd.Flags().BoolVar(&flags.keepData, "keep-data", false, "Keep the data copied into the target keyspace instead of deleting it")
 	cmd.Flags().BoolVar(&flags.keepRoutingRules, "keep-routing-rules", false, "Keep the routing rules")
+	cmd.Flags().BoolVar(&flags.ignoreSourceKeyspace, "ignore-source-keyspace", false, "Cancel without touching the source keyspace. Only use this when the source keyspace has been deleted or is unavailable")
 	cmd.MarkFlagRequired("workflow")           // nolint:errcheck
 	cmd.MarkFlagRequired("target-keyspace")    // nolint:errcheck
 	cmd.MarkFlagRequired("keep-data")          // nolint:errcheck
@@ -620,12 +625,13 @@ func MoveTablesCancelCmd(ch *cmdutil.Helper) *cobra.Command {
 
 func MoveTablesCompleteCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
-		workflow         string
-		targetKeyspace   string
-		keepData         bool
-		keepRoutingRules bool
-		renameTables     bool
-		dryRun           bool
+		workflow             string
+		targetKeyspace       string
+		keepData             bool
+		keepRoutingRules     bool
+		renameTables         bool
+		ignoreSourceKeyspace bool
+		dryRun               bool
 	}
 
 	cmd := &cobra.Command{
@@ -663,6 +669,9 @@ func MoveTablesCompleteCmd(ch *cmdutil.Helper) *cobra.Command {
 			if cmd.Flags().Changed("rename-tables") {
 				req.RenameTables = &flags.renameTables
 			}
+			if cmd.Flags().Changed("ignore-source-keyspace") {
+				req.IgnoreSourceKeyspace = &flags.ignoreSourceKeyspace
+			}
 			if cmd.Flags().Changed("dry-run") {
 				req.DryRun = &flags.dryRun
 			}
@@ -686,6 +695,9 @@ func MoveTablesCompleteCmd(ch *cmdutil.Helper) *cobra.Command {
 				if flags.renameTables {
 					nextFlags = append(nextFlags, "--rename-tables")
 				}
+				if flags.ignoreSourceKeyspace {
+					nextFlags = append(nextFlags, "--ignore-source-keyspace")
+				}
 				return printWorkflowJSON(ch.Printer, data, []workflowNextStep{{
 					Command: moveTablesCommand(
 						ch.Config.Organization,
@@ -708,6 +720,7 @@ func MoveTablesCompleteCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().BoolVar(&flags.keepData, "keep-data", false, "Keep the source tables instead of dropping them. Use this when the source is an external keyspace")
 	cmd.Flags().BoolVar(&flags.keepRoutingRules, "keep-routing-rules", false, "Keep the routing rules")
 	cmd.Flags().BoolVar(&flags.renameTables, "rename-tables", false, "Rename source tables instead of dropping them")
+	cmd.Flags().BoolVar(&flags.ignoreSourceKeyspace, "ignore-source-keyspace", false, "Complete without touching the source keyspace. Only use this when the source keyspace has been deleted or is unavailable")
 	cmd.Flags().BoolVar(&flags.dryRun, "dry-run", false, "Only show what would be done")
 	cmd.MarkFlagRequired("workflow")           // nolint:errcheck
 	cmd.MarkFlagRequired("target-keyspace")    // nolint:errcheck

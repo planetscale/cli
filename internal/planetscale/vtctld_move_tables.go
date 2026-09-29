@@ -120,26 +120,28 @@ type MoveTablesReverseTrafficRequest struct {
 
 // MoveTablesCancelRequest is a request for canceling a MoveTables workflow.
 type MoveTablesCancelRequest struct {
-	Organization     string `json:"-"`
-	Database         string `json:"-"`
-	Branch           string `json:"-"`
-	Workflow         string `json:"-"`
-	TargetKeyspace   string `json:"target_keyspace"`
-	KeepData         *bool  `json:"keep_data,omitempty"`
-	KeepRoutingRules *bool  `json:"keep_routing_rules,omitempty"`
+	Organization         string `json:"-"`
+	Database             string `json:"-"`
+	Branch               string `json:"-"`
+	Workflow             string `json:"-"`
+	TargetKeyspace       string `json:"target_keyspace"`
+	KeepData             *bool  `json:"keep_data,omitempty"`
+	KeepRoutingRules     *bool  `json:"keep_routing_rules,omitempty"`
+	IgnoreSourceKeyspace *bool  `json:"ignore_source_keyspace,omitempty"`
 }
 
 // MoveTablesCompleteRequest is a request for completing a MoveTables workflow.
 type MoveTablesCompleteRequest struct {
-	Organization     string `json:"-"`
-	Database         string `json:"-"`
-	Branch           string `json:"-"`
-	Workflow         string `json:"-"`
-	TargetKeyspace   string `json:"target_keyspace"`
-	KeepData         *bool  `json:"keep_data,omitempty"`
-	KeepRoutingRules *bool  `json:"keep_routing_rules,omitempty"`
-	RenameTables     *bool  `json:"rename_tables,omitempty"`
-	DryRun           *bool  `json:"dry_run,omitempty"`
+	Organization         string `json:"-"`
+	Database             string `json:"-"`
+	Branch               string `json:"-"`
+	Workflow             string `json:"-"`
+	TargetKeyspace       string `json:"target_keyspace"`
+	KeepData             *bool  `json:"keep_data,omitempty"`
+	KeepRoutingRules     *bool  `json:"keep_routing_rules,omitempty"`
+	RenameTables         *bool  `json:"rename_tables,omitempty"`
+	IgnoreSourceKeyspace *bool  `json:"ignore_source_keyspace,omitempty"`
+	DryRun               *bool  `json:"dry_run,omitempty"`
 }
 
 type moveTablesService struct {
