@@ -11,7 +11,7 @@ func DataImportsCmd(ch *cmdutil.Helper) *cobra.Command {
 		Use:               "data-imports <command>",
 		Short:             "Create, list, and delete branch data imports",
 		Long:              "Create, list, and delete branch data imports.\n\nThis command is only supported for Vitess databases.",
-		Deprecated:        "Vitess workflows are now available in the PlanetScale dashboard. See https://planetscale.com/docs/vitess/imports/database-imports for more information.",
+		Deprecated:        "import MySQL databases with \"pscale keyspace create-external\" and \"pscale branch vtctl move-tables\" instead. See https://planetscale.com/docs/vitess/imports/database-imports for more information.",
 		PersistentPreRunE: cmdutil.CheckAuthentication(ch.Config),
 	}
 

@@ -27,8 +27,9 @@ func PlannedReparentShardCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:   "planned-reparent-shard <database> <branch>",
-		Short: "Reparent a shard to a new primary",
+		Use:    "planned-reparent-shard <database> <branch>",
+		Hidden: true,
+		Short:  "Reparent a shard to a new primary",
 		Long: `Reparent a shard to a new primary using Vitess PlannedReparentShard.
 Both the old and new primaries must be up and running.
 
