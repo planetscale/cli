@@ -1355,7 +1355,7 @@ func TestKeyspace_UpdateSettingsCmd_RejectsInvalidDiskScalingStrategy(t *testing
 	c.Assert(svc.UpdateSettingsFnInvoked, qt.IsFalse)
 }
 
-func TestKeyspace_UpdateSettingsCmd_RejectsStorageWithoutShrink(t *testing.T) {
+func TestKeyspace_UpdateSettingsCmd_StorageWithoutStrategy(t *testing.T) {
 	c := qt.New(t)
 
 	var buf bytes.Buffer
@@ -1364,33 +1364,42 @@ func TestKeyspace_UpdateSettingsCmd_RejectsStorageWithoutShrink(t *testing.T) {
 	p := printer.NewPrinter(&format)
 	p.SetResourceOutput(&buf)
 
-	args := [][]string{
-		{"--storage=214748364800"},
-		{"--disk-scaling-strategy=grow", "--storage=214748364800"},
+	svc := &mock.KeyspacesService{
+		GetFn: func(ctx context.Context, req *ps.GetKeyspaceRequest) (*ps.Keyspace, error) {
+			return &ps.Keyspace{ID: "ks1", Name: "sharded"}, nil
+		},
+		UpdateSettingsFn: func(ctx context.Context, req *ps.UpdateKeyspaceSettingsRequest) (*ps.Keyspace, error) {
+			c.Assert(req.Storage, qt.Not(qt.IsNil))
+			c.Assert(req.Storage.DiskScalingStrategy, qt.IsNil)
+			c.Assert(req.Storage.MaxStorageBytes, qt.IsNil)
+			c.Assert(req.Storage.StorageBytes, qt.Not(qt.IsNil))
+			c.Assert(*req.Storage.StorageBytes, qt.Equals, int64(214748364800))
+
+			return &ps.Keyspace{
+				ID:   "ks1",
+				Name: "sharded",
+				Storage: &ps.KeyspaceStorage{
+					StorageBytes:        214748364800,
+					DiskScalingStrategy: "shrink",
+				},
+			}, nil
+		},
 	}
 
-	for _, extra := range args {
-		svc := &mock.KeyspacesService{
-			GetFn: func(ctx context.Context, req *ps.GetKeyspaceRequest) (*ps.Keyspace, error) {
-				return &ps.Keyspace{ID: "ks1", Name: "sharded"}, nil
-			},
-		}
-
-		ch := &cmdutil.Helper{
-			Printer: p,
-			Config:  &config.Config{Organization: "planetscale"},
-			Client: func() (*ps.Client, error) {
-				return &ps.Client{Keyspaces: svc}, nil
-			},
-		}
-
-		cmd := UpdateSettingsCmd(ch)
-		cmd.SetArgs(append([]string{"planetscale", "main", "sharded"}, extra...))
-		err := cmd.Execute()
-		c.Assert(err, qt.ErrorMatches, "--storage can only be set when --disk-scaling-strategy is shrink")
-		c.Assert(svc.GetFnInvoked, qt.IsFalse)
-		c.Assert(svc.UpdateSettingsFnInvoked, qt.IsFalse)
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: "planetscale"},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{Keyspaces: svc}, nil
+		},
 	}
+
+	cmd := UpdateSettingsCmd(ch)
+	cmd.SetArgs([]string{"planetscale", "main", "sharded", "--storage=214748364800"})
+	err := cmd.Execute()
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.GetFnInvoked, qt.IsFalse)
+	c.Assert(svc.UpdateSettingsFnInvoked, qt.IsTrue)
 }
 
 func TestKeyspace_UpdateSettingsCmd_RejectsInvalidStorageSizes(t *testing.T) {

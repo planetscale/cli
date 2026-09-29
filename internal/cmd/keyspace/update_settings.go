@@ -20,10 +20,6 @@ import (
 // --disk-scaling-strategy flag.
 var diskScalingStrategies = []string{"grow", "disable", "shrink"}
 
-// shrinkStrategy recreates disks at the requested size and then disables
-// autoscaling. It is the only strategy that accepts --storage.
-const shrinkStrategy = "shrink"
-
 func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 	updateReq := &ps.UpdateKeyspaceSettingsRequest{}
 
@@ -97,12 +93,6 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			if storageChanged {
-				// The API only recreates disks at a new size when shrinking, so
-				// the strategy has to be part of the same request.
-				if !strategyChanged || flags.diskScalingStrategy != shrinkStrategy {
-					return fmt.Errorf("--storage can only be set when --disk-scaling-strategy is %s", shrinkStrategy)
-				}
-
 				if flags.storage <= 0 {
 					return errors.New("--storage must be greater than 0")
 				}
@@ -207,7 +197,7 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().IntVar(&flags.maxRollout, "max-rollout", 1, "Maximum number of shards to roll out changes to concurrently (1-32).")
 	cmd.Flags().StringVar(&flags.diskScalingStrategy, "disk-scaling-strategy", "grow", fmt.Sprintf("The disk scaling strategy (%s). 'grow' lets dedicated disks grow automatically up to --max-storage; 'disable' turns autoscaling off; 'shrink' recreates disks at --storage and then disables autoscaling.", strings.Join(diskScalingStrategies, ", ")))
 	cmd.Flags().Int64Var(&flags.maxStorage, "max-storage", 0, "The maximum size in bytes that dedicated disks may autoscale to.")
-	cmd.Flags().Int64Var(&flags.storage, "storage", 0, fmt.Sprintf("The disk size in bytes to recreate disks at. Must be a multiple of 1 GiB and requires --disk-scaling-strategy %s.", shrinkStrategy))
+	cmd.Flags().Int64Var(&flags.storage, "storage", 0, "The disk size in bytes to recreate disks at. Must be a multiple of 1 GiB. Only accepted when the disk scaling strategy is shrink, either passed with --disk-scaling-strategy or already set on the keyspace.")
 	cmd.Flags().BoolVarP(&flags.interactive, "interactive", "i", false, "Run the command in interactive mode")
 
 	_ = cmd.RegisterFlagCompletionFunc("disk-scaling-strategy", cobra.FixedCompletions(diskScalingStrategies, cobra.ShellCompDirectiveNoFileComp))
