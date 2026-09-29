@@ -17,9 +17,10 @@ func ListTabletsCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:   "list-tablets <database> <branch>",
-		Short: "List tablets for a branch, grouped by keyspace and shard",
-		Args:  cmdutil.RequiredArgs("database", "branch"),
+		Use:    "list-tablets <database> <branch>",
+		Hidden: true,
+		Short:  "List tablets for a branch, grouped by keyspace and shard",
+		Args:   cmdutil.RequiredArgs("database", "branch"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			database, branch := args[0], args[1]

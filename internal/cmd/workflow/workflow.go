@@ -5,12 +5,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const deprecation = "use \"pscale branch vtctl move-tables\" instead. See https://planetscale.com/docs/cli/move-tables for more information."
+
 func WorkflowCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "workflow <command>",
 		Short:             "Manage the workflows for PlanetScale databases",
+		Deprecated:        deprecation,
 		Long:              "Manage the workflows for PlanetScale databases.\n\nThis command is only supported for Vitess databases.",
-		PersistentPreRunE: cmdutil.CheckAuthentication(ch.Config),
+		PersistentPreRunE: cmdutil.WarnDeprecated("workflow", deprecation, cmdutil.CheckAuthentication(ch.Config)),
 	}
 
 	cmd.PersistentFlags().StringVar(&ch.Config.Organization, "org", ch.Config.Organization,

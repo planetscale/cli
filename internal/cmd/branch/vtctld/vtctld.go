@@ -11,7 +11,6 @@ func VtctldCmd(ch *cmdutil.Helper) *cobra.Command {
 		Aliases: []string{"vtctld"},
 		Short:   "Run vtctl commands against a branch",
 		Long:    "Run vtctl commands against a branch. This command is only supported for Vitess databases.",
-		Hidden:  true,
 	}
 
 	cmd.AddCommand(MaterializeCmd(ch))

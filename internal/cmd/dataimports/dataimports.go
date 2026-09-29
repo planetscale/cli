@@ -5,14 +5,16 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const deprecation = "import MySQL databases with \"pscale keyspace create-external\" and \"pscale branch vtctl move-tables\" instead. See https://planetscale.com/docs/vitess/imports/database-imports for more information."
+
 // DataImportsCmd handles data imports into PlanetScale.
 func DataImportsCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "data-imports <command>",
 		Short:             "Create, list, and delete branch data imports",
 		Long:              "Create, list, and delete branch data imports.\n\nThis command is only supported for Vitess databases.",
-		Deprecated:        "Vitess workflows are now available in the PlanetScale dashboard. See https://planetscale.com/docs/vitess/imports/database-imports for more information.",
-		PersistentPreRunE: cmdutil.CheckAuthentication(ch.Config),
+		Deprecated:        deprecation,
+		PersistentPreRunE: cmdutil.WarnDeprecated("data-imports", deprecation, cmdutil.CheckAuthentication(ch.Config)),
 	}
 
 	cmd.PersistentFlags().StringVar(&ch.Config.Organization, "org", ch.Config.Organization, "The organization for the current user")
