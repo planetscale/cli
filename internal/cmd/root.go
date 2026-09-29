@@ -43,7 +43,6 @@ import (
 	"github.com/planetscale/cli/internal/cmd/branch"
 	"github.com/planetscale/cli/internal/cmd/connect"
 	"github.com/planetscale/cli/internal/cmd/database"
-	"github.com/planetscale/cli/internal/cmd/dataimports"
 	"github.com/planetscale/cli/internal/cmd/deployrequest"
 	"github.com/planetscale/cli/internal/cmd/importcmd"
 	"github.com/planetscale/cli/internal/cmd/insights"
@@ -366,10 +365,6 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 	connectCmd := connect.ConnectCmd(ch)
 	connectCmd.GroupID = "vitess"
 	rootCmd.AddCommand(connectCmd)
-
-	dataimportsCmd := dataimports.DataImportsCmd(ch)
-	dataimportsCmd.GroupID = "vitess"
-	rootCmd.AddCommand(dataimportsCmd)
 
 	deployRequestCmd := deployrequest.DeployRequestCmd(ch)
 	deployRequestCmd.GroupID = "vitess"

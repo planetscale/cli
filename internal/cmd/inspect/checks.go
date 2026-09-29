@@ -627,7 +627,7 @@ var checks = []check{
 		Name:         "subscriptions",
 		Short:        "Per-table logical replication progress on this subscriber",
 		EmptyMessage: "No subscriptions found on this database.",
-		MySQLHint:    "Subscriptions are a PostgreSQL concept; for imports see: pscale data-imports get",
+		MySQLHint:    "Subscriptions are a PostgreSQL concept; for imports see: pscale branch vtctl move-tables list",
 		Postgres: &engineSQL{
 			SQL: `
 				SELECT
