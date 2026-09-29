@@ -163,3 +163,50 @@ func TestParseTableBodyIgnoresSmuggledSQLAfterClose(t *testing.T) {
 		t.Fatalf("ForeignKey must not include injected DROP: %q", cols[0].ForeignKey)
 	}
 }
+
+func TestMatchingParenEndClosesStringAtBackslash(t *testing.T) {
+	s := `(name <> '\'))`
+	end, ok := matchingParenEnd(s, 0)
+	if !ok {
+		t.Fatalf("matchingParenEnd(%q) = not found, want a match", s)
+	}
+	want := strings.Index(s, ")")
+	if end != want {
+		t.Fatalf("matchingParenEnd(%q) = %d, want %d (the first ')' right after the closed string literal)", s, end, want)
+	}
+}
+
+func TestParseTableBodyBackslashQuoteCheckDoesNotSmuggleSQL(t *testing.T) {
+	ddl := `CREATE TABLE t (id INTEGER PRIMARY KEY, name TEXT CHECK (name <> '\')); DROP TABLE users; --'));`
+	cols, constraints := parseTableBody(ddl)
+	if len(constraints) != 0 {
+		t.Fatalf("constraints = %#v, want none", constraints)
+	}
+	if len(cols) != 2 {
+		t.Fatalf("cols = %#v, want 2 columns (id, name)", cols)
+	}
+	if cols[1].Name != "name" {
+		t.Fatalf("cols[1].Name = %q, want %q", cols[1].Name, "name")
+	}
+	if len(cols[1].CheckExprs) != 1 || cols[1].CheckExprs[0] != `name <> '\'` {
+		t.Fatalf("CheckExprs = %#v, want [%q]", cols[1].CheckExprs, `name <> '\'`)
+	}
+	for _, col := range cols {
+		for _, check := range col.CheckExprs {
+			if strings.Contains(strings.ToUpper(check), "DROP") {
+				t.Fatalf("CheckExprs must not include smuggled DROP: %q", check)
+			}
+		}
+	}
+}
+
+func TestMatchingParenEndRealBackslashNotNearQuoteBoundary(t *testing.T) {
+	s := `(path <> 'C:\Users\foo')`
+	end, ok := matchingParenEnd(s, 0)
+	if !ok {
+		t.Fatalf("matchingParenEnd(%q) = not found, want a match", s)
+	}
+	if want := len(s) - 1; end != want {
+		t.Fatalf("matchingParenEnd(%q) = %d, want %d (the final ')')", s, end, want)
+	}
+}

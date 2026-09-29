@@ -575,7 +575,7 @@ var checks = []check{
 		Name:         "replication-slots",
 		Short:        "Replication slots: status, WAL retention, and lag",
 		EmptyMessage: "No replication slots found.",
-		MySQLHint:    "Replication slots are a PostgreSQL concept; for Vitess workflows see: pscale workflow list",
+		MySQLHint:    "Replication slots are a PostgreSQL concept; for Vitess table moves see: pscale branch vtctld move-tables list",
 		Postgres: &engineSQL{
 			// retained_wal_size (since restart_lsn) and unconfirmed_wal_size
 			// (since confirmed_flush_lsn) measure different failure modes;

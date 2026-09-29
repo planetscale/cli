@@ -36,7 +36,7 @@ func ThrottlerStatusCmd(ch *cmdutil.Helper) *cobra.Command {
 		Use:   "status <database> <branch>",
 		Short: "Get the throttler status for a single tablet",
 		Long: "Get the throttler status for a single tablet, identified by its alias. " +
-			"Discover tablet aliases with `pscale branch vtctld list-tablets`.",
+			"Discover tablet aliases with `pscale branch vtctl list-tablets`.",
 		Args: cmdutil.RequiredArgs("database", "branch"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -87,7 +87,7 @@ func ThrottlerCheckCmd(ch *cmdutil.Helper) *cobra.Command {
 		Use:   "check <database> <branch>",
 		Short: "Issue a throttler check against a single tablet",
 		Long: "Issue a throttler check against a single tablet, identified by its alias. " +
-			"Discover tablet aliases with `pscale branch vtctld list-tablets`.",
+			"Discover tablet aliases with `pscale branch vtctl list-tablets`.",
 		Args: cmdutil.RequiredArgs("database", "branch"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()

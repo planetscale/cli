@@ -156,6 +156,10 @@ func TestGlobalJSONErrorSchemaMutationBlocked(t *testing.T) {
 	resp := GlobalJSONError(&planetscale.Error{
 		APICode: "schema_mutation_blocked",
 	})
+
+	if resp.Status != "action_required" {
+		t.Fatalf("status = %q", resp.Status)
+	}
 	if resp.Code() != "schema_mutation_blocked" {
 		t.Fatalf("code = %q", resp.Code())
 	}
@@ -166,6 +170,22 @@ func TestGlobalJSONErrorSchemaMutationBlocked(t *testing.T) {
 		if step == AgentAuthCheckCmd() || step == AgentAuthLoginCmd() {
 			t.Fatalf("schema_mutation_blocked should not suggest auth, got %#v", resp.NextSteps)
 		}
+	}
+}
+
+func TestGlobalJSONErrorSchemaSnapshotNotReady(t *testing.T) {
+	resp := GlobalJSONError(&planetscale.Error{
+		APICode: "schema_snapshot_not_ready",
+	})
+
+	if resp.Status != "action_required" {
+		t.Fatalf("status = %q", resp.Status)
+	}
+	if resp.Code() != "schema_snapshot_not_ready" {
+		t.Fatalf("code = %q", resp.Code())
+	}
+	if len(resp.NextSteps) != 1 || resp.NextSteps[0] != "Wait for the branch schema snapshot to become ready, then retry" {
+		t.Fatalf("next_steps = %#v", resp.NextSteps)
 	}
 }
 

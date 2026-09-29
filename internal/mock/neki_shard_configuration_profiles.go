@@ -16,7 +16,6 @@ type NekiShardConfigurationProfilesService struct {
 	SetDefaultFn         func(context.Context, *ps.SetDefaultNekiShardConfigurationProfileRequest) (*ps.NekiShardConfigurationProfile, error)
 	ListParametersFn     func(context.Context, *ps.ListNekiShardConfigurationProfileParametersRequest) ([]*ps.NekiParameter, error)
 	ListExtensionsFn     func(context.Context, *ps.ListNekiShardConfigurationProfileExtensionsRequest) ([]*ps.NekiExtension, error)
-	UpdateExtensionFn    func(context.Context, *ps.UpdateNekiShardConfigurationProfileExtensionRequest) (*ps.NekiExtension, error)
 	RunMaintenanceFn     func(context.Context, *ps.RunNekiShardConfigurationProfileMaintenanceRequest) error
 	RunBulkMaintenanceFn func(context.Context, *ps.RunNekiShardConfigurationProfilesMaintenanceRequest) error
 	ListChangesFn        func(context.Context, *ps.ListNekiShardConfigurationProfileChangesRequest) ([]*ps.NekiShardConfigurationProfileChange, error)
@@ -25,7 +24,7 @@ type NekiShardConfigurationProfilesService struct {
 
 	ListFnInvoked, GetFnInvoked, CreateFnInvoked, UpdateFnInvoked, DeleteFnInvoked bool
 	GetDefaultFnInvoked, SetDefaultFnInvoked                                       bool
-	ListParametersFnInvoked, ListExtensionsFnInvoked, UpdateExtensionFnInvoked     bool
+	ListParametersFnInvoked, ListExtensionsFnInvoked                               bool
 	RunMaintenanceFnInvoked, RunBulkMaintenanceFnInvoked                           bool
 	ListChangesFnInvoked, GetChangeFnInvoked, CancelChangeFnInvoked                bool
 }
@@ -65,10 +64,6 @@ func (s *NekiShardConfigurationProfilesService) ListParameters(ctx context.Conte
 func (s *NekiShardConfigurationProfilesService) ListExtensions(ctx context.Context, r *ps.ListNekiShardConfigurationProfileExtensionsRequest) ([]*ps.NekiExtension, error) {
 	s.ListExtensionsFnInvoked = true
 	return s.ListExtensionsFn(ctx, r)
-}
-func (s *NekiShardConfigurationProfilesService) UpdateExtension(ctx context.Context, r *ps.UpdateNekiShardConfigurationProfileExtensionRequest) (*ps.NekiExtension, error) {
-	s.UpdateExtensionFnInvoked = true
-	return s.UpdateExtensionFn(ctx, r)
 }
 func (s *NekiShardConfigurationProfilesService) RunMaintenance(ctx context.Context, r *ps.RunNekiShardConfigurationProfileMaintenanceRequest) error {
 	s.RunMaintenanceFnInvoked = true

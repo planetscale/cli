@@ -73,17 +73,46 @@ func extensionsToggleCmd(ch *cmdutil.Helper, use, short string, enabled bool) *c
 
 			end := ch.Printer.PrintProgress(fmt.Sprintf("%s extension %s", action, printer.BoldBlue(extensionName)))
 			defer end()
-			extension, err := client.NekiShardConfigurationProfiles.UpdateExtension(cmd.Context(), &ps.UpdateNekiShardConfigurationProfileExtensionRequest{
+			extensions, err := client.NekiShardConfigurationProfiles.ListExtensions(cmd.Context(), &ps.ListNekiShardConfigurationProfileExtensionsRequest{
 				Organization:         ch.Config.Organization,
 				Database:             database,
 				Branch:               branch,
 				ConfigurationProfile: name,
-				Extension:            extensionName,
-				Enabled:              enabled,
 			})
 			if err != nil {
 				return handleError(err, database, branch, name)
 			}
+
+			var extension *ps.NekiExtension
+			selection := []string{}
+			for _, candidate := range extensions {
+				if candidate.Name == extensionName {
+					extension = candidate
+				} else if candidate.Enabled {
+					selection = append(selection, candidate.Name)
+				}
+			}
+			if extension == nil {
+				return fmt.Errorf("extension %s does not exist in configuration profile %s", extensionName, name)
+			}
+			if !extension.CanEnable {
+				return fmt.Errorf("extension %s cannot be enabled or disabled", extensionName)
+			}
+			if enabled {
+				selection = append(selection, extensionName)
+			}
+
+			_, err = client.NekiShardConfigurationProfiles.Update(cmd.Context(), &ps.UpdateNekiShardConfigurationProfileRequest{
+				Organization:         ch.Config.Organization,
+				Database:             database,
+				Branch:               branch,
+				ConfigurationProfile: name,
+				Extensions:           &selection,
+			})
+			if err != nil {
+				return handleError(err, database, branch, name)
+			}
+			extension.Enabled = enabled
 			end()
 
 			if ch.Printer.Format() == printer.Human {

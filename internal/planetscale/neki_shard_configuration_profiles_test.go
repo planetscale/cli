@@ -65,12 +65,6 @@ func TestNekiShardConfigurationProfilesService(t *testing.T) {
 			w.WriteHeader(http.StatusCreated)
 			writeProfile()
 
-		case r.Method == http.MethodPatch && r.URL.Path == profilePath+"/extensions/pg_stat_statements":
-			var body map[string]interface{}
-			c.Assert(json.NewDecoder(r.Body).Decode(&body), qt.IsNil)
-			c.Assert(body, qt.DeepEquals, map[string]interface{}{"enabled": true})
-			_, _ = w.Write([]byte(`{"name":"pg_stat_statements","description":"Stats","enabled":true,"internal":true,"loader":"shared_preload_libraries","url":"https://example.test/extension","parameters":[]}`))
-
 		case r.Method == http.MethodPatch && r.URL.Path == profilePath:
 			var body map[string]interface{}
 			c.Assert(json.NewDecoder(r.Body).Decode(&body), qt.IsNil)
@@ -107,7 +101,7 @@ func TestNekiShardConfigurationProfilesService(t *testing.T) {
 			_, _ = w.Write([]byte(`[{"name":"shared_buffers","display_name":"Shared buffers","namespace":"pgconf","advanced":false,"category":null,"description":"Shared memory buffers","parameter_type":"bytes","default_value":"128MB","value":"256MB","required":false,"created_at":"2026-08-04T12:00:00Z","updated_at":null,"restart":true,"max":"8589934584kB","min":"128kB","units":["kB","MB","GB"],"url":"https://example.test/parameter"}]`))
 
 		case r.Method == http.MethodGet && r.URL.Path == profilePath+"/extensions":
-			_, _ = w.Write([]byte(`[{"name":"pg_stat_statements","description":"Stats","enabled":true,"internal":true,"loader":"shared_preload_libraries","url":"https://example.test/extension","parameters":[]}]`))
+			_, _ = w.Write([]byte(`[{"name":"pg_stat_statements","description":"Stats","enabled":true,"can_enable":true,"internal":false,"loader":"shared_preload_libraries","url":"https://example.test/extension","parameters":[]}]`))
 
 		case r.Method == http.MethodGet && r.URL.Path == profilePath+"/changes":
 			c.Assert(r.URL.Query().Get("period"), qt.Equals, "24h")
@@ -194,17 +188,7 @@ func TestNekiShardConfigurationProfilesService(t *testing.T) {
 	extensions, err := client.NekiShardConfigurationProfiles.ListExtensions(ctx, &ListNekiShardConfigurationProfileExtensionsRequest{Organization: "acme", Database: "app", Branch: "main", ConfigurationProfile: "metal"})
 	c.Assert(err, qt.IsNil)
 	c.Assert(extensions[0].Name, qt.Equals, "pg_stat_statements")
-
-	extension, err := client.NekiShardConfigurationProfiles.UpdateExtension(ctx, &UpdateNekiShardConfigurationProfileExtensionRequest{
-		Organization:         "acme",
-		Database:             "app",
-		Branch:               "main",
-		ConfigurationProfile: "metal",
-		Extension:            "pg_stat_statements",
-		Enabled:              true,
-	})
-	c.Assert(err, qt.IsNil)
-	c.Assert(extension.Enabled, qt.IsTrue)
+	c.Assert(extensions[0].CanEnable, qt.IsTrue)
 
 	err = client.NekiShardConfigurationProfiles.RunMaintenance(ctx, &RunNekiShardConfigurationProfileMaintenanceRequest{
 		Organization:         "acme",

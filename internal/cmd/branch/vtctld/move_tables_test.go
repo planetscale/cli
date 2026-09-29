@@ -663,6 +663,9 @@ func TestMoveTablesListWithoutTargetKeyspace(t *testing.T) {
 		},
 	}
 
+	listCmd := MoveTablesListCmd(moveTablesTestHelper(org, svc, nil, nil))
+	c.Assert(listCmd.Flags().Lookup("target-keyspace").Usage, qt.Contains, "lists all keyspaces if omitted")
+
 	var buf bytes.Buffer
 	ch := moveTablesTestHelper(org, svc, nil, &buf)
 
@@ -715,6 +718,82 @@ func TestMoveTablesShow(t *testing.T) {
 	err := cmd.Execute()
 	c.Assert(err, qt.IsNil)
 	c.Assert(svc.ShowFnInvoked, qt.IsTrue)
+}
+
+func TestMoveTablesStart(t *testing.T) {
+	c := qt.New(t)
+
+	org := "my-org"
+	db := "my-db"
+	branch := "my-branch"
+
+	svc := &mock.MoveTablesService{
+		StartFn: func(ctx context.Context, req *ps.MoveTablesStartRequest) (json.RawMessage, error) {
+			c.Assert(req.Organization, qt.Equals, org)
+			c.Assert(req.Database, qt.Equals, db)
+			c.Assert(req.Branch, qt.Equals, branch)
+			c.Assert(req.Workflow, qt.Equals, "my-workflow")
+			c.Assert(req.TargetKeyspace, qt.Equals, "target-ks")
+			return json.RawMessage(`{"summary":"Streams started"}`), nil
+		},
+	}
+
+	var buf bytes.Buffer
+	ch := moveTablesTestHelper(org, svc, nil, &buf)
+
+	cmd := MoveTablesCmd(ch)
+	cmd.SetArgs([]string{"start", db, branch,
+		"--workflow", "my-workflow",
+		"--target-keyspace", "target-ks",
+	})
+	err := cmd.Execute()
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.StartFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.JSONEquals, map[string]any{
+		"summary": "Streams started",
+		"next_steps": []any{map[string]any{
+			"command": "pscale branch vtctld move-tables status my-db my-branch --org my-org --workflow my-workflow --target-keyspace target-ks --format json",
+			"reason":  "Monitor copy and replication progress",
+		}},
+	})
+}
+
+func TestMoveTablesStop(t *testing.T) {
+	c := qt.New(t)
+
+	org := "my-org"
+	db := "my-db"
+	branch := "my-branch"
+
+	svc := &mock.MoveTablesService{
+		StopFn: func(ctx context.Context, req *ps.MoveTablesStopRequest) (json.RawMessage, error) {
+			c.Assert(req.Organization, qt.Equals, org)
+			c.Assert(req.Database, qt.Equals, db)
+			c.Assert(req.Branch, qt.Equals, branch)
+			c.Assert(req.Workflow, qt.Equals, "my-workflow")
+			c.Assert(req.TargetKeyspace, qt.Equals, "target-ks")
+			return json.RawMessage(`{"summary":"Streams stopped"}`), nil
+		},
+	}
+
+	var buf bytes.Buffer
+	ch := moveTablesTestHelper(org, svc, nil, &buf)
+
+	cmd := MoveTablesCmd(ch)
+	cmd.SetArgs([]string{"stop", db, branch,
+		"--workflow", "my-workflow",
+		"--target-keyspace", "target-ks",
+	})
+	err := cmd.Execute()
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.StopFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.JSONEquals, map[string]any{
+		"summary": "Streams stopped",
+		"next_steps": []any{map[string]any{
+			"command": "pscale branch vtctld move-tables status my-db my-branch --org my-org --workflow my-workflow --target-keyspace target-ks --format json",
+			"reason":  "Confirm streams are stopped",
+		}},
+	})
 }
 
 func TestMoveTablesStatusAddsNextSteps(t *testing.T) {

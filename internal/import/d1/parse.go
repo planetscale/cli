@@ -739,7 +739,14 @@ func matchingParenEnd(s string, open int) (int, bool) {
 	for i := open; i < len(s); i++ {
 		c := s[i]
 		if inQuote != 0 {
-			if c == inQuote && (i == 0 || s[i-1] != '\\') {
+			if c == inQuote {
+				// Doubled quote ('', "", ``) is the escape for a literal quote.
+				// Backslash is not an escape here under standard_conforming_strings
+				// (Postgres) or in SQLite string literals.
+				if i+1 < len(s) && s[i+1] == inQuote {
+					i++
+					continue
+				}
 				inQuote = 0
 			}
 			continue

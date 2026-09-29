@@ -302,6 +302,13 @@ func ResolveVerifyDBName(opts VerifyOptions, dbNameExplicit bool) string {
 
 func resolveVerifySQLitePath(opts VerifyOptions) (VerifyOptions, string, error) {
 	if opts.SQLitePath != "" {
+		if opts.InputPath == "" && opts.MigrationID != "" {
+			state, err := LoadState(opts.Org, opts.Database, opts.Branch, opts.MigrationID)
+			if err != nil {
+				return opts, "", err
+			}
+			opts.InputPath = state.InputPath
+		}
 		return opts, opts.SQLitePath, nil
 	}
 

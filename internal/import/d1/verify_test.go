@@ -98,6 +98,40 @@ func TestResolveVerifySQLitePathDefaultsFromInput(t *testing.T) {
 	}
 }
 
+func TestResolveVerifySQLitePathBackfillsInputPathWhenSQLiteExplicit(t *testing.T) {
+	t.Setenv("PSCALE_TEST_MODE", "1")
+
+	org, database, branch := "acme", "mydb", "main"
+	migrationID := "verify004"
+	input := testFixture(t)
+	if err := SavePlan(&PlanResult{
+		MigrationID: migrationID,
+		Org:         org,
+		Database:    database,
+		Branch:      branch,
+		InputPath:   input,
+	}); err != nil {
+		t.Fatalf("SavePlan: %v", err)
+	}
+
+	gotOpts, sqlitePath, err := resolveVerifySQLitePath(VerifyOptions{
+		Org:         org,
+		Database:    database,
+		Branch:      branch,
+		MigrationID: migrationID,
+		SQLitePath:  "/nonexistent/staging.sqlite",
+	})
+	if err != nil {
+		t.Fatalf("resolveVerifySQLitePath: %v", err)
+	}
+	if sqlitePath != "/nonexistent/staging.sqlite" {
+		t.Fatalf("sqlite path = %q, want explicit --sqlite path", sqlitePath)
+	}
+	if gotOpts.InputPath != input {
+		t.Fatalf("InputPath = %q, want backfilled %q", gotOpts.InputPath, input)
+	}
+}
+
 func TestResolveVerifySQLitePathFailsOnBadMigrationIDWithInput(t *testing.T) {
 	t.Setenv("PSCALE_TEST_MODE", "1")
 

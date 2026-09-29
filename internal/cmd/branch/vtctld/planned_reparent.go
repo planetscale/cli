@@ -33,7 +33,7 @@ func PlannedReparentShardCmd(ch *cmdutil.Helper) *cobra.Command {
 Both the old and new primaries must be up and running.
 
 To check on an existing operation, use the "status" subcommand:
-  pscale branch vtctld planned-reparent-shard status <db> <branch> <operation-id>`,
+  pscale branch vtctl planned-reparent-shard status <db> <branch> <operation-id>`,
 		Args: cmdutil.RequiredArgs("database", "branch"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()

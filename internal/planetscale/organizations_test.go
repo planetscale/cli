@@ -3,6 +3,7 @@ package planetscale
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -339,6 +340,27 @@ func TestOrganizations_ListClusterSKUsWithRates(t *testing.T) {
 	}
 
 	c.Assert(orgs, qt.DeepEquals, want)
+}
+
+func TestOrganizations_ListClusterSKUsWithExternal(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.URL.String(), qt.Equals, "/v1/organizations/my-cool-org/cluster-size-skus?external=true")
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "[]")
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	skus, err := client.Organizations.ListClusterSKUs(context.Background(), &ListOrganizationClusterSKUsRequest{
+		Organization: "my-cool-org",
+	}, WithExternal())
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(skus, qt.DeepEquals, []*ClusterSKU{})
 }
 
 func TestOrganizations_ListClusterSKUsWithPostgreSQL(t *testing.T) {

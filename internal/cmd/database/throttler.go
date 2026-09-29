@@ -23,7 +23,7 @@ func ThrottlerCmd(ch *cmdutil.Helper) *cobra.Command {
 
 This sets the default throttler for future deploy requests on the database.
 It is not the per-deploy-request throttler (pscale deploy-request throttler)
-and not the tablet/vtctld throttler (pscale branch vtctld throttler).`,
+and not the tablet/vtctl throttler (pscale branch vtctl throttler).`,
 	}
 
 	cmd.AddCommand(ThrottlerShowCmd(ch))

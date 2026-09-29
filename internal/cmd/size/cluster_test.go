@@ -3,6 +3,7 @@ package size
 import (
 	"bytes"
 	"context"
+	"net/url"
 	"testing"
 
 	"github.com/planetscale/cli/internal/cmdutil"
@@ -212,6 +213,67 @@ func TestSizeCluster_ListCmd_MySQL(t *testing.T) {
 	}
 
 	c.Assert(buf.String(), qt.JSONEquals, res)
+}
+
+func TestSizeCluster_ListCmd_External(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	orig := []*ps.ClusterSKU{
+		{Name: "PS-10", Enabled: true, Rate: testutil.Pointer[int64](39)},
+	}
+	svc := &mock.OrganizationsService{
+		ListClusterSKUsFn: func(ctx context.Context, req *ps.ListOrganizationClusterSKUsRequest, opts ...ps.ListOption) ([]*ps.ClusterSKU, error) {
+			c.Assert(req.Organization, qt.Equals, org)
+
+			values := &ps.ListOptions{URLValues: &url.Values{}}
+			for _, opt := range opts {
+				c.Assert(opt(values), qt.IsNil)
+			}
+			c.Assert(values.URLValues.Get("external"), qt.Equals, "true")
+			c.Assert(values.URLValues.Get("rates"), qt.Equals, "true")
+
+			return orig, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: org,
+		},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{Organizations: svc}, nil
+		},
+	}
+
+	cmd := ListCmd(ch)
+	cmd.SetArgs([]string{"--external"})
+
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(svc.ListClusterSKUsFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.JSONEquals, []*ClusterSKUSingleEngine{
+		{Configuration: "external", Replicas: "1", orig: orig[0], rate: orig[0].Rate},
+	})
+}
+
+func TestSizeCluster_ListCmd_ExternalRejectsOtherEngines(t *testing.T) {
+	c := qt.New(t)
+	ch := &cmdutil.Helper{
+		Config: &config.Config{Organization: "planetscale"},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{}, nil
+		},
+	}
+	cmd := ListCmd(ch)
+	cmd.SetArgs([]string{"--external", "--engine", "postgresql"})
+
+	c.Assert(cmd.Execute(), qt.ErrorMatches, "--external only supports the mysql engine")
 }
 
 func TestShouldIncludeCluster(t *testing.T) {

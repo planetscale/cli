@@ -153,6 +153,14 @@ func WithRates() ListOption {
 	}
 }
 
+// WithExternal returns a ListOption that sets the "external" URL parameter.
+func WithExternal() ListOption {
+	return func(opt *ListOptions) error {
+		opt.URLValues.Set("external", "true")
+		return nil
+	}
+}
+
 // WithPostgreSQL returns a ListOption that sets the "postgresql" URL parameter.
 func WithPostgreSQL() ListOption {
 	return func(opt *ListOptions) error {

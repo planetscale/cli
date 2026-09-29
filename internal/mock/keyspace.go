@@ -25,6 +25,12 @@ type KeyspacesService struct {
 	CreateFn        func(context.Context, *ps.CreateKeyspaceRequest) (*ps.Keyspace, error)
 	CreateFnInvoked bool
 
+	CreateExternalFn        func(context.Context, *ps.CreateExternalKeyspaceRequest) (*ps.Keyspace, error)
+	CreateExternalFnInvoked bool
+
+	LintExternalFn        func(context.Context, *ps.LintExternalKeyspaceRequest) (*ps.LintExternalKeyspaceResponse, error)
+	LintExternalFnInvoked bool
+
 	DeleteFn        func(context.Context, *ps.DeleteKeyspaceRequest) error
 	DeleteFnInvoked bool
 
@@ -72,6 +78,16 @@ func (s *KeyspacesService) UpdateVSchema(ctx context.Context, req *ps.UpdateKeys
 func (s *KeyspacesService) Create(ctx context.Context, req *ps.CreateKeyspaceRequest) (*ps.Keyspace, error) {
 	s.CreateFnInvoked = true
 	return s.CreateFn(ctx, req)
+}
+
+func (s *KeyspacesService) CreateExternal(ctx context.Context, req *ps.CreateExternalKeyspaceRequest) (*ps.Keyspace, error) {
+	s.CreateExternalFnInvoked = true
+	return s.CreateExternalFn(ctx, req)
+}
+
+func (s *KeyspacesService) LintExternal(ctx context.Context, req *ps.LintExternalKeyspaceRequest) (*ps.LintExternalKeyspaceResponse, error) {
+	s.LintExternalFnInvoked = true
+	return s.LintExternalFn(ctx, req)
 }
 
 func (s *KeyspacesService) Delete(ctx context.Context, req *ps.DeleteKeyspaceRequest) error {

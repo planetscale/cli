@@ -25,9 +25,10 @@ func ClusterCmd(ch *cmdutil.Helper) *cobra.Command {
 
 func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
-		region string
-		metal  bool
-		engine string
+		region   string
+		metal    bool
+		engine   string
+		external bool
 	}
 
 	cmd := &cobra.Command{
@@ -43,14 +44,25 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 				return err
 			}
 
+			requestedEngine := flags.engine
+			if flags.external {
+				if requestedEngine != "" && requestedEngine != "mysql" {
+					return fmt.Errorf("--external only supports the mysql engine")
+				}
+				requestedEngine = "mysql"
+			}
+
 			// Parse the engine flag
-			engine, showAll, err := parseDatabaseEngine(flags.engine)
+			engine, showAll, err := parseDatabaseEngine(requestedEngine)
 			if err != nil {
 				return err
 			}
 
 			// Build base list options
 			baseOpts := []planetscale.ListOption{planetscale.WithRates()}
+			if flags.external {
+				baseOpts = append(baseOpts, planetscale.WithExternal())
+			}
 			if flags.region != "" {
 				baseOpts = append(baseOpts, planetscale.WithRegion(flags.region))
 			}
@@ -106,6 +118,9 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 			// When filtering by a single engine, omit the engine column (it's implied)
 			// When showing all engines, include the engine column
 			if !showAll {
+				if flags.external {
+					return ch.Printer.PrintResource(toExternalClusterSKUs(allClusterSKUsWithEngine))
+				}
 				return ch.Printer.PrintResource(toClusterSKUsSingleEngine(allClusterSKUsWithEngine, flags.metal))
 			}
 			return ch.Printer.PrintResource(toClusterSKUs(allClusterSKUsWithEngine, flags.metal))
@@ -115,6 +130,8 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().StringVar(&flags.region, "region", "", "view cluster sizes and rates for a specific region")
 	cmd.Flags().BoolVar(&flags.metal, "metal", false, "view cluster sizes and rates for clusters with metal storage")
 	cmd.Flags().StringVar(&flags.engine, "engine", "", "Filter cluster sizes by database engine. Supported values: mysql, postgresql, neki. If not specified, shows all clusters for all engines.")
+	cmd.Flags().BoolVar(&flags.external, "external", false, "view cluster sizes for external keyspaces")
+	cmd.MarkFlagsMutuallyExclusive("external", "metal")
 
 	cmd.RegisterFlagCompletionFunc("region", func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
 		return cmdutil.RegionsCompletionFunc(ch, cmd, args, toComplete)
@@ -388,6 +405,31 @@ func toClusterSKUsSingleEngine(items []clusterSKUWithEngine, onlyMetal bool) []*
 				rate:          item.sku.Rate,
 			})
 		}
+	}
+
+	return clusters
+}
+
+func toExternalClusterSKUs(items []clusterSKUWithEngine) []*ClusterSKUSingleEngine {
+	clusters := make([]*ClusterSKUSingleEngine, 0, len(items))
+
+	for _, item := range items {
+		if !shouldIncludeCluster(item.sku, false) {
+			continue
+		}
+
+		name, cpu, memory, storage, price := formatClusterFields(item.sku, nil)
+		clusters = append(clusters, &ClusterSKUSingleEngine{
+			Name:          name,
+			CPU:           cpu,
+			Memory:        memory,
+			Storage:       storage,
+			Price:         price,
+			Configuration: "external",
+			Replicas:      "1",
+			orig:          item.sku,
+			rate:          item.sku.Rate,
+		})
 	}
 
 	return clusters

@@ -22,6 +22,7 @@ func TestIsORMMetadataTable(t *testing.T) {
 		{"alembic_version", true, "ALEMBIC_VERSION"},
 		{"typeorm_metadata", true, "TYPEORM_METADATA"},
 		{"goose_db_version", true, "GOOSE_MIGRATIONS"},
+		{"_cf_METADATA", true, "CLOUDFLARE_D1_METADATA"},
 		{"users", false, ""},
 		{"migrations", false, ""},
 		{"organizations", false, ""},

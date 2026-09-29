@@ -29,6 +29,8 @@ func MoveTablesCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.AddCommand(MoveTablesCreateCmd(ch))
 	cmd.AddCommand(MoveTablesShowCmd(ch))
 	cmd.AddCommand(MoveTablesStatusCmd(ch))
+	cmd.AddCommand(MoveTablesStartCmd(ch))
+	cmd.AddCommand(MoveTablesStopCmd(ch))
 	cmd.AddCommand(MoveTablesSwitchTrafficCmd(ch))
 	cmd.AddCommand(MoveTablesReverseTrafficCmd(ch))
 	cmd.AddCommand(MoveTablesCancelCmd(ch))
@@ -193,7 +195,7 @@ func MoveTablesListCmd(ch *cmdutil.Helper) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&flags.targetKeyspace, "target-keyspace", "", "Target keyspace (defaults to the branch's default keyspace)")
+	cmd.Flags().StringVar(&flags.targetKeyspace, "target-keyspace", "", "Filter by target keyspace (lists all keyspaces if omitted)")
 
 	return cmd
 }
@@ -289,6 +291,106 @@ func MoveTablesStatusCmd(ch *cmdutil.Helper) *cobra.Command {
 				data,
 				moveTablesStatusNextSteps(data, ch.Config.Organization, database, branch, flags.workflow, flags.targetKeyspace),
 			)
+		},
+	}
+
+	cmd.Flags().StringVar(&flags.workflow, "workflow", "", "Name of the workflow")
+	cmd.Flags().StringVar(&flags.targetKeyspace, "target-keyspace", "", "Target keyspace")
+	cmd.MarkFlagRequired("workflow")        // nolint:errcheck
+	cmd.MarkFlagRequired("target-keyspace") // nolint:errcheck
+
+	return cmd
+}
+
+func MoveTablesStartCmd(ch *cmdutil.Helper) *cobra.Command {
+	var flags struct {
+		workflow       string
+		targetKeyspace string
+	}
+
+	cmd := &cobra.Command{
+		Use:   "start <database> <branch>",
+		Short: "Start a MoveTables workflow",
+		Args:  cmdutil.RequiredArgs("database", "branch"),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			database, branch := args[0], args[1]
+
+			client, err := ch.Client()
+			if err != nil {
+				return err
+			}
+
+			end := ch.Printer.PrintProgress(
+				fmt.Sprintf("Starting MoveTables workflow %s on %s\u2026",
+					printer.BoldBlue(flags.workflow), progressTarget(ch.Config.Organization, database, branch)))
+			defer end()
+
+			data, err := client.MoveTables.Start(ctx, &ps.MoveTablesStartRequest{
+				Organization:   ch.Config.Organization,
+				Database:       database,
+				Branch:         branch,
+				Workflow:       flags.workflow,
+				TargetKeyspace: flags.targetKeyspace,
+			})
+			if err != nil {
+				return cmdutil.HandleError(err)
+			}
+
+			end()
+			return printWorkflowJSON(ch.Printer, data, []workflowNextStep{
+				moveTablesStatusStep(ch.Config.Organization, database, branch, flags.workflow, flags.targetKeyspace, "Monitor copy and replication progress"),
+			})
+		},
+	}
+
+	cmd.Flags().StringVar(&flags.workflow, "workflow", "", "Name of the workflow")
+	cmd.Flags().StringVar(&flags.targetKeyspace, "target-keyspace", "", "Target keyspace")
+	cmd.MarkFlagRequired("workflow")        // nolint:errcheck
+	cmd.MarkFlagRequired("target-keyspace") // nolint:errcheck
+
+	return cmd
+}
+
+func MoveTablesStopCmd(ch *cmdutil.Helper) *cobra.Command {
+	var flags struct {
+		workflow       string
+		targetKeyspace string
+	}
+
+	cmd := &cobra.Command{
+		Use:   "stop <database> <branch>",
+		Short: "Stop a MoveTables workflow",
+		Args:  cmdutil.RequiredArgs("database", "branch"),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			database, branch := args[0], args[1]
+
+			client, err := ch.Client()
+			if err != nil {
+				return err
+			}
+
+			end := ch.Printer.PrintProgress(
+				fmt.Sprintf("Stopping MoveTables workflow %s on %s\u2026",
+					printer.BoldBlue(flags.workflow), progressTarget(ch.Config.Organization, database, branch)))
+			defer end()
+
+			data, err := client.MoveTables.Stop(ctx, &ps.MoveTablesStopRequest{
+				Organization:   ch.Config.Organization,
+				Database:       database,
+				Branch:         branch,
+				Workflow:       flags.workflow,
+				TargetKeyspace: flags.targetKeyspace,
+			})
+			if err != nil {
+				return cmdutil.HandleError(err)
+			}
+
+			end()
+			return printWorkflowJSON(ch.Printer, data, []workflowNextStep{
+				moveTablesStatusStep(ch.Config.Organization, database, branch, flags.workflow, flags.targetKeyspace, "Confirm streams are stopped"),
+			})
 		},
 	}
 
@@ -506,7 +608,7 @@ func MoveTablesCancelCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	cmd.Flags().StringVar(&flags.workflow, "workflow", "", "Name of the workflow")
 	cmd.Flags().StringVar(&flags.targetKeyspace, "target-keyspace", "", "Target keyspace")
-	cmd.Flags().BoolVar(&flags.keepData, "keep-data", false, "Keep the data in the target keyspace")
+	cmd.Flags().BoolVar(&flags.keepData, "keep-data", false, "Keep the data copied into the target keyspace instead of deleting it")
 	cmd.Flags().BoolVar(&flags.keepRoutingRules, "keep-routing-rules", false, "Keep the routing rules")
 	cmd.MarkFlagRequired("workflow")           // nolint:errcheck
 	cmd.MarkFlagRequired("target-keyspace")    // nolint:errcheck
@@ -603,7 +705,7 @@ func MoveTablesCompleteCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	cmd.Flags().StringVar(&flags.workflow, "workflow", "", "Name of the workflow")
 	cmd.Flags().StringVar(&flags.targetKeyspace, "target-keyspace", "", "Target keyspace")
-	cmd.Flags().BoolVar(&flags.keepData, "keep-data", false, "Keep the data in the target keyspace")
+	cmd.Flags().BoolVar(&flags.keepData, "keep-data", false, "Keep the source tables instead of dropping them. Use this when the source is an external keyspace")
 	cmd.Flags().BoolVar(&flags.keepRoutingRules, "keep-routing-rules", false, "Keep the routing rules")
 	cmd.Flags().BoolVar(&flags.renameTables, "rename-tables", false, "Rename source tables instead of dropping them")
 	cmd.Flags().BoolVar(&flags.dryRun, "dry-run", false, "Only show what would be done")
