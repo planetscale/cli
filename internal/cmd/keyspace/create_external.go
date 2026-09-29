@@ -38,11 +38,10 @@ func CreateExternalCmd(ch *cmdutil.Helper) *cobra.Command {
 		Short: "Create an external keyspace on a branch",
 		Long: `Create an external keyspace by connecting a branch to an existing MySQL database.
 
-Connection flags follow pscale data-imports start. --source-database is the
-remote MySQL database name, not the PlanetScale database. --cluster-size is
-optional and selects the external tablet size; when omitted, PlanetScale
-chooses a size from the source storage. Managed organizations should pass a
-size from pscale size cluster list.`,
+--source-database is the remote MySQL database name, not the PlanetScale
+database. --cluster-size is optional and selects the external tablet size;
+when omitted, PlanetScale chooses a size from the source storage. Managed
+organizations should pass a size from pscale size cluster list.`,
 		Args: cmdutil.RequiredArgs("database", "branch", "keyspace"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()

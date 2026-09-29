@@ -58,7 +58,6 @@ type Client struct {
 	D1ImportNotifications          D1ImportNotificationsService
 	DatabaseBranches               DatabaseBranchesService
 	Databases                      DatabasesService
-	DataImports                    DataImportsService
 	DeployRequests                 DeployRequestsService
 	Invoices                       InvoicesService
 	Keyspaces                      KeyspacesService
@@ -363,7 +362,6 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 	c.D1ImportNotifications = &d1ImportNotificationsService{client: c}
 	c.DatabaseBranches = &databaseBranchesService{client: c}
 	c.Databases = &databasesService{client: c}
-	c.DataImports = &dataImportsService{client: c}
 	c.DeployRequests = &deployRequestsService{client: c}
 	c.Invoices = &invoicesService{client: c}
 	c.Keyspaces = &keyspacesService{client: c}
