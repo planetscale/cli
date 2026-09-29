@@ -58,6 +58,7 @@ type KeyspaceSettings struct {
 	VReplicationFlags                       VReplicationFlags `header:"inline" json:"vreplication_flags"`
 	MaxRollout                              string            `header:"max rollout" json:"max_rollout"`
 	Throttler                               Throttler         `header:"inline" json:"throttler"`
+	Storage                                 Storage           `header:"inline" json:"storage"`
 
 	orig *ps.Keyspace
 }
@@ -79,6 +80,12 @@ type VReplicationFlags struct {
 type Throttler struct {
 	Enabled   bool   `header:"throttler enabled" json:"enabled"`
 	Threshold string `header:"throttler threshold" json:"threshold"`
+}
+
+type Storage struct {
+	DiskScalingStrategy string `header:"disk scaling strategy" json:"disk_scaling_strategy"`
+	StorageBytes        string `header:"storage" json:"storage_bytes"`
+	MaxStorageBytes     string `header:"max storage" json:"max_storage_bytes"`
 }
 
 func toKeyspaces(keyspaces []*ps.Keyspace) []*Keyspace {
