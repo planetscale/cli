@@ -154,6 +154,14 @@ func ExactArgs(reqArgs ...string) cobra.PositionalArgs {
 	}
 }
 
+// Cobra only prints Deprecated for the command being run, so subcommands of a deprecated group need this.
+func WarnDeprecated(name, message string, next func(cmd *cobra.Command, args []string) error) func(cmd *cobra.Command, args []string) error {
+	return func(cmd *cobra.Command, args []string) error {
+		fmt.Fprintf(cmd.ErrOrStderr(), "Command %q is deprecated, %s\n", name, message)
+		return next(cmd, args)
+	}
+}
+
 // CheckAuthentication checks whether the user is authenticated and returns a
 // actionable error message.
 func CheckAuthentication(cfg *config.Config) func(cmd *cobra.Command, args []string) error {
