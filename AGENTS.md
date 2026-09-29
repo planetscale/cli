@@ -508,7 +508,7 @@ pscale branch vtctld move-tables cancel <database> <branch> --org <org> --format
   --workflow <workflow> --target-keyspace <target> --keep-data=false --keep-routing-rules=false
 ```
 
-On `complete`, `--keep-data=true` keeps the source tables and `--keep-data=false` drops them. Always use `--keep-data=true` when the source is an external keyspace, since those tables are in the user's own database.
+On `complete`, `--keep-data=true` keeps the source tables and `--keep-data=false` drops them. Always use `--keep-data=true` when the source is an external keyspace, since those tables are in the user's own database. If the source keyspace has been deleted or is unreachable, `complete` and `cancel` take `--ignore-source-keyspace` to finish without touching it; only use it after confirming the source is gone.
 
 Ask the user before `switch-traffic` with `PRIMARY`, `complete` without `--dry-run`, and `cancel`.
 
