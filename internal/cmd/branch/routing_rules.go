@@ -25,6 +25,8 @@ func RoutingRulesCmd(ch *cmdutil.Helper) *cobra.Command {
 	return cmd
 }
 
+const schemaMutationInProgressWarning = "The routing rules may be stale due to an in-progress vtctld schema migration."
+
 // GetRoutingRulesCmd is the command for showing the routing rules of a branch.
 func GetRoutingRulesCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
@@ -55,8 +57,18 @@ func GetRoutingRulesCmd(ch *cmdutil.Helper) *cobra.Command {
 				}
 			}
 
+			for i, warning := range routingRules.Warnings {
+				if warning.Code == "schema_mutation_in_progress" {
+					routingRules.Warnings[i].Message = schemaMutationInProgressWarning
+				}
+			}
+
 			if ch.Printer.Format() != printer.Human {
 				return ch.Printer.PrintResource(routingRules)
+			}
+
+			for _, warning := range routingRules.Warnings {
+				fmt.Fprintf(cmd.ErrOrStderr(), "Warning: %s\n", warning.Message)
 			}
 
 			err = ch.Printer.PrettyPrintJSON([]byte(routingRules.Raw))

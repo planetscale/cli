@@ -169,9 +169,15 @@ type SchemaLintError struct {
 	DocsURL          string `json:"docs_url"`
 }
 
+type RoutingRulesWarning struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
+}
+
 type RoutingRules struct {
-	Raw  string `json:"raw"`
-	HTML string `json:"html"`
+	Raw      string                `json:"raw"`
+	HTML     string                `json:"html"`
+	Warnings []RoutingRulesWarning `json:"warnings"`
 }
 
 // DatabaseBranchesService is an interface for communicating with the PlanetScale
