@@ -250,3 +250,65 @@ func runRootCLIWithHome(t *testing.T, home string, args ...string) rootCLIResult
 		stderr:   stderr.String(),
 	}
 }
+
+func TestUnknownCommandsFail(t *testing.T) {
+	for _, args := range [][]string{
+		{"nonexistentcmd"},
+		{"mcp", "install"},
+		{"database", "nonexistentsub"},
+		{"db", "nonexistentsub"},
+		{"org", "sso", "nonexistentsub"},
+	} {
+		t.Run(strings.Join(args, " "), func(t *testing.T) {
+			result := runRootCLI(t, args...)
+			if result.exitCode != cmdutil.FatalErrExitCode {
+				t.Fatalf("exit code = %d, stdout = %q, stderr = %q", result.exitCode, result.stdout, result.stderr)
+			}
+			if !strings.Contains(result.stderr, "unknown command") {
+				t.Fatalf("stderr = %q, want unknown command error", result.stderr)
+			}
+			if result.stdout != "" {
+				t.Fatalf("stdout = %q, want empty", result.stdout)
+			}
+		})
+	}
+}
+
+func TestUnknownCommandJSON(t *testing.T) {
+	for _, args := range [][]string{
+		{"nonexistentcmd", "--format", "json"},
+		{"branch", "bogus", "--format", "json"},
+		{"--format", "json", "database", "bogus"},
+	} {
+		t.Run(strings.Join(args, " "), func(t *testing.T) {
+			result := runRootCLI(t, args...)
+			if result.exitCode != cmdutil.FatalErrExitCode {
+				t.Fatalf("exit code = %d, stdout = %q, stderr = %q", result.exitCode, result.stdout, result.stderr)
+			}
+			if !strings.Contains(result.stdout, `"code": "UNKNOWN_COMMAND"`) {
+				t.Fatalf("expected UNKNOWN_COMMAND, stdout = %q", result.stdout)
+			}
+		})
+	}
+}
+
+func TestHelpStillWorks(t *testing.T) {
+	for _, args := range [][]string{
+		nil,
+		{"database"},
+		{"branch", "--format", "json"},
+		{"--help"},
+		{"database", "--help"},
+		{"help", "database"},
+	} {
+		t.Run(strings.Join(args, " "), func(t *testing.T) {
+			result := runRootCLI(t, args...)
+			if result.exitCode != 0 {
+				t.Fatalf("exit code = %d, stderr = %q", result.exitCode, result.stderr)
+			}
+			if !strings.Contains(result.stdout, "Usage:") {
+				t.Fatalf("stdout = %q, want help", result.stdout)
+			}
+		})
+	}
+}
