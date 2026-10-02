@@ -68,7 +68,17 @@ func TestCmdUsesDedicatedReadReplicaName(t *testing.T) {
 	cmd := Cmd(&cmdutil.Helper{Config: &config.Config{}})
 
 	c.Assert(cmd.Use, qt.Equals, "dedicated-read-replica <command>")
-	c.Assert(cmd.Aliases, qt.DeepEquals, []string{"read-only-replica"})
+	c.Assert(cmd.Aliases, qt.HasLen, 0)
+}
+
+func TestDeprecatedCmdIsHidden(t *testing.T) {
+	c := qt.New(t)
+
+	cmd := DeprecatedCmd(&cmdutil.Helper{Config: &config.Config{}})
+
+	c.Assert(cmd.Use, qt.Equals, "read-only-replica <command>")
+	c.Assert(cmd.Hidden, qt.IsTrue)
+	c.Assert(cmd.Deprecated, qt.Equals, "use dedicated-read-replica instead")
 }
 
 func TestListCmd(t *testing.T) {

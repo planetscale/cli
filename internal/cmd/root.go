@@ -409,6 +409,7 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 	dedicatedReadReplicaCmd := dedicatedreadreplica.Cmd(ch)
 	dedicatedReadReplicaCmd.GroupID = "postgres"
 	rootCmd.AddCommand(dedicatedReadReplicaCmd)
+	rootCmd.AddCommand(dedicatedreadreplica.DeprecatedCmd(ch))
 
 	trafficCmd := trafficcontrol.TrafficCmd(ch)
 	trafficCmd.GroupID = "postgres"

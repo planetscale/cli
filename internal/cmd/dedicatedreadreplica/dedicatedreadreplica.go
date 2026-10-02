@@ -11,10 +11,22 @@ import (
 
 // Cmd manages dedicated read replicas for Postgres branches.
 func Cmd(ch *cmdutil.Helper) *cobra.Command {
+	return cmd(ch)
+}
+
+// DeprecatedCmd preserves the previous command name without advertising it.
+func DeprecatedCmd(ch *cmdutil.Helper) *cobra.Command {
+	cmd := cmd(ch)
+	cmd.Use = "read-only-replica <command>"
+	cmd.Hidden = true
+	cmd.Deprecated = "use dedicated-read-replica instead"
+	return cmd
+}
+
+func cmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "dedicated-read-replica <command>",
-		Aliases: []string{"read-only-replica"},
-		Short:   "Manage dedicated read replicas for a Postgres branch",
+		Use:   "dedicated-read-replica <command>",
+		Short: "Manage dedicated read replicas for a Postgres branch",
 		Long: `Manage dedicated read replicas for a PostgreSQL database branch.
 
 Dedicated read replicas provide dedicated capacity for queries that can
