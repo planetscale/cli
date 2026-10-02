@@ -92,6 +92,33 @@ func TestAgentGuideSkillFlag(t *testing.T) {
 	}
 }
 
+// The skills pack installs planetscale-* directories. The bootstrap and the
+// guide must name those, not the numbered names other distributions use.
+func TestSkillNamesMatchSkillsPack(t *testing.T) {
+	if SkillsCLIAutomation != "planetscale-pscale-cli-automation" {
+		t.Fatalf("SkillsCLIAutomation = %q", SkillsCLIAutomation)
+	}
+	doc := SkillDoc()
+	for _, name := range []string{
+		"planetscale-pscale-cli-automation",
+		"planetscale-safe-orchestrator",
+		"planetscale-mcp-agent-operating-model",
+	} {
+		if !strings.Contains(doc, name) {
+			t.Errorf("guide does not name skill %q", name)
+		}
+	}
+	for _, name := range []string{
+		"14-pscale-cli-automation",
+		"00-safe-orchestrator",
+		"09-mcp-agent-operating-model",
+	} {
+		if strings.Contains(doc, name) {
+			t.Errorf("guide names skill %q, which the skills pack does not install", name)
+		}
+	}
+}
+
 func min(a, b int) int {
 	if a < b {
 		return a

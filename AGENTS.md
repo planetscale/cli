@@ -11,7 +11,7 @@ pscale auth check --format json
 
 Use direct CLI automation for shell commands and scripts. Use the hosted PlanetScale MCP server for MCP clients.
 
-This file documents **how to invoke `pscale`**. For database assessment, safety review, and operational workflows, install the [PlanetScale skills pack](https://github.com/planetscale/skills) (`14-pscale-cli-automation` covers CLI automation; `00-safe-orchestrator` runs the full review). In application repositories, add a separate **project** `AGENTS.md` with org, database, branch, and approval rules (see skill `09-mcp-agent-operating-model` in that repo).
+This file documents **how to invoke `pscale`**. For database assessment, safety review, and operational workflows, install the [PlanetScale skills pack](https://github.com/planetscale/skills) (`planetscale-pscale-cli-automation` covers CLI automation; `planetscale-safe-orchestrator` runs the full review). In application repositories, add a separate **project** `AGENTS.md` with org, database, branch, and approval rules (see skill `planetscale-mcp-agent-operating-model` in that repo).
 
 ## Public repository safety
 
@@ -992,4 +992,4 @@ git clone https://github.com/planetscale/skills.git && cd skills && script/setup
 # or: npx skills add planetscale/skills -g -y
 ```
 
-After installing skills, load `14-pscale-cli-automation` for CLI conventions (or run `pscale --skill` from any `pscale` binary to print this reference). Use `00-safe-orchestrator` when the user asks for a full PlanetScale assessment.
+After installing skills, load `planetscale-pscale-cli-automation` for CLI conventions (or run `pscale --skill` from any `pscale` binary to print this reference). Use `planetscale-safe-orchestrator` when the user asks for a full PlanetScale assessment.
