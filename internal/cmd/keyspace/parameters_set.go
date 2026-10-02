@@ -21,7 +21,7 @@ func parametersSetCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "set <database> <branch> <keyspace>",
 		Short: "Change the VTTablet and MySQL parameters of a keyspace",
-		Long: `Change VTTablet or MySQL parameters on a keyspace. Pass each parameter as component.name=value, where component is vttablet or mysqld, and pass --reset component.name to set a parameter back to its default.
+		Long: `Change VTTablet or MySQL parameters on a keyspace. Pass each parameter as namespace.name=value, where namespace is vttablet or mysqld, and pass --reset namespace.name to set a parameter back to its default.
 
 All changes are submitted together and rolled out to the keyspace. Use 'pscale keyspace parameters changes list' to follow the rollout.`,
 		Example: `  pscale keyspace parameters set <database> <branch> <keyspace> \
@@ -49,8 +49,8 @@ All changes are submitted together and rolled out to the keyspace. Use 'pscale k
 			defer end()
 
 			drafts := make([]*ps.KeyspaceConfigChange, 0, len(changes))
-			for _, component := range parameterComponents {
-				options, ok := changes[component]
+			for _, namespace := range parameterNamespaces {
+				options, ok := changes[namespace]
 				if !ok {
 					continue
 				}
@@ -60,7 +60,7 @@ All changes are submitted together and rolled out to the keyspace. Use 'pscale k
 					Database:     database,
 					Branch:       branch,
 					Keyspace:     keyspace,
-					ChangeType:   component,
+					ChangeType:   namespace,
 					Options:      options,
 				})
 				if err != nil {
@@ -105,42 +105,42 @@ All changes are submitted together and rolled out to the keyspace. Use 'pscale k
 		},
 	}
 
-	cmd.Flags().StringArrayVar(&flags.parameters, "parameters", nil, "Set a parameter as component.name=value, where component is vttablet or mysqld (e.g. vttablet.vreplication-parallel-insert-workers=4). Repeatable. Use 'pscale keyspace parameters list' to see available parameters.")
-	cmd.Flags().StringArrayVar(&flags.resets, "reset", nil, "Set a parameter back to its default, as component.name (e.g. vttablet.vreplication-parallel-insert-workers). Repeatable.")
+	cmd.Flags().StringArrayVar(&flags.parameters, "parameters", nil, "Set a parameter as namespace.name=value, where namespace is vttablet or mysqld (e.g. vttablet.vreplication-parallel-insert-workers=4). Repeatable. Use 'pscale keyspace parameters list' to see available parameters.")
+	cmd.Flags().StringArrayVar(&flags.resets, "reset", nil, "Set a parameter back to its default, as namespace.name (e.g. vttablet.vreplication-parallel-insert-workers). Repeatable.")
 
 	return cmd
 }
 
-// parseParameterChanges groups --parameters and --reset values by component.
+// parseParameterChanges groups --parameters and --reset values by namespace.
 // A nil value resets the parameter to its default.
 func parseParameterChanges(sets, resets []string) (map[string]map[string]*string, error) {
 	if len(sets) == 0 && len(resets) == 0 {
-		return nil, fmt.Errorf("pass at least one --parameters component.name=value or --reset component.name")
+		return nil, fmt.Errorf("pass at least one --parameters namespace.name=value or --reset namespace.name")
 	}
 
 	changes := make(map[string]map[string]*string)
 	add := func(flag, raw, key string, value *string) error {
-		component, name, found := strings.Cut(key, ".")
-		if !found || component == "" || name == "" {
-			return fmt.Errorf("invalid %s %q: parameter must be prefixed with its component, e.g. vttablet.%s", flag, raw, key)
+		namespace, name, found := strings.Cut(key, ".")
+		if !found || namespace == "" || name == "" {
+			return fmt.Errorf("invalid %s %q: parameter must be prefixed with its namespace, e.g. vttablet.%s", flag, raw, key)
 		}
-		if !slices.Contains(parameterComponents, component) {
-			return fmt.Errorf("invalid %s %q: component must be one of: %s", flag, raw, strings.Join(parameterComponents, ", "))
+		if !slices.Contains(parameterNamespaces, namespace) {
+			return fmt.Errorf("invalid %s %q: namespace must be one of: %s", flag, raw, strings.Join(parameterNamespaces, ", "))
 		}
-		if _, exists := changes[component][name]; exists {
-			return fmt.Errorf("parameter %s.%s is passed more than once", component, name)
+		if _, exists := changes[namespace][name]; exists {
+			return fmt.Errorf("parameter %s.%s is passed more than once", namespace, name)
 		}
-		if changes[component] == nil {
-			changes[component] = make(map[string]*string)
+		if changes[namespace] == nil {
+			changes[namespace] = make(map[string]*string)
 		}
-		changes[component][name] = value
+		changes[namespace][name] = value
 		return nil
 	}
 
 	for _, set := range sets {
 		key, value, found := strings.Cut(set, "=")
 		if !found {
-			return nil, fmt.Errorf("invalid --parameters %q: expected component.name=value (e.g. vttablet.vreplication-parallel-insert-workers=4)", set)
+			return nil, fmt.Errorf("invalid --parameters %q: expected namespace.name=value (e.g. vttablet.vreplication-parallel-insert-workers=4)", set)
 		}
 		if err := add("--parameters", set, key, &value); err != nil {
 			return nil, err

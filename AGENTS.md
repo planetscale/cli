@@ -477,11 +477,11 @@ pscale keyspace resize status <database> <branch> <keyspace> --org <org> --forma
 
 External create required flags: `--host`, `--source-database`, `--username`, `--password`, `--ssl-mode` (`disabled`, `preferred`, `required`, `verify_ca`, `verify_identity`). Default `--port` is `3306`.
 
-Keyspace VTTablet and MySQL parameters: list them with current and default values, then change them with `parameters set`. Prefix each parameter with its component (`vttablet.` or `mysqld.`); `--reset` sets a parameter back to its default. Changes for both components are submitted together and roll out to the keyspace; follow them with `parameters changes list`. Only one unfinished change per component can exist on a keyspace at a time.
+Keyspace VTTablet and MySQL parameters: list them with current and default values, then change them with `parameters set`. Prefix each parameter with its namespace (`vttablet.` or `mysqld.`); `--reset` sets a parameter back to its default. Changes for both namespaces are submitted together and roll out to the keyspace; follow them with `parameters changes list`. Only one unfinished change per namespace can exist on a keyspace at a time.
 
 ```bash
 pscale keyspace parameters list <database> <branch> <keyspace> --org <org> --format json
-pscale keyspace parameters list <database> <branch> <keyspace> --org <org> --format json --component vttablet
+pscale keyspace parameters list <database> <branch> <keyspace> --org <org> --format json --namespace vttablet
 pscale keyspace parameters set <database> <branch> <keyspace> --org <org> --format json \
   --parameters vttablet.vreplication-parallel-insert-workers=4 \
   --parameters vttablet.vreplication_max_time_to_retry_on_error=720h

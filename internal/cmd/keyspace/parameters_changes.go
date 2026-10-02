@@ -152,7 +152,7 @@ func parametersChangesCancelCmd(ch *cmdutil.Helper) *cobra.Command {
 
 type keyspaceConfigChange struct {
 	ID        string `header:"id" json:"id"`
-	Component string `header:"component" json:"change_type"`
+	Namespace string `header:"namespace" json:"change_type"`
 	State     string `header:"state" json:"state"`
 	Changes   string `header:"changes" json:"changes"`
 	CreatedAt string `header:"created at" json:"created_at"`
@@ -163,7 +163,7 @@ type keyspaceConfigChange struct {
 func toKeyspaceConfigChange(change *ps.KeyspaceConfigChange) *keyspaceConfigChange {
 	return &keyspaceConfigChange{
 		ID:        change.ID,
-		Component: change.ChangeType,
+		Namespace: change.ChangeType,
 		State:     change.State,
 		Changes:   formatParameterChanges(change),
 		CreatedAt: change.CreatedAt.UTC().Format("2006-01-02 15:04:05"),
@@ -188,23 +188,35 @@ func (c *keyspaceConfigChange) MarshalCSVValue() interface{} {
 }
 
 func formatParameterChanges(change *ps.KeyspaceConfigChange) string {
-	names := make([]string, 0, len(change.NewOptions))
+	seen := make(map[string]struct{})
+	for name := range change.PreviousOptions {
+		seen[name] = struct{}{}
+	}
 	for name := range change.NewOptions {
+		seen[name] = struct{}{}
+	}
+
+	names := make([]string, 0, len(seen))
+	for name := range seen {
 		names = append(names, name)
 	}
 	sort.Strings(names)
 
 	parts := make([]string, 0, len(names))
 	for _, name := range names {
-		before := "(default)"
-		if previous, ok := change.PreviousOptions[name]; ok && previous != nil {
-			before = *previous
-		}
-		after := "(default)"
-		if value := change.NewOptions[name]; value != nil {
-			after = *value
+		before := optionDisplayValue(change.PreviousOptions[name])
+		after := optionDisplayValue(change.NewOptions[name])
+		if before == after {
+			continue
 		}
 		parts = append(parts, fmt.Sprintf("%s: %s → %s", name, before, after))
 	}
 	return strings.Join(parts, ", ")
+}
+
+func optionDisplayValue(value *string) string {
+	if value == nil {
+		return "(default)"
+	}
+	return *value
 }

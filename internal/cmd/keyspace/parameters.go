@@ -12,23 +12,23 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var parameterComponents = []string{"vttablet", "mysqld"}
+var parameterNamespaces = []string{"vttablet", "mysqld"}
 
 // ParametersCmd lists and changes the VTTablet and MySQL parameters of a keyspace.
 func ParametersCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
-		component string
+		namespace string
 	}
 
 	long := `List the VTTablet and MySQL parameters of a keyspace, including their current and default values.
 
-To change parameters, use 'pscale keyspace parameters set <database> <branch> <keyspace> --parameters component.name=value'.`
+To change parameters, use 'pscale keyspace parameters set <database> <branch> <keyspace> --parameters namespace.name=value'.`
 
 	run := func(cmd *cobra.Command, args []string) error {
 		database, branch, keyspace := args[0], args[1], args[2]
 
-		if flags.component != "" && !slices.Contains(parameterComponents, flags.component) {
-			return fmt.Errorf("invalid --component %q, must be one of: %s", flags.component, strings.Join(parameterComponents, ", "))
+		if flags.namespace != "" && !slices.Contains(parameterNamespaces, flags.namespace) {
+			return fmt.Errorf("invalid --namespace %q, must be one of: %s", flags.namespace, strings.Join(parameterNamespaces, ", "))
 		}
 
 		client, err := ch.Client()
@@ -60,10 +60,10 @@ To change parameters, use 'pscale keyspace parameters set <database> <branch> <k
 		}
 
 		var selected []*ps.VitessParameter
-		if flags.component == "" || flags.component == "vttablet" {
+		if flags.namespace == "" || flags.namespace == "vttablet" {
 			selected = append(selected, parameters.VTTablet...)
 		}
-		if flags.component == "" || flags.component == "mysqld" {
+		if flags.namespace == "" || flags.namespace == "mysqld" {
 			selected = append(selected, parameters.MySQL...)
 		}
 
@@ -71,7 +71,7 @@ To change parameters, use 'pscale keyspace parameters set <database> <branch> <k
 	}
 
 	registerFlags := func(cmd *cobra.Command) {
-		cmd.Flags().StringVar(&flags.component, "component", "", "Only show parameters for this component: vttablet or mysqld.")
+		cmd.Flags().StringVar(&flags.namespace, "namespace", "", "Only show parameters in this namespace: vttablet or mysqld.")
 	}
 
 	cmd := &cobra.Command{
@@ -102,7 +102,7 @@ func keyspaceNotFoundError(ch *cmdutil.Helper, database, branch, keyspace string
 }
 
 type keyspaceParameter struct {
-	Component string `header:"component" json:"component"`
+	Namespace string `header:"namespace" json:"namespace"`
 	Name      string `header:"name" json:"name"`
 	Value     string `header:"value" json:"value"`
 	Default   string `header:"default" json:"default_value"`
@@ -116,7 +116,7 @@ func toKeyspaceParameters(parameters []*ps.VitessParameter) []*keyspaceParameter
 	out := make([]*keyspaceParameter, 0, len(parameters))
 	for _, param := range parameters {
 		out = append(out, &keyspaceParameter{
-			Component: param.Component,
+			Namespace: param.Component,
 			Name:      param.Name,
 			Value:     stringValue(param.Value),
 			Default:   stringValue(param.DefaultValue),
