@@ -416,7 +416,56 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 
 	annotateRequiredFlags(rootCmd)
 
+	if err := checkUnknownSubcommand(rootCmd, os.Args[1:]); err != nil {
+		return err
+	}
+
 	return rootCmd.ExecuteContext(ctx)
+}
+
+// checkUnknownSubcommand returns an "unknown command" error when the first
+// argument after pscale or a command group (such as "database") is not a
+// subcommand. Cobra cannot report this itself: root sets TraverseChildren,
+// which skips cobra's unknown-command check, and groups have no Run, so cobra
+// prints help and exits 0.
+//
+// Runnable commands validate their own Args and are left alone. Bare "pscale"
+// and bare groups still print help.
+func checkUnknownSubcommand(root *cobra.Command, args []string) error {
+	// Cobra registers the __complete commands inside ExecuteC.
+	if len(args) > 0 && strings.HasPrefix(args[0], "__") {
+		return nil
+	}
+	// Register "help" so "pscale help <cmd>" is not reported as unknown.
+	root.InitDefaultHelpCmd()
+
+	cmd, rest, err := root.Traverse(args)
+	if err != nil || cmd == nil || !cmd.HasSubCommands() {
+		return nil
+	}
+	if cmd.Runnable() && cmd != root {
+		return nil
+	}
+
+	// Parse flags so --format applies to the error and flag values are not
+	// mistaken for subcommands. Cobra reports flag errors.
+	cmd.InitDefaultHelpFlag()
+	if err := cmd.ParseFlags(rest); err != nil {
+		return nil
+	}
+	positional := cmd.Flags().Args()
+	if len(positional) == 0 {
+		return nil
+	}
+
+	msg := fmt.Sprintf("unknown command %q for %q", positional[0], cmd.CommandPath())
+	if cmd.SuggestionsMinimumDistance <= 0 {
+		cmd.SuggestionsMinimumDistance = 2 // cobra's default
+	}
+	if suggestions := cmd.SuggestionsFor(positional[0]); !cmd.DisableSuggestions && len(suggestions) > 0 {
+		msg += "\n\nDid you mean this?\n\t" + strings.Join(suggestions, "\n\t")
+	}
+	return errors.New(msg)
 }
 
 func addCommandGroups(cmd *cobra.Command) {
