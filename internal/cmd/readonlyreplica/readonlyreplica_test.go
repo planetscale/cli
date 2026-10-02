@@ -201,7 +201,7 @@ func TestDeleteCmd(t *testing.T) {
 	c.Assert(cmd.Execute(), qt.IsNil)
 	c.Assert(svc.DeleteFnInvoked, qt.IsTrue)
 	c.Assert(buf.String(), qt.JSONEquals, map[string]string{
-		"result":   "dedicated read replica deleted",
+		"result":   "read-only replica deleted",
 		"name":     "analytics",
 		"database": database,
 		"branch":   branch,
