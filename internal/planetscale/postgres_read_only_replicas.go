@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// PostgresReadOnlyReplica represents a read-only replica for a Postgres branch.
+// PostgresReadOnlyReplica represents a dedicated read replica for a Postgres branch.
 type PostgresReadOnlyReplica struct {
 	ID                           string               `json:"id"`
 	Name                         string               `json:"name"`
@@ -28,14 +28,14 @@ type PostgresReadOnlyReplica struct {
 	Parameters                   []*PostgresParameter `json:"parameters"`
 }
 
-// ListPostgresReadOnlyReplicasRequest encapsulates listing read-only replicas.
+// ListPostgresReadOnlyReplicasRequest encapsulates listing dedicated read replicas.
 type ListPostgresReadOnlyReplicasRequest struct {
 	Organization string
 	Database     string
 	Branch       string
 }
 
-// GetPostgresReadOnlyReplicaRequest encapsulates getting a read-only replica by name.
+// GetPostgresReadOnlyReplicaRequest encapsulates getting a dedicated read replica by name.
 type GetPostgresReadOnlyReplicaRequest struct {
 	Organization string
 	Database     string
@@ -43,7 +43,7 @@ type GetPostgresReadOnlyReplicaRequest struct {
 	Replica      string
 }
 
-// CreatePostgresReadOnlyReplicaRequest encapsulates creating a read-only replica.
+// CreatePostgresReadOnlyReplicaRequest encapsulates creating a dedicated read replica.
 type CreatePostgresReadOnlyReplicaRequest struct {
 	Organization string `json:"-"`
 	Database     string `json:"-"`
@@ -54,7 +54,7 @@ type CreatePostgresReadOnlyReplicaRequest struct {
 	ClusterSize  string `json:"cluster_size,omitempty"`
 }
 
-// UpdatePostgresReadOnlyReplicaRequest encapsulates updating a read-only replica.
+// UpdatePostgresReadOnlyReplicaRequest encapsulates updating a dedicated read replica.
 type UpdatePostgresReadOnlyReplicaRequest struct {
 	Organization string                       `json:"-"`
 	Database     string                       `json:"-"`
@@ -65,7 +65,7 @@ type UpdatePostgresReadOnlyReplicaRequest struct {
 	Parameters   map[string]map[string]string `json:"parameters,omitempty"`
 }
 
-// DeletePostgresReadOnlyReplicaRequest encapsulates deleting a read-only replica.
+// DeletePostgresReadOnlyReplicaRequest encapsulates deleting a dedicated read replica.
 type DeletePostgresReadOnlyReplicaRequest struct {
 	Organization string
 	Database     string
@@ -73,8 +73,8 @@ type DeletePostgresReadOnlyReplicaRequest struct {
 	Replica      string
 }
 
-// PostgresReadOnlyReplicasService is an interface for the Postgres read-only
-// replicas API.
+// PostgresReadOnlyReplicasService is an interface for the Postgres dedicated
+// read replicas API.
 type PostgresReadOnlyReplicasService interface {
 	List(context.Context, *ListPostgresReadOnlyReplicasRequest) ([]*PostgresReadOnlyReplica, error)
 	Get(context.Context, *GetPostgresReadOnlyReplicaRequest) (*PostgresReadOnlyReplica, error)
@@ -92,7 +92,7 @@ var _ PostgresReadOnlyReplicasService = &postgresReadOnlyReplicasService{}
 func (s *postgresReadOnlyReplicasService) List(ctx context.Context, listReq *ListPostgresReadOnlyReplicasRequest) ([]*PostgresReadOnlyReplica, error) {
 	req, err := s.client.newRequest(http.MethodGet, postgresReadOnlyReplicasAPIPath(listReq.Organization, listReq.Database, listReq.Branch), nil)
 	if err != nil {
-		return nil, fmt.Errorf("error creating request for list postgres read-only replicas: %w", err)
+		return nil, fmt.Errorf("error creating request for list postgres dedicated read replicas: %w", err)
 	}
 
 	replicas := []*PostgresReadOnlyReplica{}
@@ -105,7 +105,7 @@ func (s *postgresReadOnlyReplicasService) List(ctx context.Context, listReq *Lis
 func (s *postgresReadOnlyReplicasService) Get(ctx context.Context, getReq *GetPostgresReadOnlyReplicaRequest) (*PostgresReadOnlyReplica, error) {
 	req, err := s.client.newRequest(http.MethodGet, postgresReadOnlyReplicaAPIPath(getReq.Organization, getReq.Database, getReq.Branch, getReq.Replica), nil)
 	if err != nil {
-		return nil, fmt.Errorf("error creating request for get postgres read-only replica: %w", err)
+		return nil, fmt.Errorf("error creating request for get postgres dedicated read replica: %w", err)
 	}
 
 	replica := &PostgresReadOnlyReplica{}
@@ -118,7 +118,7 @@ func (s *postgresReadOnlyReplicasService) Get(ctx context.Context, getReq *GetPo
 func (s *postgresReadOnlyReplicasService) Create(ctx context.Context, createReq *CreatePostgresReadOnlyReplicaRequest) (*PostgresReadOnlyReplica, error) {
 	req, err := s.client.newRequest(http.MethodPost, postgresReadOnlyReplicasAPIPath(createReq.Organization, createReq.Database, createReq.Branch), createReq)
 	if err != nil {
-		return nil, fmt.Errorf("error creating request for create postgres read-only replica: %w", err)
+		return nil, fmt.Errorf("error creating request for create postgres dedicated read replica: %w", err)
 	}
 
 	replica := &PostgresReadOnlyReplica{}
@@ -131,7 +131,7 @@ func (s *postgresReadOnlyReplicasService) Create(ctx context.Context, createReq 
 func (s *postgresReadOnlyReplicasService) Update(ctx context.Context, updateReq *UpdatePostgresReadOnlyReplicaRequest) (*PostgresReadOnlyReplica, error) {
 	req, err := s.client.newRequest(http.MethodPatch, postgresReadOnlyReplicaAPIPath(updateReq.Organization, updateReq.Database, updateReq.Branch, updateReq.Replica), updateReq)
 	if err != nil {
-		return nil, fmt.Errorf("error creating request for update postgres read-only replica: %w", err)
+		return nil, fmt.Errorf("error creating request for update postgres dedicated read replica: %w", err)
 	}
 
 	replica := &PostgresReadOnlyReplica{}
@@ -144,7 +144,7 @@ func (s *postgresReadOnlyReplicasService) Update(ctx context.Context, updateReq 
 func (s *postgresReadOnlyReplicasService) Delete(ctx context.Context, deleteReq *DeletePostgresReadOnlyReplicaRequest) error {
 	req, err := s.client.newRequest(http.MethodDelete, postgresReadOnlyReplicaAPIPath(deleteReq.Organization, deleteReq.Database, deleteReq.Branch, deleteReq.Replica), nil)
 	if err != nil {
-		return fmt.Errorf("error creating request for delete postgres read-only replica: %w", err)
+		return fmt.Errorf("error creating request for delete postgres dedicated read replica: %w", err)
 	}
 	return s.client.do(ctx, req, nil)
 }

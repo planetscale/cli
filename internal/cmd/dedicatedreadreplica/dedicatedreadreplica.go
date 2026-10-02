@@ -1,4 +1,4 @@
-package readonlyreplica
+package dedicatedreadreplica
 
 import (
 	"encoding/json"
@@ -9,15 +9,35 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// Cmd manages read-only replicas for Postgres branches.
+// Cmd manages dedicated read replicas for Postgres branches.
 func Cmd(ch *cmdutil.Helper) *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "read-only-replica <command>",
-		Short: "Manage read-only replicas for a Postgres branch",
-		Long: `Manage read-only replicas for a PostgreSQL database branch.
+	return cmd(ch)
+}
 
-Read-only replicas provide dedicated capacity for queries that can tolerate
-replication lag. They accept read traffic only.
+const deprecatedName = "read-only-replica"
+
+const deprecationMessage = "use dedicated-read-replica instead"
+
+// DeprecatedCmd preserves the previous command name without advertising it.
+// Cobra only prints Deprecated for the command that runs, so subcommands warn
+// through PersistentPreRunE the same way the deprecated workflow command does.
+func DeprecatedCmd(ch *cmdutil.Helper) *cobra.Command {
+	cmd := cmd(ch)
+	cmd.Use = deprecatedName + " <command>"
+	cmd.Hidden = true
+	cmd.Deprecated = deprecationMessage
+	cmd.PersistentPreRunE = cmdutil.WarnDeprecated(deprecatedName, deprecationMessage, cmdutil.CheckAuthentication(ch.Config))
+	return cmd
+}
+
+func cmd(ch *cmdutil.Helper) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "dedicated-read-replica <command>",
+		Short: "Manage dedicated read replicas for a Postgres branch",
+		Long: `Manage dedicated read replicas for a PostgreSQL database branch.
+
+Dedicated read replicas provide dedicated capacity for queries that can
+tolerate replication lag. They accept read traffic only.
 
 This command is only available for PostgreSQL databases.`,
 		PersistentPreRunE: cmdutil.CheckAuthentication(ch.Config),
@@ -35,7 +55,7 @@ This command is only available for PostgreSQL databases.`,
 	return cmd
 }
 
-// ReadOnlyReplica is the human/JSON/CSV view of a Postgres read-only replica.
+// ReadOnlyReplica is the human/JSON/CSV view of a Postgres dedicated read replica.
 type ReadOnlyReplica struct {
 	ID        string `header:"id" json:"id"`
 	Name      string `header:"name" json:"name"`

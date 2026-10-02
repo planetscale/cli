@@ -398,7 +398,7 @@ func TestPostgresRoles_GetConnectionTargets(t *testing.T) {
 			accessHost: "primary.planetscale.com",
 		},
 		{
-			name:       "read-only replica",
+			name:       "dedicated read replica",
 			request:    GetPostgresRoleRequest{ReadOnlyReplica: "analytics"},
 			query:      url.Values{"read_only_replica": []string{"analytics"}},
 			username:   "test-user.replica-id|replica",
