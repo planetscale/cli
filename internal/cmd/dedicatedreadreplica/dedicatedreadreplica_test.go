@@ -1,4 +1,4 @@
-package readonlyreplica
+package dedicatedreadreplica
 
 import (
 	"bytes"
