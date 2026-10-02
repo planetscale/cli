@@ -492,6 +492,20 @@ pscale keyspace parameters changes show <database> <branch> <keyspace> <change-i
 pscale keyspace parameters changes cancel <database> <branch> <keyspace> <change-id> --org <org> --format json
 ```
 
+Branch VTGate parameters: list them with `branch vtgate parameters`, then change them with `branch vtgate update`. Prefix each parameter with `vtgate.`; `--reset` sets a parameter back to its default. The change rolls out to the branch's VTGates; follow it with `branch vtgate changes list`. Only one unfinished VTGate change can exist on a branch at a time. VTGate size and count are changed with `branch vtgate resize`, not `update`.
+
+```bash
+pscale branch vtgate parameters <database> <branch> --org <org> --format json
+pscale branch vtgate update <database> <branch> --org <org> --format json \
+  --parameters vtgate.max_memory_rows=500000 \
+  --parameters vtgate.query-timeout=30000
+pscale branch vtgate update <database> <branch> --org <org> --format json \
+  --reset vtgate.query-timeout
+pscale branch vtgate changes list <database> <branch> --org <org> --format json
+pscale branch vtgate changes show <database> <branch> <change-id> --org <org> --format json
+pscale branch vtgate changes cancel <database> <branch> <change-id> --org <org> --format json
+```
+
 ## Vitess MoveTables
 
 Copy tables between keyspaces with `pscale branch vtctld move-tables`. `pscale workflow` is deprecated; use `move-tables` instead. JSON output includes `next_steps` — follow those commands. Typical order: create the target keyspace (`keyspace create` or `keyspace create-external`), create the workflow, poll `status`, switch replica traffic, then primary traffic (ask the user first), then `complete --dry-run` and `complete` after approval. Create with `--auto-start=false` to leave streams stopped, then `start` when you are ready.

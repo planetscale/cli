@@ -3,9 +3,8 @@ package keyspace
 import (
 	"context"
 	"fmt"
-	"slices"
-	"strings"
 
+	"github.com/planetscale/cli/internal/cmd/vitessparams"
 	"github.com/planetscale/cli/internal/cmdutil"
 	ps "github.com/planetscale/cli/internal/planetscale"
 	"github.com/planetscale/cli/internal/printer"
@@ -35,7 +34,7 @@ All changes are submitted together and rolled out to the keyspace. Use 'pscale k
 			ctx := cmd.Context()
 			database, branch, keyspace := args[0], args[1], args[2]
 
-			changes, err := parseParameterChanges(flags.parameters, flags.resets)
+			changes, err := vitessparams.ParseChanges(flags.parameters, flags.resets, parameterNamespaces, "vttablet.vreplication-parallel-insert-workers=4")
 			if err != nil {
 				return err
 			}
@@ -48,7 +47,7 @@ All changes are submitted together and rolled out to the keyspace. Use 'pscale k
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Submitting parameter changes for keyspace %s in %s/%s...", printer.BoldBlue(keyspace), printer.BoldBlue(database), printer.BoldBlue(branch)))
 			defer end()
 
-			drafts := make([]*ps.KeyspaceConfigChange, 0, len(changes))
+			drafts := make([]*ps.VitessConfigChange, 0, len(changes))
 			for _, namespace := range parameterNamespaces {
 				options, ok := changes[namespace]
 				if !ok {
@@ -75,7 +74,7 @@ All changes are submitted together and rolled out to the keyspace. Use 'pscale k
 				ids = append(ids, draft.ID)
 			}
 
-			if err := client.Keyspaces.SubmitConfigChanges(ctx, &ps.SubmitConfigChangesRequest{
+			if err := client.DatabaseBranches.SubmitConfigChanges(ctx, &ps.SubmitConfigChangesRequest{
 				Organization: ch.Config.Organization,
 				Database:     database,
 				Branch:       branch,
@@ -85,7 +84,7 @@ All changes are submitted together and rolled out to the keyspace. Use 'pscale k
 				return parameterChangeError(ch, err, database, branch, keyspace)
 			}
 
-			submitted := make([]*ps.KeyspaceConfigChange, 0, len(drafts))
+			submitted := make([]*ps.VitessConfigChange, 0, len(drafts))
 			for _, draft := range drafts {
 				change, err := client.Keyspaces.GetConfigChange(ctx, &ps.GetKeyspaceConfigChangeRequest{
 					Organization: ch.Config.Organization,
@@ -101,7 +100,7 @@ All changes are submitted together and rolled out to the keyspace. Use 'pscale k
 			}
 			end()
 
-			return ch.Printer.PrintResource(toKeyspaceConfigChanges(submitted))
+			return ch.Printer.PrintResource(vitessparams.ToConfigChanges(submitted))
 		},
 	}
 
@@ -111,52 +110,7 @@ All changes are submitted together and rolled out to the keyspace. Use 'pscale k
 	return cmd
 }
 
-// parseParameterChanges groups --parameters and --reset values by namespace.
-// A nil value resets the parameter to its default.
-func parseParameterChanges(sets, resets []string) (map[string]map[string]*string, error) {
-	if len(sets) == 0 && len(resets) == 0 {
-		return nil, fmt.Errorf("pass at least one --parameters namespace.name=value or --reset namespace.name")
-	}
-
-	changes := make(map[string]map[string]*string)
-	add := func(flag, raw, key string, value *string) error {
-		namespace, name, found := strings.Cut(key, ".")
-		if !found || namespace == "" || name == "" {
-			return fmt.Errorf("invalid %s %q: parameter must be prefixed with its namespace, e.g. vttablet.%s", flag, raw, key)
-		}
-		if !slices.Contains(parameterNamespaces, namespace) {
-			return fmt.Errorf("invalid %s %q: namespace must be one of: %s", flag, raw, strings.Join(parameterNamespaces, ", "))
-		}
-		if _, exists := changes[namespace][name]; exists {
-			return fmt.Errorf("parameter %s.%s is passed more than once", namespace, name)
-		}
-		if changes[namespace] == nil {
-			changes[namespace] = make(map[string]*string)
-		}
-		changes[namespace][name] = value
-		return nil
-	}
-
-	for _, set := range sets {
-		key, value, found := strings.Cut(set, "=")
-		if !found {
-			return nil, fmt.Errorf("invalid --parameters %q: expected namespace.name=value (e.g. vttablet.vreplication-parallel-insert-workers=4)", set)
-		}
-		if err := add("--parameters", set, key, &value); err != nil {
-			return nil, err
-		}
-	}
-
-	for _, reset := range resets {
-		if err := add("--reset", reset, reset, nil); err != nil {
-			return nil, err
-		}
-	}
-
-	return changes, nil
-}
-
-func cancelDrafts(ctx context.Context, client *ps.Client, organization, database, branch, keyspace string, drafts []*ps.KeyspaceConfigChange) {
+func cancelDrafts(ctx context.Context, client *ps.Client, organization, database, branch, keyspace string, drafts []*ps.VitessConfigChange) {
 	for _, draft := range drafts {
 		_ = client.Keyspaces.CancelConfigChange(ctx, &ps.CancelKeyspaceConfigChangeRequest{
 			Organization: organization,
