@@ -9,11 +9,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// ListCmd lists read-only replicas for a Postgres branch.
+// ListCmd lists dedicated read replicas for a Postgres branch.
 func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "list <database> <branch>",
-		Short:   "List read-only replicas for a Postgres branch",
+		Short:   "List dedicated read replicas for a Postgres branch",
 		Args:    cmdutil.RequiredArgs("database", "branch"),
 		Aliases: []string{"ls"},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -24,11 +24,11 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := cmdutil.RequirePostgresDatabase(ctx, client, ch.Config.Organization, database, "read-only replicas"); err != nil {
+			if err := cmdutil.RequirePostgresDatabase(ctx, client, ch.Config.Organization, database, "dedicated read replicas"); err != nil {
 				return err
 			}
 
-			end := ch.Printer.PrintProgress(fmt.Sprintf("Fetching read-only replicas for %s/%s", printer.BoldBlue(database), printer.BoldBlue(branch)))
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Fetching dedicated read replicas for %s/%s", printer.BoldBlue(database), printer.BoldBlue(branch)))
 			defer end()
 
 			replicas, err := client.PostgresReadOnlyReplicas.List(ctx, &ps.ListPostgresReadOnlyReplicasRequest{
@@ -48,7 +48,7 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 			end()
 
 			if len(replicas) == 0 && ch.Printer.Format() == printer.Human {
-				ch.Printer.Printf("No read-only replicas exist for %s/%s.\n", printer.BoldBlue(database), printer.BoldBlue(branch))
+				ch.Printer.Printf("No dedicated read replicas exist for %s/%s.\n", printer.BoldBlue(database), printer.BoldBlue(branch))
 				return nil
 			}
 

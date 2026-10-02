@@ -545,9 +545,9 @@ pscale role create <database> <branch> <name> --org <org> --format json --inheri
 pscale role create <database> <branch> <name> --org <org> --format json --inherited-roles neki_viewer,pg_read_all_data
 pscale role create <database> <branch> <name> --org <org> --format json --inherited-roles neki_operator,postgres
 
-# Role connection details for a branch replica, read-only replica, or PgBouncer
+# Role connection details for a branch replica, dedicated read replica, or PgBouncer
 pscale role get <database> <branch> <role-id> --org <org> --format json --replica
-pscale role get <database> <branch> <role-id> --org <org> --format json --read-only-replica <replica-name>
+pscale role get <database> <branch> <role-id> --org <org> --format json --dedicated-read-replica <replica-name>
 pscale role get <database> <branch> <role-id> --org <org> --format json --bouncer <bouncer-name>
 
 # Neki: router is a username suffix; replica and shard are libpq options on the URL
@@ -573,34 +573,35 @@ pscale branch resize cancel <database> <branch> --org <org> --format json
 
 - At least one of `--cluster-size`, `--replicas`, or `--parameters` is required.
 - Neki `--inherited-roles` may include `neki_viewer` (must also include `pg_read_all_data`) and `neki_operator` (must also include `postgres`). The API rejects those pairings if the required role is missing.
-- `--replica`, `--read-only-replica`, and `--bouncer` are mutually exclusive. `--read-only-replica` and `--bouncer` are Postgres-only and cannot combine with `--router` or `--shard`. On Neki, `--replica`, `--shard`, and `--router` can be combined. `--router` rewrites `username` to `user|<name>`. `--replica` and `--shard` set `options` (`-c __neki.target=REPLICA`, `-c __neki.shard=…`) and add them to `database_url`. List names with `pscale branch router list` and `pscale branch shard list` (use the shard name, not the API id).
+- `--replica`, `--dedicated-read-replica`, and `--bouncer` are mutually exclusive. `--dedicated-read-replica` and `--bouncer` are Postgres-only and cannot combine with `--router` or `--shard`. The deprecated `--read-only-replica` flag is a compatibility alias for `--dedicated-read-replica`. On Neki, `--replica`, `--shard`, and `--router` can be combined. `--router` rewrites `username` to `user|<name>`. `--replica` and `--shard` set `options` (`-c __neki.target=REPLICA`, `-c __neki.shard=…`) and add them to `database_url`. List names with `pscale branch router list` and `pscale branch shard list` (use the shard name, not the API id).
 - `--parameters` values are validated against the catalog before submission; unknown or immutable parameters fail fast. Parameters with `"restart": true` in the catalog restart the database when applied — surface this to the user before changing them.
 - Change request `state` is one of `queued`, `pending`, `resizing`, `completed`, `canceled`. Only `completed` and `canceled` are terminal. Without `--wait`, poll `resize status` instead of assuming completion.
 - A no-op (branch already matches the requested configuration) prints `{"result": "no_change", "branch": "<branch>"}` in JSON mode instead of a change request.
 - `resize cancel` prints `{"result": "canceled", "branch": "<branch>"}` in JSON mode.
 - MySQL databases are rejected: use `pscale keyspace resize` for Vitess keyspaces.
 
-## Postgres read-only replicas
+## Postgres dedicated read replicas
 
-Read-only replicas provide dedicated regional capacity for Postgres queries
-that can tolerate replication lag. They are separate from the replicas in the
-primary branch cluster and from Vitess read-only regions.
+Dedicated read replicas provide dedicated regional capacity for Postgres
+queries that can tolerate replication lag. They are separate from the replicas
+in the primary branch cluster and from Vitess read-only regions.
 
 ```bash
-pscale read-only-replica list <database> <branch> --org <org> --format json
-pscale read-only-replica show <database> <branch> <name> --org <org> --format json
-pscale read-only-replica create <database> <branch> <name> --region <region> --org <org> --format json
-pscale read-only-replica create <database> <branch> <name> --region <region> --replicas 2 --cluster-size PS_10_GCP_X86 --org <org> --format json
-pscale read-only-replica update <database> <branch> <name> --replicas 3 --org <org> --format json
-pscale read-only-replica update <database> <branch> <name> --cluster-size PS_20_GCP_X86 --parameters pgconf.max_connections=300 --org <org> --format json
-pscale read-only-replica delete <database> <branch> <name> --org <org> --format json --force
+pscale dedicated-read-replica list <database> <branch> --org <org> --format json
+pscale dedicated-read-replica show <database> <branch> <name> --org <org> --format json
+pscale dedicated-read-replica create <database> <branch> <name> --region <region> --org <org> --format json
+pscale dedicated-read-replica create <database> <branch> <name> --region <region> --replicas 2 --cluster-size PS_10_GCP_X86 --org <org> --format json
+pscale dedicated-read-replica update <database> <branch> <name> --replicas 3 --org <org> --format json
+pscale dedicated-read-replica update <database> <branch> <name> --cluster-size PS_20_GCP_X86 --parameters pgconf.max_connections=300 --org <org> --format json
+pscale dedicated-read-replica delete <database> <branch> <name> --org <org> --format json --force
 ```
 
 - `create` requires a name and `--region`. The API defaults to one instance and the primary cluster size when `--replicas` and `--cluster-size` are omitted.
-- `show`, `update`, and `delete` identify the read-only replica by name.
+- `show`, `update`, and `delete` identify the dedicated read replica by name.
 - `update` requires at least one of `--replicas`, `--cluster-size`, or repeatable `--parameters namespace.name=value`. Parameter values must be greater than or equal to the primary's corresponding values.
-- Creating and updating replicas is asynchronous; inspect `state` and `ready` in the returned object or with `list`.
+- Creating and updating dedicated read replicas is asynchronous; inspect `state` and `ready` in the returned object or with `list`.
 - `delete` requires explicit approval before using `--force`.
+- `read-only-replica` remains available as a backwards-compatible command alias.
 - PostgreSQL only. For Vitess/MySQL, use `pscale keyspace read-only-regions`.
 
 ## Postgres switchovers

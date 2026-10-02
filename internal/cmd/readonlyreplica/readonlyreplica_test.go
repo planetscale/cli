@@ -62,6 +62,15 @@ func databaseService(c *qt.C, org, database string) *mock.DatabaseService {
 	}
 }
 
+func TestCmdUsesDedicatedReadReplicaName(t *testing.T) {
+	c := qt.New(t)
+
+	cmd := Cmd(&cmdutil.Helper{Config: &config.Config{}})
+
+	c.Assert(cmd.Use, qt.Equals, "dedicated-read-replica <command>")
+	c.Assert(cmd.Aliases, qt.DeepEquals, []string{"read-only-replica"})
+}
+
 func TestListCmd(t *testing.T) {
 	c := qt.New(t)
 	var buf bytes.Buffer
@@ -192,7 +201,7 @@ func TestDeleteCmd(t *testing.T) {
 	c.Assert(cmd.Execute(), qt.IsNil)
 	c.Assert(svc.DeleteFnInvoked, qt.IsTrue)
 	c.Assert(buf.String(), qt.JSONEquals, map[string]string{
-		"result":   "read-only replica deleted",
+		"result":   "dedicated read replica deleted",
 		"name":     "analytics",
 		"database": database,
 		"branch":   branch,

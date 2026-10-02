@@ -406,9 +406,9 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 	pgbouncerCmd.GroupID = "postgres"
 	rootCmd.AddCommand(pgbouncerCmd)
 
-	readOnlyReplicaCmd := readonlyreplica.Cmd(ch)
-	readOnlyReplicaCmd.GroupID = "postgres"
-	rootCmd.AddCommand(readOnlyReplicaCmd)
+	dedicatedReadReplicaCmd := readonlyreplica.Cmd(ch)
+	dedicatedReadReplicaCmd.GroupID = "postgres"
+	rootCmd.AddCommand(dedicatedReadReplicaCmd)
 
 	trafficCmd := trafficcontrol.TrafficCmd(ch)
 	trafficCmd.GroupID = "postgres"

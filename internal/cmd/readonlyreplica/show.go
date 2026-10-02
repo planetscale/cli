@@ -9,11 +9,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// ShowCmd shows a read-only replica by name.
+// ShowCmd shows a dedicated read replica by name.
 func ShowCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "show <database> <branch> <name>",
-		Short: "Show a read-only replica",
+		Short: "Show a dedicated read replica",
 		Args:  cmdutil.RequiredArgs("database", "branch", "name"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -23,11 +23,11 @@ func ShowCmd(ch *cmdutil.Helper) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := cmdutil.RequirePostgresDatabase(ctx, client, ch.Config.Organization, database, "read-only replicas"); err != nil {
+			if err := cmdutil.RequirePostgresDatabase(ctx, client, ch.Config.Organization, database, "dedicated read replicas"); err != nil {
 				return err
 			}
 
-			end := ch.Printer.PrintProgress(fmt.Sprintf("Fetching read-only replica %s for %s/%s", printer.BoldBlue(name), printer.BoldBlue(database), printer.BoldBlue(branch)))
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Fetching dedicated read replica %s for %s/%s", printer.BoldBlue(name), printer.BoldBlue(database), printer.BoldBlue(branch)))
 			defer end()
 
 			replica, err := client.PostgresReadOnlyReplicas.Get(ctx, &ps.GetPostgresReadOnlyReplicaRequest{
@@ -39,7 +39,7 @@ func ShowCmd(ch *cmdutil.Helper) *cobra.Command {
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case ps.ErrNotFound:
-					return fmt.Errorf("read-only replica %s does not exist on %s/%s (organization: %s)",
+					return fmt.Errorf("dedicated read replica %s does not exist on %s/%s (organization: %s)",
 						printer.BoldBlue(name), printer.BoldBlue(database), printer.BoldBlue(branch), printer.BoldBlue(ch.Config.Organization))
 				default:
 					return cmdutil.HandleError(err)

@@ -13,11 +13,11 @@ import (
 
 func GetCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
-		replica         bool
-		readOnlyReplica string
-		bouncer         string
-		router          string
-		shard           string
+		replica              bool
+		dedicatedReadReplica string
+		bouncer              string
+		router               string
+		shard                string
 	}
 
 	cmd := &cobra.Command{
@@ -44,7 +44,7 @@ func GetCmd(ch *cmdutil.Helper) *cobra.Command {
 				Branch:          branch,
 				RoleId:          roleID,
 				Replica:         flags.replica,
-				ReadOnlyReplica: flags.readOnlyReplica,
+				ReadOnlyReplica: flags.dedicatedReadReplica,
 				Bouncer:         flags.bouncer,
 				Router:          flags.router,
 				Shard:           flags.shard,
@@ -52,7 +52,7 @@ func GetCmd(ch *cmdutil.Helper) *cobra.Command {
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case ps.ErrNotFound:
-					notFoundFormat, notFoundArgs := roleGetNotFound(roleID, branch, database, ch.Config.Organization, flags.readOnlyReplica, flags.bouncer, flags.router, flags.shard)
+					notFoundFormat, notFoundArgs := roleGetNotFound(roleID, branch, database, ch.Config.Organization, flags.dedicatedReadReplica, flags.bouncer, flags.router, flags.shard)
 
 					return cmdutil.HandleNotFoundWithServiceTokenCheck(
 						ctx, cmd, ch.Config, ch.Client, err,
@@ -82,11 +82,15 @@ func GetCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 
 	cmd.Flags().BoolVar(&flags.replica, "replica", false, "Return connection details for a branch replica. On Neki this sets libpq options, not a username suffix.")
-	cmd.Flags().StringVar(&flags.readOnlyReplica, "read-only-replica", "", "Return connection details for a read-only replica (name). Postgres only.")
+	cmd.Flags().StringVar(&flags.dedicatedReadReplica, "dedicated-read-replica", "", "Return connection details for a dedicated read replica (name). Postgres only.")
+	cmd.Flags().StringVar(&flags.dedicatedReadReplica, "read-only-replica", "", "Deprecated alias for --dedicated-read-replica.")
+	cmd.Flags().MarkDeprecated("read-only-replica", "use --dedicated-read-replica instead") // nolint:errcheck
 	cmd.Flags().StringVar(&flags.bouncer, "bouncer", "", "Return connection details for a PgBouncer (name). Postgres only.")
 	cmd.Flags().StringVar(&flags.router, "router", "", "Return connection details for a Neki router group (name). List routers with: pscale branch router list <database> <branch>.")
 	cmd.Flags().StringVar(&flags.shard, "shard", "", "Return connection details that pin a Neki shard (name from pscale branch shard list).")
-	cmd.MarkFlagsMutuallyExclusive("replica", "read-only-replica", "bouncer")
+	cmd.MarkFlagsMutuallyExclusive("replica", "dedicated-read-replica", "read-only-replica", "bouncer")
+	cmd.MarkFlagsMutuallyExclusive("dedicated-read-replica", "router")
+	cmd.MarkFlagsMutuallyExclusive("dedicated-read-replica", "shard")
 	cmd.MarkFlagsMutuallyExclusive("read-only-replica", "router")
 	cmd.MarkFlagsMutuallyExclusive("read-only-replica", "shard")
 	cmd.MarkFlagsMutuallyExclusive("bouncer", "router")
@@ -95,15 +99,15 @@ func GetCmd(ch *cmdutil.Helper) *cobra.Command {
 	return cmd
 }
 
-func roleGetNotFound(roleID, branch, database, org, readOnlyReplica, bouncer, router, shard string) (string, []any) {
+func roleGetNotFound(roleID, branch, database, org, dedicatedReadReplica, bouncer, router, shard string) (string, []any) {
 	type extra struct {
 		label string
 		value string
 	}
 
 	extras := make([]extra, 0, 4)
-	if readOnlyReplica != "" {
-		extras = append(extras, extra{"read-only replica", readOnlyReplica})
+	if dedicatedReadReplica != "" {
+		extras = append(extras, extra{"dedicated read replica", dedicatedReadReplica})
 	}
 	if bouncer != "" {
 		extras = append(extras, extra{"PgBouncer", bouncer})

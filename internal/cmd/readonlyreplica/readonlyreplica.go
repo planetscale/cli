@@ -9,15 +9,16 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// Cmd manages read-only replicas for Postgres branches.
+// Cmd manages dedicated read replicas for Postgres branches.
 func Cmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "read-only-replica <command>",
-		Short: "Manage read-only replicas for a Postgres branch",
-		Long: `Manage read-only replicas for a PostgreSQL database branch.
+		Use:     "dedicated-read-replica <command>",
+		Aliases: []string{"read-only-replica"},
+		Short:   "Manage dedicated read replicas for a Postgres branch",
+		Long: `Manage dedicated read replicas for a PostgreSQL database branch.
 
-Read-only replicas provide dedicated capacity for queries that can tolerate
-replication lag. They accept read traffic only.
+Dedicated read replicas provide dedicated capacity for queries that can
+tolerate replication lag. They accept read traffic only.
 
 This command is only available for PostgreSQL databases.`,
 		PersistentPreRunE: cmdutil.CheckAuthentication(ch.Config),
@@ -35,7 +36,7 @@ This command is only available for PostgreSQL databases.`,
 	return cmd
 }
 
-// ReadOnlyReplica is the human/JSON/CSV view of a Postgres read-only replica.
+// ReadOnlyReplica is the human/JSON/CSV view of a Postgres dedicated read replica.
 type ReadOnlyReplica struct {
 	ID        string `header:"id" json:"id"`
 	Name      string `header:"name" json:"name"`
