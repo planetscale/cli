@@ -423,32 +423,27 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 	return rootCmd.ExecuteContext(ctx)
 }
 
-// checkUnknownSubcommand returns an "unknown command" error when the first
-// argument after pscale or a command group (such as "database") is not a
-// subcommand. Cobra cannot report this itself: root sets TraverseChildren,
-// which skips cobra's unknown-command check, and groups have no Run, so cobra
-// prints help and exits 0.
-//
-// Runnable commands validate their own Args and are left alone. Bare "pscale"
-// and bare groups still print help.
+// checkUnknownSubcommand reports an unknown subcommand of pscale or a command
+// group. Cobra misses these: TraverseChildren skips its unknown-command check,
+// and groups have no Run, so it prints help and exits 0.
 func checkUnknownSubcommand(root *cobra.Command, args []string) error {
-	// Cobra registers the __complete commands inside ExecuteC.
+	// Cobra adds the __complete and help commands in ExecuteC, after this runs.
 	if len(args) > 0 && strings.HasPrefix(args[0], "__") {
 		return nil
 	}
-	// Register "help" so "pscale help <cmd>" is not reported as unknown.
 	root.InitDefaultHelpCmd()
 
 	cmd, rest, err := root.Traverse(args)
 	if err != nil || cmd == nil || !cmd.HasSubCommands() {
 		return nil
 	}
+	// Runnable commands validate their own args.
 	if cmd.Runnable() && cmd != root {
 		return nil
 	}
 
-	// Parse flags so --format applies to the error and flag values are not
-	// mistaken for subcommands. Cobra reports flag errors.
+	// Parsing applies --format to the error and keeps flag values from reading
+	// as subcommands. Flag errors are left for cobra to report.
 	cmd.InitDefaultHelpFlag()
 	if err := cmd.ParseFlags(rest); err != nil {
 		return nil
