@@ -16,7 +16,7 @@ const (
 	SkillsRepoURL       = "https://github.com/planetscale/skills"
 	SkillsSetupCmd      = "git clone https://github.com/planetscale/skills.git && cd skills && script/setup"
 	SkillsNPXInstall    = "npx skills add planetscale/skills -g -y"
-	SkillsCLIAutomation = "14-pscale-cli-automation"
+	SkillsCLIAutomation = "planetscale-pscale-cli-automation"
 )
 
 type response struct {
