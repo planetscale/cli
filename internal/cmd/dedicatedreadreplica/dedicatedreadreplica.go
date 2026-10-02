@@ -14,12 +14,19 @@ func Cmd(ch *cmdutil.Helper) *cobra.Command {
 	return cmd(ch)
 }
 
+const deprecatedName = "read-only-replica"
+
+const deprecationMessage = "use dedicated-read-replica instead"
+
 // DeprecatedCmd preserves the previous command name without advertising it.
+// Cobra only prints Deprecated for the command that runs, so subcommands warn
+// through PersistentPreRunE the same way the deprecated workflow command does.
 func DeprecatedCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := cmd(ch)
-	cmd.Use = "read-only-replica <command>"
+	cmd.Use = deprecatedName + " <command>"
 	cmd.Hidden = true
-	cmd.Deprecated = "use dedicated-read-replica instead"
+	cmd.Deprecated = deprecationMessage
+	cmd.PersistentPreRunE = cmdutil.WarnDeprecated(deprecatedName, deprecationMessage, cmdutil.CheckAuthentication(ch.Config))
 	return cmd
 }
 

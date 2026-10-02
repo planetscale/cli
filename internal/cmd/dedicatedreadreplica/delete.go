@@ -64,7 +64,7 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			return ch.Printer.PrintResource(map[string]string{
-				"result":   "read-only replica deleted",
+				"result":   "dedicated read replica deleted",
 				"name":     name,
 				"database": database,
 				"branch":   branch,

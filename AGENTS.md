@@ -601,7 +601,7 @@ pscale dedicated-read-replica delete <database> <branch> <name> --org <org> --fo
 - `update` requires at least one of `--replicas`, `--cluster-size`, or repeatable `--parameters namespace.name=value`. Parameter values must be greater than or equal to the primary's corresponding values.
 - Creating and updating dedicated read replicas is asynchronous; inspect `state` and `ready` in the returned object or with `list`.
 - `delete` requires explicit approval before using `--force`.
-- `read-only-replica` remains available as a backwards-compatible command alias.
+- `read-only-replica` remains available as a backwards-compatible command alias. It prints a deprecation warning on stderr; stdout is unchanged.
 - PostgreSQL only. For Vitess/MySQL, use `pscale keyspace read-only-regions`.
 
 ## Postgres switchovers

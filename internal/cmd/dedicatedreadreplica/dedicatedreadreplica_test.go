@@ -3,6 +3,7 @@ package dedicatedreadreplica
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -79,6 +80,32 @@ func TestDeprecatedCmdIsHidden(t *testing.T) {
 	c.Assert(cmd.Use, qt.Equals, "read-only-replica <command>")
 	c.Assert(cmd.Hidden, qt.IsTrue)
 	c.Assert(cmd.Deprecated, qt.Equals, "use dedicated-read-replica instead")
+}
+
+func TestDeprecatedCmdWarnsOnSubcommand(t *testing.T) {
+	c := qt.New(t)
+	var stdout, stderr bytes.Buffer
+	org, database, branch := "planetscale", "mydb", "main"
+	svc := &mock.PostgresReadOnlyReplicasService{
+		ListFn: func(ctx context.Context, req *ps.ListPostgresReadOnlyReplicasRequest) ([]*ps.PostgresReadOnlyReplica, error) {
+			return []*ps.PostgresReadOnlyReplica{testReplica()}, nil
+		},
+	}
+
+	ch := testHelper(org, databaseService(c, org, database), svc, printer.JSON, &stdout)
+	ch.Config.AccessToken = "token"
+
+	cmd := DeprecatedCmd(ch)
+	cmd.SetErr(&stderr)
+	cmd.SetArgs([]string{"list", database, branch, "--org", org})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(svc.ListFnInvoked, qt.IsTrue)
+	c.Assert(stderr.String(), qt.Equals, "Command \"read-only-replica\" is deprecated, use dedicated-read-replica instead\n")
+
+	var got []map[string]any
+	c.Assert(json.Unmarshal(stdout.Bytes(), &got), qt.IsNil)
+	c.Assert(got, qt.HasLen, 1)
+	c.Assert(got[0]["name"], qt.Equals, "analytics")
 }
 
 func TestListCmd(t *testing.T) {
@@ -211,7 +238,7 @@ func TestDeleteCmd(t *testing.T) {
 	c.Assert(cmd.Execute(), qt.IsNil)
 	c.Assert(svc.DeleteFnInvoked, qt.IsTrue)
 	c.Assert(buf.String(), qt.JSONEquals, map[string]string{
-		"result":   "read-only replica deleted",
+		"result":   "dedicated read replica deleted",
 		"name":     "analytics",
 		"database": database,
 		"branch":   branch,
