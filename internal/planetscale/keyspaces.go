@@ -285,6 +285,12 @@ type KeyspacesService interface {
 	ResizeStatus(context.Context, *KeyspaceResizeStatusRequest) (*KeyspaceResizeRequest, error)
 	RolloutStatus(context.Context, *KeyspaceRolloutStatusRequest) (*KeyspaceRollout, error)
 	UpdateSettings(context.Context, *UpdateKeyspaceSettingsRequest) (*Keyspace, error)
+	ListParameters(context.Context, *ListKeyspaceParametersRequest) (*KeyspaceParameters, error)
+	CreateConfigChange(context.Context, *CreateKeyspaceConfigChangeRequest) (*KeyspaceConfigChange, error)
+	SubmitConfigChanges(context.Context, *SubmitConfigChangesRequest) error
+	ListConfigChanges(context.Context, *ListKeyspaceConfigChangesRequest) ([]*KeyspaceConfigChange, error)
+	GetConfigChange(context.Context, *GetKeyspaceConfigChangeRequest) (*KeyspaceConfigChange, error)
+	CancelConfigChange(context.Context, *CancelKeyspaceConfigChangeRequest) error
 }
 
 type keyspacesService struct {

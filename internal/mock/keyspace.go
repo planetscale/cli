@@ -48,6 +48,19 @@ type KeyspacesService struct {
 
 	UpdateSettingsFn        func(context.Context, *ps.UpdateKeyspaceSettingsRequest) (*ps.Keyspace, error)
 	UpdateSettingsFnInvoked bool
+
+	ListParametersFn             func(context.Context, *ps.ListKeyspaceParametersRequest) (*ps.KeyspaceParameters, error)
+	ListParametersFnInvoked      bool
+	CreateConfigChangeFn         func(context.Context, *ps.CreateKeyspaceConfigChangeRequest) (*ps.KeyspaceConfigChange, error)
+	CreateConfigChangeFnInvoked  bool
+	SubmitConfigChangesFn        func(context.Context, *ps.SubmitConfigChangesRequest) error
+	SubmitConfigChangesFnInvoked bool
+	ListConfigChangesFn          func(context.Context, *ps.ListKeyspaceConfigChangesRequest) ([]*ps.KeyspaceConfigChange, error)
+	ListConfigChangesFnInvoked   bool
+	GetConfigChangeFn            func(context.Context, *ps.GetKeyspaceConfigChangeRequest) (*ps.KeyspaceConfigChange, error)
+	GetConfigChangeFnInvoked     bool
+	CancelConfigChangeFn         func(context.Context, *ps.CancelKeyspaceConfigChangeRequest) error
+	CancelConfigChangeFnInvoked  bool
 }
 
 func (s *KeyspacesService) List(ctx context.Context, req *ps.ListKeyspacesRequest) ([]*ps.Keyspace, error) {
@@ -118,4 +131,34 @@ func (s *KeyspacesService) RolloutStatus(ctx context.Context, req *ps.KeyspaceRo
 func (s *KeyspacesService) UpdateSettings(ctx context.Context, req *ps.UpdateKeyspaceSettingsRequest) (*ps.Keyspace, error) {
 	s.UpdateSettingsFnInvoked = true
 	return s.UpdateSettingsFn(ctx, req)
+}
+
+func (s *KeyspacesService) ListParameters(ctx context.Context, req *ps.ListKeyspaceParametersRequest) (*ps.KeyspaceParameters, error) {
+	s.ListParametersFnInvoked = true
+	return s.ListParametersFn(ctx, req)
+}
+
+func (s *KeyspacesService) CreateConfigChange(ctx context.Context, req *ps.CreateKeyspaceConfigChangeRequest) (*ps.KeyspaceConfigChange, error) {
+	s.CreateConfigChangeFnInvoked = true
+	return s.CreateConfigChangeFn(ctx, req)
+}
+
+func (s *KeyspacesService) SubmitConfigChanges(ctx context.Context, req *ps.SubmitConfigChangesRequest) error {
+	s.SubmitConfigChangesFnInvoked = true
+	return s.SubmitConfigChangesFn(ctx, req)
+}
+
+func (s *KeyspacesService) ListConfigChanges(ctx context.Context, req *ps.ListKeyspaceConfigChangesRequest) ([]*ps.KeyspaceConfigChange, error) {
+	s.ListConfigChangesFnInvoked = true
+	return s.ListConfigChangesFn(ctx, req)
+}
+
+func (s *KeyspacesService) GetConfigChange(ctx context.Context, req *ps.GetKeyspaceConfigChangeRequest) (*ps.KeyspaceConfigChange, error) {
+	s.GetConfigChangeFnInvoked = true
+	return s.GetConfigChangeFn(ctx, req)
+}
+
+func (s *KeyspacesService) CancelConfigChange(ctx context.Context, req *ps.CancelKeyspaceConfigChangeRequest) error {
+	s.CancelConfigChangeFnInvoked = true
+	return s.CancelConfigChangeFn(ctx, req)
 }
