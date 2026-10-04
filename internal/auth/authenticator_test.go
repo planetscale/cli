@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -164,6 +165,59 @@ func TestGetAccessTokenForDevice(t *testing.T) {
 			}
 
 			assert.Equal(t, testToken, got, "unexpected device token")
+		})
+	}
+}
+
+func TestGetAccessTokenForDeviceTerminalErrors(t *testing.T) {
+	// The server can attach a generic error_description to every device-flow
+	// error, so the message must come from the error code.
+	const genericDescription = "The authorization server encountered an unexpected condition which prevented it from fulfilling the request."
+
+	tests := []struct {
+		code string
+		want string
+	}{
+		{
+			code: "expired_token",
+			want: "the confirmation code expired before it was approved; run 'pscale auth login' again",
+		},
+		{
+			code: "access_denied",
+			want: "the login request was denied in the browser",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.code, func(t *testing.T) {
+			mux := http.NewServeMux()
+			mux.HandleFunc("/oauth/token", func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusBadRequest)
+				if _, err := fmt.Fprintf(w, `{"error": %q, "error_description": %q}`, tt.code, genericDescription); err != nil {
+					panicf("failed to write response bytes: %v", err)
+				}
+			})
+
+			srv := httptest.NewServer(mux)
+			defer srv.Close()
+
+			authenticator, err := New(cleanhttp.DefaultClient(), testClientID, testClientSecret, SetBaseURL(srv.URL), WithMockClock(clock.NewMock()))
+			if err != nil {
+				t.Fatalf("error creating client: %v", err)
+			}
+
+			_, err = authenticator.GetAccessTokenForDevice(context.TODO(), DeviceVerification{
+				DeviceCode:    "deadbeef",
+				CheckInterval: 10 * time.Millisecond,
+			})
+
+			var errRes *ErrorResponse
+			if !errors.As(err, &errRes) {
+				t.Fatalf("expected an ErrorResponse, got %v", err)
+			}
+			assert.Equal(t, tt.code, errRes.ErrorCode)
+			assert.EqualError(t, err, tt.want)
 		})
 	}
 }
