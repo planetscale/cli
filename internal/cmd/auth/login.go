@@ -17,6 +17,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const savingCredentialsMessage = "Access approved. Saving credentials to your system keyring; if it asks to be unlocked, enter your keyring password..."
+
 // LoginCmd is the command for logging into a PlanetScale account.
 func LoginCmd(ch *cmdutil.Helper) *cobra.Command {
 	var clientID string
@@ -82,10 +84,10 @@ func LoginCmd(ch *cmdutil.Helper) *cobra.Command {
 				ch.Printer.Printf("\nIf something goes wrong, copy and paste this URL into your browser: %s\n\n", printer.Bold(deviceVerification.VerificationCompleteURL))
 			}
 
-			var end func()
+			var progress *printer.ProgressHandle
 			if !jsonMode {
-				end = ch.Printer.PrintProgress("Waiting for confirmation...")
-				defer end()
+				progress = ch.Printer.StartProgress("Waiting for confirmation...")
+				defer progress.Stop()
 			}
 
 			accessToken, err := authenticator.GetAccessTokenForDevice(ctx, *deviceVerification)
@@ -95,6 +97,12 @@ func LoginCmd(ch *cmdutil.Helper) *cobra.Command {
 				}
 				return err
 			}
+
+			// Saving to the system keyring can block on an unlock prompt,
+			// such as GNOME Keyring's password dialog, which may open on
+			// another screen. Without this, login looks stuck waiting for the
+			// browser even though access was already approved.
+			progress.Update(savingCredentialsMessage)
 
 			err = config.WriteAccessToken(accessToken)
 			if err != nil {
@@ -108,9 +116,7 @@ func LoginCmd(ch *cmdutil.Helper) *cobra.Command {
 				return fmt.Errorf("error logging in: %w\n\nPlease ensure you have write permissions to the configuration directory: %s", err, configDir)
 			}
 
-			if end != nil {
-				end()
-			}
+			progress.Stop()
 
 			orgSetupErr := writeDefaultOrganizationIfNeeded(ctx, ch, accessToken, authURL)
 
