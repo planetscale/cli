@@ -76,7 +76,7 @@ To change parameters, use 'pscale branch resize <database> <branch> --parameters
 	registerFlags := func(cmd *cobra.Command) {
 		cmd.Flags().StringVar(&flags.namespace, "namespace", "", "Only show parameters in this namespace (e.g. pgconf, pgbouncer, patroni).")
 		cmd.Flags().BoolVar(&flags.extension, "extension", false, "Only show parameters that configure an extension (--extension=false hides them).")
-		cmd.Flags().BoolVar(&flags.internal, "internal", false, "Only show internal (immutable) parameters (--internal=false hides them).")
+		cmd.Flags().BoolVar(&flags.internal, "internal", false, "Only show internal parameters, which cannot be changed (--internal=false hides them).")
 	}
 
 	// The bare 'parameters <database> <branch>' invocation is an alias for
@@ -111,7 +111,6 @@ type postgresParameter struct {
 	Default   string `header:"default" json:"default_value"`
 	Type      string `header:"type" json:"parameter_type"`
 	Restart   bool   `header:"restart" json:"restart"`
-	Immutable bool   `header:"immutable" json:"immutable"`
 
 	orig *ps.PostgresParameter
 }
@@ -126,7 +125,6 @@ func toPostgresParameters(parameters []*ps.PostgresParameter) []*postgresParamet
 			Default:   formatParameterValue(param.DefaultValue),
 			Type:      param.ParameterType,
 			Restart:   param.Restart,
-			Immutable: param.Immutable,
 			orig:      param,
 		})
 	}

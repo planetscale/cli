@@ -48,6 +48,9 @@ func TestBranch_ResizeCmd_WithParameters(t *testing.T) {
 
 	pgSvc := &mock.PostgresBranchesService{
 		ListParametersFn: func(ctx context.Context, req *ps.ListPostgresParametersRequest) ([]*ps.PostgresParameter, error) {
+			c.Assert(req.Internal, qt.IsNotNil)
+			c.Assert(*req.Internal, qt.IsFalse)
+
 			return []*ps.PostgresParameter{
 				{Namespace: "pgconf", Name: "max_connections", ParameterType: "integer", Restart: true},
 			}, nil
@@ -116,43 +119,8 @@ func TestBranch_ResizeCmd_UnknownParameter(t *testing.T) {
 	err := cmd.Execute()
 
 	c.Assert(err, qt.IsNotNil)
-	c.Assert(err.Error(), qt.Contains, "unknown parameter")
-	c.Assert(pgSvc.ResizeFnInvoked, qt.IsFalse)
-}
-
-func TestBranch_ResizeCmd_ImmutableParameter(t *testing.T) {
-	c := qt.New(t)
-
-	var buf bytes.Buffer
-	format := printer.JSON
-	p := printer.NewPrinter(&format)
-	p.SetResourceOutput(&buf)
-
-	dbSvc := &mock.DatabaseService{
-		GetFn: func(ctx context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
-			return &ps.Database{Name: "postgres-db", Kind: "postgresql"}, nil
-		},
-	}
-
-	pgSvc := &mock.PostgresBranchesService{
-		ListParametersFn: func(ctx context.Context, req *ps.ListPostgresParametersRequest) ([]*ps.PostgresParameter, error) {
-			return []*ps.PostgresParameter{
-				{Namespace: "pgconf", Name: "wal_level", Immutable: true},
-			}, nil
-		},
-		ResizeFn: func(ctx context.Context, req *ps.ResizePostgresBranchRequest) (*ps.PostgresBranchClusterResizeRequest, error) {
-			return nil, nil
-		},
-	}
-
-	ch := testResizeHelper(p, "planetscale", dbSvc, pgSvc)
-
-	cmd := ResizeCmd(ch)
-	cmd.SetArgs([]string{"postgres-db", "main", "--parameters", "pgconf.wal_level=logical"})
-	err := cmd.Execute()
-
-	c.Assert(err, qt.IsNotNil)
-	c.Assert(err.Error(), qt.Contains, "cannot be changed")
+	c.Assert(err.Error(), qt.Contains, "does not exist or cannot be changed")
+	c.Assert(err.Error(), qt.Contains, "--org planetscale")
 	c.Assert(pgSvc.ResizeFnInvoked, qt.IsFalse)
 }
 
