@@ -10,7 +10,7 @@ import (
 	qt "github.com/frankban/quicktest"
 )
 
-const testReadOnlyReplicaJSON = `{
+const testDedicatedReadReplicaJSON = `{
 	"id":"replica-1",
 	"name":"analytics",
 	"state":"ready",
@@ -29,12 +29,12 @@ const testReadOnlyReplicaJSON = `{
 	"parameters":[]
 }`
 
-func TestPostgresReadOnlyReplicas_List(t *testing.T) {
+func TestPostgresDedicatedReadReplicas_List(t *testing.T) {
 	c := qt.New(t)
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c.Assert(r.Method, qt.Equals, http.MethodGet)
 		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/my-db/branches/main/read-only-replicas")
-		_, err := w.Write([]byte("[" + testReadOnlyReplicaJSON + "]"))
+		_, err := w.Write([]byte("[" + testDedicatedReadReplicaJSON + "]"))
 		c.Assert(err, qt.IsNil)
 	}))
 	defer ts.Close()
@@ -42,7 +42,7 @@ func TestPostgresReadOnlyReplicas_List(t *testing.T) {
 	client, err := NewClient(WithBaseURL(ts.URL))
 	c.Assert(err, qt.IsNil)
 
-	replicas, err := client.PostgresReadOnlyReplicas.List(context.Background(), &ListPostgresReadOnlyReplicasRequest{
+	replicas, err := client.PostgresDedicatedReadReplicas.List(context.Background(), &ListPostgresDedicatedReadReplicasRequest{
 		Organization: testOrg,
 		Database:     "my-db",
 		Branch:       "main",
@@ -54,12 +54,12 @@ func TestPostgresReadOnlyReplicas_List(t *testing.T) {
 	c.Assert(replicas[0].Region.Slug, qt.Equals, "us-east")
 }
 
-func TestPostgresReadOnlyReplicas_Get(t *testing.T) {
+func TestPostgresDedicatedReadReplicas_Get(t *testing.T) {
 	c := qt.New(t)
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c.Assert(r.Method, qt.Equals, http.MethodGet)
 		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/my-db/branches/main/read-only-replicas/analytics")
-		_, err := w.Write([]byte(testReadOnlyReplicaJSON))
+		_, err := w.Write([]byte(testDedicatedReadReplicaJSON))
 		c.Assert(err, qt.IsNil)
 	}))
 	defer ts.Close()
@@ -67,7 +67,7 @@ func TestPostgresReadOnlyReplicas_Get(t *testing.T) {
 	client, err := NewClient(WithBaseURL(ts.URL))
 	c.Assert(err, qt.IsNil)
 
-	replica, err := client.PostgresReadOnlyReplicas.Get(context.Background(), &GetPostgresReadOnlyReplicaRequest{
+	replica, err := client.PostgresDedicatedReadReplicas.Get(context.Background(), &GetPostgresDedicatedReadReplicaRequest{
 		Organization: testOrg,
 		Database:     "my-db",
 		Branch:       "main",
@@ -78,7 +78,7 @@ func TestPostgresReadOnlyReplicas_Get(t *testing.T) {
 	c.Assert(replica.Name, qt.Equals, "analytics")
 }
 
-func TestPostgresReadOnlyReplicas_Create(t *testing.T) {
+func TestPostgresDedicatedReadReplicas_Create(t *testing.T) {
 	c := qt.New(t)
 	replicaCount := 2
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -93,7 +93,7 @@ func TestPostgresReadOnlyReplicas_Create(t *testing.T) {
 			"replicas":     float64(2),
 			"cluster_size": "PS_10_GCP_X86",
 		})
-		_, err := w.Write([]byte(testReadOnlyReplicaJSON))
+		_, err := w.Write([]byte(testDedicatedReadReplicaJSON))
 		c.Assert(err, qt.IsNil)
 	}))
 	defer ts.Close()
@@ -101,7 +101,7 @@ func TestPostgresReadOnlyReplicas_Create(t *testing.T) {
 	client, err := NewClient(WithBaseURL(ts.URL))
 	c.Assert(err, qt.IsNil)
 
-	replica, err := client.PostgresReadOnlyReplicas.Create(context.Background(), &CreatePostgresReadOnlyReplicaRequest{
+	replica, err := client.PostgresDedicatedReadReplicas.Create(context.Background(), &CreatePostgresDedicatedReadReplicaRequest{
 		Organization: testOrg,
 		Database:     "my-db",
 		Branch:       "main",
@@ -114,7 +114,7 @@ func TestPostgresReadOnlyReplicas_Create(t *testing.T) {
 	c.Assert(replica.ID, qt.Equals, "replica-1")
 }
 
-func TestPostgresReadOnlyReplicas_Update(t *testing.T) {
+func TestPostgresDedicatedReadReplicas_Update(t *testing.T) {
 	c := qt.New(t)
 	replicaCount := 3
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -128,7 +128,7 @@ func TestPostgresReadOnlyReplicas_Update(t *testing.T) {
 		c.Assert(body["parameters"], qt.DeepEquals, map[string]any{
 			"pgconf": map[string]any{"max_connections": "300"},
 		})
-		_, err := w.Write([]byte(testReadOnlyReplicaJSON))
+		_, err := w.Write([]byte(testDedicatedReadReplicaJSON))
 		c.Assert(err, qt.IsNil)
 	}))
 	defer ts.Close()
@@ -136,7 +136,7 @@ func TestPostgresReadOnlyReplicas_Update(t *testing.T) {
 	client, err := NewClient(WithBaseURL(ts.URL))
 	c.Assert(err, qt.IsNil)
 
-	replica, err := client.PostgresReadOnlyReplicas.Update(context.Background(), &UpdatePostgresReadOnlyReplicaRequest{
+	replica, err := client.PostgresDedicatedReadReplicas.Update(context.Background(), &UpdatePostgresDedicatedReadReplicaRequest{
 		Organization: testOrg,
 		Database:     "my-db",
 		Branch:       "main",
@@ -151,7 +151,7 @@ func TestPostgresReadOnlyReplicas_Update(t *testing.T) {
 	c.Assert(replica.ID, qt.Equals, "replica-1")
 }
 
-func TestPostgresReadOnlyReplicas_Delete(t *testing.T) {
+func TestPostgresDedicatedReadReplicas_Delete(t *testing.T) {
 	c := qt.New(t)
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c.Assert(r.Method, qt.Equals, http.MethodDelete)
@@ -163,11 +163,37 @@ func TestPostgresReadOnlyReplicas_Delete(t *testing.T) {
 	client, err := NewClient(WithBaseURL(ts.URL))
 	c.Assert(err, qt.IsNil)
 
-	err = client.PostgresReadOnlyReplicas.Delete(context.Background(), &DeletePostgresReadOnlyReplicaRequest{
+	err = client.PostgresDedicatedReadReplicas.Delete(context.Background(), &DeletePostgresDedicatedReadReplicaRequest{
 		Organization: testOrg,
 		Database:     "my-db",
 		Branch:       "main",
 		Replica:      "analytics",
 	})
 	c.Assert(err, qt.IsNil)
+}
+
+func TestPostgresReadOnlyReplicasBackwardCompatibility(t *testing.T) {
+	c := qt.New(t)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodGet)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/my-db/branches/main/read-only-replicas")
+		_, err := w.Write([]byte("[" + testDedicatedReadReplicaJSON + "]"))
+		c.Assert(err, qt.IsNil)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+	c.Assert(client.PostgresReadOnlyReplicas, qt.Equals, client.PostgresDedicatedReadReplicas)
+
+	replicas, err := client.PostgresReadOnlyReplicas.List(context.Background(), &ListPostgresReadOnlyReplicasRequest{
+		Organization: testOrg,
+		Database:     "my-db",
+		Branch:       "main",
+	})
+	c.Assert(err, qt.IsNil)
+	c.Assert(replicas, qt.HasLen, 1)
+
+	var replica *PostgresReadOnlyReplica = replicas[0]
+	c.Assert(replica.Name, qt.Equals, "analytics")
 }
