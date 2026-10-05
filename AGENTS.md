@@ -550,11 +550,14 @@ pscale branch parameters list <database> <branch> --org <org> --format json --na
 
 # Extensions available on the cluster image (not CREATE EXTENSION state)
 pscale branch extensions list <database> <branch> --org <org> --format json
-pscale branch extensions enable <database> <branch> <extension> --org <org> --format json
-pscale branch extensions disable <database> <branch> <extension> --org <org> --format json
 
-# Toggle commands queue a branch change; track it with resize status.
-# Only extensions with "can_enable": true can be toggled. This is not CREATE EXTENSION.
+# Toggle an extension with "can_enable": true (not CREATE EXTENSION). This queues a
+# branch change that may restart the database; warn the user first. Track it with
+# resize status, or pass --wait (default timeout 10m; tune with --wait-timeout).
+# Postgres only; Neki uses `branch config-profile extensions enable|disable`.
+pscale branch extensions enable <database> <branch> <extension> --org <org> --format json
+pscale branch extensions enable <database> <branch> <extension> --org <org> --format json --wait
+pscale branch extensions disable <database> <branch> <extension> --org <org> --format json
 
 # Default postgres role (read-only; reset-default rotates the password)
 pscale role default <database> <branch> --org <org> --format json

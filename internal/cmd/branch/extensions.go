@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/planetscale/cli/internal/cmdutil"
 	ps "github.com/planetscale/cli/internal/planetscale"
@@ -17,7 +18,8 @@ func ExtensionsCmd(ch *cmdutil.Helper) *cobra.Command {
 
 This is the catalog of extensions the image can load, not the result of
 CREATE EXTENSION. Enable and disable queue an asynchronous branch change
-request; only extensions marked "can enable" can be toggled.`
+request; only extensions marked "can enable" can be toggled. Toggling an
+extension may restart the database.`
 
 	run := func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()
@@ -72,22 +74,53 @@ request; only extensions marked "can enable" can be toggled.`
 }
 
 func extensionToggleCmd(ch *cmdutil.Helper, enable bool) *cobra.Command {
+	var flags struct {
+		wait        bool
+		waitTimeout time.Duration
+	}
+
 	verb := "enable"
 	if !enable {
 		verb = "disable"
 	}
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   verb + " <database> <branch> <extension>",
 		Short: strings.ToUpper(verb[:1]) + verb[1:] + " an extension on a Postgres branch",
-		Args:  cmdutil.ExactArgs("database", "branch", "extension"),
+		Long: strings.ToUpper(verb[:1]) + verb[1:] + ` an extension on a Postgres branch.
+
+This queues an asynchronous branch change request and may restart the
+database. Only extensions marked "can enable" in 'pscale branch extensions
+list' can be toggled.`,
+		Args: cmdutil.ExactArgs("database", "branch", "extension"),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
 			database, branch, name := args[0], args[1], args[2]
 			client, err := ch.Client()
 			if err != nil {
 				return err
 			}
 
-			extensions, err := client.PostgresBranches.ListExtensions(cmd.Context(), &ps.ListPostgresExtensionsRequest{
+			db, err := client.Databases.Get(ctx, &ps.GetDatabaseRequest{
+				Organization: ch.Config.Organization,
+				Database:     database,
+			})
+			if err != nil {
+				switch cmdutil.ErrCode(err) {
+				case ps.ErrNotFound:
+					return fmt.Errorf("database %s does not exist in organization %s", printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
+				default:
+					return cmdutil.HandleError(err)
+				}
+			}
+			switch db.Kind {
+			case ps.DatabaseEnginePostgres:
+			case ps.DatabaseEngineNeki:
+				return fmt.Errorf("extensions on Neki databases are set per configuration profile; use %s", printer.BoldBlue("pscale branch config-profile extensions "+verb))
+			default:
+				return fmt.Errorf("extensions are only available for PostgreSQL databases; %s is %s", printer.BoldBlue(database), printer.BoldBlue(string(db.Kind)))
+			}
+
+			extensions, err := client.PostgresBranches.ListExtensions(ctx, &ps.ListPostgresExtensionsRequest{
 				Organization: ch.Config.Organization, Database: database, Branch: branch,
 			})
 			if err != nil {
@@ -119,13 +152,16 @@ func extensionToggleCmd(ch *cmdutil.Helper, enable bool) *cobra.Command {
 				selection = append(selection, name)
 			}
 
-			change, err := client.PostgresBranches.Resize(cmd.Context(), &ps.ResizePostgresBranchRequest{
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Requesting to %s extension %s on branch %s...", verb, printer.BoldBlue(name), printer.BoldBlue(branch)))
+			defer end()
+			change, err := client.PostgresBranches.Resize(ctx, &ps.ResizePostgresBranchRequest{
 				Organization: ch.Config.Organization, Database: database, Branch: branch,
 				Extensions: &selection,
 			})
 			if err != nil {
 				return extensionsError(ch, err, database, branch)
 			}
+			end()
 			if change == nil {
 				if ch.Printer.Format() == printer.Human {
 					ch.Printer.Printf("Branch %s already matches the requested configuration.\n", printer.BoldBlue(branch))
@@ -133,13 +169,29 @@ func extensionToggleCmd(ch *cmdutil.Helper, enable bool) *cobra.Command {
 				}
 				return ch.Printer.PrintResource(map[string]string{"result": "no_change", "extension": name, "branch": branch})
 			}
+			if flags.wait {
+				change, err = waitForChange(ctx, ch, client, database, branch, change, flags.waitTimeout)
+				if err != nil {
+					return err
+				}
+			}
+
 			if ch.Printer.Format() == printer.Human {
 				ch.Printer.Printf("Change to %s extension %s on branch %s %s (state: %s).\n", verb, printer.BoldBlue(name), printer.BoldBlue(branch), changeVerb(change.State), printer.BoldBlue(change.State))
+				// Once the change has finished, any restart already happened.
+				if !change.Finished() {
+					ch.Printer.Println("Note: this change may restart the database.")
+				}
 				return nil
 			}
 			return ch.Printer.PrintResource(toPostgresBranchResize(change))
 		},
 	}
+
+	cmd.Flags().BoolVar(&flags.wait, "wait", false, "Wait for the change request to complete before returning.")
+	cmd.Flags().DurationVar(&flags.waitTimeout, "wait-timeout", 10*time.Minute, "Maximum time to wait for the change request to complete with --wait.")
+
+	return cmd
 }
 
 func extensionsError(ch *cmdutil.Helper, err error, database, branch string) error {
