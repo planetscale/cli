@@ -131,7 +131,7 @@ list' can be toggled.`,
 			for _, candidate := range extensions {
 				if candidate.Name == name {
 					extension = candidate
-				} else if candidate.Enabled {
+				} else if candidate.Enabled != nil && *candidate.Enabled {
 					selection = append(selection, candidate.Name)
 				}
 			}
@@ -141,7 +141,10 @@ list' can be toggled.`,
 			if !extension.CanEnable {
 				return fmt.Errorf("extension %s cannot be enabled or disabled", name)
 			}
-			if extension.Enabled == enable {
+			if extension.Enabled == nil {
+				return fmt.Errorf("enabled state is unavailable for extension %s", name)
+			}
+			if *extension.Enabled == enable {
 				if ch.Printer.Format() == printer.Human {
 					ch.Printer.Printf("Extension %s is already %sd on branch %s.\n", printer.BoldBlue(name), verb, printer.BoldBlue(branch))
 					return nil
@@ -204,7 +207,7 @@ func extensionsError(ch *cmdutil.Helper, err error, database, branch string) err
 
 type postgresExtension struct {
 	Name      string `header:"name" json:"name"`
-	Enabled   bool   `header:"enabled" json:"enabled"`
+	Enabled   string `header:"enabled" json:"enabled"`
 	CanEnable bool   `header:"can enable" json:"can_enable"`
 	URL       string `header:"url,n/a" json:"url"`
 
@@ -214,9 +217,16 @@ type postgresExtension struct {
 func toPostgresExtensions(extensions []*ps.PostgresExtension) []*postgresExtension {
 	out := make([]*postgresExtension, 0, len(extensions))
 	for _, ext := range extensions {
+		enabled := "n/a"
+		if ext.Enabled != nil {
+			enabled = "No"
+			if *ext.Enabled {
+				enabled = "Yes"
+			}
+		}
 		out = append(out, &postgresExtension{
 			Name:      ext.Name,
-			Enabled:   ext.Enabled,
+			Enabled:   enabled,
 			CanEnable: ext.CanEnable,
 			URL:       ext.URL,
 			orig:      ext,

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	qt "github.com/frankban/quicktest"
@@ -32,8 +33,9 @@ func TestBranch_ExtensionsCmd(t *testing.T) {
 			c.Assert(req.Database, qt.Equals, db)
 			c.Assert(req.Branch, qt.Equals, branch)
 			return []*ps.PostgresExtension{
-				{Name: "vector", Enabled: true, CanEnable: true, URL: "https://github.com/pgvector/pgvector"},
-				{Name: "pg_stat_statements", CanEnable: false},
+				{Name: "vector", Enabled: extensionEnabled(true), CanEnable: true, URL: "https://github.com/pgvector/pgvector"},
+				{Name: "pg_stat_statements", Enabled: extensionEnabled(false), CanEnable: false},
+				{Name: "hstore", CanEnable: false},
 			}, nil
 		},
 	}
@@ -58,6 +60,9 @@ func TestBranch_ExtensionsCmd(t *testing.T) {
 	c.Assert(json.Unmarshal(buf.Bytes(), &output), qt.IsNil)
 	_, hasLoader := output[0]["loader"]
 	c.Assert(hasLoader, qt.IsFalse)
+	c.Assert(output[1]["enabled"], qt.Equals, false)
+	_, hasEnabled := output[2]["enabled"]
+	c.Assert(hasEnabled, qt.IsFalse)
 }
 
 func TestBranch_ExtensionsCmd_ListSubcommand(t *testing.T) {
@@ -93,6 +98,37 @@ func TestBranch_ExtensionsCmd_ListSubcommand(t *testing.T) {
 	c.Assert(buf.String(), qt.Contains, "vector")
 }
 
+func TestBranch_ExtensionsCmd_CreateExtensionHasNoEnabledState(t *testing.T) {
+	c := qt.New(t)
+	var buf bytes.Buffer
+	format := printer.Human
+	p := printer.NewPrinter(&format)
+	p.SetHumanOutput(&buf)
+	p.SetResourceOutput(&buf)
+	pgSvc := &mock.PostgresBranchesService{
+		ListExtensionsFn: func(_ context.Context, _ *ps.ListPostgresExtensionsRequest) ([]*ps.PostgresExtension, error) {
+			return []*ps.PostgresExtension{
+				{Name: "pg_stat_statements", Enabled: extensionEnabled(false), URL: "https://example.com/statements"},
+				{Name: "hstore", URL: "https://example.com/hstore"},
+			}, nil
+		},
+	}
+	ch := &cmdutil.Helper{Printer: p, Config: &config.Config{Organization: "planetscale"}, Client: func() (*ps.Client, error) {
+		return &ps.Client{PostgresBranches: pgSvc}, nil
+	}}
+	cmd := ExtensionsCmd(ch)
+	cmd.SetArgs([]string{"list", "postgres-db", "main"})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	for _, line := range strings.Split(buf.String(), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) > 1 && fields[0] == "hstore" {
+			c.Assert(fields[1], qt.Equals, "n/a")
+			return
+		}
+	}
+	t.Fatalf("hstore row missing from output: %s", buf.String())
+}
+
 func testExtensionsHelper(p *printer.Printer, kind ps.DatabaseEngine, pgSvc *mock.PostgresBranchesService) *cmdutil.Helper {
 	dbSvc := &mock.DatabaseService{
 		GetFn: func(_ context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
@@ -103,6 +139,8 @@ func testExtensionsHelper(p *printer.Printer, kind ps.DatabaseEngine, pgSvc *moc
 		return &ps.Client{Databases: dbSvc, PostgresBranches: pgSvc}, nil
 	}}
 }
+
+func extensionEnabled(value bool) *bool { return &value }
 
 func TestBranch_ExtensionsTogglePreservesOtherExtensions(t *testing.T) {
 	for _, tc := range []struct {
@@ -122,10 +160,10 @@ func TestBranch_ExtensionsTogglePreservesOtherExtensions(t *testing.T) {
 			pgSvc := &mock.PostgresBranchesService{
 				ListExtensionsFn: func(_ context.Context, _ *ps.ListPostgresExtensionsRequest) ([]*ps.PostgresExtension, error) {
 					return []*ps.PostgresExtension{
-						{Name: "pg_stat_statements", Enabled: true},
-						{Name: "vector", Enabled: tc.enabled, CanEnable: true},
-						{Name: "pg_strict", Enabled: true, CanEnable: true},
-						{Name: "pg_cron", CanEnable: true},
+						{Name: "pg_stat_statements", Enabled: extensionEnabled(true)},
+						{Name: "vector", Enabled: extensionEnabled(tc.enabled), CanEnable: true},
+						{Name: "pg_strict", Enabled: extensionEnabled(true), CanEnable: true},
+						{Name: "pg_cron", Enabled: extensionEnabled(false), CanEnable: true},
 					}, nil
 				},
 				ResizeFn: func(_ context.Context, req *ps.ResizePostgresBranchRequest) (*ps.PostgresBranchClusterResizeRequest, error) {
@@ -158,7 +196,7 @@ func TestBranch_ExtensionsToggleRejectsWhenCannotEnable(t *testing.T) {
 			p.SetResourceOutput(&buf)
 			pgSvc := &mock.PostgresBranchesService{
 				ListExtensionsFn: func(_ context.Context, _ *ps.ListPostgresExtensionsRequest) ([]*ps.PostgresExtension, error) {
-					return []*ps.PostgresExtension{{Name: "hstore", Enabled: verb == "disable"}}, nil
+					return []*ps.PostgresExtension{{Name: "hstore"}}, nil
 				},
 			}
 			ch := testExtensionsHelper(p, "postgresql", pgSvc)
@@ -178,7 +216,7 @@ func TestBranch_ExtensionsToggleSkipsAlreadyEnabled(t *testing.T) {
 	p.SetResourceOutput(&buf)
 	pgSvc := &mock.PostgresBranchesService{
 		ListExtensionsFn: func(_ context.Context, _ *ps.ListPostgresExtensionsRequest) ([]*ps.PostgresExtension, error) {
-			return []*ps.PostgresExtension{{Name: "vector", Enabled: true, CanEnable: true}}, nil
+			return []*ps.PostgresExtension{{Name: "vector", Enabled: extensionEnabled(true), CanEnable: true}}, nil
 		},
 	}
 	ch := testExtensionsHelper(p, "postgresql", pgSvc)
@@ -218,7 +256,7 @@ func TestBranch_ExtensionsToggleWait(t *testing.T) {
 	p.SetHumanOutput(&buf)
 	pgSvc := &mock.PostgresBranchesService{
 		ListExtensionsFn: func(_ context.Context, _ *ps.ListPostgresExtensionsRequest) ([]*ps.PostgresExtension, error) {
-			return []*ps.PostgresExtension{{Name: "vector", CanEnable: true}}, nil
+			return []*ps.PostgresExtension{{Name: "vector", Enabled: extensionEnabled(false), CanEnable: true}}, nil
 		},
 		ResizeFn: func(_ context.Context, _ *ps.ResizePostgresBranchRequest) (*ps.PostgresBranchClusterResizeRequest, error) {
 			return &ps.PostgresBranchClusterResizeRequest{ID: "change-id", State: "completed"}, nil
@@ -239,7 +277,7 @@ func TestBranch_ExtensionsToggleWarnsAboutRestart(t *testing.T) {
 	p.SetHumanOutput(&buf)
 	pgSvc := &mock.PostgresBranchesService{
 		ListExtensionsFn: func(_ context.Context, _ *ps.ListPostgresExtensionsRequest) ([]*ps.PostgresExtension, error) {
-			return []*ps.PostgresExtension{{Name: "vector", CanEnable: true}}, nil
+			return []*ps.PostgresExtension{{Name: "vector", Enabled: extensionEnabled(false), CanEnable: true}}, nil
 		},
 		ResizeFn: func(_ context.Context, _ *ps.ResizePostgresBranchRequest) (*ps.PostgresBranchClusterResizeRequest, error) {
 			return &ps.PostgresBranchClusterResizeRequest{ID: "change-id", State: "queued"}, nil
