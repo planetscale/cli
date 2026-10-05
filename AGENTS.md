@@ -544,7 +544,7 @@ pscale maintenance windows <database> <schedule-id> --org <org> --format json
 `pscale branch resize` queues a single asynchronous **change request** for a Postgres branch covering cluster size, replica count, and configuration parameters in any combination. Track it with `resize status`; cancel it with `resize cancel` while queued.
 
 ```bash
-# Read the parameter catalog first (names, current/default values, restart/immutable flags)
+# Read the parameter catalog first (names, current/default values, restart flags)
 pscale branch parameters list <database> <branch> --org <org> --format json
 pscale branch parameters list <database> <branch> --org <org> --format json --namespace pgconf
 
@@ -589,7 +589,7 @@ pscale branch resize cancel <database> <branch> --org <org> --format json
 - At least one of `--cluster-size`, `--replicas`, or `--parameters` is required.
 - Neki `--inherited-roles` may include `neki_viewer` (must also include `pg_read_all_data`) and `neki_operator` (must also include `postgres`). The API rejects those pairings if the required role is missing.
 - `--replica`, `--dedicated-read-replica`, and `--bouncer` are mutually exclusive. `--dedicated-read-replica` and `--bouncer` are Postgres-only and cannot combine with `--router` or `--shard`. The deprecated `--read-only-replica` flag is a compatibility alias for `--dedicated-read-replica`. On Neki, `--replica`, `--shard`, and `--router` can be combined. `--router` rewrites `username` to `user|<name>`. `--replica` and `--shard` set `options` (`-c __neki.target=REPLICA`, `-c __neki.shard=…`) and add them to `database_url`. List names with `pscale branch router list` and `pscale branch shard list` (use the shard name, not the API id).
-- `--parameters` values are validated against the catalog before submission; unknown or immutable parameters fail fast. Parameters with `"restart": true` in the catalog restart the database when applied — surface this to the user before changing them.
+- `--parameters` values are validated against the changeable parameters in the catalog before submission; parameters that don't exist or can't be changed fail fast. Parameters with `"restart": true` in the catalog restart the database when applied — surface this to the user before changing them.
 - Change request `state` is one of `queued`, `pending`, `resizing`, `completed`, `canceled`. Only `completed` and `canceled` are terminal. Without `--wait`, poll `resize status` instead of assuming completion.
 - A no-op (branch already matches the requested configuration) prints `{"result": "no_change", "branch": "<branch>"}` in JSON mode instead of a change request.
 - `resize cancel` prints `{"result": "canceled", "branch": "<branch>"}` in JSON mode.

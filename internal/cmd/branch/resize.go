@@ -193,10 +193,12 @@ func preflightParameters(ctx context.Context, client *ps.Client, organization, d
 		return nil, nil
 	}
 
+	internal := false
 	catalog, err := client.PostgresBranches.ListParameters(ctx, &ps.ListPostgresParametersRequest{
 		Organization: organization,
 		Database:     database,
 		Branch:       branch,
+		Internal:     &internal,
 	})
 	if err != nil {
 		return nil, nil
@@ -221,10 +223,7 @@ func preflightParameters(ctx context.Context, client *ps.Client, organization, d
 	for _, key := range keys {
 		param, ok := known[key]
 		if !ok {
-			return nil, fmt.Errorf("unknown parameter %s. Run 'pscale branch parameters list %s %s' to see available parameters", printer.BoldBlue(key), database, branch)
-		}
-		if param.Immutable {
-			return nil, fmt.Errorf("parameter %s cannot be changed", printer.BoldBlue(key))
+			return nil, fmt.Errorf("parameter %s does not exist or cannot be changed. Run 'pscale branch parameters list %s %s --internal=false' to see the parameters you can change", printer.BoldBlue(key), database, branch)
 		}
 		if param.Restart {
 			restartParams = append(restartParams, key)

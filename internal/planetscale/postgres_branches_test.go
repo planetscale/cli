@@ -564,7 +564,7 @@ func TestPostgresBranches_ListParameters(t *testing.T) {
 
 		w.WriteHeader(200)
 		// The parameters endpoint returns a bare array, not a {"data": [...]} envelope.
-		out := `[{"id":"param-1","name":"max_connections","display_name":"Max connections","namespace":"pgconf","parameter_type":"integer","default_value":"100","value":"200","restart":true,"immutable":false,"min":25,"max":5000}]`
+		out := `[{"id":"param-1","name":"max_connections","display_name":"Max connections","namespace":"pgconf","parameter_type":"integer","default_value":"100","value":"200","restart":true,"min":25,"max":5000}]`
 		_, err := w.Write([]byte(out))
 		c.Assert(err, qt.IsNil)
 	}))

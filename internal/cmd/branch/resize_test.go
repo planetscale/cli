@@ -116,11 +116,11 @@ func TestBranch_ResizeCmd_UnknownParameter(t *testing.T) {
 	err := cmd.Execute()
 
 	c.Assert(err, qt.IsNotNil)
-	c.Assert(err.Error(), qt.Contains, "unknown parameter")
+	c.Assert(err.Error(), qt.Contains, "does not exist or cannot be changed")
 	c.Assert(pgSvc.ResizeFnInvoked, qt.IsFalse)
 }
 
-func TestBranch_ResizeCmd_ImmutableParameter(t *testing.T) {
+func TestBranch_ResizeCmd_InternalParameter(t *testing.T) {
 	c := qt.New(t)
 
 	var buf bytes.Buffer
@@ -136,8 +136,11 @@ func TestBranch_ResizeCmd_ImmutableParameter(t *testing.T) {
 
 	pgSvc := &mock.PostgresBranchesService{
 		ListParametersFn: func(ctx context.Context, req *ps.ListPostgresParametersRequest) ([]*ps.PostgresParameter, error) {
+			c.Assert(req.Internal, qt.IsNotNil)
+			c.Assert(*req.Internal, qt.IsFalse)
+
 			return []*ps.PostgresParameter{
-				{Namespace: "pgconf", Name: "wal_level", Immutable: true},
+				{Namespace: "pgconf", Name: "max_connections"},
 			}, nil
 		},
 		ResizeFn: func(ctx context.Context, req *ps.ResizePostgresBranchRequest) (*ps.PostgresBranchClusterResizeRequest, error) {
@@ -152,7 +155,7 @@ func TestBranch_ResizeCmd_ImmutableParameter(t *testing.T) {
 	err := cmd.Execute()
 
 	c.Assert(err, qt.IsNotNil)
-	c.Assert(err.Error(), qt.Contains, "cannot be changed")
+	c.Assert(err.Error(), qt.Contains, "does not exist or cannot be changed")
 	c.Assert(pgSvc.ResizeFnInvoked, qt.IsFalse)
 }
 

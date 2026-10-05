@@ -196,7 +196,7 @@ type ListPostgresParametersRequest struct {
 	// Extension filters parameters by whether they configure an extension.
 	// Nil returns both.
 	Extension *bool
-	// Internal filters parameters by whether they are internal (immutable).
+	// Internal filters parameters by whether they are internal and cannot be changed.
 	// Nil returns both.
 	Internal *bool
 }
@@ -209,8 +209,6 @@ type PostgresParameter struct {
 	Namespace     string `json:"namespace"`
 	Category      string `json:"category"`
 	Description   string `json:"description"`
-	Extension     bool   `json:"extension"`
-	Immutable     bool   `json:"immutable"`
 	ParameterType string `json:"parameter_type"`
 	DefaultValue  any    `json:"default_value"`
 	Value         any    `json:"value"`
