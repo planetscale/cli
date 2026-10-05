@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"slices"
 	"strconv"
 	"strings"
@@ -30,8 +31,8 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 		throttlerThreshold               float64
 		maxRollout                       int
 		diskScalingStrategy              string
-		maxStorage                       int64
-		storage                          int64
+		maxStorage                       string
+		storage                          string
 		interactive                      bool
 	}
 
@@ -88,16 +89,33 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 				return fmt.Errorf("invalid --disk-scaling-strategy %q, must be one of: %s", flags.diskScalingStrategy, strings.Join(diskScalingStrategies, ", "))
 			}
 
-			if maxStorageChanged && flags.maxStorage <= 0 {
-				return errors.New("--max-storage must be greater than 0")
+			var (
+				maxStorageBytes int64
+				err             error
+			)
+			if maxStorageChanged {
+				maxStorageBytes, err = parseStorageSize(flags.maxStorage)
+				if err != nil {
+					return fmt.Errorf("invalid --max-storage %q: %w", flags.maxStorage, err)
+				}
+
+				if maxStorageBytes <= 0 {
+					return errors.New("--max-storage must be greater than 0")
+				}
 			}
 
+			var storageBytes int64
 			if storageChanged {
-				if flags.storage <= 0 {
+				storageBytes, err = parseStorageSize(flags.storage)
+				if err != nil {
+					return fmt.Errorf("invalid --storage %q: %w", flags.storage, err)
+				}
+
+				if storageBytes <= 0 {
 					return errors.New("--storage must be greater than 0")
 				}
 
-				if flags.storage%humanize.GiByte != 0 {
+				if storageBytes%humanize.GiByte != 0 {
 					return errors.New("--storage must be a multiple of 1 GiB")
 				}
 			}
@@ -169,11 +187,11 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 				}
 
 				if maxStorageChanged {
-					updateReq.Storage.MaxStorageBytes = &flags.maxStorage
+					updateReq.Storage.MaxStorageBytes = &maxStorageBytes
 				}
 
 				if storageChanged {
-					updateReq.Storage.StorageBytes = &flags.storage
+					updateReq.Storage.StorageBytes = &storageBytes
 				}
 			}
 
@@ -196,8 +214,8 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().Float64Var(&flags.throttlerThreshold, "throttler-threshold", 5, "Replication lag in seconds above which migrations and workflows are paused.")
 	cmd.Flags().IntVar(&flags.maxRollout, "max-rollout", 1, "Maximum number of shards to roll out changes to concurrently (1-32).")
 	cmd.Flags().StringVar(&flags.diskScalingStrategy, "disk-scaling-strategy", "grow", fmt.Sprintf("The disk scaling strategy (%s). 'grow' lets dedicated disks grow automatically up to --max-storage; 'disable' turns autoscaling off; 'shrink' recreates disks at --storage and then disables autoscaling.", strings.Join(diskScalingStrategies, ", ")))
-	cmd.Flags().Int64Var(&flags.maxStorage, "max-storage", 0, "The maximum size in bytes that dedicated disks may autoscale to.")
-	cmd.Flags().Int64Var(&flags.storage, "storage", 0, "The disk size in bytes to recreate disks at. Must be a multiple of 1 GiB. Only accepted when the disk scaling strategy is shrink, either passed with --disk-scaling-strategy or already set on the keyspace.")
+	cmd.Flags().StringVar(&flags.maxStorage, "max-storage", "", "The maximum size that dedicated disks may autoscale to, in bytes or with a unit such as 200GiB or 1TiB. Must be at least 12 GiB and no smaller than the current disk size. Cannot be raised above the organization default (4 TiB, or 16 TiB for managed tenancy) or a higher limit set by PlanetScale staff.")
+	cmd.Flags().StringVar(&flags.storage, "storage", "", "The disk size to recreate disks at, in bytes or with a unit such as 200GiB or 1TiB. Must be a multiple of 1 GiB. Only accepted when the disk scaling strategy is shrink, either passed with --disk-scaling-strategy or already set on the keyspace.")
 	cmd.Flags().BoolVarP(&flags.interactive, "interactive", "i", false, "Run the command in interactive mode")
 
 	_ = cmd.RegisterFlagCompletionFunc("disk-scaling-strategy", cobra.FixedCompletions(diskScalingStrategies, cobra.ShellCompDirectiveNoFileComp))
@@ -389,4 +407,26 @@ func constraintsToStrategy(constraint string) string {
 	default:
 		return constraint
 	}
+}
+
+// parseStorageSize parses a storage size given either as a plain number of
+// bytes or as a size with a unit, such as 200GiB or 1TiB. It only parses; the
+// caller is responsible for validating the returned value.
+func parseStorageSize(value string) (int64, error) {
+	// A plain integer is parsed exactly. humanize.ParseBytes goes through a
+	// float64 and would silently round byte counts above 2^53.
+	if n, err := strconv.ParseInt(strings.TrimSpace(value), 10, 64); err == nil {
+		return n, nil
+	}
+
+	parsed, err := humanize.ParseBytes(value)
+	if err != nil {
+		return 0, errors.New("must be a size in bytes or with a unit, such as 200GiB")
+	}
+
+	if parsed > math.MaxInt64 {
+		return 0, errors.New("value is too large")
+	}
+
+	return int64(parsed), nil
 }
