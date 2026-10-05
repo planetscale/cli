@@ -117,6 +117,9 @@ type ResizePostgresBranchRequest struct {
 	// e.g. {"pgconf": {"max_connections": "200"}}. Use the values returned by
 	// ListParameters. Nil leaves parameters unchanged.
 	Parameters map[string]map[string]string `json:"parameters,omitempty"`
+	// Extensions replaces the set of enabled extensions. Nil leaves them
+	// unchanged.
+	Extensions *[]string `json:"extensions,omitempty"`
 }
 
 // PostgresBranchClusterResizeRequest represents an asynchronous Postgres branch
@@ -241,16 +244,22 @@ type ListPostgresExtensionsRequest struct {
 // PostgresExtension is an extension defined on the branch's cluster image.
 // This is the catalog of what the image can load, not CREATE EXTENSION state.
 type PostgresExtension struct {
-	Type              string               `json:"type"`
-	Name              string               `json:"name"`
-	Description       string               `json:"description"`
-	Internal          bool                 `json:"internal"`
-	Loader            string               `json:"loader"`
-	URL               string               `json:"url"`
-	Available         bool                 `json:"available"`
-	UnavailableReason string               `json:"unavailable_reason"`
-	Requirements      map[string]any       `json:"requirements"`
-	Parameters        []*PostgresParameter `json:"parameters"`
+	Type         string                         `json:"type"`
+	Name         string                         `json:"name"`
+	Description  string                         `json:"description"`
+	Internal     bool                           `json:"internal"`
+	Loader       string                         `json:"loader"`
+	URL          string                         `json:"url"`
+	Enabled      bool                           `json:"enabled"`
+	CanEnable    bool                           `json:"can_enable"`
+	Requirements *PostgresExtensionRequirements `json:"requirements"`
+	Parameters   []*PostgresParameter           `json:"parameters"`
+}
+
+// PostgresExtensionRequirements describes what an extension needs before it
+// can be enabled.
+type PostgresExtensionRequirements struct {
+	PostgresImageVersion *string `json:"postgres_image_version"`
 }
 
 // PostgresBranchSchemaRequest encapsulates the request to get the schema of a Postgres branch.

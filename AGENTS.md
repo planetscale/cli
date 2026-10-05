@@ -554,7 +554,7 @@ pscale branch extensions enable <database> <branch> <extension> --org <org> --fo
 pscale branch extensions disable <database> <branch> <extension> --org <org> --format json
 
 # Toggle commands queue a branch change; track it with resize status.
-# They apply only to preloadable, customer-managed extensions, not CREATE EXTENSION.
+# Only extensions with "can_enable": true can be toggled. This is not CREATE EXTENSION.
 
 # Default postgres role (read-only; reset-default rotates the password)
 pscale role default <database> <branch> --org <org> --format json

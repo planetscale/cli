@@ -31,8 +31,8 @@ func TestBranch_ExtensionsCmd(t *testing.T) {
 			c.Assert(req.Database, qt.Equals, db)
 			c.Assert(req.Branch, qt.Equals, branch)
 			return []*ps.PostgresExtension{
-				{Name: "vector", Loader: "shared_preload_libraries", Available: true, URL: "https://github.com/pgvector/pgvector"},
-				{Name: "pg_stat_statements", Loader: "shared_preload_libraries", Available: false, UnavailableReason: "container_upgrade_required"},
+				{Name: "vector", Loader: "shared_preload_libraries", Enabled: true, CanEnable: true, URL: "https://github.com/pgvector/pgvector"},
+				{Name: "pg_stat_statements", Loader: "shared_preload_libraries", CanEnable: false},
 			}, nil
 		},
 	}
@@ -66,7 +66,7 @@ func TestBranch_ExtensionsCmd_ListSubcommand(t *testing.T) {
 	pgSvc := &mock.PostgresBranchesService{
 		ListExtensionsFn: func(ctx context.Context, req *ps.ListPostgresExtensionsRequest) ([]*ps.PostgresExtension, error) {
 			return []*ps.PostgresExtension{
-				{Name: "vector", Available: true},
+				{Name: "vector", CanEnable: true},
 			}, nil
 		},
 	}
@@ -88,16 +88,14 @@ func TestBranch_ExtensionsCmd_ListSubcommand(t *testing.T) {
 	c.Assert(buf.String(), qt.Contains, "vector")
 }
 
-func TestBranch_ExtensionsTogglePreservesOtherLibraries(t *testing.T) {
+func TestBranch_ExtensionsTogglePreservesOtherExtensions(t *testing.T) {
 	for _, tc := range []struct {
-		verb         string
-		current      any
-		defaultValue any
-		expected     string
+		verb     string
+		enabled  bool
+		expected []string
 	}{
-		{verb: "enable", current: "pg_stat_statements, pg_strict", expected: "pg_stat_statements,pg_strict,vector"},
-		{verb: "disable", current: "pg_stat_statements, vector, pg_strict", expected: "pg_stat_statements,pg_strict"},
-		{verb: "enable", defaultValue: []any{"pg_stat_statements"}, expected: "pg_stat_statements,vector"},
+		{verb: "enable", expected: []string{"pg_stat_statements", "pg_strict", "vector"}},
+		{verb: "disable", enabled: true, expected: []string{"pg_stat_statements", "pg_strict"}},
 	} {
 		t.Run(tc.verb, func(t *testing.T) {
 			c := qt.New(t)
@@ -107,18 +105,20 @@ func TestBranch_ExtensionsTogglePreservesOtherLibraries(t *testing.T) {
 			p.SetResourceOutput(&buf)
 			pgSvc := &mock.PostgresBranchesService{
 				ListExtensionsFn: func(_ context.Context, _ *ps.ListPostgresExtensionsRequest) ([]*ps.PostgresExtension, error) {
-					return []*ps.PostgresExtension{{Name: "vector", Loader: "shared_preload_libraries"}}, nil
-				},
-				ListParametersFn: func(_ context.Context, req *ps.ListPostgresParametersRequest) ([]*ps.PostgresParameter, error) {
-					c.Assert(req.Internal, qt.IsNotNil)
-					c.Assert(*req.Internal, qt.IsFalse)
-					return []*ps.PostgresParameter{{Namespace: "pgconf", Name: "shared_preload_libraries", Value: tc.current, DefaultValue: tc.defaultValue}}, nil
+					return []*ps.PostgresExtension{
+						{Name: "pg_stat_statements", Enabled: true},
+						{Name: "vector", Enabled: tc.enabled, CanEnable: true},
+						{Name: "pg_strict", Enabled: true, CanEnable: true},
+						{Name: "pg_cron", CanEnable: true},
+					}, nil
 				},
 				ResizeFn: func(_ context.Context, req *ps.ResizePostgresBranchRequest) (*ps.PostgresBranchClusterResizeRequest, error) {
 					c.Assert(req.Organization, qt.Equals, "planetscale")
 					c.Assert(req.Database, qt.Equals, "postgres-db")
 					c.Assert(req.Branch, qt.Equals, "main")
-					c.Assert(req.Parameters, qt.DeepEquals, map[string]map[string]string{"pgconf": {"shared_preload_libraries": tc.expected}})
+					c.Assert(req.Parameters, qt.IsNil)
+					c.Assert(req.Extensions, qt.IsNotNil)
+					c.Assert(*req.Extensions, qt.DeepEquals, tc.expected)
 					return &ps.PostgresBranchClusterResizeRequest{ID: "change-id", State: "queued"}, nil
 				},
 			}
@@ -134,24 +134,28 @@ func TestBranch_ExtensionsTogglePreservesOtherLibraries(t *testing.T) {
 	}
 }
 
-func TestBranch_ExtensionsToggleRejectsNonPreloadable(t *testing.T) {
-	c := qt.New(t)
-	var buf bytes.Buffer
-	format := printer.JSON
-	p := printer.NewPrinter(&format)
-	p.SetResourceOutput(&buf)
-	pgSvc := &mock.PostgresBranchesService{
-		ListExtensionsFn: func(_ context.Context, _ *ps.ListPostgresExtensionsRequest) ([]*ps.PostgresExtension, error) {
-			return []*ps.PostgresExtension{{Name: "hstore", Loader: "create_extension"}}, nil
-		},
+func TestBranch_ExtensionsToggleRejectsWhenCannotEnable(t *testing.T) {
+	for _, verb := range []string{"enable", "disable"} {
+		t.Run(verb, func(t *testing.T) {
+			c := qt.New(t)
+			var buf bytes.Buffer
+			format := printer.JSON
+			p := printer.NewPrinter(&format)
+			p.SetResourceOutput(&buf)
+			pgSvc := &mock.PostgresBranchesService{
+				ListExtensionsFn: func(_ context.Context, _ *ps.ListPostgresExtensionsRequest) ([]*ps.PostgresExtension, error) {
+					return []*ps.PostgresExtension{{Name: "hstore", Enabled: verb == "disable"}}, nil
+				},
+			}
+			ch := &cmdutil.Helper{Printer: p, Config: &config.Config{Organization: "planetscale"}, Client: func() (*ps.Client, error) {
+				return &ps.Client{PostgresBranches: pgSvc}, nil
+			}}
+			cmd := ExtensionsCmd(ch)
+			cmd.SetArgs([]string{verb, "postgres-db", "main", "hstore"})
+			c.Assert(cmd.Execute(), qt.ErrorMatches, "extension hstore cannot be enabled or disabled")
+			c.Assert(pgSvc.ResizeFnInvoked, qt.IsFalse)
+		})
 	}
-	ch := &cmdutil.Helper{Printer: p, Config: &config.Config{Organization: "planetscale"}, Client: func() (*ps.Client, error) {
-		return &ps.Client{PostgresBranches: pgSvc}, nil
-	}}
-	cmd := ExtensionsCmd(ch)
-	cmd.SetArgs([]string{"enable", "postgres-db", "main", "hstore"})
-	c.Assert(cmd.Execute(), qt.ErrorMatches, "extension hstore cannot be enabled or disabled")
-	c.Assert(pgSvc.ListParametersFnInvoked, qt.IsFalse)
 }
 
 func TestBranch_ExtensionsToggleSkipsAlreadyEnabled(t *testing.T) {
@@ -162,10 +166,7 @@ func TestBranch_ExtensionsToggleSkipsAlreadyEnabled(t *testing.T) {
 	p.SetResourceOutput(&buf)
 	pgSvc := &mock.PostgresBranchesService{
 		ListExtensionsFn: func(_ context.Context, _ *ps.ListPostgresExtensionsRequest) ([]*ps.PostgresExtension, error) {
-			return []*ps.PostgresExtension{{Name: "vector", Loader: "shared_preload_libraries"}}, nil
-		},
-		ListParametersFn: func(_ context.Context, _ *ps.ListPostgresParametersRequest) ([]*ps.PostgresParameter, error) {
-			return []*ps.PostgresParameter{{Namespace: "pgconf", Name: "shared_preload_libraries", Value: "vector,pg_stat_statements"}}, nil
+			return []*ps.PostgresExtension{{Name: "vector", Enabled: true, CanEnable: true}}, nil
 		},
 	}
 	ch := &cmdutil.Helper{Printer: p, Config: &config.Config{Organization: "planetscale"}, Client: func() (*ps.Client, error) {
