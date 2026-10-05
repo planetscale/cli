@@ -194,6 +194,6 @@ func TestPostgresReadOnlyReplicasBackwardCompatibility(t *testing.T) {
 	c.Assert(err, qt.IsNil)
 	c.Assert(replicas, qt.HasLen, 1)
 
-	var replica *PostgresReadOnlyReplica = replicas[0]
+	replica := replicas[0]
 	c.Assert(replica.Name, qt.Equals, "analytics")
 }
