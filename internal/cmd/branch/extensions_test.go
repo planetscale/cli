@@ -3,6 +3,7 @@ package branch
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"testing"
 
 	qt "github.com/frankban/quicktest"
@@ -31,8 +32,8 @@ func TestBranch_ExtensionsCmd(t *testing.T) {
 			c.Assert(req.Database, qt.Equals, db)
 			c.Assert(req.Branch, qt.Equals, branch)
 			return []*ps.PostgresExtension{
-				{Name: "vector", Loader: "shared_preload_libraries", Enabled: true, CanEnable: true, URL: "https://github.com/pgvector/pgvector"},
-				{Name: "pg_stat_statements", Loader: "shared_preload_libraries", CanEnable: false},
+				{Name: "vector", Enabled: true, CanEnable: true, URL: "https://github.com/pgvector/pgvector"},
+				{Name: "pg_stat_statements", CanEnable: false},
 			}, nil
 		},
 	}
@@ -53,6 +54,10 @@ func TestBranch_ExtensionsCmd(t *testing.T) {
 	c.Assert(pgSvc.ListExtensionsFnInvoked, qt.IsTrue)
 	c.Assert(buf.String(), qt.Contains, "vector")
 	c.Assert(buf.String(), qt.Contains, "pg_stat_statements")
+	var output []map[string]any
+	c.Assert(json.Unmarshal(buf.Bytes(), &output), qt.IsNil)
+	_, hasLoader := output[0]["loader"]
+	c.Assert(hasLoader, qt.IsFalse)
 }
 
 func TestBranch_ExtensionsCmd_ListSubcommand(t *testing.T) {

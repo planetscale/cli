@@ -154,7 +154,6 @@ type postgresExtension struct {
 	Name      string `header:"name" json:"name"`
 	Enabled   bool   `header:"enabled" json:"enabled"`
 	CanEnable bool   `header:"can enable" json:"can_enable"`
-	Loader    string `header:"loader,n/a" json:"loader"`
 	URL       string `header:"url,n/a" json:"url"`
 
 	orig *ps.PostgresExtension
@@ -167,7 +166,6 @@ func toPostgresExtensions(extensions []*ps.PostgresExtension) []*postgresExtensi
 			Name:      ext.Name,
 			Enabled:   ext.Enabled,
 			CanEnable: ext.CanEnable,
-			Loader:    ext.Loader,
 			URL:       ext.URL,
 			orig:      ext,
 		})

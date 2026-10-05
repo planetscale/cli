@@ -595,7 +595,7 @@ func TestPostgresBranches_ListExtensions(t *testing.T) {
 		c.Assert(r.Method, qt.Equals, http.MethodGet)
 		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/postgres-test-db/branches/postgres-test-branch/extensions")
 		w.WriteHeader(200)
-		out := `[{"type":"PostgresClusterExtension","name":"vector","description":"<p>vector</p>","internal":false,"loader":"shared_preload_libraries","url":"https://github.com/pgvector/pgvector","enabled":true,"can_enable":true,"requirements":{"postgres_image_version":null},"parameters":[]}]`
+		out := `[{"type":"PostgresClusterExtension","name":"vector","description":"<p>vector</p>","internal":false,"url":"https://github.com/pgvector/pgvector","enabled":true,"can_enable":true,"requirements":{"postgres_image_version":null},"parameters":[]}]`
 		_, err := w.Write([]byte(out))
 		c.Assert(err, qt.IsNil)
 	}))
@@ -612,7 +612,6 @@ func TestPostgresBranches_ListExtensions(t *testing.T) {
 	c.Assert(err, qt.IsNil)
 	c.Assert(extensions, qt.HasLen, 1)
 	c.Assert(extensions[0].Name, qt.Equals, "vector")
-	c.Assert(extensions[0].Loader, qt.Equals, "shared_preload_libraries")
 	c.Assert(extensions[0].Enabled, qt.IsTrue)
 	c.Assert(extensions[0].CanEnable, qt.IsTrue)
 	c.Assert(extensions[0].Requirements.PostgresImageVersion, qt.IsNil)

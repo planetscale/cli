@@ -248,7 +248,6 @@ type PostgresExtension struct {
 	Name         string                         `json:"name"`
 	Description  string                         `json:"description"`
 	Internal     bool                           `json:"internal"`
-	Loader       string                         `json:"loader"`
 	URL          string                         `json:"url"`
 	Enabled      bool                           `json:"enabled"`
 	CanEnable    bool                           `json:"can_enable"`
