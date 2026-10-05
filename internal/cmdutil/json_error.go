@@ -144,6 +144,15 @@ func GlobalJSONError(err error) JSONErrorResponse {
 			"Re-run the same command with --force after approval",
 		}
 
+	// A Postgres branch takes one change request at a time; the fix is to
+	// wait for the current one, not to re-authenticate.
+	case strings.Contains(lower, "resize in progress"):
+		status = "action_required"
+		nextSteps = []string{
+			"Wait for the current change to finish, then retry",
+			"pscale branch resize status <database> <branch> --org <org> --format json",
+		}
+
 	// Resource lookups that failed: discovery commands are the way forward.
 	case strings.Contains(msg, "does not exist"):
 		code = "NOT_FOUND"

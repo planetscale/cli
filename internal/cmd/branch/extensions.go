@@ -56,15 +56,17 @@ extension may restart the database.`
 		Use:   "extensions <database> <branch>",
 		Short: "List extensions available on a Postgres branch",
 		Long:  long,
-		Args:  cmdutil.RequiredArgs("database", "branch"),
-		RunE:  run,
+		// Exact args so a mistyped subcommand (e.g. "enabel db main vector")
+		// errors instead of listing extensions for a database named "enabel".
+		Args: cmdutil.ExactArgs("database", "branch"),
+		RunE: run,
 	}
 
 	listCmd := &cobra.Command{
 		Use:     "list <database> <branch>",
 		Short:   "List extensions available on a Postgres branch",
 		Long:    long,
-		Args:    cmdutil.RequiredArgs("database", "branch"),
+		Args:    cmdutil.ExactArgs("database", "branch"),
 		Aliases: []string{"ls"},
 		RunE:    run,
 	}

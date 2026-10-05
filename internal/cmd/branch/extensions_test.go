@@ -288,3 +288,16 @@ func TestBranch_ExtensionsToggleWarnsAboutRestart(t *testing.T) {
 	c.Assert(cmd.Execute(), qt.IsNil)
 	c.Assert(buf.String(), qt.Contains, "may restart the database")
 }
+
+func TestBranch_ExtensionsCmd_RejectsMistypedSubcommand(t *testing.T) {
+	c := qt.New(t)
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	pgSvc := &mock.PostgresBranchesService{}
+	cmd := ExtensionsCmd(testExtensionsHelper(p, "postgresql", pgSvc))
+	cmd.SetArgs([]string{"enabel", "postgres-db", "main", "vector"})
+	cmd.SetOut(&bytes.Buffer{})
+	cmd.SetErr(&bytes.Buffer{})
+	c.Assert(cmd.Execute(), qt.ErrorMatches, "accepts 2 arg\\(s\\), received 4")
+	c.Assert(pgSvc.ListExtensionsFnInvoked, qt.IsFalse)
+}
