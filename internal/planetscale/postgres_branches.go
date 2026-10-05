@@ -249,6 +249,7 @@ type PostgresExtension struct {
 	URL               string               `json:"url"`
 	Available         bool                 `json:"available"`
 	UnavailableReason string               `json:"unavailable_reason"`
+	Requirements      map[string]any       `json:"requirements"`
 	Parameters        []*PostgresParameter `json:"parameters"`
 }
 
