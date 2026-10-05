@@ -39,15 +39,15 @@ func GetCmd(ch *cmdutil.Helper) *cobra.Command {
 			defer end()
 
 			role, err := client.PostgresRoles.Get(ctx, &ps.GetPostgresRoleRequest{
-				Organization:    ch.Config.Organization,
-				Database:        database,
-				Branch:          branch,
-				RoleId:          roleID,
-				Replica:         flags.replica,
-				ReadOnlyReplica: flags.dedicatedReadReplica,
-				Bouncer:         flags.bouncer,
-				Router:          flags.router,
-				Shard:           flags.shard,
+				Organization:         ch.Config.Organization,
+				Database:             database,
+				Branch:               branch,
+				RoleId:               roleID,
+				Replica:              flags.replica,
+				DedicatedReadReplica: flags.dedicatedReadReplica,
+				Bouncer:              flags.bouncer,
+				Router:               flags.router,
+				Shard:                flags.shard,
 			})
 			if err != nil {
 				switch cmdutil.ErrCode(err) {

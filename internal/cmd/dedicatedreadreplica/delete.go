@@ -40,7 +40,7 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Deleting dedicated read replica %s from %s/%s", printer.BoldBlue(name), printer.BoldBlue(database), printer.BoldBlue(branch)))
 			defer end()
 
-			err = client.PostgresReadOnlyReplicas.Delete(ctx, &ps.DeletePostgresReadOnlyReplicaRequest{
+			err = client.PostgresDedicatedReadReplicas.Delete(ctx, &ps.DeletePostgresDedicatedReadReplicaRequest{
 				Organization: ch.Config.Organization,
 				Database:     database,
 				Branch:       branch,

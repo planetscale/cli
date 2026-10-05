@@ -30,7 +30,7 @@ func ShowCmd(ch *cmdutil.Helper) *cobra.Command {
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Fetching dedicated read replica %s for %s/%s", printer.BoldBlue(name), printer.BoldBlue(database), printer.BoldBlue(branch)))
 			defer end()
 
-			replica, err := client.PostgresReadOnlyReplicas.Get(ctx, &ps.GetPostgresReadOnlyReplicaRequest{
+			replica, err := client.PostgresDedicatedReadReplicas.Get(ctx, &ps.GetPostgresDedicatedReadReplicaRequest{
 				Organization: ch.Config.Organization,
 				Database:     database,
 				Branch:       branch,
@@ -47,7 +47,7 @@ func ShowCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 			end()
 
-			return ch.Printer.PrintResource(toReadOnlyReplica(replica))
+			return ch.Printer.PrintResource(toDedicatedReadReplica(replica))
 		},
 	}
 

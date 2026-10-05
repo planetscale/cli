@@ -82,22 +82,24 @@ type Client struct {
 	PostgresBranches               PostgresBranchesService
 	PostgresBouncers               PostgresBouncersService
 	PostgresCIDRs                  PostgresCIDRsService
-	PostgresReadOnlyReplicas       PostgresReadOnlyReplicasService
-	PostgresRoles                  PostgresRolesService
-	PostgresSwitchovers            PostgresSwitchoversService
-	Processlist                    ProcesslistService
-	QueryInsights                  QueryInsightsService
-	QueryPatterns                  QueryPatternsService
-	ReadOnlyRegions                ReadOnlyRegionsService
-	Regions                        RegionsService
-	SchemaRecommendations          SchemaRecommendationService
-	ServiceTokens                  ServiceTokenService
-	TrafficBudgets                 TrafficBudgetsService
-	TrafficRules                   TrafficRulesService
-	VDiff                          VDiffService
-	Vtctld                         VtctldService
-	Webhooks                       WebhooksService
-	Workflows                      WorkflowsService
+	PostgresDedicatedReadReplicas  PostgresDedicatedReadReplicasService
+	// Deprecated: use PostgresDedicatedReadReplicas.
+	PostgresReadOnlyReplicas PostgresReadOnlyReplicasService
+	PostgresRoles            PostgresRolesService
+	PostgresSwitchovers      PostgresSwitchoversService
+	Processlist              ProcesslistService
+	QueryInsights            QueryInsightsService
+	QueryPatterns            QueryPatternsService
+	ReadOnlyRegions          ReadOnlyRegionsService
+	Regions                  RegionsService
+	SchemaRecommendations    SchemaRecommendationService
+	ServiceTokens            ServiceTokenService
+	TrafficBudgets           TrafficBudgetsService
+	TrafficRules             TrafficRulesService
+	VDiff                    VDiffService
+	Vtctld                   VtctldService
+	Webhooks                 WebhooksService
+	Workflows                WorkflowsService
 }
 
 // ListOptions are options for listing responses.
@@ -386,7 +388,9 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 	c.PostgresBranches = &postgresBranchesService{client: c}
 	c.PostgresBouncers = &postgresBouncersService{client: c}
 	c.PostgresCIDRs = &postgresCIDRsService{client: c}
-	c.PostgresReadOnlyReplicas = &postgresReadOnlyReplicasService{client: c}
+	postgresDedicatedReadReplicas := &postgresDedicatedReadReplicasService{client: c}
+	c.PostgresDedicatedReadReplicas = postgresDedicatedReadReplicas
+	c.PostgresReadOnlyReplicas = postgresDedicatedReadReplicas
 	c.PostgresRoles = &postgresRolesService{client: c}
 	c.PostgresSwitchovers = &postgresSwitchoversService{client: c}
 	c.Processlist = &processlistService{client: c}

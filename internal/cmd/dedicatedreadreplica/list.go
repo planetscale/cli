@@ -31,7 +31,7 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Fetching dedicated read replicas for %s/%s", printer.BoldBlue(database), printer.BoldBlue(branch)))
 			defer end()
 
-			replicas, err := client.PostgresReadOnlyReplicas.List(ctx, &ps.ListPostgresReadOnlyReplicasRequest{
+			replicas, err := client.PostgresDedicatedReadReplicas.List(ctx, &ps.ListPostgresDedicatedReadReplicasRequest{
 				Organization: ch.Config.Organization,
 				Database:     database,
 				Branch:       branch,
@@ -52,7 +52,7 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 				return nil
 			}
 
-			return ch.Printer.PrintResource(toReadOnlyReplicas(replicas))
+			return ch.Printer.PrintResource(toDedicatedReadReplicas(replicas))
 		},
 	}
 
