@@ -223,7 +223,7 @@ func preflightParameters(ctx context.Context, client *ps.Client, organization, d
 	for _, key := range keys {
 		param, ok := known[key]
 		if !ok {
-			return nil, fmt.Errorf("parameter %s does not exist or cannot be changed. Run 'pscale branch parameters list %s %s --internal=false' to see the parameters you can change", printer.BoldBlue(key), database, branch)
+			return nil, fmt.Errorf("parameter %s does not exist or cannot be changed. Run 'pscale branch parameters list %s %s --org %s --internal=false' to see the parameters you can change", printer.BoldBlue(key), database, branch, organization)
 		}
 		if param.Restart {
 			restartParams = append(restartParams, key)
