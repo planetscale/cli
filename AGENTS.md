@@ -23,7 +23,7 @@ PlanetScale is a serverless database platform for **MySQL** (via Vitess), **Post
 
 On Vitess/MySQL, schema changes ship via **deploy requests**: online, non-blocking migrations you review and then deploy.
 
-Many commands are engine-specific, and some operations use different commands per engine. Schema changes: Vitess/MySQL uses `deploy-request`; Postgres and Neki branches apply DDL directly. Access: Vitess/MySQL uses `password`; Postgres and Neki use `role`. Resize: Vitess/MySQL uses `keyspace resize`; Postgres uses `branch resize`; Neki uses `branch config-profile`, `router`, and `shard`. Vitess/MySQL-only: `deploy-request`, `keyspace` (including `keyspace create-external`), `branch vtctld move-tables`, `connect`, `password`. `pscale workflow` is deprecated; use `pscale branch vtctld move-tables` to move tables. Postgres-only: `traffic-control`, branch `switchover`/`parameters`, and `import d1`. Postgres and Neki: `role`, branch `maintenance`. Neki-only: `branch shard`, `config-profile`, `router`, `sidecar`, `admin`, `data-topology`, `changes`. The rest (`database`, `branch`, `sql`, `shell`, `insights`, `metrics`, `backup`, `org`, `auth`, `api`) work on all three.
+Many commands are engine-specific, and some operations use different commands per engine. Schema changes: Vitess/MySQL uses `deploy-request`; Postgres and Neki branches apply DDL directly. Access: Vitess/MySQL uses `password`; Postgres and Neki use `role`. Resize: Vitess/MySQL uses `keyspace resize`; Postgres uses `branch resize`; Neki uses `branch config-profile`, `router`, and `shard`. Vitess/MySQL-only: `deploy-request`, `keyspace` (including `keyspace create-external`), `branch vtctld move-tables`, `connect`, `password`. `pscale workflow` is deprecated; use `pscale branch vtctld move-tables` to move tables. Postgres-only: `traffic-control`, branch `switchover`/`parameters`, `branch extensions enable`/`disable`, and `import d1`. Postgres and Neki: `role`, branch `maintenance`. Neki-only: `branch shard`, `config-profile`, `router`, `sidecar`, `admin`, `data-topology`, `changes`. The rest (`database`, `branch`, `sql`, `shell`, `insights`, `metrics`, `backup`, `org`, `auth`, `api`) work on all three.
 
 When a database is "weird" (slow, erroring, locked, bloated):
 
@@ -550,6 +550,14 @@ pscale branch parameters list <database> <branch> --org <org> --format json --na
 
 # Extensions available on the cluster image (not CREATE EXTENSION state)
 pscale branch extensions list <database> <branch> --org <org> --format json
+
+# Toggle an extension with "can_enable": true (not CREATE EXTENSION). This queues a
+# branch change that may restart the database; warn the user first. Track it with
+# resize status, or pass --wait (default timeout 10m; tune with --wait-timeout).
+# Postgres only; Neki uses `branch config-profile extensions enable|disable`.
+pscale branch extensions enable <database> <branch> <extension> --org <org> --format json
+pscale branch extensions enable <database> <branch> <extension> --org <org> --format json --wait
+pscale branch extensions disable <database> <branch> <extension> --org <org> --format json
 
 # Default postgres role (read-only; reset-default rotates the password)
 pscale role default <database> <branch> --org <org> --format json
