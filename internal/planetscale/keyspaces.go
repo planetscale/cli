@@ -39,6 +39,9 @@ type KeyspaceStorage struct {
 	StorageBytes int64 `json:"storage_bytes"`
 	// MaxStorageBytes is the maximum size in bytes disks may autoscale to.
 	MaxStorageBytes int64 `json:"max_storage_bytes"`
+	// MaxStorageBytesManagedByStaff is true when PlanetScale staff raised the
+	// limit above the organization default. The limit is read-only while set.
+	MaxStorageBytesManagedByStaff bool `json:"max_storage_bytes_managed_by_staff"`
 	// DiskScalingStrategy is the disk scaling strategy: "grow", "disable" or
 	// "shrink".
 	DiskScalingStrategy string `json:"disk_scaling_strategy"`

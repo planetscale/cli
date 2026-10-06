@@ -116,6 +116,9 @@ func toKeyspaceSettings(ks *ps.Keyspace) *KeyspaceSettings {
 		}
 		if ks.Storage.MaxStorageBytes > 0 {
 			settings.Storage.MaxStorageBytes = humanize.IBytes(uint64(ks.Storage.MaxStorageBytes))
+			if ks.Storage.MaxStorageBytesManagedByStaff {
+				settings.Storage.MaxStorageBytes += " (set by PlanetScale staff)"
+			}
 		}
 	}
 
