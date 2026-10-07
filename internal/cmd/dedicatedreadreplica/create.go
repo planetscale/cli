@@ -1,4 +1,4 @@
-package readonlyreplica
+package dedicatedreadreplica
 
 import (
 	"fmt"
@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// CreateCmd creates a read-only replica.
+// CreateCmd creates a dedicated read replica.
 func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
 		region      string
@@ -19,8 +19,8 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "create <database> <branch> <name>",
-		Short: "Create a read-only replica",
-		Long: `Create a read-only replica for a PostgreSQL database branch.
+		Short: "Create a dedicated read replica",
+		Long: `Create a dedicated read replica for a PostgreSQL database branch.
 
 Region is required. The replica count defaults to 1 and the cluster size
 defaults to the primary cluster size when those flags are omitted.`,
@@ -33,11 +33,11 @@ defaults to the primary cluster size when those flags are omitted.`,
 			if err != nil {
 				return err
 			}
-			if err := cmdutil.RequirePostgresDatabase(ctx, client, ch.Config.Organization, database, "read-only replicas"); err != nil {
+			if err := cmdutil.RequirePostgresDatabase(ctx, client, ch.Config.Organization, database, "dedicated read replicas"); err != nil {
 				return err
 			}
 
-			req := &ps.CreatePostgresReadOnlyReplicaRequest{
+			req := &ps.CreatePostgresDedicatedReadReplicaRequest{
 				Organization: ch.Config.Organization,
 				Database:     database,
 				Branch:       branch,
@@ -49,10 +49,10 @@ defaults to the primary cluster size when those flags are omitted.`,
 				req.Replicas = &flags.replicas
 			}
 
-			end := ch.Printer.PrintProgress(fmt.Sprintf("Creating read-only replica %s for %s/%s", printer.BoldBlue(name), printer.BoldBlue(database), printer.BoldBlue(branch)))
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Creating dedicated read replica %s for %s/%s", printer.BoldBlue(name), printer.BoldBlue(database), printer.BoldBlue(branch)))
 			defer end()
 
-			replica, err := client.PostgresReadOnlyReplicas.Create(ctx, req)
+			replica, err := client.PostgresDedicatedReadReplicas.Create(ctx, req)
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case ps.ErrNotFound:
@@ -65,15 +65,15 @@ defaults to the primary cluster size when those flags are omitted.`,
 			end()
 
 			if ch.Printer.Format() == printer.Human {
-				ch.Printer.Printf("Read-only replica %s is being created for %s/%s (state: %s).\n",
+				ch.Printer.Printf("Dedicated read replica %s is being created for %s/%s (state: %s).\n",
 					printer.BoldBlue(replica.Name), printer.BoldBlue(database), printer.BoldBlue(branch), printer.BoldBlue(replica.State))
 				return nil
 			}
-			return ch.Printer.PrintResource(toReadOnlyReplica(replica))
+			return ch.Printer.PrintResource(toDedicatedReadReplica(replica))
 		},
 	}
 
-	cmd.Flags().StringVar(&flags.region, "region", "", "Region slug for the read-only replica")
+	cmd.Flags().StringVar(&flags.region, "region", "", "Region slug for the dedicated read replica")
 	cmd.Flags().IntVar(&flags.replicas, "replicas", 1, "Number of instances serving reads")
 	cmd.Flags().StringVar(&flags.clusterSize, "cluster-size", "", "Cluster size SKU; defaults to the primary cluster size")
 	cmd.MarkFlagRequired("region") // nolint:errcheck

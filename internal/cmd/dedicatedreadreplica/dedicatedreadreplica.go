@@ -1,4 +1,4 @@
-package readonlyreplica
+package dedicatedreadreplica
 
 import (
 	"encoding/json"
@@ -9,15 +9,35 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// Cmd manages read-only replicas for Postgres branches.
+// Cmd manages dedicated read replicas for Postgres branches.
 func Cmd(ch *cmdutil.Helper) *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "read-only-replica <command>",
-		Short: "Manage read-only replicas for a Postgres branch",
-		Long: `Manage read-only replicas for a PostgreSQL database branch.
+	return cmd(ch)
+}
 
-Read-only replicas provide dedicated capacity for queries that can tolerate
-replication lag. They accept read traffic only.
+const deprecatedName = "read-only-replica"
+
+const deprecationMessage = "use dedicated-read-replica instead"
+
+// DeprecatedCmd preserves the previous command name without advertising it.
+// Cobra only prints Deprecated for the command that runs, so subcommands warn
+// through PersistentPreRunE the same way the deprecated workflow command does.
+func DeprecatedCmd(ch *cmdutil.Helper) *cobra.Command {
+	cmd := cmd(ch)
+	cmd.Use = deprecatedName + " <command>"
+	cmd.Hidden = true
+	cmd.Deprecated = deprecationMessage
+	cmd.PersistentPreRunE = cmdutil.WarnDeprecated(deprecatedName, deprecationMessage, cmdutil.CheckAuthentication(ch.Config))
+	return cmd
+}
+
+func cmd(ch *cmdutil.Helper) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "dedicated-read-replica <command>",
+		Short: "Manage dedicated read replicas for a Postgres branch",
+		Long: `Manage dedicated read replicas for a PostgreSQL database branch.
+
+Dedicated read replicas provide dedicated capacity for queries that can
+tolerate replication lag. They accept read traffic only.
 
 This command is only available for PostgreSQL databases.`,
 		PersistentPreRunE: cmdutil.CheckAuthentication(ch.Config),
@@ -35,8 +55,8 @@ This command is only available for PostgreSQL databases.`,
 	return cmd
 }
 
-// ReadOnlyReplica is the human/JSON/CSV view of a Postgres read-only replica.
-type ReadOnlyReplica struct {
+// DedicatedReadReplica is the human/JSON/CSV view of a Postgres dedicated read replica.
+type DedicatedReadReplica struct {
 	ID        string `header:"id" json:"id"`
 	Name      string `header:"name" json:"name"`
 	State     string `header:"state" json:"state"`
@@ -46,18 +66,18 @@ type ReadOnlyReplica struct {
 	Ready     bool   `header:"ready" json:"ready"`
 	CreatedAt int64  `header:"created_at,timestamp(ms|utc|human)" json:"created_at"`
 
-	orig *ps.PostgresReadOnlyReplica
+	orig *ps.PostgresDedicatedReadReplica
 }
 
-func (r *ReadOnlyReplica) MarshalJSON() ([]byte, error) {
+func (r *DedicatedReadReplica) MarshalJSON() ([]byte, error) {
 	return json.MarshalIndent(r.orig, "", "  ")
 }
 
-func (r *ReadOnlyReplica) MarshalCSVValue() interface{} {
-	return []*ReadOnlyReplica{r}
+func (r *DedicatedReadReplica) MarshalCSVValue() interface{} {
+	return []*DedicatedReadReplica{r}
 }
 
-func toReadOnlyReplica(replica *ps.PostgresReadOnlyReplica) *ReadOnlyReplica {
+func toDedicatedReadReplica(replica *ps.PostgresDedicatedReadReplica) *DedicatedReadReplica {
 	size := replica.ClusterDisplayName
 	if size == "" {
 		size = replica.ClusterName
@@ -74,7 +94,7 @@ func toReadOnlyReplica(replica *ps.PostgresReadOnlyReplica) *ReadOnlyReplica {
 		region = "-"
 	}
 
-	return &ReadOnlyReplica{
+	return &DedicatedReadReplica{
 		ID:        replica.ID,
 		Name:      replica.Name,
 		State:     replica.State,
@@ -87,10 +107,10 @@ func toReadOnlyReplica(replica *ps.PostgresReadOnlyReplica) *ReadOnlyReplica {
 	}
 }
 
-func toReadOnlyReplicas(replicas []*ps.PostgresReadOnlyReplica) []*ReadOnlyReplica {
-	out := make([]*ReadOnlyReplica, 0, len(replicas))
+func toDedicatedReadReplicas(replicas []*ps.PostgresDedicatedReadReplica) []*DedicatedReadReplica {
+	out := make([]*DedicatedReadReplica, 0, len(replicas))
 	for _, replica := range replicas {
-		out = append(out, toReadOnlyReplica(replica))
+		out = append(out, toDedicatedReadReplica(replica))
 	}
 	return out
 }

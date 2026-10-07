@@ -41,11 +41,13 @@ type ListPostgresRolesRequest struct {
 
 // GetPostgresRoleRequest encapsulates the request for getting a specific role for a given database branch.
 type GetPostgresRoleRequest struct {
-	Organization    string
-	Database        string
-	Branch          string
-	RoleId          string
-	Replica         bool
+	Organization         string
+	Database             string
+	Branch               string
+	RoleId               string
+	Replica              bool
+	DedicatedReadReplica string
+	// Deprecated: use DedicatedReadReplica. DedicatedReadReplica takes precedence when both are set.
 	ReadOnlyReplica string
 	Bouncer         string
 	Router          string
@@ -210,8 +212,12 @@ func (p *postgresRolesService) Get(ctx context.Context, getReq *GetPostgresRoleR
 	if getReq.Replica {
 		query.Set("replica", "true")
 	}
-	if getReq.ReadOnlyReplica != "" {
-		query.Set("read_only_replica", getReq.ReadOnlyReplica)
+	dedicatedReadReplica := getReq.DedicatedReadReplica
+	if dedicatedReadReplica == "" {
+		dedicatedReadReplica = getReq.ReadOnlyReplica
+	}
+	if dedicatedReadReplica != "" {
+		query.Set("read_only_replica", dedicatedReadReplica)
 	}
 	if getReq.Bouncer != "" {
 		query.Set("bouncer", getReq.Bouncer)

@@ -43,6 +43,7 @@ import (
 	"github.com/planetscale/cli/internal/cmd/branch"
 	"github.com/planetscale/cli/internal/cmd/connect"
 	"github.com/planetscale/cli/internal/cmd/database"
+	"github.com/planetscale/cli/internal/cmd/dedicatedreadreplica"
 	"github.com/planetscale/cli/internal/cmd/deployrequest"
 	"github.com/planetscale/cli/internal/cmd/importcmd"
 	"github.com/planetscale/cli/internal/cmd/insights"
@@ -55,7 +56,6 @@ import (
 	"github.com/planetscale/cli/internal/cmd/password"
 	"github.com/planetscale/cli/internal/cmd/pgbouncer"
 	"github.com/planetscale/cli/internal/cmd/ping"
-	"github.com/planetscale/cli/internal/cmd/readonlyreplica"
 	"github.com/planetscale/cli/internal/cmd/region"
 	"github.com/planetscale/cli/internal/cmd/shell"
 	"github.com/planetscale/cli/internal/cmd/signup"
@@ -406,9 +406,10 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 	pgbouncerCmd.GroupID = "postgres"
 	rootCmd.AddCommand(pgbouncerCmd)
 
-	readOnlyReplicaCmd := readonlyreplica.Cmd(ch)
-	readOnlyReplicaCmd.GroupID = "postgres"
-	rootCmd.AddCommand(readOnlyReplicaCmd)
+	dedicatedReadReplicaCmd := dedicatedreadreplica.Cmd(ch)
+	dedicatedReadReplicaCmd.GroupID = "postgres"
+	rootCmd.AddCommand(dedicatedReadReplicaCmd)
+	rootCmd.AddCommand(dedicatedreadreplica.DeprecatedCmd(ch))
 
 	trafficCmd := trafficcontrol.TrafficCmd(ch)
 	trafficCmd.GroupID = "postgres"

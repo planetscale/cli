@@ -34,7 +34,6 @@ type PostgresBouncerParameter struct {
 	DisplayName   string    `json:"display_name"`
 	Category      string    `json:"category"`
 	Description   string    `json:"description"`
-	Immutable     bool      `json:"immutable"`
 	ParameterType string    `json:"parameter_type"`
 	DefaultValue  string    `json:"default_value"`
 	Value         string    `json:"value"`

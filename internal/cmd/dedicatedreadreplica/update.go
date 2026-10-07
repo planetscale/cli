@@ -1,4 +1,4 @@
-package readonlyreplica
+package dedicatedreadreplica
 
 import (
 	"errors"
@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// UpdateCmd updates a read-only replica.
+// UpdateCmd updates a dedicated read replica.
 func UpdateCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
 		replicas    int
@@ -21,13 +21,13 @@ func UpdateCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "update <database> <branch> <name>",
-		Short: "Update a read-only replica",
-		Long: `Update a read-only replica's cluster size, instance count, and/or
+		Short: "Update a dedicated read replica",
+		Long: `Update a dedicated read replica's cluster size, instance count, and/or
 PostgreSQL configuration parameters. Parameter values must be greater than or
 equal to the primary branch's corresponding values.`,
-		Example: `  pscale read-only-replica update mydb main analytics --replicas 2
-  pscale read-only-replica update mydb main analytics --cluster-size PS_20_GCP_X86
-  pscale read-only-replica update mydb main analytics --parameters pgconf.max_connections=300`,
+		Example: `  pscale dedicated-read-replica update mydb main analytics --replicas 2
+  pscale dedicated-read-replica update mydb main analytics --cluster-size PS_20_GCP_X86
+  pscale dedicated-read-replica update mydb main analytics --parameters pgconf.max_connections=300`,
 		Args: cmdutil.RequiredArgs("database", "branch", "name"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -46,11 +46,11 @@ equal to the primary branch's corresponding values.`,
 			if err != nil {
 				return err
 			}
-			if err := cmdutil.RequirePostgresDatabase(ctx, client, ch.Config.Organization, database, "read-only replicas"); err != nil {
+			if err := cmdutil.RequirePostgresDatabase(ctx, client, ch.Config.Organization, database, "dedicated read replicas"); err != nil {
 				return err
 			}
 
-			req := &ps.UpdatePostgresReadOnlyReplicaRequest{
+			req := &ps.UpdatePostgresDedicatedReadReplicaRequest{
 				Organization: ch.Config.Organization,
 				Database:     database,
 				Branch:       branch,
@@ -62,14 +62,14 @@ equal to the primary branch's corresponding values.`,
 				req.Replicas = &flags.replicas
 			}
 
-			end := ch.Printer.PrintProgress(fmt.Sprintf("Updating read-only replica %s on %s/%s", printer.BoldBlue(name), printer.BoldBlue(database), printer.BoldBlue(branch)))
+			end := ch.Printer.PrintProgress(fmt.Sprintf("Updating dedicated read replica %s on %s/%s", printer.BoldBlue(name), printer.BoldBlue(database), printer.BoldBlue(branch)))
 			defer end()
 
-			replica, err := client.PostgresReadOnlyReplicas.Update(ctx, req)
+			replica, err := client.PostgresDedicatedReadReplicas.Update(ctx, req)
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case ps.ErrNotFound:
-					return fmt.Errorf("read-only replica %s does not exist on %s/%s (organization: %s)",
+					return fmt.Errorf("dedicated read replica %s does not exist on %s/%s (organization: %s)",
 						printer.BoldBlue(name), printer.BoldBlue(database), printer.BoldBlue(branch), printer.BoldBlue(ch.Config.Organization))
 				default:
 					return cmdutil.HandleError(err)
@@ -78,11 +78,11 @@ equal to the primary branch's corresponding values.`,
 			end()
 
 			if ch.Printer.Format() == printer.Human {
-				ch.Printer.Printf("Update requested for read-only replica %s on %s/%s (state: %s).\n",
+				ch.Printer.Printf("Update requested for dedicated read replica %s on %s/%s (state: %s).\n",
 					printer.BoldBlue(name), printer.BoldBlue(database), printer.BoldBlue(branch), printer.BoldBlue(replica.State))
 				return nil
 			}
-			return ch.Printer.PrintResource(toReadOnlyReplica(replica))
+			return ch.Printer.PrintResource(toDedicatedReadReplica(replica))
 		},
 	}
 

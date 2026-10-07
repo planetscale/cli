@@ -87,10 +87,20 @@ func TestRole_GetCmdConnectionTargets(t *testing.T) {
 			databaseURL:   "postgresql://app.branch%7Creplica:@primary.pg.psdb.cloud:5432/postgres?sslmode=verify-full",
 		},
 		{
-			name: "read-only replica",
+			name: "dedicated read replica",
+			args: []string{"mydb", "main", "role-id", "--dedicated-read-replica", "analytics"},
+			request: ps.GetPostgresRoleRequest{
+				DedicatedReadReplica: "analytics",
+			},
+			username:      "app.read-only|replica",
+			accessHostURL: "analytics.pg.psdb.cloud",
+			databaseURL:   "postgresql://app.read-only%7Creplica:@analytics.pg.psdb.cloud:5432/postgres?sslmode=verify-full",
+		},
+		{
+			name: "deprecated read-only replica alias",
 			args: []string{"mydb", "main", "role-id", "--read-only-replica", "analytics"},
 			request: ps.GetPostgresRoleRequest{
-				ReadOnlyReplica: "analytics",
+				DedicatedReadReplica: "analytics",
 			},
 			username:      "app.read-only|replica",
 			accessHostURL: "analytics.pg.psdb.cloud",
@@ -161,6 +171,15 @@ func TestRole_GetCmdConnectionTargets(t *testing.T) {
 	}
 }
 
+func TestRole_GetCmdDedicatedReadReplicaFlags(t *testing.T) {
+	c := qt.New(t)
+
+	cmd := GetCmd(&cmdutil.Helper{})
+
+	c.Assert(cmd.Flags().Lookup("dedicated-read-replica").Deprecated, qt.Equals, "")
+	c.Assert(cmd.Flags().Lookup("read-only-replica").Deprecated, qt.Equals, "use --dedicated-read-replica instead")
+}
+
 func TestRole_GetCmdRejectsMultipleConnectionTargets(t *testing.T) {
 	c := qt.New(t)
 
@@ -172,16 +191,23 @@ func TestRole_GetCmdRejectsMultipleConnectionTargets(t *testing.T) {
 		},
 	}
 
-	cmd := GetCmd(ch)
-	cmd.SetArgs([]string{"mydb", "main", "role-id", "--replica", "--bouncer", "pool"})
+	tests := [][]string{
+		{"mydb", "main", "role-id", "--replica", "--bouncer", "pool"},
+		{"mydb", "main", "role-id", "--bouncer", "pool", "--router", "default"},
+		{"mydb", "main", "role-id", "--dedicated-read-replica", "analytics", "--read-only-replica", "analytics"},
+		{"mydb", "main", "role-id", "--dedicated-read-replica", "analytics", "--bouncer", "pool"},
+		{"mydb", "main", "role-id", "--dedicated-read-replica", "analytics", "--router", "default"},
+		{"mydb", "main", "role-id", "--dedicated-read-replica", "analytics", "--shard", "shzabc"},
+		{"mydb", "main", "role-id", "--read-only-replica", "analytics", "--router", "default"},
+	}
 
-	c.Assert(cmd.Execute(), qt.IsNotNil)
-	c.Assert(svc.GetFnInvoked, qt.IsFalse)
+	for _, args := range tests {
+		cmd := GetCmd(ch)
+		cmd.SetArgs(args)
 
-	cmd = GetCmd(ch)
-	cmd.SetArgs([]string{"mydb", "main", "role-id", "--bouncer", "pool", "--router", "default"})
-	c.Assert(cmd.Execute(), qt.IsNotNil)
-	c.Assert(svc.GetFnInvoked, qt.IsFalse)
+		c.Assert(cmd.Execute(), qt.IsNotNil)
+		c.Assert(svc.GetFnInvoked, qt.IsFalse)
+	}
 }
 
 func TestRole_GetCmdNekiConnectionTargets(t *testing.T) {
@@ -305,9 +331,9 @@ func TestRole_GetCmdConnectionTargetNotFound(t *testing.T) {
 		target     string
 	}{
 		{
-			name:       "read-only replica",
-			args:       []string{"mydb", "main", "role-id", "--read-only-replica", "missing-replica"},
-			targetType: "read-only replica",
+			name:       "dedicated read replica",
+			args:       []string{"mydb", "main", "role-id", "--dedicated-read-replica", "missing-replica"},
+			targetType: "dedicated read replica",
 			target:     "missing-replica",
 		},
 		{
