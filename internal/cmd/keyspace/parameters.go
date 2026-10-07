@@ -1,11 +1,11 @@
 package keyspace
 
 import (
-	"encoding/json"
 	"fmt"
 	"slices"
 	"strings"
 
+	"github.com/planetscale/cli/internal/cmd/vitessparams"
 	"github.com/planetscale/cli/internal/cmdutil"
 	ps "github.com/planetscale/cli/internal/planetscale"
 	"github.com/planetscale/cli/internal/printer"
@@ -67,7 +67,7 @@ To change parameters, use 'pscale keyspace parameters set <database> <branch> <k
 			selected = append(selected, parameters.MySQL...)
 		}
 
-		return ch.Printer.PrintResource(toKeyspaceParameters(selected))
+		return ch.Printer.PrintResource(vitessparams.ToParameters(selected))
 	}
 
 	registerFlags := func(cmd *cobra.Command) {
@@ -99,46 +99,4 @@ To change parameters, use 'pscale keyspace parameters set <database> <branch> <k
 
 func keyspaceNotFoundError(ch *cmdutil.Helper, database, branch, keyspace string) error {
 	return fmt.Errorf("keyspace %s does not exist in branch %s (database: %s, organization: %s)", printer.BoldBlue(keyspace), printer.BoldBlue(branch), printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
-}
-
-type keyspaceParameter struct {
-	Namespace string `header:"namespace" json:"namespace"`
-	Name      string `header:"name" json:"name"`
-	Value     string `header:"value" json:"value"`
-	Default   string `header:"default" json:"default_value"`
-	Type      string `header:"type" json:"parameter_type"`
-	Override  bool   `header:"override" json:"override"`
-
-	orig *ps.VitessParameter
-}
-
-func toKeyspaceParameters(parameters []*ps.VitessParameter) []*keyspaceParameter {
-	out := make([]*keyspaceParameter, 0, len(parameters))
-	for _, param := range parameters {
-		out = append(out, &keyspaceParameter{
-			Namespace: param.Component,
-			Name:      param.Name,
-			Value:     stringValue(param.Value),
-			Default:   stringValue(param.DefaultValue),
-			Type:      param.ParameterType,
-			Override:  param.Override,
-			orig:      param,
-		})
-	}
-	return out
-}
-
-func (p *keyspaceParameter) MarshalJSON() ([]byte, error) {
-	return json.MarshalIndent(p.orig, "", "  ")
-}
-
-func (p *keyspaceParameter) MarshalCSVValue() interface{} {
-	return []*keyspaceParameter{p}
-}
-
-func stringValue(value *string) string {
-	if value == nil {
-		return ""
-	}
-	return *value
 }

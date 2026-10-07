@@ -65,11 +65,14 @@ type branchVTGateResize struct {
 func VtgateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "vtgate <command>",
-		Short: "Manage VTGate size for a Vitess branch",
+		Short: "Manage VTGate size and parameters for a Vitess branch",
 	}
 
 	cmd.AddCommand(VtgateShowCmd(ch))
 	cmd.AddCommand(VtgateResizeCmd(ch))
+	cmd.AddCommand(VtgateParametersCmd(ch))
+	cmd.AddCommand(VtgateUpdateCmd(ch))
+	cmd.AddCommand(VtgateChangesCmd(ch))
 	return cmd
 }
 

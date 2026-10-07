@@ -72,6 +72,24 @@ type DatabaseBranchesService struct {
 
 	ResizeStatusFn        func(context.Context, *ps.BranchResizeStatusRequest) (*ps.BranchResizeRequest, error)
 	ResizeStatusFnInvoked bool
+
+	SubmitConfigChangesFn        func(context.Context, *ps.SubmitConfigChangesRequest) error
+	SubmitConfigChangesFnInvoked bool
+
+	ListVTGateParametersFn        func(context.Context, *ps.ListVTGateParametersRequest) ([]*ps.VitessParameter, error)
+	ListVTGateParametersFnInvoked bool
+
+	CreateVTGateConfigChangeFn        func(context.Context, *ps.CreateVTGateConfigChangeRequest) (*ps.VitessConfigChange, error)
+	CreateVTGateConfigChangeFnInvoked bool
+
+	ListVTGateConfigChangesFn        func(context.Context, *ps.ListVTGateConfigChangesRequest) ([]*ps.VitessConfigChange, error)
+	ListVTGateConfigChangesFnInvoked bool
+
+	GetVTGateConfigChangeFn        func(context.Context, *ps.GetVTGateConfigChangeRequest) (*ps.VitessConfigChange, error)
+	GetVTGateConfigChangeFnInvoked bool
+
+	CancelVTGateConfigChangeFn        func(context.Context, *ps.CancelVTGateConfigChangeRequest) error
+	CancelVTGateConfigChangeFnInvoked bool
 }
 
 func (d *DatabaseBranchesService) Create(ctx context.Context, req *ps.CreateDatabaseBranchRequest) (*ps.DatabaseBranch, error) {
@@ -182,6 +200,36 @@ func (d *DatabaseBranchesService) CancelResize(ctx context.Context, req *ps.Canc
 func (d *DatabaseBranchesService) ResizeStatus(ctx context.Context, req *ps.BranchResizeStatusRequest) (*ps.BranchResizeRequest, error) {
 	d.ResizeStatusFnInvoked = true
 	return d.ResizeStatusFn(ctx, req)
+}
+
+func (d *DatabaseBranchesService) SubmitConfigChanges(ctx context.Context, req *ps.SubmitConfigChangesRequest) error {
+	d.SubmitConfigChangesFnInvoked = true
+	return d.SubmitConfigChangesFn(ctx, req)
+}
+
+func (d *DatabaseBranchesService) ListVTGateParameters(ctx context.Context, req *ps.ListVTGateParametersRequest) ([]*ps.VitessParameter, error) {
+	d.ListVTGateParametersFnInvoked = true
+	return d.ListVTGateParametersFn(ctx, req)
+}
+
+func (d *DatabaseBranchesService) CreateVTGateConfigChange(ctx context.Context, req *ps.CreateVTGateConfigChangeRequest) (*ps.VitessConfigChange, error) {
+	d.CreateVTGateConfigChangeFnInvoked = true
+	return d.CreateVTGateConfigChangeFn(ctx, req)
+}
+
+func (d *DatabaseBranchesService) ListVTGateConfigChanges(ctx context.Context, req *ps.ListVTGateConfigChangesRequest) ([]*ps.VitessConfigChange, error) {
+	d.ListVTGateConfigChangesFnInvoked = true
+	return d.ListVTGateConfigChangesFn(ctx, req)
+}
+
+func (d *DatabaseBranchesService) GetVTGateConfigChange(ctx context.Context, req *ps.GetVTGateConfigChangeRequest) (*ps.VitessConfigChange, error) {
+	d.GetVTGateConfigChangeFnInvoked = true
+	return d.GetVTGateConfigChangeFn(ctx, req)
+}
+
+func (d *DatabaseBranchesService) CancelVTGateConfigChange(ctx context.Context, req *ps.CancelVTGateConfigChangeRequest) error {
+	d.CancelVTGateConfigChangeFnInvoked = true
+	return d.CancelVTGateConfigChangeFn(ctx, req)
 }
 
 type PostgresBranchesService struct {
