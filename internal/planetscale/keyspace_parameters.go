@@ -30,8 +30,8 @@ type KeyspaceParameters struct {
 	MySQL    []*VitessParameter `json:"mysqld"`
 }
 
-// KeyspaceConfigChange is a request to change a keyspace's parameters.
-type KeyspaceConfigChange struct {
+// VitessConfigChange is a request to change the parameters of a keyspace or of a branch's VTGates.
+type VitessConfigChange struct {
 	ID              string             `json:"id"`
 	State           string             `json:"state"`
 	ChangeType      string             `json:"change_type"`
@@ -65,14 +65,6 @@ type CreateKeyspaceConfigChangeRequest struct {
 	Options      map[string]*string `json:"options"`
 }
 
-// SubmitConfigChangesRequest applies draft config changes on a branch.
-type SubmitConfigChangesRequest struct {
-	Organization string   `json:"-"`
-	Database     string   `json:"-"`
-	Branch       string   `json:"-"`
-	IDs          []string `json:"ids"`
-}
-
 type ListKeyspaceConfigChangesRequest struct {
 	Organization string
 	Database     string
@@ -103,7 +95,7 @@ type branchVitessParametersResponse struct {
 }
 
 type keyspaceConfigChangesResponse struct {
-	ConfigChanges []*KeyspaceConfigChange `json:"data"`
+	ConfigChanges []*VitessConfigChange `json:"data"`
 }
 
 // ListParameters returns the VTTablet and MySQL parameters of a keyspace, or
@@ -122,13 +114,13 @@ func (s *keyspacesService) ListParameters(ctx context.Context, listReq *ListKeys
 	return resp.Keyspaces[listReq.Keyspace], nil
 }
 
-func (s *keyspacesService) CreateConfigChange(ctx context.Context, createReq *CreateKeyspaceConfigChangeRequest) (*KeyspaceConfigChange, error) {
+func (s *keyspacesService) CreateConfigChange(ctx context.Context, createReq *CreateKeyspaceConfigChangeRequest) (*VitessConfigChange, error) {
 	req, err := s.client.newRequest(http.MethodPost, keyspaceConfigChangesAPIPath(createReq.Organization, createReq.Database, createReq.Branch, createReq.Keyspace), createReq)
 	if err != nil {
 		return nil, fmt.Errorf("error creating http request: %w", err)
 	}
 
-	change := &KeyspaceConfigChange{}
+	change := &VitessConfigChange{}
 	if err := s.client.do(ctx, req, change); err != nil {
 		return nil, err
 	}
@@ -136,16 +128,7 @@ func (s *keyspacesService) CreateConfigChange(ctx context.Context, createReq *Cr
 	return change, nil
 }
 
-func (s *keyspacesService) SubmitConfigChanges(ctx context.Context, submitReq *SubmitConfigChangesRequest) error {
-	req, err := s.client.newRequest(http.MethodPost, path.Join(databaseBranchAPIPath(submitReq.Organization, submitReq.Database, submitReq.Branch), "config-changes", "submit"), submitReq)
-	if err != nil {
-		return fmt.Errorf("error creating http request: %w", err)
-	}
-
-	return s.client.do(ctx, req, nil)
-}
-
-func (s *keyspacesService) ListConfigChanges(ctx context.Context, listReq *ListKeyspaceConfigChangesRequest) ([]*KeyspaceConfigChange, error) {
+func (s *keyspacesService) ListConfigChanges(ctx context.Context, listReq *ListKeyspaceConfigChangesRequest) ([]*VitessConfigChange, error) {
 	values := defaultListOptions(WithPage(listReq.Page), WithPerPage(listReq.PerPage))
 	req, err := s.client.newRequest(http.MethodGet, keyspaceConfigChangesAPIPath(listReq.Organization, listReq.Database, listReq.Branch, listReq.Keyspace), nil, WithQueryParams(*values.URLValues))
 	if err != nil {
@@ -160,13 +143,13 @@ func (s *keyspacesService) ListConfigChanges(ctx context.Context, listReq *ListK
 	return resp.ConfigChanges, nil
 }
 
-func (s *keyspacesService) GetConfigChange(ctx context.Context, getReq *GetKeyspaceConfigChangeRequest) (*KeyspaceConfigChange, error) {
+func (s *keyspacesService) GetConfigChange(ctx context.Context, getReq *GetKeyspaceConfigChangeRequest) (*VitessConfigChange, error) {
 	req, err := s.client.newRequest(http.MethodGet, path.Join(keyspaceConfigChangesAPIPath(getReq.Organization, getReq.Database, getReq.Branch, getReq.Keyspace), getReq.ID), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating http request: %w", err)
 	}
 
-	change := &KeyspaceConfigChange{}
+	change := &VitessConfigChange{}
 	if err := s.client.do(ctx, req, change); err != nil {
 		return nil, err
 	}

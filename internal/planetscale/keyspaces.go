@@ -289,10 +289,9 @@ type KeyspacesService interface {
 	RolloutStatus(context.Context, *KeyspaceRolloutStatusRequest) (*KeyspaceRollout, error)
 	UpdateSettings(context.Context, *UpdateKeyspaceSettingsRequest) (*Keyspace, error)
 	ListParameters(context.Context, *ListKeyspaceParametersRequest) (*KeyspaceParameters, error)
-	CreateConfigChange(context.Context, *CreateKeyspaceConfigChangeRequest) (*KeyspaceConfigChange, error)
-	SubmitConfigChanges(context.Context, *SubmitConfigChangesRequest) error
-	ListConfigChanges(context.Context, *ListKeyspaceConfigChangesRequest) ([]*KeyspaceConfigChange, error)
-	GetConfigChange(context.Context, *GetKeyspaceConfigChangeRequest) (*KeyspaceConfigChange, error)
+	CreateConfigChange(context.Context, *CreateKeyspaceConfigChangeRequest) (*VitessConfigChange, error)
+	ListConfigChanges(context.Context, *ListKeyspaceConfigChangesRequest) ([]*VitessConfigChange, error)
+	GetConfigChange(context.Context, *GetKeyspaceConfigChangeRequest) (*VitessConfigChange, error)
 	CancelConfigChange(context.Context, *CancelKeyspaceConfigChangeRequest) error
 }
 

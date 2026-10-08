@@ -50,7 +50,7 @@ equal to the primary branch's corresponding values.`,
 				return err
 			}
 
-			req := &ps.UpdatePostgresReadOnlyReplicaRequest{
+			req := &ps.UpdatePostgresDedicatedReadReplicaRequest{
 				Organization: ch.Config.Organization,
 				Database:     database,
 				Branch:       branch,
@@ -65,7 +65,7 @@ equal to the primary branch's corresponding values.`,
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Updating dedicated read replica %s on %s/%s", printer.BoldBlue(name), printer.BoldBlue(database), printer.BoldBlue(branch)))
 			defer end()
 
-			replica, err := client.PostgresReadOnlyReplicas.Update(ctx, req)
+			replica, err := client.PostgresDedicatedReadReplicas.Update(ctx, req)
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case ps.ErrNotFound:
@@ -82,7 +82,7 @@ equal to the primary branch's corresponding values.`,
 					printer.BoldBlue(name), printer.BoldBlue(database), printer.BoldBlue(branch), printer.BoldBlue(replica.State))
 				return nil
 			}
-			return ch.Printer.PrintResource(toReadOnlyReplica(replica))
+			return ch.Printer.PrintResource(toDedicatedReadReplica(replica))
 		},
 	}
 

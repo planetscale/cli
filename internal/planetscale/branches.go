@@ -205,6 +205,12 @@ type DatabaseBranchesService interface {
 	ListResizes(context.Context, *ListBranchResizesRequest) ([]*BranchResizeRequest, error)
 	CancelResize(context.Context, *CancelBranchResizeRequest) error
 	ResizeStatus(context.Context, *BranchResizeStatusRequest) (*BranchResizeRequest, error)
+	SubmitConfigChanges(context.Context, *SubmitConfigChangesRequest) error
+	ListVTGateParameters(context.Context, *ListVTGateParametersRequest) ([]*VitessParameter, error)
+	CreateVTGateConfigChange(context.Context, *CreateVTGateConfigChangeRequest) (*VitessConfigChange, error)
+	ListVTGateConfigChanges(context.Context, *ListVTGateConfigChangesRequest) ([]*VitessConfigChange, error)
+	GetVTGateConfigChange(context.Context, *GetVTGateConfigChangeRequest) (*VitessConfigChange, error)
+	CancelVTGateConfigChange(context.Context, *CancelVTGateConfigChangeRequest) error
 }
 
 // ListBranchClusterSKUsRequest encapsulates the request for getting a list of Cluster SKUs for a branch.
