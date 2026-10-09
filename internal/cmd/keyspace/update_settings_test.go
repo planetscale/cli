@@ -1211,6 +1211,101 @@ func TestKeyspace_UpdateSettingsCmd_Storage(t *testing.T) {
 	c.Assert(buf.String(), qt.JSONEquals, updatedKs)
 }
 
+func TestKeyspace_UpdateSettingsCmd_MaxStorageAcceptsHumanReadableSize(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	tests := []struct {
+		arg   string
+		bytes int64
+	}{
+		{arg: "200GiB", bytes: 214748364800},
+		{arg: "1TiB", bytes: 1099511627776},
+		{arg: "1.5 TiB", bytes: 1649267441664},
+		{arg: "107374182400", bytes: 107374182400},
+		// Plain integers are parsed exactly, including above 2^53 where a
+		// float64 would round.
+		{arg: "9007199254740993", bytes: 9007199254740993},
+	}
+
+	for _, tt := range tests {
+		svc := &mock.KeyspacesService{
+			UpdateSettingsFn: func(ctx context.Context, req *ps.UpdateKeyspaceSettingsRequest) (*ps.Keyspace, error) {
+				c.Assert(req.Storage, qt.Not(qt.IsNil))
+				c.Assert(req.Storage.MaxStorageBytes, qt.Not(qt.IsNil))
+				c.Assert(*req.Storage.MaxStorageBytes, qt.Equals, tt.bytes)
+
+				return &ps.Keyspace{ID: "ks1", Name: "sharded"}, nil
+			},
+		}
+
+		ch := &cmdutil.Helper{
+			Printer: p,
+			Config:  &config.Config{Organization: "planetscale"},
+			Client: func() (*ps.Client, error) {
+				return &ps.Client{Keyspaces: svc}, nil
+			},
+		}
+
+		cmd := UpdateSettingsCmd(ch)
+		cmd.SetArgs([]string{"planetscale", "main", "sharded", "--max-storage=" + tt.arg})
+		err := cmd.Execute()
+		c.Assert(err, qt.IsNil)
+		c.Assert(svc.UpdateSettingsFnInvoked, qt.IsTrue)
+	}
+}
+
+func TestKeyspace_UpdateSettingsCmd_StorageAcceptsHumanReadableSize(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	tests := []struct {
+		arg   string
+		bytes int64
+	}{
+		{arg: "200GiB", bytes: 214748364800},
+		{arg: "10TiB", bytes: 10995116277760},
+		{arg: "1.5 TiB", bytes: 1649267441664},
+		{arg: "214748364800", bytes: 214748364800},
+	}
+
+	for _, tt := range tests {
+		svc := &mock.KeyspacesService{
+			UpdateSettingsFn: func(ctx context.Context, req *ps.UpdateKeyspaceSettingsRequest) (*ps.Keyspace, error) {
+				c.Assert(req.Storage, qt.Not(qt.IsNil))
+				c.Assert(req.Storage.StorageBytes, qt.Not(qt.IsNil))
+				c.Assert(*req.Storage.StorageBytes, qt.Equals, tt.bytes)
+
+				return &ps.Keyspace{ID: "ks1", Name: "sharded"}, nil
+			},
+		}
+
+		ch := &cmdutil.Helper{
+			Printer: p,
+			Config:  &config.Config{Organization: "planetscale"},
+			Client: func() (*ps.Client, error) {
+				return &ps.Client{Keyspaces: svc}, nil
+			},
+		}
+
+		cmd := UpdateSettingsCmd(ch)
+		cmd.SetArgs([]string{"planetscale", "main", "sharded", "--disk-scaling-strategy=shrink", "--storage=" + tt.arg})
+		err := cmd.Execute()
+		c.Assert(err, qt.IsNil)
+		c.Assert(svc.UpdateSettingsFnInvoked, qt.IsTrue)
+	}
+}
+
 func TestKeyspace_UpdateSettingsCmd_ShrinkStorage(t *testing.T) {
 	c := qt.New(t)
 
@@ -1424,8 +1519,33 @@ func TestKeyspace_UpdateSettingsCmd_RejectsInvalidStorageSizes(t *testing.T) {
 			err:  "--storage must be greater than 0",
 		},
 		{
+			args: []string{"--disk-scaling-strategy=shrink", "--storage=lots"},
+			err:  `invalid --storage "lots": must be a size in bytes or with a unit, such as 200GiB`,
+		},
+		{
+			// Decimal units are not GiB-aligned.
+			args: []string{"--disk-scaling-strategy=shrink", "--storage=10TB"},
+			err:  "--storage must be a multiple of 1 GiB",
+		},
+		{
+			args: []string{"--disk-scaling-strategy=shrink", "--storage=-1"},
+			err:  "--storage must be greater than 0",
+		},
+		{
 			args: []string{"--max-storage=0"},
 			err:  "--max-storage must be greater than 0",
+		},
+		{
+			args: []string{"--max-storage=-1073741824"},
+			err:  "--max-storage must be greater than 0",
+		},
+		{
+			args: []string{"--max-storage=9EiB"},
+			err:  `invalid --max-storage "9EiB": value is too large`,
+		},
+		{
+			args: []string{"--max-storage=lots"},
+			err:  `invalid --max-storage "lots": must be a size in bytes or with a unit, such as 200GiB`,
 		},
 	}
 
