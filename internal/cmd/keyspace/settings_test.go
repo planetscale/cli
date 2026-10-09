@@ -252,4 +252,17 @@ func TestBuildKeyspaceSettings(t *testing.T) {
 	c.Assert(disabledSettings.Storage.DiskScalingStrategy, qt.Equals, "disable")
 	c.Assert(disabledSettings.Storage.StorageBytes, qt.Equals, "not set")
 	c.Assert(disabledSettings.Storage.MaxStorageBytes, qt.Equals, "not set")
+
+	// A limit raised by PlanetScale staff is read-only, so the table says so.
+	staffKs := &ps.Keyspace{
+		ID:   "ks1",
+		Name: "test",
+		Storage: &ps.KeyspaceStorage{
+			MaxStorageBytes:               8796093022208,
+			MaxStorageBytesManagedByStaff: true,
+		},
+	}
+
+	staffSettings := toKeyspaceSettings(staffKs)
+	c.Assert(staffSettings.Storage.MaxStorageBytes, qt.Equals, "8.0 TiB (set by PlanetScale staff)")
 }

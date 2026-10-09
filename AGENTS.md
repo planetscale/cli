@@ -23,7 +23,7 @@ PlanetScale is a serverless database platform for **MySQL** (via Vitess), **Post
 
 On Vitess/MySQL, schema changes ship via **deploy requests**: online, non-blocking migrations you review and then deploy.
 
-Many commands are engine-specific, and some operations use different commands per engine. Schema changes: Vitess/MySQL uses `deploy-request`; Postgres and Neki branches apply DDL directly. Access: Vitess/MySQL uses `password`; Postgres and Neki use `role`. Resize: Vitess/MySQL uses `keyspace resize`; Postgres uses `branch resize`; Neki uses `branch config-profile`, `router`, and `shard`. Vitess/MySQL-only: `deploy-request`, `keyspace` (including `keyspace create-external`), `branch vtctld move-tables`, `connect`, `password`. `pscale workflow` is deprecated; use `pscale branch vtctld move-tables` to move tables. Postgres-only: `traffic-control`, branch `switchover`/`parameters`, and `import d1`. Postgres and Neki: `role`, branch `maintenance`. Neki-only: `branch shard`, `config-profile`, `router`, `sidecar`, `admin`, `data-topology`, `changes`. The rest (`database`, `branch`, `sql`, `shell`, `insights`, `metrics`, `backup`, `org`, `auth`, `api`) work on all three.
+Many commands are engine-specific, and some operations use different commands per engine. Schema changes: Vitess/MySQL uses `deploy-request`; Postgres and Neki branches apply DDL directly. Access: Vitess/MySQL uses `password`; Postgres and Neki use `role`. Resize: Vitess/MySQL uses `keyspace resize`; Postgres uses `branch resize`; Neki uses `branch config-profile`, `router`, and `shard`. Vitess/MySQL-only: `deploy-request`, `keyspace` (including `keyspace create-external`), `branch vtctld move-tables`, `connect`, `password`. `pscale workflow` is deprecated; use `pscale branch vtctld move-tables` to move tables. Postgres-only: `traffic-control`, branch `switchover`/`parameters`, `branch extensions enable`/`disable`, and `import d1`. Postgres and Neki: `role`, branch `maintenance`. Neki-only: `branch shard`, `config-profile`, `router`, `sidecar`, `admin`, `data-topology`, `changes`. The rest (`database`, `branch`, `sql`, `shell`, `insights`, `metrics`, `backup`, `org`, `auth`, `api`) work on all three.
 
 When a database is "weird" (slow, erroring, locked, bloated):
 
@@ -423,7 +423,7 @@ Vitess only. See https://planetscale.com/docs/vitess/schema-changes/aggressive-c
 
 ## Vitess deploy requests (inspect + throttler)
 
-Core lifecycle is already covered (`list/create/show/diff/review/deploy/apply/unblock/update/cancel/close/revert/skip-revert`). `update` (`edit` is an alias) sets auto-apply and auto-delete-branch. `unblock` clears the queue after a failed deploy or revert (dashboard “Unblock deploy queue”); it is not `apply`. These inspect commands are read-only:
+Core lifecycle is already covered (`list/create/show/diff/review/deploy/apply/retry/unblock/update/cancel/close/revert/skip-revert`). `update` (`edit` is an alias) sets auto-apply and auto-delete-branch. `unblock` clears the queue after a failed deploy or revert (dashboard “Unblock deploy queue”); it is not `apply`. These inspect commands are read-only:
 
 ```bash
 pscale deploy-request queue <database> --org <org> --format json                         # database deploy queue (first page)
@@ -453,6 +453,12 @@ After a failed deploy or revert (`complete_error` / `complete_revert_error`), un
 
 ```bash
 pscale deploy-request unblock <database> <number> --org <org> --format json
+```
+
+Retry failed table operations on an in-progress deploy request. Only the failed tables are retried. The API rejects the call when the deploy is not in progress, when no operation has failed, or when a retry was already requested.
+
+```bash
+pscale deploy-request retry <database> <number> --org <org> --format json
 ```
 
 ## Vitess keyspaces
@@ -490,6 +496,20 @@ pscale keyspace parameters set <database> <branch> <keyspace> --org <org> --form
 pscale keyspace parameters changes list <database> <branch> <keyspace> --org <org> --format json
 pscale keyspace parameters changes show <database> <branch> <keyspace> <change-id> --org <org> --format json
 pscale keyspace parameters changes cancel <database> <branch> <keyspace> <change-id> --org <org> --format json
+```
+
+Branch VTGate parameters: list them with `branch vtgate parameters`, then change them with `branch vtgate update`. Prefix each parameter with `vtgate.`; `--reset` sets a parameter back to its default. The change rolls out to the branch's VTGates; follow it with `branch vtgate changes list`. Only one unfinished VTGate change can exist on a branch at a time. VTGate size and count are changed with `branch vtgate resize`, not `update`.
+
+```bash
+pscale branch vtgate parameters <database> <branch> --org <org> --format json
+pscale branch vtgate update <database> <branch> --org <org> --format json \
+  --parameters vtgate.max_memory_rows=500000 \
+  --parameters vtgate.query-timeout=30000
+pscale branch vtgate update <database> <branch> --org <org> --format json \
+  --reset vtgate.query-timeout
+pscale branch vtgate changes list <database> <branch> --org <org> --format json
+pscale branch vtgate changes show <database> <branch> <change-id> --org <org> --format json
+pscale branch vtgate changes cancel <database> <branch> <change-id> --org <org> --format json
 ```
 
 ## Vitess MoveTables
@@ -544,12 +564,20 @@ pscale maintenance windows <database> <schedule-id> --org <org> --format json
 `pscale branch resize` queues a single asynchronous **change request** for a Postgres branch covering cluster size, replica count, and configuration parameters in any combination. Track it with `resize status`; cancel it with `resize cancel` while queued.
 
 ```bash
-# Read the parameter catalog first (names, current/default values, restart/immutable flags)
+# Read the parameter catalog first (names, current/default values, restart flags)
 pscale branch parameters list <database> <branch> --org <org> --format json
 pscale branch parameters list <database> <branch> --org <org> --format json --namespace pgconf
 
 # Extensions available on the cluster image (not CREATE EXTENSION state)
 pscale branch extensions list <database> <branch> --org <org> --format json
+
+# Toggle an extension with "can_enable": true (not CREATE EXTENSION). This queues a
+# branch change that may restart the database; warn the user first. Track it with
+# resize status, or pass --wait (default timeout 10m; tune with --wait-timeout).
+# Postgres only; Neki uses `branch config-profile extensions enable|disable`.
+pscale branch extensions enable <database> <branch> <extension> --org <org> --format json
+pscale branch extensions enable <database> <branch> <extension> --org <org> --format json --wait
+pscale branch extensions disable <database> <branch> <extension> --org <org> --format json
 
 # Default postgres role (read-only; reset-default rotates the password)
 pscale role default <database> <branch> --org <org> --format json
@@ -589,7 +617,7 @@ pscale branch resize cancel <database> <branch> --org <org> --format json
 - At least one of `--cluster-size`, `--replicas`, or `--parameters` is required.
 - Neki `--inherited-roles` may include `neki_viewer` (must also include `pg_read_all_data`) and `neki_operator` (must also include `postgres`). The API rejects those pairings if the required role is missing.
 - `--replica`, `--dedicated-read-replica`, and `--bouncer` are mutually exclusive. `--dedicated-read-replica` and `--bouncer` are Postgres-only and cannot combine with `--router` or `--shard`. The deprecated `--read-only-replica` flag is a compatibility alias for `--dedicated-read-replica`. On Neki, `--replica`, `--shard`, and `--router` can be combined. `--router` rewrites `username` to `user|<name>`. `--replica` and `--shard` set `options` (`-c __neki.target=REPLICA`, `-c __neki.shard=…`) and add them to `database_url`. List names with `pscale branch router list` and `pscale branch shard list` (use the shard name, not the API id).
-- `--parameters` values are validated against the catalog before submission; unknown or immutable parameters fail fast. Parameters with `"restart": true` in the catalog restart the database when applied — surface this to the user before changing them.
+- `--parameters` values are validated against the changeable parameters in the catalog before submission; parameters that don't exist or can't be changed fail fast. Parameters with `"restart": true` in the catalog restart the database when applied — surface this to the user before changing them.
 - Change request `state` is one of `queued`, `pending`, `resizing`, `completed`, `canceled`. Only `completed` and `canceled` are terminal. Without `--wait`, poll `resize status` instead of assuming completion.
 - A no-op (branch already matches the requested configuration) prints `{"result": "no_change", "branch": "<branch>"}` in JSON mode instead of a change request.
 - `resize cancel` prints `{"result": "canceled", "branch": "<branch>"}` in JSON mode.

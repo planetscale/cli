@@ -55,8 +55,8 @@ This command is only available for PostgreSQL databases.`,
 	return cmd
 }
 
-// ReadOnlyReplica is the human/JSON/CSV view of a Postgres dedicated read replica.
-type ReadOnlyReplica struct {
+// DedicatedReadReplica is the human/JSON/CSV view of a Postgres dedicated read replica.
+type DedicatedReadReplica struct {
 	ID        string `header:"id" json:"id"`
 	Name      string `header:"name" json:"name"`
 	State     string `header:"state" json:"state"`
@@ -66,18 +66,18 @@ type ReadOnlyReplica struct {
 	Ready     bool   `header:"ready" json:"ready"`
 	CreatedAt int64  `header:"created_at,timestamp(ms|utc|human)" json:"created_at"`
 
-	orig *ps.PostgresReadOnlyReplica
+	orig *ps.PostgresDedicatedReadReplica
 }
 
-func (r *ReadOnlyReplica) MarshalJSON() ([]byte, error) {
+func (r *DedicatedReadReplica) MarshalJSON() ([]byte, error) {
 	return json.MarshalIndent(r.orig, "", "  ")
 }
 
-func (r *ReadOnlyReplica) MarshalCSVValue() interface{} {
-	return []*ReadOnlyReplica{r}
+func (r *DedicatedReadReplica) MarshalCSVValue() interface{} {
+	return []*DedicatedReadReplica{r}
 }
 
-func toReadOnlyReplica(replica *ps.PostgresReadOnlyReplica) *ReadOnlyReplica {
+func toDedicatedReadReplica(replica *ps.PostgresDedicatedReadReplica) *DedicatedReadReplica {
 	size := replica.ClusterDisplayName
 	if size == "" {
 		size = replica.ClusterName
@@ -94,7 +94,7 @@ func toReadOnlyReplica(replica *ps.PostgresReadOnlyReplica) *ReadOnlyReplica {
 		region = "-"
 	}
 
-	return &ReadOnlyReplica{
+	return &DedicatedReadReplica{
 		ID:        replica.ID,
 		Name:      replica.Name,
 		State:     replica.State,
@@ -107,10 +107,10 @@ func toReadOnlyReplica(replica *ps.PostgresReadOnlyReplica) *ReadOnlyReplica {
 	}
 }
 
-func toReadOnlyReplicas(replicas []*ps.PostgresReadOnlyReplica) []*ReadOnlyReplica {
-	out := make([]*ReadOnlyReplica, 0, len(replicas))
+func toDedicatedReadReplicas(replicas []*ps.PostgresDedicatedReadReplica) []*DedicatedReadReplica {
+	out := make([]*DedicatedReadReplica, 0, len(replicas))
 	for _, replica := range replicas {
-		out = append(out, toReadOnlyReplica(replica))
+		out = append(out, toDedicatedReadReplica(replica))
 	}
 	return out
 }

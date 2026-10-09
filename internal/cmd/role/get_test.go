@@ -90,7 +90,7 @@ func TestRole_GetCmdConnectionTargets(t *testing.T) {
 			name: "dedicated read replica",
 			args: []string{"mydb", "main", "role-id", "--dedicated-read-replica", "analytics"},
 			request: ps.GetPostgresRoleRequest{
-				ReadOnlyReplica: "analytics",
+				DedicatedReadReplica: "analytics",
 			},
 			username:      "app.read-only|replica",
 			accessHostURL: "analytics.pg.psdb.cloud",
@@ -100,7 +100,7 @@ func TestRole_GetCmdConnectionTargets(t *testing.T) {
 			name: "deprecated read-only replica alias",
 			args: []string{"mydb", "main", "role-id", "--read-only-replica", "analytics"},
 			request: ps.GetPostgresRoleRequest{
-				ReadOnlyReplica: "analytics",
+				DedicatedReadReplica: "analytics",
 			},
 			username:      "app.read-only|replica",
 			accessHostURL: "analytics.pg.psdb.cloud",

@@ -71,7 +71,7 @@ func TestPostgresBouncers_Get(t *testing.T) {
 			"deleted_at":null,
 			"actor":{"id":"user-1","display_name":"Alice","avatar_url":"https://example.com/a.png"},
 			"branch":{"id":"branch-1","name":"main","created_at":"2021-01-01T00:00:00.000Z","updated_at":"2021-01-01T00:00:00.000Z","deleted_at":null},
-			"parameters":[{"id":"p1","namespace":"pgbouncer","name":"default_pool_size","display_name":"Default pool size","category":"","description":"","immutable":false,"parameter_type":"integer","default_value":"20","value":"50","required":false,"restart":false,"created_at":"2021-01-14T10:19:23.000Z","updated_at":"2021-01-14T10:19:23.000Z"}]
+			"parameters":[{"id":"p1","namespace":"pgbouncer","name":"default_pool_size","display_name":"Default pool size","category":"","description":"","parameter_type":"integer","default_value":"20","value":"50","required":false,"restart":false,"created_at":"2021-01-14T10:19:23.000Z","updated_at":"2021-01-14T10:19:23.000Z"}]
 		}`
 		_, err := w.Write([]byte(out))
 		c.Assert(err, qt.IsNil)

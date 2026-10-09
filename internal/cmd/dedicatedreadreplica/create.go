@@ -37,7 +37,7 @@ defaults to the primary cluster size when those flags are omitted.`,
 				return err
 			}
 
-			req := &ps.CreatePostgresReadOnlyReplicaRequest{
+			req := &ps.CreatePostgresDedicatedReadReplicaRequest{
 				Organization: ch.Config.Organization,
 				Database:     database,
 				Branch:       branch,
@@ -52,7 +52,7 @@ defaults to the primary cluster size when those flags are omitted.`,
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Creating dedicated read replica %s for %s/%s", printer.BoldBlue(name), printer.BoldBlue(database), printer.BoldBlue(branch)))
 			defer end()
 
-			replica, err := client.PostgresReadOnlyReplicas.Create(ctx, req)
+			replica, err := client.PostgresDedicatedReadReplicas.Create(ctx, req)
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case ps.ErrNotFound:
@@ -69,7 +69,7 @@ defaults to the primary cluster size when those flags are omitted.`,
 					printer.BoldBlue(replica.Name), printer.BoldBlue(database), printer.BoldBlue(branch), printer.BoldBlue(replica.State))
 				return nil
 			}
-			return ch.Printer.PrintResource(toReadOnlyReplica(replica))
+			return ch.Printer.PrintResource(toDedicatedReadReplica(replica))
 		},
 	}
 

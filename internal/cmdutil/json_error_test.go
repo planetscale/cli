@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/planetscale/cli/internal/planetscale"
@@ -186,6 +187,22 @@ func TestGlobalJSONErrorSchemaSnapshotNotReady(t *testing.T) {
 	}
 	if len(resp.NextSteps) != 1 || resp.NextSteps[0] != "Wait for the branch schema snapshot to become ready, then retry" {
 		t.Fatalf("next_steps = %#v", resp.NextSteps)
+	}
+}
+
+func TestGlobalJSONErrorResizeInProgress(t *testing.T) {
+	resp := GlobalJSONError(errors.New("Database branch has a cluster resize in progress"))
+
+	if resp.Status != "action_required" {
+		t.Fatalf("status = %q", resp.Status)
+	}
+	if len(resp.NextSteps) != 2 || !strings.Contains(resp.NextSteps[1], "pscale branch resize status") {
+		t.Fatalf("next_steps = %#v", resp.NextSteps)
+	}
+	for _, step := range resp.NextSteps {
+		if step == AgentAuthCheckCmd() || step == AgentAuthLoginCmd() {
+			t.Fatalf("resize in progress should not suggest auth, got %#v", resp.NextSteps)
+		}
 	}
 }
 

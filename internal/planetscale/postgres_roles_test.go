@@ -399,6 +399,13 @@ func TestPostgresRoles_GetConnectionTargets(t *testing.T) {
 		},
 		{
 			name:       "dedicated read replica",
+			request:    GetPostgresRoleRequest{DedicatedReadReplica: "analytics"},
+			query:      url.Values{"read_only_replica": []string{"analytics"}},
+			username:   "test-user.replica-id|replica",
+			accessHost: "analytics.planetscale.com",
+		},
+		{
+			name:       "deprecated read-only replica field",
 			request:    GetPostgresRoleRequest{ReadOnlyReplica: "analytics"},
 			query:      url.Values{"read_only_replica": []string{"analytics"}},
 			username:   "test-user.replica-id|replica",

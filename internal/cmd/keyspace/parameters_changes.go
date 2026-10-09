@@ -1,11 +1,9 @@
 package keyspace
 
 import (
-	"encoding/json"
 	"fmt"
-	"sort"
-	"strings"
 
+	"github.com/planetscale/cli/internal/cmd/vitessparams"
 	"github.com/planetscale/cli/internal/cmdutil"
 	ps "github.com/planetscale/cli/internal/planetscale"
 	"github.com/planetscale/cli/internal/printer"
@@ -61,7 +59,7 @@ func parametersChangesListCmd(ch *cmdutil.Helper) *cobra.Command {
 				return nil
 			}
 
-			return ch.Printer.PrintResource(toKeyspaceConfigChanges(changes))
+			return ch.Printer.PrintResource(vitessparams.ToConfigChanges(changes))
 		},
 	}
 
@@ -102,7 +100,7 @@ func parametersChangesShowCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 			end()
 
-			return ch.Printer.PrintResource(toKeyspaceConfigChange(change))
+			return ch.Printer.PrintResource(vitessparams.ToConfigChange(change))
 		},
 	}
 }
@@ -148,75 +146,4 @@ func parametersChangesCancelCmd(ch *cmdutil.Helper) *cobra.Command {
 			})
 		},
 	}
-}
-
-type keyspaceConfigChange struct {
-	ID        string `header:"id" json:"id"`
-	Namespace string `header:"namespace" json:"change_type"`
-	State     string `header:"state" json:"state"`
-	Changes   string `header:"changes" json:"changes"`
-	CreatedAt string `header:"created at" json:"created_at"`
-
-	orig *ps.KeyspaceConfigChange
-}
-
-func toKeyspaceConfigChange(change *ps.KeyspaceConfigChange) *keyspaceConfigChange {
-	return &keyspaceConfigChange{
-		ID:        change.ID,
-		Namespace: change.ChangeType,
-		State:     change.State,
-		Changes:   formatParameterChanges(change),
-		CreatedAt: change.CreatedAt.UTC().Format("2006-01-02 15:04:05"),
-		orig:      change,
-	}
-}
-
-func toKeyspaceConfigChanges(changes []*ps.KeyspaceConfigChange) []*keyspaceConfigChange {
-	out := make([]*keyspaceConfigChange, 0, len(changes))
-	for _, change := range changes {
-		out = append(out, toKeyspaceConfigChange(change))
-	}
-	return out
-}
-
-func (c *keyspaceConfigChange) MarshalJSON() ([]byte, error) {
-	return json.MarshalIndent(c.orig, "", "  ")
-}
-
-func (c *keyspaceConfigChange) MarshalCSVValue() interface{} {
-	return []*keyspaceConfigChange{c}
-}
-
-func formatParameterChanges(change *ps.KeyspaceConfigChange) string {
-	seen := make(map[string]struct{})
-	for name := range change.PreviousOptions {
-		seen[name] = struct{}{}
-	}
-	for name := range change.NewOptions {
-		seen[name] = struct{}{}
-	}
-
-	names := make([]string, 0, len(seen))
-	for name := range seen {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-
-	parts := make([]string, 0, len(names))
-	for _, name := range names {
-		before := optionDisplayValue(change.PreviousOptions[name])
-		after := optionDisplayValue(change.NewOptions[name])
-		if before == after {
-			continue
-		}
-		parts = append(parts, fmt.Sprintf("%s: %s → %s", name, before, after))
-	}
-	return strings.Join(parts, ", ")
-}
-
-func optionDisplayValue(value *string) string {
-	if value == nil {
-		return "(default)"
-	}
-	return *value
 }
