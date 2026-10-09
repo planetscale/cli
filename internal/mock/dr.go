@@ -49,6 +49,9 @@ type DeployRequestsService struct {
 	RevertDeployFn        func(context.Context, *ps.RevertDeployRequestRequest) (*ps.DeployRequest, error)
 	RevertDeployFnInvoked bool
 
+	RetryFailedOperationsFn        func(context.Context, *ps.RetryFailedOperationsRequest) (*ps.DeployRequest, error)
+	RetryFailedOperationsFnInvoked bool
+
 	SkipRevertDeployFn        func(context.Context, *ps.SkipRevertDeployRequestRequest) (*ps.DeployRequest, error)
 	SkipRevertDeployFnInvoked bool
 
@@ -145,6 +148,11 @@ func (d *DeployRequestsService) List(ctx context.Context, req *ps.ListDeployRequ
 func (d *DeployRequestsService) RevertDeploy(ctx context.Context, req *ps.RevertDeployRequestRequest) (*ps.DeployRequest, error) {
 	d.RevertDeployFnInvoked = true
 	return d.RevertDeployFn(ctx, req)
+}
+
+func (d *DeployRequestsService) RetryFailedOperations(ctx context.Context, req *ps.RetryFailedOperationsRequest) (*ps.DeployRequest, error) {
+	d.RetryFailedOperationsFnInvoked = true
+	return d.RetryFailedOperationsFn(ctx, req)
 }
 
 func (d *DeployRequestsService) SkipRevertDeploy(ctx context.Context, req *ps.SkipRevertDeployRequestRequest) (*ps.DeployRequest, error) {

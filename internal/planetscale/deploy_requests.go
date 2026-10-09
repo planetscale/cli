@@ -39,6 +39,7 @@ type DeployRequestsService interface {
 	UpdateThrottler(context.Context, *UpdateDeployRequestThrottlerRequest) (*DeployRequestThrottler, error)
 	SkipRevertDeploy(context.Context, *SkipRevertDeployRequestRequest) (*DeployRequest, error)
 	RevertDeploy(context.Context, *RevertDeployRequestRequest) (*DeployRequest, error)
+	RetryFailedOperations(context.Context, *RetryFailedOperationsRequest) (*DeployRequest, error)
 	UnblockDeploy(context.Context, *UnblockDeployRequestRequest) (*DeployRequest, error)
 }
 
@@ -320,6 +321,13 @@ type CancelDeployRequestRequest struct {
 	Number       uint64 `json:"-"`
 }
 
+// RetryFailedOperationsRequest retries failed operations on an in-progress deploy.
+type RetryFailedOperationsRequest struct {
+	Organization string `json:"-"`
+	Database     string `json:"-"`
+	Number       uint64 `json:"-"`
+}
+
 type CreateDeployRequestRequest struct {
 	Organization     string `json:"-"`
 	Database         string `json:"-"`
@@ -464,6 +472,23 @@ func (d *deployRequestsService) Create(ctx context.Context, createReq *CreateDep
 func (d *deployRequestsService) CancelDeploy(ctx context.Context, deployReq *CancelDeployRequestRequest) (*DeployRequest, error) {
 	path := deployRequestActionAPIPath(deployReq.Organization, deployReq.Database, deployReq.Number, "cancel")
 	req, err := d.client.newRequest(http.MethodPost, path, deployReq)
+	if err != nil {
+		return nil, fmt.Errorf("error creating http request: %w", err)
+	}
+
+	dr := &DeployRequest{}
+	if err := d.client.do(ctx, req, &dr); err != nil {
+		return nil, err
+	}
+
+	return dr, nil
+}
+
+// RetryFailedOperations asks the API to retry failed table operations.
+// The request has no body; the API decides whether a retry is allowed.
+func (d *deployRequestsService) RetryFailedOperations(ctx context.Context, retryReq *RetryFailedOperationsRequest) (*DeployRequest, error) {
+	path := deployRequestActionAPIPath(retryReq.Organization, retryReq.Database, retryReq.Number, "retry-failed-operations")
+	req, err := d.client.newRequest(http.MethodPost, path, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating http request: %w", err)
 	}
