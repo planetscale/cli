@@ -85,6 +85,15 @@ type ErrorResponse struct {
 }
 
 func (e ErrorResponse) Error() string {
+	// The device flow's terminal errors (RFC 8628, section 3.5) describe an
+	// outcome the user can act on, so describe them here rather than relying
+	// on the server's error_description.
+	switch e.ErrorCode {
+	case "expired_token":
+		return "the confirmation code expired before it was approved; run 'pscale auth login' again"
+	case "access_denied":
+		return "the login request was denied in the browser"
+	}
 	return e.Description
 }
 
