@@ -423,7 +423,7 @@ Vitess only. See https://planetscale.com/docs/vitess/schema-changes/aggressive-c
 
 ## Vitess deploy requests (inspect + throttler)
 
-Core lifecycle is already covered (`list/create/show/diff/review/deploy/apply/unblock/update/cancel/close/revert/skip-revert`). `update` (`edit` is an alias) sets auto-apply and auto-delete-branch. `unblock` clears the queue after a failed deploy or revert (dashboard “Unblock deploy queue”); it is not `apply`. These inspect commands are read-only:
+Core lifecycle is already covered (`list/create/show/diff/review/deploy/apply/retry/unblock/update/cancel/close/revert/skip-revert`). `update` (`edit` is an alias) sets auto-apply and auto-delete-branch. `unblock` clears the queue after a failed deploy or revert (dashboard “Unblock deploy queue”); it is not `apply`. These inspect commands are read-only:
 
 ```bash
 pscale deploy-request queue <database> --org <org> --format json                         # database deploy queue (first page)
@@ -453,6 +453,12 @@ After a failed deploy or revert (`complete_error` / `complete_revert_error`), un
 
 ```bash
 pscale deploy-request unblock <database> <number> --org <org> --format json
+```
+
+Retry failed table operations on an in-progress deploy request. Only the failed tables are retried. The API rejects the call when the deploy is not in progress, when no operation has failed, or when a retry was already requested.
+
+```bash
+pscale deploy-request retry <database> <number> --org <org> --format json
 ```
 
 ## Vitess keyspaces
