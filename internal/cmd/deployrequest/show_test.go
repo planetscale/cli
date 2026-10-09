@@ -119,6 +119,41 @@ func TestDeployRequest_ShowBranchName(t *testing.T) {
 	c.Assert(buf.String(), qt.JSONEquals, res)
 }
 
+func TestDeployRequest_ShowHumanAggressiveCutoverColumn(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.Human
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	svc := &mock.DeployRequestsService{
+		GetFn: func(ctx context.Context, req *ps.GetDeployRequestRequest) (*ps.DeployRequest, error) {
+			return &ps.DeployRequest{
+				Number: 1284,
+				Deployment: &ps.Deployment{
+					State:             "ready",
+					AggressiveCutover: true,
+				},
+			}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: "planetscale"},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{DeployRequests: svc}, nil
+		},
+	}
+
+	cmd := ShowCmd(ch)
+	cmd.SetArgs([]string{"planetscale", "1284"})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(buf.String(), qt.Contains, "AGGRESSIVE CUTOVER")
+	c.Assert(buf.String(), qt.Contains, "Yes")
+}
+
 func TestDeployRequest_ShowTimestampBug(t *testing.T) {
 	c := qt.New(t)
 

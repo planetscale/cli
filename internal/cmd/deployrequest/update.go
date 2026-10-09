@@ -19,6 +19,7 @@ func UpdateCmd(ch *cmdutil.Helper) *cobra.Command {
 		disable_auto_apply bool
 		autoApply          string // deprecated
 		auto_delete_branch bool
+		aggressive_cutover bool
 	}
 
 	cmd := &cobra.Command{
@@ -27,10 +28,11 @@ func UpdateCmd(ch *cmdutil.Helper) *cobra.Command {
 		Short:   "Update a deploy request",
 		Long: `Update settings on a deploy request.
 
-Use --enable-auto-apply / --disable-auto-apply to control gated cutover, and
+Use --enable-auto-apply / --disable-auto-apply to control gated cutover,
 --auto-delete-branch to control whether the source branch is deleted after a
-successful deploy (same flag as 'deploy-request create'). At least one setting
-must be passed; unset flags are not sent.`,
+successful deploy (same flag as 'deploy-request create'), and
+--aggressive-cutover to opt this deploy request into aggressive cutover.
+At least one setting must be passed; unset flags are not sent.`,
 		Args: cmdutil.RequiredArgs("database", "number"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -55,9 +57,10 @@ must be passed; unset flags are not sent.`,
 			hasDeprecatedFlag := flags.autoApply != ""
 			hasAutoApply := hasNewAutoApply || hasDeprecatedFlag
 			hasAutoDelete := cmd.Flags().Changed("auto-delete-branch")
+			hasAggressiveCutover := cmd.Flags().Changed("aggressive-cutover")
 
-			if !hasAutoApply && !hasAutoDelete {
-				return fmt.Errorf("must specify at least one of --enable-auto-apply, --disable-auto-apply, --auto-delete-branch, or --auto-apply")
+			if !hasAutoApply && !hasAutoDelete && !hasAggressiveCutover {
+				return fmt.Errorf("must specify at least one of --enable-auto-apply, --disable-auto-apply, --auto-delete-branch, --aggressive-cutover, or --auto-apply")
 			}
 
 			if hasDeprecatedFlag {
@@ -111,13 +114,28 @@ must be passed; unset flags are not sent.`,
 				}
 			}
 
+			if hasAggressiveCutover {
+				dr, err = client.DeployRequests.AggressiveCutover(ctx, &planetscale.DeployRequestAggressiveCutoverRequest{
+					Organization: ch.Config.Organization,
+					Database:     database,
+					Number:       n,
+					Enable:       flags.aggressive_cutover,
+				})
+				if err != nil {
+					return handleDRErr(err)
+				}
+			}
+
 			if ch.Printer.Format() == printer.Human {
-				updated := make([]string, 0, 2)
+				updated := make([]string, 0, 3)
 				if hasAutoApply {
 					updated = append(updated, "auto-apply")
 				}
 				if hasAutoDelete {
 					updated = append(updated, "auto-delete-branch")
+				}
+				if hasAggressiveCutover {
+					updated = append(updated, "aggressive-cutover")
 				}
 				ch.Printer.Printf("Successfully updated %s for '%s/%s'.\n",
 					strings.Join(updated, " and "),
@@ -133,6 +151,7 @@ must be passed; unset flags are not sent.`,
 	cmd.Flags().BoolVar(&flags.enable_auto_apply, "enable-auto-apply", false, "Enable auto-apply. The deploy request will automatically swap over to the new schema once ready.")
 	cmd.Flags().BoolVar(&flags.disable_auto_apply, "disable-auto-apply", false, "Disable auto-apply. The deploy request will wait for your confirmation before swapping to the new schema. Use 'deploy-request apply' to apply the changes manually.")
 	cmd.Flags().BoolVar(&flags.auto_delete_branch, "auto-delete-branch", false, "Delete the branch after the deploy request completes. Pass --auto-delete-branch=false to keep it.")
+	cmd.Flags().BoolVar(&flags.aggressive_cutover, "aggressive-cutover", false, "Cut this deploy request over aggressively: Vitess kills blocking queries and transactions on the first cutover attempt instead of retrying for up to an hour. Does not change the database setting. Other deploy requests are unaffected. Pass --aggressive-cutover=false to clear the opt-in.")
 
 	cmd.Flags().StringVar(&flags.autoApply, "auto-apply", "", "Update the auto apply setting for a deploy request. Possible values: [enable,disable]")
 	cmd.Flags().MarkDeprecated("auto-apply", "use --enable-auto-apply or --disable-auto-apply instead")

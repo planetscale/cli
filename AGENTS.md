@@ -411,7 +411,7 @@ pscale database throttler update <database> --org <org> --format json \
 
 ## Vitess aggressive cutover
 
-Database-level setting for future deploy requests (not the same as `deploy-request force-cutover`):
+Database-level setting for future deploy requests (not the same as `deploy-request force-cutover`, and not the same as `deploy-request create --aggressive-cutover`):
 
 ```bash
 pscale database aggressive-cutover show <database> --org <org> --format json
@@ -423,7 +423,7 @@ Vitess only. See https://planetscale.com/docs/vitess/schema-changes/aggressive-c
 
 ## Vitess deploy requests (inspect + throttler)
 
-Core lifecycle is already covered (`list/create/show/diff/review/deploy/apply/retry/unblock/update/cancel/close/revert/skip-revert`). `update` (`edit` is an alias) sets auto-apply and auto-delete-branch. `unblock` clears the queue after a failed deploy or revert (dashboard “Unblock deploy queue”); it is not `apply`. These inspect commands are read-only:
+Core lifecycle is already covered (`list/create/show/diff/review/deploy/apply/retry/unblock/update/cancel/close/revert/skip-revert`). `update` (`edit` is an alias) sets auto-apply, auto-delete-branch, and per-request aggressive cutover. `unblock` clears the queue after a failed deploy or revert (dashboard “Unblock deploy queue”); it is not `apply`. These inspect commands are read-only:
 
 ```bash
 pscale deploy-request queue <database> --org <org> --format json                         # database deploy queue (first page)
@@ -447,7 +447,12 @@ Alias: `pscale dr …` works the same. Vitess only. `--ratio` is 0–95 (0 disab
 ```bash
 pscale deploy-request update <database> <number> --org <org> --format json --enable-auto-apply
 pscale deploy-request update <database> <number> --org <org> --format json --auto-delete-branch=false
+pscale deploy-request create <database> <branch> --org <org> --aggressive-cutover --format json
+pscale deploy-request update <database> <number> --org <org> --format json --aggressive-cutover
+pscale deploy-request update <database> <number> --org <org> --format json --aggressive-cutover=false
 ```
+
+`--aggressive-cutover` opts this deploy request into aggressive cutover: Vitess kills blocking queries and transactions on the first cutover attempt instead of retrying for up to an hour. It does not change the database setting (`pscale database aggressive-cutover`) and other deploy requests are unaffected. Create sends `aggressive_cutover: true` only when the flag is set. Update sends `{ "enable": <bool> }` to `PUT .../deploy-requests/:number/aggressive-cutover`, including `enable: false` when `--aggressive-cutover=false` is passed. Unset flags are not sent. The opt-in can be changed while the deployment is `pending`, `ready`, `error`, `no_changes`, or `queued`. After submission the API rejects the update. `show`, `deployment`, and `queue` JSON include `deployment.aggressive_cutover`. Human `show` and `queue` tables include an `aggressive_cutover` column. This is not `deploy-request force-cutover`.
 
 After a failed deploy or revert (`complete_error` / `complete_revert_error`), unblock the queue. This is not `apply` (gated cutover) and it cannot fix a deploy-check `error`:
 

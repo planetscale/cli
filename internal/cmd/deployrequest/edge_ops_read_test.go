@@ -49,6 +49,40 @@ func TestDeployRequest_QueueCmd(t *testing.T) {
 	c.Assert(buf.String(), qt.JSONEquals, []*ps.Deployment{deployment})
 }
 
+func TestDeployRequest_QueueHumanAggressiveCutoverColumn(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.Human
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	svc := &mock.DeployRequestsService{
+		GetDeployQueueFn: func(ctx context.Context, req *ps.GetDeployQueueRequest) ([]*ps.Deployment, error) {
+			return []*ps.Deployment{{
+				ID:                  "dep-1",
+				DeployRequestNumber: 1284,
+				State:               "queued",
+				AggressiveCutover:   true,
+			}}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: "planetscale"},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{DeployRequests: svc}, nil
+		},
+	}
+
+	cmd := QueueCmd(ch)
+	cmd.SetArgs([]string{"planetscale"})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(buf.String(), qt.Contains, "AGGRESSIVE CUTOVER")
+	c.Assert(buf.String(), qt.Contains, "Yes")
+}
+
 func TestDeployRequest_OperationsCmd(t *testing.T) {
 	c := qt.New(t)
 
