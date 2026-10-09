@@ -72,6 +72,7 @@ type inlineDeployment struct {
 	State              string `header:"deploy state" json:"state"`
 	Deployable         bool   `header:"deployable" json:"deployable"`
 	InstantDDLEligible bool   `header:"instant ddl eligible" json:"instant_ddl_eligible"`
+	AggressiveCutover  bool   `header:"aggressive_cutover" json:"aggressive_cutover"`
 
 	QueuedAt   string `header:"queued_at" json:"queued_at"`
 	StartedAt  string `header:"started_at" json:"started_at"`
@@ -133,6 +134,7 @@ func toInlineDeployment(d *planetscale.Deployment) inlineDeployment {
 		State:              d.State,
 		Deployable:         d.Deployable,
 		InstantDDLEligible: d.InstantDDLEligible,
+		AggressiveCutover:  d.AggressiveCutover,
 		QueuedAt:           formatTimestamp(d.QueuedAt),
 		StartedAt:          formatTimestamp(d.StartedAt),
 		FinishedAt:         formatTimestamp(d.FinishedAt),

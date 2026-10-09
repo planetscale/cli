@@ -22,6 +22,9 @@ type DeployRequestsService struct {
 	AutoDeleteBranchFn        func(context.Context, *ps.AutoDeleteBranchRequest) (*ps.DeployRequest, error)
 	AutoDeleteBranchFnInvoked bool
 
+	AggressiveCutoverFn        func(context.Context, *ps.DeployRequestAggressiveCutoverRequest) (*ps.DeployRequest, error)
+	AggressiveCutoverFnInvoked bool
+
 	CancelFn        func(context.Context, *ps.CancelDeployRequestRequest) (*ps.DeployRequest, error)
 	CancelFnInvoked bool
 
@@ -103,6 +106,11 @@ func (d *DeployRequestsService) AutoApplyDeploy(ctx context.Context, req *ps.Aut
 func (d *DeployRequestsService) AutoDeleteBranch(ctx context.Context, req *ps.AutoDeleteBranchRequest) (*ps.DeployRequest, error) {
 	d.AutoDeleteBranchFnInvoked = true
 	return d.AutoDeleteBranchFn(ctx, req)
+}
+
+func (d *DeployRequestsService) AggressiveCutover(ctx context.Context, req *ps.DeployRequestAggressiveCutoverRequest) (*ps.DeployRequest, error) {
+	d.AggressiveCutoverFnInvoked = true
+	return d.AggressiveCutoverFn(ctx, req)
 }
 
 func (d *DeployRequestsService) CancelDeploy(ctx context.Context, req *ps.CancelDeployRequestRequest) (*ps.DeployRequest, error) {
