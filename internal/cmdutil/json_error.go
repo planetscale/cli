@@ -177,6 +177,15 @@ func GlobalJSONError(err error) JSONErrorResponse {
 			AgentAuthCheckCmd(),
 		}
 
+	// refresh-schema timed out before the new snapshot was ready. The branch
+	// exists; retry the follow-up command once the snapshot finishes.
+	case strings.Contains(lower, "schema refreshing"):
+		status = "action_required"
+		code = "schema_snapshot_not_ready"
+		nextSteps = []string{
+			"Wait for the branch schema snapshot to become ready, then retry",
+		}
+
 	// Unclassified: auth state is the one thing worth ruling out first.
 	default:
 		nextSteps = []string{

@@ -24,6 +24,7 @@ type DatabaseBranch struct {
 	Actor          Actor     `json:"actor"`
 	Region         Region    `json:"region"`
 	Ready          bool      `json:"ready"`
+	SchemaReady    bool      `json:"schema_ready"`
 	Production     bool      `json:"production"`
 	HtmlURL        string    `json:"html_url"`
 	CreatedAt      time.Time `json:"created_at"`
