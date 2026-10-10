@@ -84,21 +84,29 @@ func waitUntilSchemaReady(ctx context.Context, client *planetscale.Client, org, 
 	ticker := time.NewTicker(schemaRefreshPollInterval)
 	defer ticker.Stop()
 
+	var pollErr error
 	for {
 		resp, err := client.DatabaseBranches.Get(ctx, &planetscale.GetDatabaseBranchRequest{
 			Organization: org,
 			Database:     database,
 			Branch:       branch,
 		})
-		if err != nil && cmdutil.ErrCode(err) == planetscale.ErrNotFound {
+		switch {
+		case err != nil && cmdutil.ErrCode(err) == planetscale.ErrNotFound:
 			return err
-		}
-		if err == nil && resp.SchemaReady {
+		case err != nil && ctx.Err() == nil:
+			pollErr = err
+		case err == nil && resp.SchemaReady:
 			return nil
+		case err == nil:
+			pollErr = nil
 		}
 
 		select {
 		case <-ctx.Done():
+			if errors.Is(ctx.Err(), context.DeadlineExceeded) && pollErr != nil {
+				return pollErr
+			}
 			if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 				return errors.New("schema refreshing; please try again in a few moments")
 			}

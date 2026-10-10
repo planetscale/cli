@@ -3,6 +3,7 @@ package branch
 import (
 	"bytes"
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -89,6 +90,31 @@ func TestRefreshSchemaWaitsUntilSchemaReady(t *testing.T) {
 	c.Assert(err, qt.IsNil)
 	c.Assert(polls, qt.Equals, 2)
 	c.Assert(buf.String(), qt.Contains, `"result": "schema refreshed"`)
+}
+
+func TestRefreshSchemaReturnsPollError(t *testing.T) {
+	c := qt.New(t)
+	restoreSchemaRefreshTiming(t)
+
+	schemaRefreshPollInterval = time.Millisecond
+	schemaRefreshTimeout = 50 * time.Millisecond
+
+	var buf bytes.Buffer
+	svc := &mock.DatabaseBranchesService{
+		RefreshSchemaFn: func(context.Context, *ps.RefreshSchemaRequest) error {
+			return nil
+		},
+		GetFn: func(context.Context, *ps.GetDatabaseBranchRequest) (*ps.DatabaseBranch, error) {
+			return nil, errors.New("connection refused")
+		},
+	}
+
+	cmd := RefreshSchemaCmd(refreshSchemaHelper(svc, &buf))
+	cmd.SetArgs([]string{"planetscale", "development"})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.ErrorMatches, "connection refused")
+	c.Assert(buf.String(), qt.Equals, "")
 }
 
 func TestRefreshSchemaTimesOutWhileSchemaIsRefreshing(t *testing.T) {
