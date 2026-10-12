@@ -21,6 +21,7 @@ type DeployRequestsService interface {
 	ApplyDeploy(context.Context, *ApplyDeployRequestRequest) (*DeployRequest, error)
 	AutoApplyDeploy(context.Context, *AutoApplyDeployRequestRequest) (*DeployRequest, error)
 	AutoDeleteBranch(context.Context, *AutoDeleteBranchRequest) (*DeployRequest, error)
+	AggressiveCutover(context.Context, *DeployRequestAggressiveCutoverRequest) (*DeployRequest, error)
 	CancelDeploy(context.Context, *CancelDeployRequestRequest) (*DeployRequest, error)
 	CloseDeploy(context.Context, *CloseDeployRequestRequest) (*DeployRequest, error)
 	Create(context.Context, *CreateDeployRequestRequest) (*DeployRequest, error)
@@ -146,6 +147,7 @@ type Deployment struct {
 
 	AutoCutover         bool   `json:"auto_cutover"`
 	AutoDeleteBranch    bool   `json:"auto_delete_branch"`
+	AggressiveCutover   bool   `json:"aggressive_cutover"`
 	CutoverExpiring     bool   `json:"cutover_expiring"`
 	TableLocked         bool   `json:"table_locked"`
 	QueuePaused         bool   `json:"queue_paused"`
@@ -315,6 +317,15 @@ type AutoDeleteBranchRequest struct {
 	Enable       bool   `json:"-"`
 }
 
+// DeployRequestAggressiveCutoverRequest sets or clears the per-request aggressive cutover opt-in.
+// Distinct from the database-level AggressiveCutoverRequest.
+type DeployRequestAggressiveCutoverRequest struct {
+	Organization string `json:"-"`
+	Database     string `json:"-"`
+	Number       uint64 `json:"-"`
+	Enable       bool   `json:"-"`
+}
+
 type CancelDeployRequestRequest struct {
 	Organization string `json:"-"`
 	Database     string `json:"-"`
@@ -329,13 +340,14 @@ type RetryFailedOperationsRequest struct {
 }
 
 type CreateDeployRequestRequest struct {
-	Organization     string `json:"-"`
-	Database         string `json:"-"`
-	Branch           string `json:"branch"`
-	IntoBranch       string `json:"into_branch,omitempty"`
-	Notes            string `json:"notes"`
-	AutoCutover      bool   `json:"auto_cutover,omitempty"`
-	AutoDeleteBranch bool   `json:"auto_delete_branch,omitempty"`
+	Organization      string `json:"-"`
+	Database          string `json:"-"`
+	Branch            string `json:"branch"`
+	IntoBranch        string `json:"into_branch,omitempty"`
+	Notes             string `json:"notes"`
+	AutoCutover       bool   `json:"auto_cutover,omitempty"`
+	AutoDeleteBranch  bool   `json:"auto_delete_branch,omitempty"`
+	AggressiveCutover bool   `json:"aggressive_cutover,omitempty"`
 }
 
 type SkipRevertDeployRequestRequest struct {
@@ -577,6 +589,29 @@ func (d *deployRequestsService) AutoDeleteBranch(ctx context.Context, autoDelete
 	}
 
 	path := deployRequestActionAPIPath(autoDeleteReq.Organization, autoDeleteReq.Database, autoDeleteReq.Number, "auto-delete-branch")
+	req, err := d.client.newRequest(http.MethodPut, path, reqBody)
+	if err != nil {
+		return nil, fmt.Errorf("error creating http request: %w", err)
+	}
+
+	drr := &DeployRequest{}
+	if err := d.client.do(ctx, req, &drr); err != nil {
+		return nil, err
+	}
+
+	return drr, nil
+}
+
+// AggressiveCutover sets whether this deploy request cuts over aggressively.
+// enable false clears the opt-in; it does not change the database setting.
+func (d *deployRequestsService) AggressiveCutover(ctx context.Context, cutoverReq *DeployRequestAggressiveCutoverRequest) (*DeployRequest, error) {
+	reqBody := struct {
+		Enable bool `json:"enable"`
+	}{
+		Enable: cutoverReq.Enable,
+	}
+
+	path := deployRequestActionAPIPath(cutoverReq.Organization, cutoverReq.Database, cutoverReq.Number, "aggressive-cutover")
 	req, err := d.client.newRequest(http.MethodPut, path, reqBody)
 	if err != nil {
 		return nil, fmt.Errorf("error creating http request: %w", err)

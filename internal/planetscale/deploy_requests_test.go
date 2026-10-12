@@ -515,6 +515,96 @@ func TestDeployRequests_Create(t *testing.T) {
 	c.Assert(requests, qt.DeepEquals, want)
 }
 
+func TestDeployRequests_CreateOmitsAggressiveCutoverUnlessSet(t *testing.T) {
+	c := qt.New(t)
+
+	var gotBody string
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodPost)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/test-organization/databases/test-database/deploy-requests")
+		body, err := io.ReadAll(r.Body)
+		c.Assert(err, qt.IsNil)
+		gotBody = string(body)
+		w.WriteHeader(201)
+		_, err = w.Write([]byte(`{"id":"test-deploy-request-id","number":1,"branch":"development"}`))
+		c.Assert(err, qt.IsNil)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	_, err = client.DeployRequests.Create(context.Background(), &CreateDeployRequestRequest{
+		Organization:      "test-organization",
+		Database:          "test-database",
+		Branch:            "development",
+		AggressiveCutover: false,
+	})
+	c.Assert(err, qt.IsNil)
+	c.Assert(strings.Contains(gotBody, "aggressive_cutover"), qt.IsFalse)
+
+	gotBody = ""
+	_, err = client.DeployRequests.Create(context.Background(), &CreateDeployRequestRequest{
+		Organization:      "test-organization",
+		Database:          "test-database",
+		Branch:            "development",
+		AggressiveCutover: true,
+	})
+	c.Assert(err, qt.IsNil)
+
+	var sent struct {
+		AggressiveCutover *bool `json:"aggressive_cutover"`
+	}
+	c.Assert(json.Unmarshal([]byte(gotBody), &sent), qt.IsNil)
+	c.Assert(sent.AggressiveCutover, qt.IsNotNil)
+	c.Assert(*sent.AggressiveCutover, qt.IsTrue)
+}
+
+func TestDeployRequests_AggressiveCutover(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodPut)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/test-organization/databases/test-database/deploy-requests/1284/aggressive-cutover")
+		var body struct {
+			Enable bool `json:"enable"`
+		}
+		c.Assert(json.NewDecoder(r.Body).Decode(&body), qt.IsNil)
+		c.Assert(body.Enable, qt.IsFalse)
+		w.WriteHeader(200)
+		out := `{"id": "test-deploy-request-id", "branch": "urgent-branch", "into_branch": "main", "notes": "", "created_at": "2021-01-14T10:19:23.000Z", "updated_at": "2021-01-14T10:19:23.000Z", "closed_at": null, "deployment": { "state": "ready", "aggressive_cutover": false }, "number": 1284}`
+		_, err := w.Write([]byte(out))
+		c.Assert(err, qt.IsNil)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	dr, err := client.DeployRequests.AggressiveCutover(context.Background(), &DeployRequestAggressiveCutoverRequest{
+		Organization: "test-organization",
+		Database:     "test-database",
+		Number:       1284,
+		Enable:       false,
+	})
+
+	testTime := time.Date(2021, time.January, 14, 10, 19, 23, 0, time.UTC)
+	want := &DeployRequest{
+		ID:     "test-deploy-request-id",
+		Branch: "urgent-branch",
+		Deployment: &Deployment{
+			State:             "ready",
+			AggressiveCutover: false,
+		},
+		IntoBranch: "main",
+		Number:     1284,
+		Notes:      "",
+		CreatedAt:  testTime,
+		UpdatedAt:  testTime,
+	}
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(dr, qt.DeepEquals, want)
+}
+
 func TestDeployRequests_Review(t *testing.T) {
 	c := qt.New(t)
 
@@ -821,6 +911,7 @@ func TestDeployRequests_GetDeployment(t *testing.T) {
 	c.Assert(err, qt.IsNil)
 	c.Assert(deployment.ID, qt.Equals, "dep-1")
 	c.Assert(deployment.AutoDeleteBranch, qt.IsTrue)
+	c.Assert(deployment.AggressiveCutover, qt.IsFalse)
 }
 
 func TestDeployRequests_ListReviews(t *testing.T) {

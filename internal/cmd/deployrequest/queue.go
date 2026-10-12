@@ -64,6 +64,7 @@ type DeploymentRow struct {
 	Deployable         bool   `header:"deployable" json:"deployable"`
 	AutoCutover        bool   `header:"auto_cutover" json:"auto_cutover"`
 	AutoDeleteBranch   bool   `header:"auto_delete_branch" json:"auto_delete_branch"`
+	AggressiveCutover  bool   `header:"aggressive_cutover" json:"aggressive_cutover"`
 	InstantDDLEligible bool   `header:"instant_ddl_eligible" json:"instant_ddl_eligible"`
 	QueuePaused        bool   `header:"queue_paused" json:"queue_paused"`
 	CreatedAt          string `header:"created_at" json:"created_at"`
@@ -94,6 +95,7 @@ func toDeployment(d *planetscale.Deployment) *DeploymentRow {
 		Deployable:         d.Deployable,
 		AutoCutover:        d.AutoCutover,
 		AutoDeleteBranch:   d.AutoDeleteBranch,
+		AggressiveCutover:  d.AggressiveCutover,
 		InstantDDLEligible: d.InstantDDLEligible,
 		QueuePaused:        d.QueuePaused,
 		CreatedAt:          formatTimestampRequired(d.CreatedAt),

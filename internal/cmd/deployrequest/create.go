@@ -18,6 +18,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 		auto_delete_branch bool
 		enable_auto_apply  bool
 		disable_auto_apply bool
+		aggressive_cutover bool
 	}
 
 	cmd := &cobra.Command{
@@ -59,6 +60,10 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 				request.AutoDeleteBranch = true
 			}
 
+			if flags.aggressive_cutover {
+				request.AggressiveCutover = true
+			}
+
 			dr, err := client.DeployRequests.Create(ctx, request)
 
 			if err != nil {
@@ -85,6 +90,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.PersistentFlags().StringVar(&flags.into, "into", "", "Branch to deploy into. By default, it's the parent branch (if present) or the database's default branch.")
 	cmd.PersistentFlags().StringVar(&flags.notes, "notes", "", "Notes to include with the deploy request.")
 	cmd.Flags().BoolVar(&flags.auto_delete_branch, "auto-delete-branch", false, "Delete the branch after the deploy request completes.")
+	cmd.Flags().BoolVar(&flags.aggressive_cutover, "aggressive-cutover", false, "Cut this deploy request over aggressively: Vitess kills blocking queries and transactions on the first cutover attempt instead of retrying for up to an hour. Does not change the database setting. Other deploy requests are unaffected.")
 	cmd.Flags().BoolVar(&flags.enable_auto_apply, "enable-auto-apply", false, "Enable auto-apply. The deploy request will automatically swap over to the new schema once ready.")
 	cmd.Flags().BoolVar(&flags.disable_auto_apply, "disable-auto-apply", false, "Disable auto-apply. The deploy request will wait for your confirmation before swapping to the new schema. Use 'deploy-request apply' to apply the changes manually.")
 

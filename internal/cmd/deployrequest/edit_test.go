@@ -135,7 +135,7 @@ func TestDeployRequest_EditCmdNoFlags(t *testing.T) {
 	cmd.SetArgs([]string{db, strconv.FormatUint(number, 10)})
 	err := cmd.Execute()
 
-	c.Assert(err, qt.ErrorMatches, "must specify at least one of --enable-auto-apply, --disable-auto-apply, --auto-delete-branch, or --auto-apply")
+	c.Assert(err, qt.ErrorMatches, "must specify at least one of --enable-auto-apply, --disable-auto-apply, --auto-delete-branch, --aggressive-cutover, or --auto-apply")
 }
 
 func TestDeployRequest_EditCmdBothFlags(t *testing.T) {
@@ -419,4 +419,91 @@ func TestDeployRequest_UpdateCmdDisableAutoDeleteBranch(t *testing.T) {
 	c.Assert(err, qt.IsNil)
 	c.Assert(svc.AutoDeleteBranchFnInvoked, qt.IsTrue)
 	c.Assert(buf.String(), qt.JSONEquals, &ps.DeployRequest{Number: 10})
+}
+
+func TestDeployRequest_UpdateCmdAggressiveCutoverFalse(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	db := "planetscale"
+	number := uint64(10)
+
+	svc := &mock.DeployRequestsService{
+		AggressiveCutoverFn: func(ctx context.Context, req *ps.DeployRequestAggressiveCutoverRequest) (*ps.DeployRequest, error) {
+			c.Assert(req.Number, qt.Equals, number)
+			c.Assert(req.Database, qt.Equals, db)
+			c.Assert(req.Organization, qt.Equals, org)
+			c.Assert(req.Enable, qt.IsFalse)
+			return &ps.DeployRequest{
+				Number: number,
+				Deployment: &ps.Deployment{
+					AggressiveCutover: false,
+				},
+			}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: org},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{DeployRequests: svc}, nil
+		},
+	}
+
+	cmd := UpdateCmd(ch)
+	cmd.SetArgs([]string{db, strconv.FormatUint(number, 10), "--aggressive-cutover=false"})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.AggressiveCutoverFnInvoked, qt.IsTrue)
+	c.Assert(svc.AutoApplyFnInvoked, qt.IsFalse)
+	c.Assert(svc.AutoDeleteBranchFnInvoked, qt.IsFalse)
+	c.Assert(buf.String(), qt.JSONEquals, &ps.DeployRequest{
+		Number: number,
+		Deployment: &ps.Deployment{
+			AggressiveCutover: false,
+		},
+	})
+}
+
+func TestDeployRequest_UpdateCmdAggressiveCutover(t *testing.T) {
+	c := qt.New(t)
+
+	var human bytes.Buffer
+	format := printer.Human
+	p := printer.NewPrinter(&format)
+	p.SetHumanOutput(&human)
+
+	org := "planetscale"
+	db := "planetscale"
+	number := uint64(1284)
+
+	svc := &mock.DeployRequestsService{
+		AggressiveCutoverFn: func(ctx context.Context, req *ps.DeployRequestAggressiveCutoverRequest) (*ps.DeployRequest, error) {
+			c.Assert(req.Enable, qt.IsTrue)
+			return &ps.DeployRequest{Number: number}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: org},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{DeployRequests: svc}, nil
+		},
+	}
+
+	cmd := UpdateCmd(ch)
+	cmd.SetArgs([]string{db, strconv.FormatUint(number, 10), "--aggressive-cutover"})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.AggressiveCutoverFnInvoked, qt.IsTrue)
+	c.Assert(human.String(), qt.Contains, "Successfully updated aggressive-cutover for")
 }
