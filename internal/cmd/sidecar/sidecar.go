@@ -83,12 +83,13 @@ func toSidecarDetail(sidecar *ps.NekiSidecar, parameters []*ps.NekiParameter) *s
 }
 
 type parameterDisplay struct {
-	Namespace string `header:"namespace" json:"namespace"`
-	Name      string `header:"name" json:"name"`
-	Value     string `header:"value" json:"value"`
-	Default   string `header:"default" json:"default_value"`
-	Type      string `header:"type" json:"parameter_type"`
-	Restart   bool   `header:"restart" json:"restart"`
+	Namespace      string `header:"namespace" json:"namespace"`
+	Name           string `header:"name" json:"name"`
+	Value          string `header:"value" json:"value"`
+	Default        string `header:"default" json:"default_value"`
+	Type           string `header:"type" json:"parameter_type"`
+	Restart        bool   `header:"restart" json:"restart"`
+	RequiresUpdate bool   `header:"requires update" json:"requires_update"`
 
 	orig *ps.NekiParameter
 }
@@ -105,13 +106,14 @@ func toParameters(parameters []*ps.NekiParameter) []*parameterDisplay {
 	out := make([]*parameterDisplay, 0, len(parameters))
 	for _, parameter := range parameters {
 		out = append(out, &parameterDisplay{
-			Namespace: parameter.Namespace,
-			Name:      parameter.Name,
-			Value:     formatValue(parameter.Value),
-			Default:   formatValue(parameter.DefaultValue),
-			Type:      parameter.ParameterType,
-			Restart:   parameter.Restart,
-			orig:      parameter,
+			Namespace:      parameter.Namespace,
+			Name:           parameter.Name,
+			Value:          formatValue(parameter.Value),
+			Default:        formatValue(parameter.DefaultValue),
+			Type:           parameter.ParameterType,
+			Restart:        parameter.Restart,
+			RequiresUpdate: parameter.RequiresUpdate != nil,
+			orig:           parameter,
 		})
 	}
 	return out

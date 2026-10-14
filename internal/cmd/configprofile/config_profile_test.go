@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
@@ -309,13 +310,14 @@ func TestConfigProfileDefaultCommands(t *testing.T) {
 
 func TestConfigProfileParametersCmd(t *testing.T) {
 	c := qt.New(t)
+	requiresUpdate := "configuration_profile"
 	var out bytes.Buffer
 	svc := &mock.NekiShardConfigurationProfilesService{ListParametersFn: func(_ context.Context, req *ps.ListNekiShardConfigurationProfileParametersRequest) ([]*ps.NekiParameter, error) {
 		c.Assert(req.Extension, qt.IsNotNil)
 		c.Assert(*req.Extension, qt.IsTrue)
 		c.Assert(req.Internal, qt.IsNil)
 		return []*ps.NekiParameter{
-			{Name: "work_mem", Namespace: "pgconf", Value: "64MB"},
+			{Name: "work_mem", Namespace: "pgconf", Value: "64MB", RequiresUpdate: &requiresUpdate},
 			{Name: "default_pool_size", Namespace: "pgbouncer", Value: "20"},
 		}, nil
 	}}
@@ -326,8 +328,31 @@ func TestConfigProfileParametersCmd(t *testing.T) {
 	c.Assert(out.String(), qt.JSONEquals, []map[string]interface{}{{
 		"name": "work_mem", "display_name": "", "namespace": "pgconf", "advanced": false,
 		"category": nil, "description": "", "parameter_type": "", "default_value": nil, "value": "64MB",
-		"required": false, "created_at": "0001-01-01T00:00:00Z", "updated_at": nil, "restart": false, "url": "",
+		"required": false, "created_at": "0001-01-01T00:00:00Z", "updated_at": nil, "restart": false, "url": "", "requires_update": "configuration_profile",
 	}})
+}
+
+func TestConfigProfileParametersRequiresUpdateTable(t *testing.T) {
+	c := qt.New(t)
+	var parameters []*ps.NekiParameter
+	c.Assert(json.Unmarshal([]byte(`[
+		{"namespace":"pgconf","name":"profile_locked","requires_update":"configuration_profile"},
+		{"namespace":"pgconf","name":"cluster_locked","requires_update":"cluster"},
+		{"namespace":"pgconf","name":"editable","requires_update":null}
+	]`), &parameters), qt.IsNil)
+
+	var out bytes.Buffer
+	format := printer.Human
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&out)
+	c.Assert(p.PrintResource(toParameters(parameters)), qt.IsNil)
+
+	lines := strings.Split(strings.TrimSpace(out.String()), "\n")
+	c.Assert(len(lines), qt.Equals, 5)
+	c.Assert(lines[0], qt.Contains, "REQUIRES UPDATE")
+	c.Assert(strings.Fields(lines[2]), qt.DeepEquals, []string{"pgconf", "profile_locked", "No", "No", "Yes"})
+	c.Assert(strings.Fields(lines[3]), qt.DeepEquals, []string{"pgconf", "cluster_locked", "No", "No", "Yes"})
+	c.Assert(strings.Fields(lines[4]), qt.DeepEquals, []string{"pgconf", "editable", "No", "No", "No"})
 }
 
 func TestConfigProfileChangesCancelCmd(t *testing.T) {

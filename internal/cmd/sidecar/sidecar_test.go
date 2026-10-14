@@ -189,7 +189,7 @@ func TestSidecarParametersCmd(t *testing.T) {
 	c.Assert(out.String(), qt.JSONEquals, []map[string]interface{}{{
 		"name": "default_pool_size", "display_name": "", "namespace": "pgbouncer", "advanced": false,
 		"category": nil, "description": "", "parameter_type": "", "default_value": nil, "value": "20",
-		"required": false, "created_at": "0001-01-01T00:00:00Z", "updated_at": nil, "restart": false, "url": "",
+		"required": false, "created_at": "0001-01-01T00:00:00Z", "updated_at": nil, "restart": false, "url": "", "requires_update": nil,
 	}})
 }
 

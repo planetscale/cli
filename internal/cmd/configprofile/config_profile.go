@@ -71,14 +71,15 @@ func toProfiles(profiles []*ps.NekiShardConfigurationProfile) []*profileDisplay 
 }
 
 type parameterDisplay struct {
-	Namespace string `header:"namespace" json:"namespace"`
-	Name      string `header:"name" json:"name"`
-	Value     string `header:"value" json:"value"`
-	Default   string `header:"default" json:"default_value"`
-	Type      string `header:"type" json:"parameter_type"`
-	Restart   bool   `header:"restart" json:"restart"`
-	Required  bool   `header:"required" json:"required"`
-	orig      *ps.NekiParameter
+	Namespace      string `header:"namespace" json:"namespace"`
+	Name           string `header:"name" json:"name"`
+	Value          string `header:"value" json:"value"`
+	Default        string `header:"default" json:"default_value"`
+	Type           string `header:"type" json:"parameter_type"`
+	Restart        bool   `header:"restart" json:"restart"`
+	Required       bool   `header:"required" json:"required"`
+	RequiresUpdate bool   `header:"requires update" json:"requires_update"`
+	orig           *ps.NekiParameter
 }
 
 func (p *parameterDisplay) MarshalJSON() ([]byte, error) { return json.Marshal(p.orig) }
@@ -99,14 +100,15 @@ func toParameters(parameters []*ps.NekiParameter) []*parameterDisplay {
 	out := make([]*parameterDisplay, 0, len(parameters))
 	for _, p := range parameters {
 		out = append(out, &parameterDisplay{
-			Namespace: p.Namespace,
-			Name:      p.Name,
-			Value:     formatValue(p.Value),
-			Default:   formatValue(p.DefaultValue),
-			Type:      p.ParameterType,
-			Restart:   p.Restart,
-			Required:  p.Required,
-			orig:      p,
+			Namespace:      p.Namespace,
+			Name:           p.Name,
+			Value:          formatValue(p.Value),
+			Default:        formatValue(p.DefaultValue),
+			Type:           p.ParameterType,
+			Restart:        p.Restart,
+			Required:       p.Required,
+			RequiresUpdate: p.RequiresUpdate != nil,
+			orig:           p,
 		})
 	}
 	return out
