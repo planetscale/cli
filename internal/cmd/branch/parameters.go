@@ -105,12 +105,13 @@ To change parameters, use 'pscale branch resize <database> <branch> --parameters
 }
 
 type postgresParameter struct {
-	Namespace string `header:"namespace" json:"namespace"`
-	Name      string `header:"name" json:"name"`
-	Value     string `header:"value" json:"value"`
-	Default   string `header:"default" json:"default_value"`
-	Type      string `header:"type" json:"parameter_type"`
-	Restart   bool   `header:"restart" json:"restart"`
+	Namespace      string `header:"namespace" json:"namespace"`
+	Name           string `header:"name" json:"name"`
+	Value          string `header:"value" json:"value"`
+	Default        string `header:"default" json:"default_value"`
+	Type           string `header:"type" json:"parameter_type"`
+	Restart        bool   `header:"restart" json:"restart"`
+	RequiresUpdate bool   `header:"requires update" json:"requires_update"`
 
 	orig *ps.PostgresParameter
 }
@@ -119,13 +120,14 @@ func toPostgresParameters(parameters []*ps.PostgresParameter) []*postgresParamet
 	out := make([]*postgresParameter, 0, len(parameters))
 	for _, param := range parameters {
 		out = append(out, &postgresParameter{
-			Namespace: param.Namespace,
-			Name:      param.Name,
-			Value:     formatParameterValue(param.Value),
-			Default:   formatParameterValue(param.DefaultValue),
-			Type:      param.ParameterType,
-			Restart:   param.Restart,
-			orig:      param,
+			Namespace:      param.Namespace,
+			Name:           param.Name,
+			Value:          formatParameterValue(param.Value),
+			Default:        formatParameterValue(param.DefaultValue),
+			Type:           param.ParameterType,
+			Restart:        param.Restart,
+			RequiresUpdate: param.RequiresUpdate != nil,
+			orig:           param,
 		})
 	}
 	return out

@@ -206,17 +206,18 @@ type ListPostgresParametersRequest struct {
 
 // PostgresParameter represents a configuration parameter of a Postgres branch.
 type PostgresParameter struct {
-	ID            string `json:"id"`
-	Name          string `json:"name"`
-	DisplayName   string `json:"display_name"`
-	Namespace     string `json:"namespace"`
-	Category      string `json:"category"`
-	Description   string `json:"description"`
-	ParameterType string `json:"parameter_type"`
-	DefaultValue  any    `json:"default_value"`
-	Value         any    `json:"value"`
-	Required      bool   `json:"required"`
-	Restart       bool   `json:"restart"`
+	ID             string  `json:"id"`
+	Name           string  `json:"name"`
+	DisplayName    string  `json:"display_name"`
+	Namespace      string  `json:"namespace"`
+	Category       string  `json:"category"`
+	Description    string  `json:"description"`
+	ParameterType  string  `json:"parameter_type"`
+	DefaultValue   any     `json:"default_value"`
+	Value          any     `json:"value"`
+	Required       bool    `json:"required"`
+	Restart        bool    `json:"restart"`
+	RequiresUpdate *string `json:"requires_update"`
 
 	// Min, Max, and Step are numbers for plain numeric parameters but strings
 	// for byte- and time-typed ones (e.g. "8kB", "10s").

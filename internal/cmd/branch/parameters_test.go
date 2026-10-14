@@ -3,6 +3,8 @@ package branch
 import (
 	"bytes"
 	"context"
+	"encoding/json"
+	"strings"
 	"testing"
 
 	qt "github.com/frankban/quicktest"
@@ -15,6 +17,7 @@ import (
 
 func TestBranch_ParametersCmd(t *testing.T) {
 	c := qt.New(t)
+	requiresUpdate := "cluster"
 
 	var buf bytes.Buffer
 	format := printer.JSON
@@ -34,7 +37,7 @@ func TestBranch_ParametersCmd(t *testing.T) {
 			c.Assert(req.Internal, qt.IsNil)
 
 			return []*ps.PostgresParameter{
-				{Namespace: "pgconf", Name: "max_connections", Value: "200", DefaultValue: "100", ParameterType: "integer", Restart: true},
+				{Namespace: "pgconf", Name: "max_connections", Value: "200", DefaultValue: "100", ParameterType: "integer", Restart: true, RequiresUpdate: &requiresUpdate},
 				{Namespace: "pgbouncer", Name: "default_pool_size", Value: "20", DefaultValue: "20", ParameterType: "integer"},
 			}, nil
 		},
@@ -58,6 +61,11 @@ func TestBranch_ParametersCmd(t *testing.T) {
 	c.Assert(pgSvc.ListParametersFnInvoked, qt.IsTrue)
 	c.Assert(buf.String(), qt.Contains, "max_connections")
 	c.Assert(buf.String(), qt.Contains, "default_pool_size")
+	var parameters []map[string]interface{}
+	c.Assert(json.Unmarshal(buf.Bytes(), &parameters), qt.IsNil)
+	c.Assert(parameters[0]["requires_update"], qt.Equals, "cluster")
+	c.Assert(parameters[1]["requires_update"], qt.IsNil)
+	c.Assert(buf.String(), qt.Contains, `"requires_update": null`)
 }
 
 func TestBranch_ParametersCmd_ListSubcommand(t *testing.T) {
@@ -129,4 +137,25 @@ func TestBranch_ParametersCmd_NamespaceFilter(t *testing.T) {
 	c.Assert(err, qt.IsNil)
 	c.Assert(buf.String(), qt.Contains, "default_pool_size")
 	c.Assert(buf.String(), qt.Not(qt.Contains), "max_connections")
+}
+
+func TestBranch_ParametersRequiresUpdateTable(t *testing.T) {
+	c := qt.New(t)
+	var parameters []*ps.PostgresParameter
+	c.Assert(json.Unmarshal([]byte(`[
+		{"namespace":"pgconf","name":"locked","requires_update":"cluster"},
+		{"namespace":"pgconf","name":"editable","requires_update":null}
+	]`), &parameters), qt.IsNil)
+
+	var out bytes.Buffer
+	format := printer.Human
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&out)
+	c.Assert(p.PrintResource(toPostgresParameters(parameters)), qt.IsNil)
+
+	lines := strings.Split(strings.TrimSpace(out.String()), "\n")
+	c.Assert(len(lines), qt.Equals, 4)
+	c.Assert(lines[0], qt.Contains, "REQUIRES UPDATE")
+	c.Assert(strings.Fields(lines[2]), qt.DeepEquals, []string{"pgconf", "locked", "No", "Yes"})
+	c.Assert(strings.Fields(lines[3]), qt.DeepEquals, []string{"pgconf", "editable", "No", "No"})
 }

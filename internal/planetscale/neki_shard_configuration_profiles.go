@@ -95,20 +95,21 @@ type SetDefaultNekiShardConfigurationProfileRequest struct {
 }
 
 type NekiParameter struct {
-	Type          string      `json:"type,omitempty"`
-	Name          string      `json:"name"`
-	DisplayName   string      `json:"display_name"`
-	Namespace     string      `json:"namespace"`
-	Advanced      bool        `json:"advanced"`
-	Category      *string     `json:"category"`
-	Description   string      `json:"description"`
-	ParameterType string      `json:"parameter_type"`
-	DefaultValue  interface{} `json:"default_value"`
-	Value         interface{} `json:"value"`
-	Required      bool        `json:"required"`
-	CreatedAt     time.Time   `json:"created_at"`
-	UpdatedAt     *time.Time  `json:"updated_at"`
-	Restart       bool        `json:"restart"`
+	Type           string      `json:"type,omitempty"`
+	Name           string      `json:"name"`
+	DisplayName    string      `json:"display_name"`
+	Namespace      string      `json:"namespace"`
+	Advanced       bool        `json:"advanced"`
+	Category       *string     `json:"category"`
+	Description    string      `json:"description"`
+	ParameterType  string      `json:"parameter_type"`
+	DefaultValue   interface{} `json:"default_value"`
+	Value          interface{} `json:"value"`
+	Required       bool        `json:"required"`
+	CreatedAt      time.Time   `json:"created_at"`
+	UpdatedAt      *time.Time  `json:"updated_at"`
+	Restart        bool        `json:"restart"`
+	RequiresUpdate *string     `json:"requires_update"`
 	// Min, Max, and Step are numbers for plain numeric parameters but strings
 	// for byte- and time-typed ones (for example, "128kB" or "10min").
 	Max     any      `json:"max,omitempty"`
