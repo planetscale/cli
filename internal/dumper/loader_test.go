@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	qt "github.com/frankban/quicktest"
+	"github.com/planetscale/cli/internal/printer"
 	"github.com/xelabs/go-mysqlstack/driver"
 	"github.com/xelabs/go-mysqlstack/sqlparser/depends/sqltypes"
 	"github.com/xelabs/go-mysqlstack/xlog"
@@ -351,6 +352,53 @@ func TestRestoreTable_EscapesUseDatabase(t *testing.T) {
 		Address:      address,
 		IntervalMs:   500,
 		MaxQuerySize: 1024,
+	}
+	loader, err := NewLoader(cfg)
+	c.Assert(err, qt.IsNil)
+
+	pool, err := NewPool(loader.log, cfg.Threads, cfg.Address, cfg.User, cfg.Password, cfg.SessionVars, "")
+	c.Assert(err, qt.IsNil)
+	defer pool.Close()
+
+	conn := pool.Get()
+	defer pool.Put(conn)
+
+	_, err = loader.restoreTable(context.Background(), dataFile, conn)
+	c.Assert(err, qt.IsNil)
+}
+
+func TestRestoreTable_QueryAtMaxQuerySize(t *testing.T) {
+	c := qt.New(t)
+
+	log := xlog.NewStdLog(xlog.Level(xlog.ERROR))
+	fakedbs := driver.NewTestHandler(log)
+	server, err := driver.MockMysqlServer(log, fakedbs)
+	c.Assert(err, qt.IsNil)
+	defer server.Close()
+
+	query := "INSERT INTO `t1` VALUES (1)"
+	fakedbs.AddQuery("USE `testdb`", &sqltypes.Result{})
+	fakedbs.AddQuery("SET FOREIGN_KEY_CHECKS=0", &sqltypes.Result{})
+	fakedbs.AddQuery(query, &sqltypes.Result{})
+
+	tempDir := c.TempDir()
+	dataFile := tempDir + "/testdb.t1.00001.sql"
+	err = os.WriteFile(dataFile, []byte(query+";"), 0644)
+	c.Assert(err, qt.IsNil)
+
+	format := printer.JSON
+	cfg := &Config{
+		Database:   "testdb",
+		Outdir:     tempDir,
+		User:       "mock",
+		Password:   "mock",
+		Threads:    1,
+		Address:    server.Addr(),
+		IntervalMs: 500,
+		// --max-query-size is the maximum size allowed, so a query of
+		// exactly that many bytes must still be restored.
+		MaxQuerySize: len(query),
+		Printer:      printer.NewPrinter(&format),
 	}
 	loader, err := NewLoader(cfg)
 	c.Assert(err, qt.IsNil)
