@@ -20,6 +20,7 @@ type DatabaseKind string
 const (
 	DatabaseKindMySQL      DatabaseKind = "mysql"
 	DatabaseKindPostgreSQL DatabaseKind = "postgresql"
+	DatabaseKindNeki       DatabaseKind = "neki"
 )
 
 type InstanceMeta struct {
@@ -41,6 +42,9 @@ type ConnectionList struct {
 	Sort         SortMode       `json:"sort"`
 	Instances    []InstanceMeta `json:"instances,omitempty"`
 	Topology     *Topology      `json:"topology,omitempty"`
+	// Warnings reports collection problems, such as unreachable Neki routers,
+	// that leave Connections incomplete without failing the request.
+	Warnings []string `json:"warnings,omitempty"`
 }
 
 // HasUnreachableInstance reports whether the server flagged any instance as
@@ -75,6 +79,24 @@ type Connection struct {
 	Duration        time.Duration `json:"duration"`
 	BlockedBy       []int         `json:"blocked_by,omitempty"`
 	QueryText       string        `json:"query_text,omitempty"`
+
+	BackendStart     *time.Time       `json:"backend_start,omitempty"`
+	RouterName       string           `json:"router_name,omitempty"`
+	RouterCell       string           `json:"router_cell,omitempty"`
+	RouterUID        string           `json:"router_uid,omitempty"`
+	AvailabilityZone string           `json:"availability_zone,omitempty"`
+	SidecarBackends  []SidecarBackend `json:"sidecar_backends,omitempty"`
+}
+
+// SidecarBackend is a Neki shard backend serving a router session.
+type SidecarBackend struct {
+	ShardUID   string     `json:"shard_uid"`
+	ShardName  string     `json:"shard_name,omitempty"`
+	SidecarUID string     `json:"sidecar_uid"`
+	BackendPID int        `json:"backend_pid"`
+	QueryText  string     `json:"query_text,omitempty"`
+	XactStart  *time.Time `json:"xact_start,omitempty"`
+	QueryStart *time.Time `json:"query_start,omitempty"`
 }
 
 func NewConnectionList(capturedAt time.Time, connections []Connection, sort SortMode) ConnectionList {
@@ -112,7 +134,14 @@ func compareDuration(a, b Connection) int {
 	if cmp := compareBool(durationSortHasWork(a), durationSortHasWork(b)); cmp != 0 {
 		return cmp
 	}
-	return a.PID - b.PID
+	return compareIdentity(a, b)
+}
+
+func compareIdentity(a, b Connection) int {
+	if a.PID != b.PID {
+		return a.PID - b.PID
+	}
+	return strings.Compare(a.Instance, b.Instance)
 }
 
 func durationSortHasWork(c Connection) bool {
@@ -199,7 +228,7 @@ func compareTransactionStart(a, b Connection) int {
 	if cmp := compareNullableTime(a.QueryStart, b.QueryStart); cmp != 0 {
 		return cmp
 	}
-	return a.PID - b.PID
+	return compareIdentity(a, b)
 }
 
 func compareNullableTime(a, b *time.Time) int {
@@ -240,6 +269,42 @@ func (c Connection) HumanFields() [][2]string {
 		{"transaction_id", DerefString(c.TransactionID)},
 		{"connection_id", DerefString(c.ConnectionID)},
 	}
+}
+
+// NekiHumanFields is the HumanFields equivalent for Neki router sessions.
+func (c Connection) NekiHumanFields() [][2]string {
+	fields := [][2]string{
+		{"pid", strconv.Itoa(c.PID)},
+		{"router", c.Instance},
+		{"zone", c.AvailabilityZone},
+		{"state", c.State},
+		{"duration", c.Duration.String()},
+		{"user", c.Username},
+		{"database", c.DatabaseName},
+		{"application", c.ApplicationName},
+		{"client_addr", c.ClientAddr},
+		{"backend_start", formatOptionalTime(c.BackendStart)},
+		{"shard_backends", strconv.Itoa(len(c.SidecarBackends))},
+	}
+	for _, backend := range c.SidecarBackends {
+		fields = append(fields,
+			[2]string{"shard", backend.ShardName},
+			[2]string{"shard_uid", backend.ShardUID},
+			[2]string{"sidecar", backend.SidecarUID},
+			[2]string{"backend_pid", strconv.Itoa(backend.BackendPID)},
+			[2]string{"xact_start", formatOptionalTime(backend.XactStart)},
+			[2]string{"query_start", formatOptionalTime(backend.QueryStart)},
+			[2]string{"backend_query", strings.Join(strings.Fields(backend.QueryText), " ")},
+		)
+	}
+	return fields
+}
+
+func formatOptionalTime(t *time.Time) string {
+	if t == nil {
+		return ""
+	}
+	return t.Format(time.RFC3339)
 }
 
 // JoinWaitEvents renders the wait-event type/event pair as "type/event",

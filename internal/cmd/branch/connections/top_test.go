@@ -163,10 +163,16 @@ func TestTopCmdValidation(t *testing.T) {
 			wantErr: "--instance/--role are only supported for Postgres databases",
 		},
 		{
-			name:    "neki is not supported",
+			name:    "vitess target flags on neki",
 			engine:  ps.DatabaseEngineNeki,
-			args:    []string{"neki", "main"},
-			wantErr: "connections is not supported for Neki databases",
+			args:    []string{"neki", "main", "--shard", "-80"},
+			wantErr: "--keyspace/--shard are only supported for Vitess databases",
+		},
+		{
+			name:    "postgres filters on neki",
+			engine:  ps.DatabaseEngineNeki,
+			args:    []string{"neki", "main", "--instance", "router-a"},
+			wantErr: "--instance/--role are only supported for Postgres databases",
 		},
 		{
 			name:    "unknown role",
@@ -612,6 +618,76 @@ func TestTopCmdRunEHeadlessVitessWritesCapture(t *testing.T) {
 	})
 }
 
+func TestTopCmdRunsReadOnlyNekiTop(t *testing.T) {
+	c := qt.New(t)
+	restoreTTY := setPrinterTTY(t, true)
+	defer restoreTTY()
+
+	server := liveConnectionsServerForTop(t, func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodGet)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/acme/databases/neki/branches/main/connections")
+		c.Assert(r.URL.RawQuery, qt.Equals, "")
+		_, _ = io.WriteString(w, sampleNekiTopResponse())
+	})
+
+	var view, blockersView, cancelView string
+	var cancelConfirming bool
+	restoreProgram := setRunTeaProgram(t, func(model tea.Model, options ...tea.ProgramOption) error {
+		updated := fetchInitialTopModel(t, model)
+		view = updated.View()
+		withBlockers, _ := updated.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("b")})
+		blockersView = withBlockers.View()
+		withCancel, _ := updated.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("c")})
+		cancelView = withCancel.View()
+		cancelConfirming = strings.Contains(cancelView, "[y/N]")
+		return nil
+	})
+	defer restoreProgram()
+
+	cmd := topCmdForServerAndEngine(server.URL, ps.DatabaseEngineNeki, &bytes.Buffer{})
+	cmd.SetArgs([]string{"neki", "main"})
+
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(view, qt.Contains, "ROUTER")
+	c.Assert(view, qt.Contains, "router-a")
+	c.Assert(view, qt.Contains, "incomplete results: router router-b unreachable")
+	c.Assert(view, qt.Not(qt.Contains), "BLOCK")
+	c.Assert(view, qt.Not(qt.Contains), "cancel query")
+	c.Assert(view, qt.Not(qt.Contains), "force terminate")
+	c.Assert(blockersView, qt.Not(qt.Contains), "[blockers]")
+	c.Assert(cancelConfirming, qt.IsFalse)
+}
+
+func TestTopCmdRunEHeadlessNekiWritesCapture(t *testing.T) {
+	c := qt.New(t)
+	restoreTTY := setPrinterTTY(t, false)
+	defer restoreTTY()
+
+	server := liveConnectionsServerForTop(t, func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.WriteString(w, sampleNekiTopResponse())
+	})
+	capture := filepath.Join(t.TempDir(), "trace.jsonl")
+	cmd := topCmdForServerAndEngine(server.URL, ps.DatabaseEngineNeki, &bytes.Buffer{})
+	cmd.SetArgs([]string{"neki", "main", "--capture", capture, "--duration", "200ms", "--interval", "1s"})
+
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNil)
+	records := readJSONLines(t, capture)
+	c.Assert(records, qt.HasLen, 2)
+	captureRecord := capturedConnectionList(c, records[1])
+	c.Assert(captureRecord["database_kind"], qt.Equals, "neki")
+	c.Assert(captureRecord["warnings"], qt.DeepEquals, []any{"router router-b unreachable"})
+	connections := captureRecord["connections"].([]any)
+	c.Assert(connections, qt.HasLen, 1)
+	conn := connections[0].(map[string]any)
+	c.Assert(conn["pid"], qt.Equals, float64(2147483647))
+	c.Assert(conn["router_name"], qt.Equals, "router-a")
+	c.Assert(conn["backend_start"], qt.Equals, "2026-10-16T12:00:00.123456Z")
+}
+
 func TestTopCmdInteractiveCaptureStartsEnabled(t *testing.T) {
 	c := qt.New(t)
 	restoreTTY := setPrinterTTY(t, true)
@@ -743,6 +819,10 @@ func sampleTopResponseWithoutActionIDs() string {
 
 func sampleVitessTopResponse() string {
 	return `{"type":"list","database_kind":"mysql","captured_at":"2026-06-04T12:30:00Z","instances":[],"topology":{"keyspace":"commerce","shard":"-80","tablet":"zone1-1001"},"data":[{"pid":101,"instance":"zone1-1001","duration_ms":42000,"state":"Query/executing","usename":"vt_app","datname":"checkout","client_addr":"10.0.0.1:1234","query_text":"SELECT 1","connection_id":"zone1-1001-101","query_id":"zone1-1001-101"}]}`
+}
+
+func sampleNekiTopResponse() string {
+	return `{"type":"list","database_kind":"neki","captured_at":"2026-10-16T12:00:05Z","instances":[],"warnings":["router router-b unreachable"],"data":[{"pid":2147483647,"instance":"router-a","router_name":"router-a","router_cell":"us-east-1a","router_uid":"router-a-us-east-1a-1","availability_zone":"us-east-1a","state":"active","usename":"app","datname":"postgres","application_name":"worker","duration_ms":5000,"query_text":"SELECT 1","backend_start":"2026-10-16T12:00:00.123456Z","sidecar_backends":[{"shard_uid":"shard-1","shard_name":"-80","sidecar_uid":"sidecar-1","backend_pid":4242,"query_text":"SELECT 1"}]}]}`
 }
 
 func writeVitessMultipleKeyspacesResponse(w http.ResponseWriter) {

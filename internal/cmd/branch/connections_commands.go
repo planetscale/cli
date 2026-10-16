@@ -84,6 +84,9 @@ the current query.`,
 			if err != nil {
 				return err
 			}
+			if err := connections.ValidateActionEngine(engine); err != nil {
+				return err
+			}
 			target := connections.ConnectionTarget{Keyspace: flags.keyspace, Shard: flags.shard}
 			if err := connections.ValidateEngineFlags(engine, connections.ConnectionFilter{}, target); err != nil {
 				return err
@@ -119,7 +122,7 @@ the matching Postgres connection.`,
 			if err != nil {
 				return err
 			}
-			if err := connections.ValidateEngineFlags(engine, connections.ConnectionFilter{}, connections.ConnectionTarget{}); err != nil {
+			if err := connections.ValidateActionEngine(engine); err != nil {
 				return err
 			}
 			if engine != ps.DatabaseEnginePostgres {

@@ -204,7 +204,7 @@ func (b bindings) withPauseLabel(paused bool) bindings {
 func renderTable(state tableState) string {
 	headerLines := []string{renderHeader(state), ""}
 	var bannerLines []string
-	if banner := renderInstanceFailureBanner(state.List.Instances); banner != "" {
+	if banner := renderListBanner(state.List, tableWidth(state.Width)); banner != "" {
 		bannerLines = []string{banner, ""}
 	}
 	footerLines := strings.Split(renderFooter(state), "\n")
@@ -659,6 +659,20 @@ func sameLocalDay(a, b time.Time) bool {
 	return ay == by && am == bm && ad == bd
 }
 
+func renderListBanner(list live.ConnectionList, width int) string {
+	if banner := renderInstanceFailureBanner(list.Instances); banner != "" {
+		return banner
+	}
+	if len(list.Warnings) == 0 {
+		return ""
+	}
+	warnings := make([]string, 0, len(list.Warnings))
+	for _, warning := range list.Warnings {
+		warnings = append(warnings, sanitizeFooterText(warning))
+	}
+	return bannerStyle.Render(clipLine("incomplete results: "+strings.Join(warnings, "; "), width))
+}
+
 func renderInstanceFailureBanner(instances []live.InstanceMeta) string {
 	if len(instances) == 0 {
 		return ""
@@ -819,9 +833,16 @@ func connectionRowStyle(conn live.Connection, blockCount int, selected bool) lip
 }
 
 func connectionColumnStyleForDisplay(display connectionDisplayPreset, style lipgloss.Style, conn live.Connection, blockCount int, col int, headers []string) lipgloss.Style {
-	if display == connectionDisplayProcesslist {
-		if col >= 0 && col < len(headers) && headers[col] == "STATE" {
+	stateColumn := col >= 0 && col < len(headers) && headers[col] == "STATE"
+	switch display {
+	case connectionDisplayProcesslist:
+		if stateColumn {
 			return processlistStateStyleFor(style, conn.State)
+		}
+		return style
+	case connectionDisplayNeki:
+		if stateColumn {
+			return stateStyleFor(style, conn.State)
 		}
 		return style
 	}
@@ -859,8 +880,11 @@ func buildConnectionRows(connections []live.Connection, counts map[int]int, widt
 }
 
 func buildConnectionRowsForDisplay(display connectionDisplayPreset, connections []live.Connection, counts map[int]int, width int, selectedInSlice int) ([]string, [][]string) {
-	if display == connectionDisplayProcesslist {
+	switch display {
+	case connectionDisplayProcesslist:
 		return buildProcesslistConnectionRows(connections, width, selectedInSlice)
+	case connectionDisplayNeki:
+		return buildNekiConnectionRows(connections, width, selectedInSlice)
 	}
 
 	includeStart := width >= startColumnMinWidth
@@ -914,6 +938,33 @@ func buildProcesslistConnectionRows(connections []live.Connection, width int, se
 			emptyDash(conn.DatabaseName),
 			queryPreview(conn.QueryText),
 		)
+		rows = append(rows, row)
+	}
+	return headers, rows
+}
+
+func buildNekiConnectionRows(connections []live.Connection, width int, selectedInSlice int) ([]string, [][]string) {
+	includeStart := width >= startColumnMinWidth
+	headers := []string{"", "PID", "ROUTER", "STATE", "DURATION", "USER", "APP"}
+	if includeStart {
+		headers = append(headers, "START")
+	}
+	headers = append(headers, "QUERY")
+	rows := make([][]string, 0, len(connections))
+	for i, conn := range connections {
+		row := []string{
+			processlistRowMarker(i == selectedInSlice),
+			fmt.Sprint(conn.PID),
+			emptyDash(conn.Instance),
+			stateCell(conn.State),
+			formatDuration(conn.Duration),
+			appText(conn.Username),
+			appTextForWidth(conn.ApplicationName, width),
+		}
+		if includeStart {
+			row = append(row, formatTime(startTime(conn)))
+		}
+		row = append(row, queryPreview(conn.QueryText))
 		rows = append(rows, row)
 	}
 	return headers, rows
@@ -1153,7 +1204,7 @@ func visibleRowCount(totalRows, bodyAvail int) int {
 func bodyHeight(state tableState) int {
 	headerLines := 2
 	bannerLines := 0
-	if renderInstanceFailureBanner(state.List.Instances) != "" {
+	if renderListBanner(state.List, tableWidth(state.Width)) != "" {
 		bannerLines = 2
 	}
 	footerLines := strings.Count(renderFooter(state), "\n") + 1

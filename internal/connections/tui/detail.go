@@ -203,10 +203,17 @@ func detailFieldValue(value string) string {
 }
 
 func connectionDetailFields(preset connectionDisplayPreset, conn live.Connection) [][2]string {
-	if preset != connectionDisplayProcesslist {
+	switch preset {
+	case connectionDisplayProcesslist:
+		return processlistDetailFields(conn)
+	case connectionDisplayNeki:
+		return conn.NekiHumanFields()
+	default:
 		return conn.HumanFields()
 	}
+}
 
+func processlistDetailFields(conn live.Connection) [][2]string {
 	return [][2]string{
 		{"pid", fmt.Sprint(conn.PID)},
 		{"tablet", conn.Instance},

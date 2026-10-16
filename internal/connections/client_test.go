@@ -326,6 +326,115 @@ func TestClient_ListDecodesVitessProcesslist(t *testing.T) {
 	}
 }
 
+func TestClient_ListDecodesNekiSessions(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.RawQuery != "" {
+			t.Errorf("query = %q, want none", r.URL.RawQuery)
+		}
+		_, _ = io.WriteString(w, `{
+			"type": "list",
+			"database_kind": "neki",
+			"captured_at": "2026-10-16T12:00:05Z",
+			"instances": [],
+			"warnings": ["router router-b unreachable"],
+			"data": [
+				{
+					"pid": 2147483647,
+					"instance": "router-a",
+					"router_name": "router-a",
+					"router_cell": "us-east-1a",
+					"router_uid": "router-a-us-east-1a-1",
+					"availability_zone": "us-east-1a",
+					"datname": "postgres",
+					"usename": "app",
+					"application_name": "",
+					"client_addr": null,
+					"state": null,
+					"backend_type": null,
+					"query_text": "SELECT 1",
+					"query_start": null,
+					"xact_start": null,
+					"backend_start": "2026-10-16T12:00:00.123456Z",
+					"state_change": null,
+					"duration_ms": null,
+					"sidecar_backends": [
+						{"shard_uid": "shard-1", "shard_name": "-80", "sidecar_uid": "sidecar-1", "backend_pid": 4242, "query_text": "SELECT 1", "xact_start": null, "query_start": "2026-10-16T12:00:04Z"}
+					]
+				}
+			]
+		}`)
+	}))
+	defer srv.Close()
+
+	client, err := NewClient(ClientConfig{
+		BaseURL:        srv.URL,
+		Organization:   "acme",
+		Database:       "neki",
+		Branch:         "main",
+		ServiceTokenID: "tid",
+		ServiceToken:   "secret",
+	})
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+
+	list, err := client.List(context.Background(), SortByTransactionStart)
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+
+	if list.DatabaseKind != DatabaseKindNeki {
+		t.Errorf("DatabaseKind = %q, want %q", list.DatabaseKind, DatabaseKindNeki)
+	}
+	if !slices.Equal(list.Warnings, []string{"router router-b unreachable"}) {
+		t.Errorf("Warnings = %v", list.Warnings)
+	}
+	if len(list.Connections) != 1 {
+		t.Fatalf("len(Connections) = %d, want 1", len(list.Connections))
+	}
+	conn := list.Connections[0]
+	if conn.PID != 2147483647 || conn.Instance != "router-a" {
+		t.Errorf("identity = %d/%q", conn.PID, conn.Instance)
+	}
+	if conn.RouterName != "router-a" || conn.RouterCell != "us-east-1a" || conn.RouterUID != "router-a-us-east-1a-1" || conn.AvailabilityZone != "us-east-1a" {
+		t.Errorf("router fields = %+v", conn)
+	}
+	wantBackendStart, _ := time.Parse(time.RFC3339Nano, "2026-10-16T12:00:00.123456Z")
+	if conn.BackendStart == nil || !conn.BackendStart.Equal(wantBackendStart) {
+		t.Errorf("BackendStart = %v, want %v", conn.BackendStart, wantBackendStart)
+	}
+	if conn.State != "" || conn.ClientAddr != "" || conn.Duration != 0 || conn.XactStart != nil || conn.QueryStart != nil {
+		t.Errorf("missing optional fields were not left empty: %+v", conn)
+	}
+	if len(conn.SidecarBackends) != 1 {
+		t.Fatalf("len(SidecarBackends) = %d, want 1", len(conn.SidecarBackends))
+	}
+	backend := conn.SidecarBackends[0]
+	if backend.ShardName != "-80" || backend.SidecarUID != "sidecar-1" || backend.BackendPID != 4242 || backend.QueryStart == nil || backend.XactStart != nil {
+		t.Errorf("SidecarBackend = %+v", backend)
+	}
+}
+
+func TestClient_ListKeepsBackendStartOutOfPostgresRows(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.WriteString(w, `{"type":"list","database_kind":"postgresql","captured_at":"2026-04-29T12:34:56Z","instances":[],"data":[{"pid":123,"instance":"primary","backend_start":"2026-04-29T12:00:00Z"}]}`)
+	}))
+	defer srv.Close()
+	client, err := NewClient(ClientConfig{BaseURL: srv.URL, Organization: "acme", Database: "pgload", Branch: "main", ServiceTokenID: "tid", ServiceToken: "secret"})
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+
+	list, err := client.List(context.Background(), SortByTransactionStart)
+
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if list.Connections[0].BackendStart != nil {
+		t.Errorf("BackendStart = %v, want nil so Postgres captures keep their shape", list.Connections[0].BackendStart)
+	}
+}
+
 func TestClient_ListLeavesInstanceRoleEmptyForUnknownInstance(t *testing.T) {
 	const body = `{
 	  "type": "list",

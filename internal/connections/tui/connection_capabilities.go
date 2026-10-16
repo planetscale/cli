@@ -77,6 +77,10 @@ func (s ConnectionCapabilities) supports(kind actionKind) bool {
 	return requirement.field != actionTargetUnset
 }
 
+func (s ConnectionCapabilities) hasActions() bool {
+	return s.supports(actionCancelQuery) || s.supports(actionTerminateTxn) || s.supports(actionTerminateConn)
+}
+
 func (s ConnectionCapabilities) requirement(kind actionKind) ActionRequirement {
 	s = s.effective()
 	switch kind {

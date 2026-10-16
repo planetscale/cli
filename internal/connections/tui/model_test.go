@@ -1936,3 +1936,128 @@ func TestModelPreListPausedFooterHidesRefresh(t *testing.T) {
 	c.Assert(view, qt.Contains, "space resume")
 	c.Assert(view, qt.Not(qt.Contains), "r refresh")
 }
+
+func TestModelNekiConnectionViewIsReadOnly(t *testing.T) {
+	c := qt.New(t)
+	client := &clientStub{}
+	model := nekiModel(client, nil, nekiConnection("router-a", 7, time.Unix(50, 0)))
+
+	tableView := stripANSI(model.View())
+	c.Assert(tableView, qt.Contains, "ROUTER")
+	c.Assert(tableView, qt.Contains, "router-a")
+	c.Assert(tableView, qt.Not(qt.Contains), "BLOCK")
+	c.Assert(tableView, qt.Not(qt.Contains), "cancel query")
+	c.Assert(tableView, qt.Not(qt.Contains), "kill transaction")
+	c.Assert(tableView, qt.Not(qt.Contains), "force terminate")
+
+	for _, key := range []string{"c", "k", "K"} {
+		updated, _ := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(key)})
+		c.Assert(updated.(Model).confirming, qt.IsFalse, qt.Commentf("key %s", key))
+	}
+	c.Assert(client.cancelCalls+client.terminateTxn+client.terminateConn, qt.Equals, 0)
+
+	updated, _ := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("b")})
+	c.Assert(updated.(Model).detailOpen, qt.IsFalse)
+
+	updated, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("?")})
+	helpView := stripANSI(updated.(Model).View())
+	c.Assert(helpView, qt.Contains, "Read-only")
+	c.Assert(helpView, qt.Not(qt.Contains), "pg_cancel_backend")
+	c.Assert(helpView, qt.Not(qt.Contains), "KILL QUERY")
+
+	updated, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	detailView := stripANSI(updated.(Model).View())
+	c.Assert(detailView, qt.Contains, "router:")
+	c.Assert(detailView, qt.Contains, "zone:")
+	c.Assert(detailView, qt.Contains, "shard_backends:  1")
+	c.Assert(detailView, qt.Contains, "backend_pid:     4242")
+	c.Assert(detailView, qt.Not(qt.Contains), "left/right tabs")
+	c.Assert(detailView, qt.Not(qt.Contains), "cancel query")
+}
+
+func TestModelNekiConnectionViewSortsWithoutBlockers(t *testing.T) {
+	c := qt.New(t)
+	model := nekiModel(&clientStub{}, nil, nekiConnection("router-a", 7, time.Unix(50, 0)))
+	c.Assert(model.sort, qt.Equals, live.SortByTransactionStart)
+
+	updated, _ := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("s")})
+	c.Assert(updated.(Model).sort, qt.Equals, live.SortByDuration)
+
+	updated, _ = updated.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("s")})
+	c.Assert(updated.(Model).sort, qt.Equals, live.SortByTransactionStart)
+}
+
+func TestModelNekiDetailDropsSessionWhenRouterReusesPID(t *testing.T) {
+	c := qt.New(t)
+	model := nekiModel(&clientStub{}, nil, nekiConnection("router-a", 7, time.Unix(50, 0)))
+	updated, _ := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model = updated.(Model)
+
+	reconnected := live.NewConnectionList(time.Unix(101, 0), []live.Connection{nekiConnection("router-a", 7, time.Unix(90, 0))}, live.SortByTransactionStart)
+	updated, _ = model.Update(listMsg{list: reconnected})
+
+	c.Assert(stripANSI(updated.(Model).View()), qt.Contains, "no longer in the live snapshot")
+}
+
+func TestModelNekiSelectionFollowsRouterSessionWithDuplicatePIDs(t *testing.T) {
+	c := qt.New(t)
+	routerA := nekiConnection("router-a", 7, time.Unix(50, 0))
+	routerB := nekiConnection("router-b", 7, time.Unix(60, 0))
+	model := nekiModel(&clientStub{}, nil, routerA, routerB)
+	model.moveSelection(1)
+	selected, _ := model.selectedConnection()
+	c.Assert(selected.Instance, qt.Equals, "router-b")
+
+	earlier := time.Unix(40, 0)
+	routerB.XactStart = &earlier
+	updated, _ := model.Update(listMsg{list: live.NewConnectionList(time.Unix(101, 0), []live.Connection{routerA, routerB}, live.SortByTransactionStart)})
+	got := updated.(Model)
+
+	selected, _ = got.selectedConnection()
+	c.Assert(got.selected, qt.Equals, 0)
+	c.Assert(selected.Instance, qt.Equals, "router-b")
+}
+
+func TestModelNekiRendersCollectionWarnings(t *testing.T) {
+	c := qt.New(t)
+	warnings := []string{"router router-b unreachable"}
+
+	withRows := nekiModel(&clientStub{}, warnings, nekiConnection("router-a", 7, time.Unix(50, 0)))
+	empty := nekiModel(&clientStub{}, warnings)
+
+	c.Assert(stripANSI(withRows.View()), qt.Contains, "incomplete results: router router-b unreachable")
+	emptyView := stripANSI(empty.View())
+	c.Assert(emptyView, qt.Contains, "incomplete results: router router-b unreachable")
+	c.Assert(emptyView, qt.Contains, "no live connections")
+}
+
+func nekiModel(client *clientStub, warnings []string, connections ...live.Connection) Model {
+	model := NewModel(context.Background(), client, time.Second, 0).
+		WithConnectionView(NekiConnectionView)
+	updated, _ := model.Update(tea.WindowSizeMsg{Width: 160, Height: 30})
+	list := live.NewConnectionList(time.Unix(100, 0), connections, live.SortByTransactionStart)
+	list.DatabaseKind = live.DatabaseKindNeki
+	list.Warnings = warnings
+	updated, _ = updated.(Model).Update(listMsg{list: list})
+	return updated.(Model)
+}
+
+func nekiConnection(router string, pid int, backendStart time.Time) live.Connection {
+	return live.Connection{
+		PID:              pid,
+		Instance:         router,
+		RouterName:       router,
+		AvailabilityZone: "us-east-1a",
+		State:            "active",
+		Username:         "app",
+		QueryText:        "SELECT 1",
+		XactStart:        &backendStart,
+		BackendStart:     &backendStart,
+		SidecarBackends: []live.SidecarBackend{{
+			ShardUID:   "shard-1",
+			ShardName:  "-80",
+			SidecarUID: "sidecar-1",
+			BackendPID: 4242,
+		}},
+	}
+}

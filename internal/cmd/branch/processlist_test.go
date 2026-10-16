@@ -2,6 +2,7 @@ package branch
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/config"
+	"github.com/planetscale/cli/internal/mock"
 	ps "github.com/planetscale/cli/internal/planetscale"
 	"github.com/planetscale/cli/internal/printer"
 )
@@ -147,15 +149,20 @@ func TestProcesslist_NotFound(t *testing.T) {
 
 	var buf bytes.Buffer
 	ch := processlistTestHelper(org, server.URL, printer.JSON, &buf)
+	ch.Client = func() (*ps.Client, error) {
+		return &ps.Client{
+			Databases: databaseServiceForEngine(org, ps.DatabaseEngineMySQL),
+			DatabaseBranches: &mock.DatabaseBranchesService{
+				GetFn: func(context.Context, *ps.GetDatabaseBranchRequest) (*ps.DatabaseBranch, error) {
+					return nil, &ps.Error{Code: ps.ErrNotFound}
+				},
+			},
+		}, nil
+	}
 
 	cmd := ProcesslistCmd(ch)
 	cmd.SetArgs([]string{"show", db, branch})
 	err := cmd.Execute()
 
-	c.Assert(err, qt.IsNotNil)
-	c.Assert(err.Error(), qt.Contains, "branch")
-	c.Assert(err.Error(), qt.Contains, branch)
-	c.Assert(err.Error(), qt.Contains, db)
-	c.Assert(err.Error(), qt.Contains, org)
-	c.Assert(err.Error(), qt.Not(qt.Contains), "Not Found")
+	c.Assert(err, qt.ErrorMatches, "branch missing-branch does not exist in database missing-db \\(organization: my-org\\)")
 }

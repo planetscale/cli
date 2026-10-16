@@ -1,6 +1,10 @@
 package connections
 
-import live "github.com/planetscale/cli/internal/connections"
+import (
+	"time"
+
+	live "github.com/planetscale/cli/internal/connections"
+)
 
 // ListTopology describes the Vitess tablet selected for a live connection list.
 type ListTopology struct {
@@ -41,6 +45,13 @@ type printableCSVConnectionWithDatabase struct {
 	QueryID         *string `csv:"query_id" header:"query_id" json:"query_id"`
 	TransactionID   *string `csv:"transaction_id" header:"transaction_id" json:"transaction_id"`
 	ConnectionID    *string `csv:"connection_id" header:"connection_id" json:"connection_id"`
+
+	RouterName       string                `csv:"-" json:"router_name,omitempty"`
+	RouterCell       string                `csv:"-" json:"router_cell,omitempty"`
+	RouterUID        string                `csv:"-" json:"router_uid,omitempty"`
+	AvailabilityZone string                `csv:"-" json:"availability_zone,omitempty"`
+	BackendStart     *time.Time            `csv:"-" json:"backend_start,omitempty"`
+	SidecarBackends  []live.SidecarBackend `csv:"-" json:"sidecar_backends,omitempty"`
 }
 
 type printableConnectionWithTopology struct {
