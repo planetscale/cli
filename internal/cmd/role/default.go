@@ -41,6 +41,17 @@ new password for the default role.`,
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case ps.ErrNotFound:
+					// The default role endpoint also 404s when the branch exists
+					// but its default credentials have never been created.
+					if _, branchErr := client.PostgresBranches.Get(ctx, &ps.GetPostgresBranchRequest{
+						Organization: ch.Config.Organization,
+						Database:     database,
+						Branch:       branch,
+					}); branchErr == nil {
+						end()
+						return defaultRoleNotCreatedError(ch, database, branch)
+					}
+
 					return cmdutil.HandleNotFoundWithServiceTokenCheck(
 						ctx, cmd, ch.Config, ch.Client, err,
 						"read_branch",
@@ -57,4 +68,27 @@ new password for the default role.`,
 	}
 
 	return cmd
+}
+
+func defaultRoleNotCreatedError(ch *cmdutil.Helper, database, branch string) error {
+	org := ch.Config.Organization
+	if ch.Printer.Format() != printer.JSON {
+		return fmt.Errorf("the default role for %s/%s has not been created yet. Run 'pscale role reset-default %s %s' to create it",
+			printer.BoldBlue(database), printer.BoldBlue(branch), database, branch)
+	}
+
+	msg := fmt.Sprintf("the default role for %s/%s has not been created yet", database, branch)
+	resp := cmdutil.JSONErrorResponse{
+		Status: "action_required",
+		Error:  msg,
+		Issues: []cmdutil.JSONErrorIssue{{Code: "NOT_FOUND", Message: msg}},
+		NextSteps: []string{
+			"Ask the user to approve creating credentials for the default role",
+			fmt.Sprintf("pscale role reset-default %s %s --org %s --format json --force", database, branch, org),
+		},
+	}
+	if err := ch.Printer.PrintJSON(resp); err != nil {
+		return err
+	}
+	return cmdutil.JSONReportedError(cmdutil.ActionRequestedExitCode)
 }
