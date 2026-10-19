@@ -3,6 +3,7 @@ package configprofile
 import (
 	"bytes"
 	"context"
+	"encoding/csv"
 	"encoding/json"
 	"strings"
 	"testing"
@@ -38,6 +39,7 @@ func testProfile() *ps.NekiShardConfigurationProfile {
 		Default:              true,
 		Metal:                true,
 		Replicas:             2,
+		ReadOnlyReplicas:     3,
 		PostgresMajorVersion: 17,
 		PostgresMinorVersion: 6,
 		Shards:               3,
@@ -69,6 +71,7 @@ func TestConfigProfileListCmd(t *testing.T) {
 		"default":                true,
 		"metal":                  true,
 		"replicas":               2,
+		"read_only_replicas":     3,
 		"postgres_major_version": 17,
 		"postgres_minor_version": 6,
 		"shards":                 3,
@@ -98,6 +101,7 @@ func TestConfigProfileListHumanHeadersAndUTC(t *testing.T) {
 	cmd.SetArgs([]string{"app", "main"})
 	c.Assert(cmd.Execute(), qt.IsNil)
 	c.Assert(out.String(), qt.Contains, "CLUSTER SIZE")
+	c.Assert(out.String(), qt.Contains, "READ-ONLY REPLICAS")
 	c.Assert(out.String(), qt.Contains, "POSTGRES VERSION")
 	c.Assert(out.String(), qt.Contains, "MIN STORAGE")
 	c.Assert(out.String(), qt.Contains, "MAX STORAGE")
@@ -126,6 +130,58 @@ func TestConfigProfileCreateCmdOnlySendsChangedOptionalFlags(t *testing.T) {
 	cmd.SetArgs([]string{"app", "main", "metal", "--replicas", "0"})
 	c.Assert(cmd.Execute(), qt.IsNil)
 	c.Assert(svc.CreateFnInvoked, qt.IsTrue)
+}
+
+func TestConfigProfileReadOnlyReplicas(t *testing.T) {
+	for _, operation := range []string{"create", "update"} {
+		for _, tt := range []struct {
+			name string
+			args []string
+			want *int
+		}{
+			{name: "omitted"},
+			{name: "zero", args: []string{"--read-only-replicas", "0"}, want: intPtr(0)},
+			{name: "positive", args: []string{"--read-only-replicas", "2"}, want: intPtr(2)},
+		} {
+			t.Run(operation+"/"+tt.name, func(t *testing.T) {
+				c := qt.New(t)
+				var out bytes.Buffer
+				check := func(got *int) {
+					c.Assert(got, qt.DeepEquals, tt.want)
+				}
+				svc := &mock.NekiShardConfigurationProfilesService{
+					CreateFn: func(_ context.Context, req *ps.CreateNekiShardConfigurationProfileRequest) (*ps.NekiShardConfigurationProfile, error) {
+						check(req.ReadOnlyReplicas)
+						c.Assert(req.Replicas, qt.IsNil)
+						return testProfile(), nil
+					},
+					UpdateFn: func(_ context.Context, req *ps.UpdateNekiShardConfigurationProfileRequest) (*ps.NekiShardConfigurationProfile, error) {
+						check(req.ReadOnlyReplicas)
+						if tt.want != nil {
+							c.Assert(req.Replicas, qt.IsNil)
+						}
+						return testProfile(), nil
+					},
+				}
+				ch := configProfileTestHelper(svc, &out)
+				cmd := CreateCmd(ch)
+				args := []string{"app", "main", "metal"}
+				if operation == "update" {
+					cmd = UpdateCmd(ch)
+					if tt.want == nil {
+						args = append(args, "--replicas", "2")
+					}
+				}
+				cmd.SetArgs(append(args, tt.args...))
+				c.Assert(cmd.Execute(), qt.IsNil)
+				c.Assert(svc.CreateFnInvoked, qt.Equals, operation == "create")
+				c.Assert(svc.UpdateFnInvoked, qt.Equals, operation == "update")
+				var profile ps.NekiShardConfigurationProfile
+				c.Assert(json.Unmarshal(out.Bytes(), &profile), qt.IsNil)
+				c.Assert(profile.ReadOnlyReplicas, qt.Equals, 3)
+			})
+		}
+	}
 }
 
 func TestConfigProfileCreateCmdSendsStorage(t *testing.T) {
@@ -387,14 +443,16 @@ func TestConfigProfileChangesShowHumanDisplaysDifferences(t *testing.T) {
 			Change:               "change-1",
 		})
 		return &ps.NekiShardConfigurationProfileChange{
-			ID:                  "change-1",
-			State:               "applying",
-			Name:                "metal-next",
-			PreviousName:        "metal",
-			ClusterSize:         "M1-20",
-			PreviousClusterSize: "M1-10",
-			Replicas:            3,
-			PreviousReplicas:    2,
+			ID:                       "change-1",
+			State:                    "applying",
+			Name:                     "metal-next",
+			PreviousName:             "metal",
+			ClusterSize:              "M1-20",
+			PreviousClusterSize:      "M1-10",
+			Replicas:                 3,
+			PreviousReplicas:         2,
+			ReadOnlyReplicas:         0,
+			PreviousReadOnlyReplicas: 2,
 			Storage: &ps.NekiStorage{
 				MinimumStorageBytes: int64Ptr(21474836480),
 				StorageAutoscaling:  boolPtr(false),
@@ -431,11 +489,75 @@ func TestConfigProfileChangesShowHumanDisplaysDifferences(t *testing.T) {
 	c.Assert(out.String(), qt.Contains, "Name: metal → metal-next")
 	c.Assert(out.String(), qt.Contains, "Cluster size: M1-10 → M1-20")
 	c.Assert(out.String(), qt.Contains, "Replicas: 2 → 3")
+	c.Assert(out.String(), qt.Contains, "READ-ONLY REPLICAS")
+	c.Assert(out.String(), qt.Contains, "Read-only replicas: 2 → 0")
 	c.Assert(out.String(), qt.Contains, "Min storage: 10737418240 → 21474836480")
 	c.Assert(out.String(), qt.Contains, "Storage autoscaling: true → false")
 	c.Assert(out.String(), qt.Contains, "Parameter pgconf.log_rotation_size: (default) → 100MB")
 	c.Assert(out.String(), qt.Contains, "Parameter pgconf.max_connections: 100 → 200")
 	c.Assert(out.String(), qt.Contains, "Parameter pgconf.statement_timeout: 10s → (default)")
+}
+
+func TestConfigProfileReadOnlyReplicaOutput(t *testing.T) {
+	change := &ps.NekiShardConfigurationProfileChange{ReadOnlyReplicas: 0, PreviousReadOnlyReplicas: 3}
+	for _, tt := range []struct {
+		name     string
+		resource interface{}
+		want     float64
+	}{
+		{name: "profile", resource: toProfile(testProfile()), want: 3},
+		{name: "change", resource: toChange(change), want: 0},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			c := qt.New(t)
+			var out bytes.Buffer
+			format := printer.JSON
+			p := printer.NewPrinter(&format)
+			p.SetResourceOutput(&out)
+			c.Assert(p.PrintResource(tt.resource), qt.IsNil)
+			var body map[string]interface{}
+			c.Assert(json.Unmarshal(out.Bytes(), &body), qt.IsNil)
+			c.Assert(body["read_only_replicas"], qt.Equals, tt.want)
+			if tt.name == "change" {
+				c.Assert(body["previous_read_only_replicas"], qt.Equals, float64(3))
+			}
+
+			out.Reset()
+			format = printer.CSV
+			c.Assert(p.PrintResource(tt.resource), qt.IsNil)
+			rows, err := csv.NewReader(&out).ReadAll()
+			c.Assert(err, qt.IsNil)
+			c.Assert(rows, qt.HasLen, 2)
+			column := -1
+			for i, header := range rows[0] {
+				if header == "ReadOnlyReplicas" {
+					column = i
+				}
+			}
+			c.Assert(column >= 0, qt.IsTrue)
+			c.Assert(rows[1][column], qt.Equals, formatValue(tt.want))
+		})
+	}
+}
+
+func TestConfigProfileReadOnlyReplicaDifferences(t *testing.T) {
+	for _, tt := range []struct {
+		name          string
+		before, after int
+		want          []changeDifference
+	}{
+		{name: "unchanged", before: 2, after: 2, want: []changeDifference{}},
+		{name: "add", before: 0, after: 2, want: []changeDifference{{Field: "Read-only replicas", Before: "0", After: "2"}}},
+		{name: "remove", before: 2, after: 0, want: []changeDifference{{Field: "Read-only replicas", Before: "2", After: "0"}}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			c := qt.New(t)
+			c.Assert(changeDifferences(&ps.NekiShardConfigurationProfileChange{
+				ReadOnlyReplicas:         tt.after,
+				PreviousReadOnlyReplicas: tt.before,
+			}), qt.DeepEquals, tt.want)
+		})
+	}
 }
 
 func TestConfigProfileMaintenanceCmd(t *testing.T) {
@@ -607,5 +729,6 @@ func TestConfigProfileCmdSubcommands(t *testing.T) {
 	}
 }
 
+func intPtr(v int) *int       { return &v }
 func int64Ptr(v int64) *int64 { return &v }
 func boolPtr(v bool) *bool    { return &v }

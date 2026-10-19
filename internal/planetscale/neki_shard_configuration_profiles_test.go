@@ -18,12 +18,12 @@ func TestNekiShardConfigurationProfilesService(t *testing.T) {
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeProfile := func() {
-			_, _ = w.Write([]byte(`{"name":"metal","architecture":"arm64","cluster_size":"M1-10","cluster_display_name":"Metal 10","default":true,"metal":true,"replicas":2,"postgres_major_version":17,"postgres_minor_version":6,"shards":3,"state":"ready","created_at":"2026-08-04T12:00:00Z","updated_at":"2026-08-04T12:00:00Z"}`))
+			_, _ = w.Write([]byte(`{"name":"metal","architecture":"arm64","cluster_size":"M1-10","cluster_display_name":"Metal 10","default":true,"metal":true,"replicas":2,"read_only_replicas":3,"postgres_major_version":17,"postgres_minor_version":6,"shards":3,"state":"ready","created_at":"2026-08-04T12:00:00Z","updated_at":"2026-08-04T12:00:00Z"}`))
 		}
 
 		switch {
 		case r.Method == http.MethodGet && r.URL.Path == profilesPath:
-			_, _ = w.Write([]byte(`[{"name":"metal","architecture":"arm64","cluster_size":"M1-10","cluster_display_name":"Metal 10","default":true,"metal":true,"replicas":2,"postgres_major_version":17,"postgres_minor_version":6,"shards":3,"state":"ready","created_at":"2026-08-04T12:00:00Z","updated_at":"2026-08-04T12:00:00Z"}]`))
+			_, _ = w.Write([]byte(`[{"name":"metal","architecture":"arm64","cluster_size":"M1-10","cluster_display_name":"Metal 10","default":true,"metal":true,"replicas":2,"read_only_replicas":3,"postgres_major_version":17,"postgres_minor_version":6,"shards":3,"state":"ready","created_at":"2026-08-04T12:00:00Z","updated_at":"2026-08-04T12:00:00Z"}]`))
 
 		case r.Method == http.MethodGet && r.URL.Path == profilePath:
 			writeProfile()
@@ -58,6 +58,7 @@ func TestNekiShardConfigurationProfilesService(t *testing.T) {
 					"name":                   "metal",
 					"cluster_size":           "M1-10",
 					"replicas":               float64(2),
+					"read_only_replicas":     float64(3),
 					"postgres_major_version": "17",
 					"postgres_minor_version": "6",
 				})
@@ -77,8 +78,9 @@ func TestNekiShardConfigurationProfilesService(t *testing.T) {
 				})
 			} else {
 				c.Assert(body, qt.DeepEquals, map[string]interface{}{
-					"name":       "metal-default",
-					"parameters": map[string]interface{}{"pgconf": map[string]interface{}{"max_connections": "200"}},
+					"name":               "metal-default",
+					"read_only_replicas": float64(0),
+					"parameters":         map[string]interface{}{"pgconf": map[string]interface{}{"max_connections": "200"}},
 				})
 			}
 			writeProfile()
@@ -108,10 +110,10 @@ func TestNekiShardConfigurationProfilesService(t *testing.T) {
 			c.Assert(r.URL.Query().Get("completed_at"), qt.Equals, "2026-08-04")
 			c.Assert(r.URL.Query().Get("page"), qt.Equals, "2")
 			c.Assert(r.URL.Query().Get("per_page"), qt.Equals, "25")
-			_, _ = w.Write([]byte(`{"data":[{"id":"change-1","state":"pending","created_at":"2026-08-04T12:00:00Z","updated_at":"2026-08-04T12:00:00Z","name":"metal","previous_name":"default","cluster_size":"M1-10","cluster_display_name":"Metal 10","metal":true,"cluster_rank":1,"replicas":2,"parameters":{},"previous_cluster_size":"PS-10","previous_cluster_display_name":"PS 10","previous_metal":false,"previous_cluster_rank":2,"previous_replicas":0,"previous_parameters":{}}]}`))
+			_, _ = w.Write([]byte(`{"data":[{"id":"change-1","state":"pending","created_at":"2026-08-04T12:00:00Z","updated_at":"2026-08-04T12:00:00Z","name":"metal","previous_name":"default","cluster_size":"M1-10","cluster_display_name":"Metal 10","metal":true,"cluster_rank":1,"replicas":2,"read_only_replicas":3,"previous_read_only_replicas":1,"parameters":{},"previous_cluster_size":"PS-10","previous_cluster_display_name":"PS 10","previous_metal":false,"previous_cluster_rank":2,"previous_replicas":0,"previous_parameters":{}}]}`))
 
 		case r.Method == http.MethodGet && r.URL.Path == profilePath+"/changes/change-1":
-			_, _ = w.Write([]byte(`{"id":"change-1","state":"pending","created_at":"2026-08-04T12:00:00Z","updated_at":"2026-08-04T12:00:00Z","name":"metal","cluster_size":"M1-10","replicas":2,"parameters":{},"previous_parameters":{}}`))
+			_, _ = w.Write([]byte(`{"id":"change-1","state":"pending","created_at":"2026-08-04T12:00:00Z","updated_at":"2026-08-04T12:00:00Z","name":"metal","cluster_size":"M1-10","replicas":2,"read_only_replicas":0,"previous_read_only_replicas":3,"parameters":{},"previous_parameters":{}}`))
 
 		case r.Method == http.MethodDelete && r.URL.Path == profilePath+"/changes/change-1":
 			w.WriteHeader(http.StatusNoContent)
@@ -130,13 +132,15 @@ func TestNekiShardConfigurationProfilesService(t *testing.T) {
 	c.Assert(err, qt.IsNil)
 	c.Assert(profiles, qt.HasLen, 1)
 	c.Assert(profiles[0].Name, qt.Equals, "metal")
+	c.Assert(profiles[0].ReadOnlyReplicas, qt.Equals, 3)
 
 	profile, err := client.NekiShardConfigurationProfiles.Get(ctx, &GetNekiShardConfigurationProfileRequest{Organization: "acme", Database: "app", Branch: "main", ConfigurationProfile: "metal"})
 	c.Assert(err, qt.IsNil)
 	c.Assert(profile.PostgresMajorVersion, qt.Equals, 17)
+	c.Assert(profile.ReadOnlyReplicas, qt.Equals, 3)
 
-	clusterSize, replicas, major, minor := "M1-10", 2, "17", "6"
-	_, err = client.NekiShardConfigurationProfiles.Create(ctx, &CreateNekiShardConfigurationProfileRequest{Organization: "acme", Database: "app", Branch: "main", Name: "metal", ClusterSize: &clusterSize, Replicas: &replicas, PostgresMajorVersion: &major, PostgresMinorVersion: &minor})
+	clusterSize, replicas, readOnlyReplicas, major, minor := "M1-10", 2, 3, "17", "6"
+	_, err = client.NekiShardConfigurationProfiles.Create(ctx, &CreateNekiShardConfigurationProfileRequest{Organization: "acme", Database: "app", Branch: "main", Name: "metal", ClusterSize: &clusterSize, Replicas: &replicas, ReadOnlyReplicas: &readOnlyReplicas, PostgresMajorVersion: &major, PostgresMinorVersion: &minor})
 	c.Assert(err, qt.IsNil)
 
 	name := "metal-default"
@@ -155,7 +159,8 @@ func TestNekiShardConfigurationProfilesService(t *testing.T) {
 	})
 	c.Assert(err, qt.IsNil)
 
-	_, err = client.NekiShardConfigurationProfiles.Update(ctx, &UpdateNekiShardConfigurationProfileRequest{Organization: "acme", Database: "app", Branch: "main", ConfigurationProfile: "metal", Name: &name, Parameters: map[string]map[string]string{"pgconf": {"max_connections": "200"}}})
+	readOnlyReplicas = 0
+	_, err = client.NekiShardConfigurationProfiles.Update(ctx, &UpdateNekiShardConfigurationProfileRequest{Organization: "acme", Database: "app", Branch: "main", ConfigurationProfile: "metal", Name: &name, ReadOnlyReplicas: &readOnlyReplicas, Parameters: map[string]map[string]string{"pgconf": {"max_connections": "200"}}})
 	c.Assert(err, qt.IsNil)
 
 	_, err = client.NekiShardConfigurationProfiles.Update(ctx, &UpdateNekiShardConfigurationProfileRequest{
@@ -210,10 +215,14 @@ func TestNekiShardConfigurationProfilesService(t *testing.T) {
 	c.Assert(err, qt.IsNil)
 	c.Assert(changes, qt.HasLen, 1)
 	c.Assert(changes[0].ID, qt.Equals, "change-1")
+	c.Assert(changes[0].ReadOnlyReplicas, qt.Equals, 3)
+	c.Assert(changes[0].PreviousReadOnlyReplicas, qt.Equals, 1)
 
 	change, err := client.NekiShardConfigurationProfiles.GetChange(ctx, &GetNekiShardConfigurationProfileChangeRequest{Organization: "acme", Database: "app", Branch: "main", ConfigurationProfile: "metal", Change: "change-1"})
 	c.Assert(err, qt.IsNil)
 	c.Assert(change.State, qt.Equals, "pending")
+	c.Assert(change.ReadOnlyReplicas, qt.Equals, 0)
+	c.Assert(change.PreviousReadOnlyReplicas, qt.Equals, 3)
 
 	err = client.NekiShardConfigurationProfiles.CancelChange(ctx, &CancelNekiShardConfigurationProfileChangeRequest{Organization: "acme", Database: "app", Branch: "main", ConfigurationProfile: "metal", Change: "change-1"})
 	c.Assert(err, qt.IsNil)

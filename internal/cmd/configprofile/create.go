@@ -11,10 +11,11 @@ import (
 
 func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
-		clusterSize  string
-		replicas     int
-		major, minor string
-		storage      storageFlags
+		clusterSize      string
+		replicas         int
+		readOnlyReplicas int
+		major, minor     string
+		storage          storageFlags
 	}
 	cmd := &cobra.Command{
 		Use:   "create <database> <branch> <name>",
@@ -40,6 +41,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 				Name:                 name,
 				ClusterSize:          stringPointerIfChanged(cmd, "cluster-size", cmdutil.ToSizeSKUName(flags.clusterSize)),
 				Replicas:             intPointerIfChanged(cmd, "replicas", flags.replicas),
+				ReadOnlyReplicas:     intPointerIfChanged(cmd, "read-only-replicas", flags.readOnlyReplicas),
 				PostgresMajorVersion: stringPointerIfChanged(cmd, "postgres-major-version", flags.major),
 				PostgresMinorVersion: stringPointerIfChanged(cmd, "postgres-minor-version", flags.minor),
 				Storage:              storageFromFlags(cmd, flags.storage),
@@ -57,6 +59,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 	cmd.Flags().StringVar(&flags.clusterSize, "cluster-size", "", "Cluster size for shards in the profile")
 	cmd.Flags().IntVar(&flags.replicas, "replicas", 0, "Number of replicas for shards in the profile")
+	cmd.Flags().IntVar(&flags.readOnlyReplicas, "read-only-replicas", 0, "Number of read-only replicas per shard (0-8; defaults to 0)")
 	cmd.Flags().StringVar(&flags.major, "postgres-major-version", "", "PostgreSQL major version")
 	cmd.Flags().StringVar(&flags.minor, "postgres-minor-version", "", "PostgreSQL minor version")
 	bindStorageFlags(cmd, &flags.storage)
