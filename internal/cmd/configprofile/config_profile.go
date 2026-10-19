@@ -26,19 +26,20 @@ func ConfigProfileCmd(ch *cmdutil.Helper) *cobra.Command {
 }
 
 type profileDisplay struct {
-	Name            string `header:"name" json:"name"`
-	State           string `header:"state" json:"state"`
-	Default         bool   `header:"default" json:"default"`
-	Architecture    string `header:"architecture" json:"architecture"`
-	ClusterSize     string `header:"cluster size" json:"cluster_size"`
-	Replicas        int    `header:"replicas" json:"replicas"`
-	Shards          int    `header:"shards" json:"shards"`
-	PostgresVersion string `header:"postgres version" json:"postgres_version"`
-	MinStorage      string `header:"min storage" json:"min_storage"`
-	MaxStorage      string `header:"max storage" json:"max_storage"`
-	Autoscaling     string `header:"storage autoscaling" json:"storage_autoscaling"`
-	CreatedAt       string `header:"created at" json:"created_at"`
-	orig            *ps.NekiShardConfigurationProfile
+	Name             string `header:"name" json:"name"`
+	State            string `header:"state" json:"state"`
+	Default          bool   `header:"default" json:"default"`
+	Architecture     string `header:"architecture" json:"architecture"`
+	ClusterSize      string `header:"cluster size" json:"cluster_size"`
+	Replicas         int    `header:"replicas" json:"replicas"`
+	ReadOnlyReplicas int    `header:"read-only replicas" json:"read_only_replicas"`
+	Shards           int    `header:"shards" json:"shards"`
+	PostgresVersion  string `header:"postgres version" json:"postgres_version"`
+	MinStorage       string `header:"min storage" json:"min_storage"`
+	MaxStorage       string `header:"max storage" json:"max_storage"`
+	Autoscaling      string `header:"storage autoscaling" json:"storage_autoscaling"`
+	CreatedAt        string `header:"created at" json:"created_at"`
+	orig             *ps.NekiShardConfigurationProfile
 }
 
 func (p *profileDisplay) MarshalJSON() ([]byte, error) { return json.Marshal(p.orig) }
@@ -46,19 +47,20 @@ func (p *profileDisplay) MarshalCSVValue() interface{} { return []*profileDispla
 
 func toProfile(p *ps.NekiShardConfigurationProfile) *profileDisplay {
 	return &profileDisplay{
-		Name:            p.Name,
-		State:           p.State,
-		Default:         p.Default,
-		Architecture:    p.Architecture,
-		ClusterSize:     p.ClusterSize,
-		Replicas:        p.Replicas,
-		Shards:          p.Shards,
-		PostgresVersion: fmt.Sprintf("%d.%d", p.PostgresMajorVersion, p.PostgresMinorVersion),
-		MinStorage:      storageBytes(p.Storage, func(s *ps.NekiStorage) *int64 { return s.MinimumStorageBytes }),
-		MaxStorage:      storageBytes(p.Storage, func(s *ps.NekiStorage) *int64 { return s.MaximumStorageBytes }),
-		Autoscaling:     storageAutoscaling(p.Storage),
-		CreatedAt:       p.CreatedAt.UTC().Format("2006-01-02 15:04:05"),
-		orig:            p,
+		Name:             p.Name,
+		State:            p.State,
+		Default:          p.Default,
+		Architecture:     p.Architecture,
+		ClusterSize:      p.ClusterSize,
+		Replicas:         p.Replicas,
+		ReadOnlyReplicas: p.ReadOnlyReplicas,
+		Shards:           p.Shards,
+		PostgresVersion:  fmt.Sprintf("%d.%d", p.PostgresMajorVersion, p.PostgresMinorVersion),
+		MinStorage:       storageBytes(p.Storage, func(s *ps.NekiStorage) *int64 { return s.MinimumStorageBytes }),
+		MaxStorage:       storageBytes(p.Storage, func(s *ps.NekiStorage) *int64 { return s.MaximumStorageBytes }),
+		Autoscaling:      storageAutoscaling(p.Storage),
+		CreatedAt:        p.CreatedAt.UTC().Format("2006-01-02 15:04:05"),
+		orig:             p,
 	}
 }
 
@@ -145,13 +147,14 @@ func toExtensions(extensions []*ps.NekiExtension) []*extensionDisplay {
 }
 
 type changeDisplay struct {
-	ID          string `header:"id" json:"id"`
-	State       string `header:"state" json:"state"`
-	Name        string `header:"name" json:"name"`
-	ClusterSize string `header:"cluster size" json:"cluster_size"`
-	Replicas    int    `header:"replicas" json:"replicas"`
-	CreatedAt   string `header:"created at" json:"created_at"`
-	orig        *ps.NekiShardConfigurationProfileChange
+	ID               string `header:"id" json:"id"`
+	State            string `header:"state" json:"state"`
+	Name             string `header:"name" json:"name"`
+	ClusterSize      string `header:"cluster size" json:"cluster_size"`
+	Replicas         int    `header:"replicas" json:"replicas"`
+	ReadOnlyReplicas int    `header:"read-only replicas" json:"read_only_replicas"`
+	CreatedAt        string `header:"created at" json:"created_at"`
+	orig             *ps.NekiShardConfigurationProfileChange
 }
 
 func (c *changeDisplay) MarshalJSON() ([]byte, error) { return json.Marshal(c.orig) }
@@ -159,13 +162,14 @@ func (c *changeDisplay) MarshalCSVValue() interface{} { return []*changeDisplay{
 
 func toChange(c *ps.NekiShardConfigurationProfileChange) *changeDisplay {
 	return &changeDisplay{
-		ID:          c.ID,
-		State:       c.State,
-		Name:        c.Name,
-		ClusterSize: c.ClusterSize,
-		Replicas:    c.Replicas,
-		CreatedAt:   c.CreatedAt.UTC().Format("2006-01-02 15:04:05"),
-		orig:        c,
+		ID:               c.ID,
+		State:            c.State,
+		Name:             c.Name,
+		ClusterSize:      c.ClusterSize,
+		Replicas:         c.Replicas,
+		ReadOnlyReplicas: c.ReadOnlyReplicas,
+		CreatedAt:        c.CreatedAt.UTC().Format("2006-01-02 15:04:05"),
+		orig:             c,
 	}
 }
 
@@ -198,6 +202,14 @@ func changeDifferences(change *ps.NekiShardConfigurationProfileChange) []changeD
 			After:  strconv.Itoa(change.Replicas),
 		})
 	}
+	if change.PreviousReadOnlyReplicas != change.ReadOnlyReplicas {
+		differences = append(differences, changeDifference{
+			Field:  "Read-only replicas",
+			Before: strconv.Itoa(change.PreviousReadOnlyReplicas),
+			After:  strconv.Itoa(change.ReadOnlyReplicas),
+		})
+	}
+
 	differences = appendStorageDifferences(differences, change.PreviousStorage, change.Storage)
 
 	parameterKeys := make(map[string]struct{})

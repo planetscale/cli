@@ -786,8 +786,10 @@ pscale branch config-profile default <database> <branch> --org <org> --format js
 
 # Create or update a profile
 pscale branch config-profile create <database> <branch> <profile> --org <org> --cluster-size <size> --replicas 2 --format json
+pscale branch config-profile create <database> <branch> <profile> --org <org> --read-only-replicas 2 --format json
 pscale branch config-profile create <database> <branch> <profile> --org <org> --min-storage 10737418240 --max-storage 107374182400 --storage-autoscaling --format json
 pscale branch config-profile update <database> <branch> <profile> --org <org> --cluster-size <size> --replicas 2 --format json
+pscale branch config-profile update <database> <branch> <profile> --org <org> --read-only-replicas 0 --format json
 pscale branch config-profile update <database> <branch> <profile> --org <org> --parameters pgconf.max_connections=200 --format json
 pscale branch config-profile update <database> <branch> <profile> --org <org> --extensions=hll --parameters pgconf.hll.force_groupagg=on --format json
 pscale branch config-profile update <database> <branch> <profile> --org <org> --extensions= --format json
@@ -814,6 +816,7 @@ pscale branch config-profile delete <database> <branch> <profile> --org <org> --
 ```
 
 - Create and update flags are optional in the API request unless explicitly supplied. Repeat `--parameters namespace.name=value` to update multiple settings together.
+- `--read-only-replicas` sets the total number of read-only replicas per shard in the profile (0-8, excluding the primary and separate from `--replicas`). Creation defaults to zero; omit it on update to leave the count unchanged, or pass `--read-only-replicas 0` to remove them. Profile output includes `read_only_replicas`; change JSON includes that count and `previous_read_only_replicas`.
 - `--extensions` replaces the enabled extension set. Omit it to leave extensions unchanged, or pass `--extensions=` to disable all customer-managed extensions. Do not combine it with preload library parameters.
 - Storage flags are `--min-storage` and `--max-storage` in bytes, `--storage-autoscaling`, `--storage-iops`, and `--storage-throughput` (MiB/s). `list` and `show` include the current storage configuration.
 - `parameters` accepts `--namespace`, `--extension`, and `--internal` filters.

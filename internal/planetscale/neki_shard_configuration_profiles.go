@@ -25,6 +25,7 @@ type NekiShardConfigurationProfile struct {
 	Default              bool         `json:"default"`
 	Metal                bool         `json:"metal"`
 	Replicas             int          `json:"replicas"`
+	ReadOnlyReplicas     int          `json:"read_only_replicas"`
 	PostgresMajorVersion int          `json:"postgres_major_version"`
 	PostgresMinorVersion int          `json:"postgres_minor_version"`
 	Shards               int          `json:"shards"`
@@ -54,6 +55,7 @@ type CreateNekiShardConfigurationProfileRequest struct {
 	Name                 string       `json:"name"`
 	ClusterSize          *string      `json:"cluster_size,omitempty"`
 	Replicas             *int         `json:"replicas,omitempty"`
+	ReadOnlyReplicas     *int         `json:"read_only_replicas,omitempty"`
 	PostgresMajorVersion *string      `json:"postgres_major_version,omitempty"`
 	PostgresMinorVersion *string      `json:"postgres_minor_version,omitempty"`
 	Storage              *NekiStorage `json:"storage,omitempty"`
@@ -67,6 +69,7 @@ type UpdateNekiShardConfigurationProfileRequest struct {
 	Name                 *string                      `json:"name,omitempty"`
 	ClusterSize          *string                      `json:"cluster_size,omitempty"`
 	Replicas             *int                         `json:"replicas,omitempty"`
+	ReadOnlyReplicas     *int                         `json:"read_only_replicas,omitempty"`
 	Extensions           *[]string                    `json:"extensions,omitempty"`
 	Parameters           map[string]map[string]string `json:"parameters,omitempty"`
 	PostgresMajorVersion *string                      `json:"postgres_major_version,omitempty"`
@@ -178,12 +181,14 @@ type NekiShardConfigurationProfileChange struct {
 	Metal                      bool                         `json:"metal"`
 	ClusterRank                int                          `json:"cluster_rank"`
 	Replicas                   int                          `json:"replicas"`
+	ReadOnlyReplicas           int                          `json:"read_only_replicas"`
 	Parameters                 map[string]map[string]string `json:"parameters"`
 	PreviousClusterSize        string                       `json:"previous_cluster_size"`
 	PreviousClusterDisplayName string                       `json:"previous_cluster_display_name"`
 	PreviousMetal              bool                         `json:"previous_metal"`
 	PreviousClusterRank        int                          `json:"previous_cluster_rank"`
 	PreviousReplicas           int                          `json:"previous_replicas"`
+	PreviousReadOnlyReplicas   int                          `json:"previous_read_only_replicas"`
 	PreviousParameters         map[string]map[string]string `json:"previous_parameters"`
 	Storage                    *NekiStorage                 `json:"storage,omitempty"`
 	PreviousStorage            *NekiStorage                 `json:"previous_storage,omitempty"`
