@@ -112,6 +112,7 @@ type NekiParameter struct {
 	CreatedAt      time.Time   `json:"created_at"`
 	UpdatedAt      *time.Time  `json:"updated_at"`
 	Restart        bool        `json:"restart"`
+	Internal       bool        `json:"internal"`
 	RequiresUpdate *string     `json:"requires_update"`
 	// Min, Max, and Step are numbers for plain numeric parameters but strings
 	// for byte- and time-typed ones (for example, "128kB" or "10min").

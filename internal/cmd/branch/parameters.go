@@ -111,6 +111,7 @@ type postgresParameter struct {
 	Default        string `header:"default" json:"default_value"`
 	Type           string `header:"type" json:"parameter_type"`
 	Restart        bool   `header:"restart" json:"restart"`
+	Internal       bool   `header:"internal" json:"internal"`
 	RequiresUpdate bool   `header:"requires update" json:"requires_update"`
 
 	orig *ps.PostgresParameter
@@ -126,6 +127,7 @@ func toPostgresParameters(parameters []*ps.PostgresParameter) []*postgresParamet
 			Default:        formatParameterValue(param.DefaultValue),
 			Type:           param.ParameterType,
 			Restart:        param.Restart,
+			Internal:       param.Internal,
 			RequiresUpdate: param.RequiresUpdate != nil,
 			orig:           param,
 		})
