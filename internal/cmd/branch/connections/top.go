@@ -36,7 +36,8 @@ previously captured trace in the TUI — actions are rejected in replay mode.
 
 For Postgres, connections top shows session activity across instances. For
 Vitess, pass --keyspace and --shard or run interactively to select them when
-the server reports available targets. Neki is not supported.`,
+the server reports available targets. For Neki, connections top shows read-only
+client sessions across the branch's routers.`,
 		Args: func(cmd *cobra.Command, args []string) error {
 			if flags.replay != "" {
 				return nil
@@ -220,7 +221,7 @@ func validateTopFlagsForEngine(engine ps.DatabaseEngine, filter connectionFilter
 		return err
 	}
 	switch engine {
-	case ps.DatabaseEnginePostgres, ps.DatabaseEngineMySQL:
+	case ps.DatabaseEnginePostgres, ps.DatabaseEngineMySQL, ps.DatabaseEngineNeki:
 		return nil
 	default:
 		return fmt.Errorf("connections top is not supported for database kind %q", engine)
@@ -275,8 +276,11 @@ func replayTarget(source *history.ReplaySource) tui.Target {
 
 func replayConnectionView(captures []history.Capture) tui.ConnectionViewProfile {
 	for _, capture := range captures {
-		if capture.List.DatabaseKind == live.DatabaseKindMySQL {
+		switch capture.List.DatabaseKind {
+		case live.DatabaseKindMySQL:
 			return tui.VitessConnectionView
+		case live.DatabaseKindNeki:
+			return tui.NekiConnectionView
 		}
 	}
 	return tui.PostgresConnectionView
@@ -341,11 +345,20 @@ func newTopSource(ctx context.Context, ch *cmdutil.Helper, request topRequest) (
 			return topSource{}, err
 		}
 		return topSource{
-			Client: filteredLister{client: client, filter: request.Filter},
+			Client: filteredLister{client: client, filter: request.Filter, notFound: newNotFoundExplainer(ch, request.Database, request.Branch)},
 			View:   tui.PostgresConnectionView,
 		}, nil
 	case ps.DatabaseEngineMySQL:
 		return newVitessTopSource(ctx, ch, request)
+	case ps.DatabaseEngineNeki:
+		client, err := newConnectionsClient(ch, request.Database, request.Branch, ConnectionTarget{})
+		if err != nil {
+			return topSource{}, err
+		}
+		return topSource{
+			Client: filteredLister{client: client, notFound: newNotFoundExplainer(ch, request.Database, request.Branch)},
+			View:   tui.NekiConnectionView,
+		}, nil
 	default:
 		return topSource{}, fmt.Errorf("connections top is not supported for database kind %q", request.Engine)
 	}
@@ -361,7 +374,7 @@ func newVitessTopSource(ctx context.Context, ch *cmdutil.Helper, request topRequ
 		return topSource{}, err
 	}
 	return topSource{
-		Client: filteredLister{client: client},
+		Client: filteredLister{client: client, notFound: newNotFoundExplainer(ch, request.Database, request.Branch)},
 		View:   tui.VitessConnectionView,
 		Target: resolved,
 	}, nil
@@ -397,7 +410,7 @@ func probeVitessTopTarget(ctx context.Context, ch *cmdutil.Helper, database, bra
 	if err != nil {
 		return err
 	}
-	_, err = client.List(ctx, live.SortByDuration)
+	_, err = filteredLister{client: client, notFound: newNotFoundExplainer(ch, database, branch)}.List(ctx, live.SortByDuration)
 	return err
 }
 
@@ -556,14 +569,15 @@ func filterConnectionList(list live.ConnectionList, f connectionFilter) live.Con
 }
 
 type filteredLister struct {
-	client *live.Client
-	filter connectionFilter
+	client   *live.Client
+	filter   connectionFilter
+	notFound *notFoundExplainer
 }
 
 func (f filteredLister) List(ctx context.Context, sort live.SortMode) (live.ConnectionList, error) {
 	list, err := f.client.List(ctx, sort)
 	if err != nil {
-		return list, err
+		return list, f.notFound.explain(ctx, err)
 	}
 	if err := validateInstanceFilter(list, f.filter); err != nil {
 		return list, err

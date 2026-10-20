@@ -26,6 +26,22 @@ func TestNewConnectionListSortsByTransactionStartWithNullsLast(t *testing.T) {
 	c.Assert(pids(list.Connections), qt.DeepEquals, []int{1, 2, 3, 4})
 }
 
+func TestSortConnectionsBreaksSharedPIDTiesByInstance(t *testing.T) {
+	for _, mode := range []SortMode{SortByTransactionStart, SortByDuration} {
+		t.Run(string(mode), func(t *testing.T) {
+			c := qt.New(t)
+
+			list := NewConnectionList(time.Unix(100, 0), []Connection{
+				{PID: 7, Instance: "router-b", State: "idle"},
+				{PID: 7, Instance: "router-a", State: "idle"},
+			}, mode)
+
+			c.Assert(list.Connections[0].Instance, qt.Equals, "router-a")
+			c.Assert(list.Connections[1].Instance, qt.Equals, "router-b")
+		})
+	}
+}
+
 func TestNewConnectionListSortsByTransactionStartWithQueryStartAndPIDTieBreakers(t *testing.T) {
 	c := qt.New(t)
 	now := time.Date(2026, 4, 28, 15, 12, 4, 0, time.UTC)

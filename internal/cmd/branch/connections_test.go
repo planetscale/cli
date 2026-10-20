@@ -42,7 +42,8 @@ func TestConnectionsHelpListsEngines(t *testing.T) {
 	help := connectionsHelpForTest(c, "--help")
 	c.Assert(help, qt.Contains, "MySQL (Vitess):")
 	c.Assert(help, qt.Contains, "Postgres:")
-	c.Assert(help, qt.Contains, "Neki is not supported")
+	c.Assert(help, qt.Contains, "Neki:")
+	c.Assert(help, qt.Contains, "Read-only.")
 }
 
 func TestConnectionsShowHelpListsTargetAndFilterFlags(t *testing.T) {
@@ -262,10 +263,16 @@ func TestConnectionsShowRejectsEngineSpecificFlags(t *testing.T) {
 			wantErr: "--keyspace/--shard are only supported for Vitess databases",
 		},
 		{
-			name:    "neki is not supported",
+			name:    "neki rejects vitess target",
 			engine:  ps.DatabaseEngineNeki,
-			args:    []string{"show", "neki", "main"},
-			wantErr: "connections is not supported for Neki databases",
+			args:    []string{"show", "neki", "main", "--keyspace", "commerce"},
+			wantErr: "--keyspace/--shard are only supported for Vitess databases",
+		},
+		{
+			name:    "neki rejects postgres role filter",
+			engine:  ps.DatabaseEngineNeki,
+			args:    []string{"show", "neki", "main", "--role", "primary"},
+			wantErr: "--instance/--role are only supported for Postgres databases",
 		},
 	}
 
@@ -537,13 +544,13 @@ func TestConnectionsKillTransactionRejectsVitess(t *testing.T) {
 	c.Assert(err, qt.ErrorMatches, "connections kill-transaction is only supported for Postgres databases")
 }
 
-func TestConnectionsRejectsNekiBeforeAPI(t *testing.T) {
+func TestConnectionsRejectsNekiActionsBeforeAPI(t *testing.T) {
 	tests := []struct {
 		name string
 		args []string
 	}{
-		{name: "show", args: []string{"show", "neki", "main"}},
 		{name: "kill", args: []string{"kill", "neki", "main", "primary-123-c"}},
+		{name: "kill query", args: []string{"kill", "neki", "main", "primary-123-q", "--query"}},
 		{name: "kill-transaction", args: []string{"kill-transaction", "neki", "main", "primary-123-t"}},
 	}
 
@@ -558,9 +565,176 @@ func TestConnectionsRejectsNekiBeforeAPI(t *testing.T) {
 
 			err := cmd.Execute()
 
-			c.Assert(err, qt.ErrorMatches, "connections is not supported for Neki databases")
+			c.Assert(err, qt.ErrorMatches, "connections are read-only for Neki databases")
 		})
 	}
+}
+
+func TestConnectionsShowExplainsNotFound(t *testing.T) {
+	tests := []struct {
+		name      string
+		branchErr error
+		wantErr   string
+	}{
+		{
+			name:    "branch exists without live connections",
+			wantErr: `live connections are not enabled for branch main in database neki \(organization: acme\)`,
+		},
+		{
+			name:      "branch does not exist",
+			branchErr: &ps.Error{Code: ps.ErrNotFound},
+			wantErr:   `branch main does not exist in database neki \(organization: acme\)`,
+		},
+		{
+			name:      "branch lookup fails",
+			branchErr: errors.New("boom"),
+			wantErr:   `branch main does not exist in database neki \(organization: acme\), or live connections are not enabled for it`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := qt.New(t)
+			server := liveConnectionsBranchServer(t, func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusNotFound)
+				_, _ = io.WriteString(w, `{"code":"not_found","message":"Not Found"}`)
+			})
+			branches := &mock.PostgresBranchesService{
+				GetFn: func(_ context.Context, req *ps.GetPostgresBranchRequest) (*ps.PostgresBranch, error) {
+					c.Assert(req.Branch, qt.Equals, "main")
+					if tt.branchErr != nil {
+						return nil, tt.branchErr
+					}
+					return &ps.PostgresBranch{Name: req.Branch}, nil
+				},
+			}
+			ch := connectionsTestHelper("acme", ps.DatabaseEngineNeki, nil, server.URL, printer.JSON, &bytes.Buffer{})
+			ch.Client = func() (*ps.Client, error) {
+				return &ps.Client{Databases: databaseServiceForEngine("acme", ps.DatabaseEngineNeki), PostgresBranches: branches}, nil
+			}
+			cmd := connectionsCmdForTest(ch)
+			cmd.SetArgs([]string{"show", "neki", "main"})
+
+			err := cmd.Execute()
+
+			c.Assert(err, qt.ErrorMatches, tt.wantErr)
+		})
+	}
+}
+
+func TestConnectionsShowNekiJSON(t *testing.T) {
+	c := qt.New(t)
+
+	server := liveConnectionsBranchServer(t, func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/acme/databases/neki/branches/main/connections")
+		c.Assert(r.URL.RawQuery, qt.Equals, "")
+		_, _ = io.WriteString(w, sampleNekiConnectionsListResponse())
+	})
+	var out bytes.Buffer
+	cmd := connectionsCmdForTest(connectionsTestHelper("acme", ps.DatabaseEngineNeki, nil, server.URL, printer.JSON, &out))
+	cmd.SetArgs([]string{"show", "neki", "main"})
+
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNil)
+	var got struct {
+		DatabaseKind string   `json:"database_kind"`
+		Warnings     []string `json:"warnings"`
+		Connections  []struct {
+			PID              int     `json:"pid"`
+			Instance         string  `json:"instance"`
+			RouterName       string  `json:"router_name"`
+			RouterCell       string  `json:"router_cell"`
+			RouterUID        string  `json:"router_uid"`
+			AvailabilityZone string  `json:"availability_zone"`
+			BackendStart     string  `json:"backend_start"`
+			ConnectionID     *string `json:"connection_id"`
+			SidecarBackends  []struct {
+				ShardName  string `json:"shard_name"`
+				BackendPID int    `json:"backend_pid"`
+			} `json:"sidecar_backends"`
+		} `json:"connections"`
+	}
+	c.Assert(json.Unmarshal(out.Bytes(), &got), qt.IsNil)
+	c.Assert(got.DatabaseKind, qt.Equals, "neki")
+	c.Assert(got.Warnings, qt.DeepEquals, []string{"router router-b unreachable"})
+	c.Assert(got.Connections, qt.HasLen, 2)
+	conn := got.Connections[0]
+	c.Assert(conn.PID, qt.Equals, 7)
+	c.Assert(conn.Instance, qt.Equals, "router-a")
+	c.Assert(conn.RouterName, qt.Equals, "router-a")
+	c.Assert(conn.RouterCell, qt.Equals, "us-east-1a")
+	c.Assert(conn.RouterUID, qt.Equals, "router-a-us-east-1a-1")
+	c.Assert(conn.AvailabilityZone, qt.Equals, "us-east-1a")
+	c.Assert(conn.BackendStart, qt.Equals, "2026-10-16T12:00:00.123456Z")
+	c.Assert(conn.ConnectionID, qt.IsNil)
+	c.Assert(conn.SidecarBackends, qt.HasLen, 1)
+	c.Assert(conn.SidecarBackends[0].ShardName, qt.Equals, "-80")
+	c.Assert(conn.SidecarBackends[0].BackendPID, qt.Equals, 4242)
+	c.Assert(got.Connections[1].Instance, qt.Equals, "router-b")
+	c.Assert(got.Connections[1].PID, qt.Equals, 7)
+}
+
+func TestConnectionsShowNekiHuman(t *testing.T) {
+	c := qt.New(t)
+
+	server := liveConnectionsBranchServer(t, func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.WriteString(w, sampleNekiConnectionsListResponse())
+	})
+	var out bytes.Buffer
+	cmd := connectionsCmdForTest(connectionsTestHelper("acme", ps.DatabaseEngineNeki, nil, server.URL, printer.Human, &out))
+	cmd.SetArgs([]string{"show", "neki", "main"})
+
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNil)
+	got := out.String()
+	c.Assert(got, qt.Contains, "warning: incomplete results: router router-b unreachable")
+	c.Assert(got, qt.Contains, "router:          router-a")
+	c.Assert(got, qt.Contains, "zone:            us-east-1a")
+	c.Assert(got, qt.Contains, "backend_start:   2026-10-16T12:00:00Z")
+	c.Assert(got, qt.Contains, "shard_backends:  1\nshard:           -80\nshard_uid:       shard-1\nsidecar:         sidecar-1\nbackend_pid:     4242\n")
+	c.Assert(got, qt.Contains, "backend_query:   SELECT 1\n")
+	c.Assert(got, qt.Contains, "shard_backends:  0\n")
+	c.Assert(got, qt.Not(qt.Contains), "connection_id:")
+	c.Assert(strings.Count(got, "database:"), qt.Equals, 2)
+}
+
+func TestConnectionsShowNekiEmptyWithWarningsIsNotHealthy(t *testing.T) {
+	c := qt.New(t)
+
+	server := liveConnectionsBranchServer(t, func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.WriteString(w, `{"type":"list","database_kind":"neki","captured_at":"2026-10-16T12:00:05Z","instances":[],"warnings":["router router-a unreachable"],"data":[]}`)
+	})
+	var out bytes.Buffer
+	cmd := connectionsCmdForTest(connectionsTestHelper("acme", ps.DatabaseEngineNeki, nil, server.URL, printer.Human, &out))
+	cmd.SetArgs([]string{"show", "neki", "main"})
+
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(out.String(), qt.Contains, "warning: incomplete results: router router-a unreachable\nNo live connections found.")
+}
+
+func TestConnectionsShowNekiCSVUsesRouterAsInstance(t *testing.T) {
+	c := qt.New(t)
+
+	server := liveConnectionsBranchServer(t, func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.WriteString(w, sampleNekiConnectionsListResponse())
+	})
+	var out bytes.Buffer
+	cmd := connectionsCmdForTest(connectionsTestHelper("acme", ps.DatabaseEngineNeki, nil, server.URL, printer.CSV, &out))
+	cmd.SetArgs([]string{"show", "neki", "main"})
+
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNil)
+	rows := readCSVRows(c, out.String())
+	c.Assert(rows, qt.HasLen, 3)
+	c.Assert(rows[0], qt.Contains, "instance")
+	c.Assert(rows[0], qt.Not(qt.Contains), "sidecar_backends")
+	c.Assert(rows[1], qt.Contains, "router-a")
+	c.Assert(rows[2], qt.Contains, "router-b")
 }
 
 func TestPostgresActionResultOmitsVitessTopologyColumns(t *testing.T) {
@@ -779,6 +953,13 @@ func liveConnectionsBranchServer(t *testing.T, handler http.HandlerFunc) *httpte
 
 func sampleBranchConnectionsListResponse() string {
 	return `{"type":"list","database_kind":"postgresql","captured_at":"2026-04-29T12:34:56Z","instances":[{"id":"primary","role":"primary","error":null}],"data":[{"pid":123,"instance":"primary","duration_ms":664000,"state":"active","usename":"alice","application_name":"psql","client_addr":"10.0.0.1","query_text":"SELECT pg_sleep(600)","xact_start":"2026-04-29T12:23:52Z","query_start":"2026-04-29T12:23:52Z","query_id":"primary-123-q","transaction_id":"primary-123-t","connection_id":"primary-123-c"}]}`
+}
+
+func sampleNekiConnectionsListResponse() string {
+	return `{"type":"list","database_kind":"neki","captured_at":"2026-10-16T12:00:05Z","instances":[],"warnings":["router router-b unreachable"],"data":[` +
+		`{"pid":7,"instance":"router-a","router_name":"router-a","router_cell":"us-east-1a","router_uid":"router-a-us-east-1a-1","availability_zone":"us-east-1a","state":"active","usename":"app","datname":"postgres","application_name":"worker","client_addr":null,"duration_ms":5000,"query_text":"SELECT 1","xact_start":"2026-10-16T12:00:00Z","backend_start":"2026-10-16T12:00:00.123456Z","sidecar_backends":[{"shard_uid":"shard-1","shard_name":"-80","sidecar_uid":"sidecar-1","backend_pid":4242,"query_text":"SELECT\n  1"}]},` +
+		`{"pid":7,"instance":"router-b","router_name":"router-b","router_cell":"us-east-1b","router_uid":"router-b-us-east-1b-1","availability_zone":"us-east-1b","state":"idle","usename":"app","datname":"postgres","application_name":"","duration_ms":null,"query_text":"SELECT 2","xact_start":"2026-10-16T12:00:01Z","backend_start":"2026-10-16T11:59:00Z","sidecar_backends":[]}` +
+		`]}`
 }
 
 func commandNames(cmd *cobra.Command) []string {

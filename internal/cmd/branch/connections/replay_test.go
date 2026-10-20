@@ -214,6 +214,46 @@ func TestTopCmdReplayUsesVitessViewForMySQLTrace(t *testing.T) {
 	c.Assert(view, qt.Not(qt.Contains), "WAIT")
 }
 
+func TestTopCmdReplayUsesNekiViewForNekiTrace(t *testing.T) {
+	c := qt.New(t)
+	restoreTTY := setPrinterTTY(t, true)
+	defer restoreTTY()
+
+	var capturedModel tea.Model
+	restoreProgram := setRunTeaProgram(t, func(model tea.Model, options ...tea.ProgramOption) error {
+		capturedModel = model
+		return nil
+	})
+	defer restoreProgram()
+
+	path := filepath.Join(t.TempDir(), "neki.jsonl")
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, 0o600)
+	c.Assert(err, qt.IsNil)
+	list := live.NewConnectionList(time.Date(2026, 10, 16, 12, 0, 5, 0, time.UTC), []live.Connection{{
+		PID:        7,
+		Instance:   "router-a",
+		RouterName: "router-a",
+		State:      "active",
+		QueryText:  "SELECT 1",
+	}}, live.SortByTransactionStart)
+	list.DatabaseKind = live.DatabaseKindNeki
+	list.Warnings = []string{"router router-b unreachable"}
+	c.Assert(history.NewCaptureWriter(file).Write(history.NewCapture(list)), qt.IsNil)
+	c.Assert(file.Close(), qt.IsNil)
+
+	cmd := testTopCmd(&cmdutil.Helper{Config: &config.Config{}})
+	cmd.SetArgs([]string{"--replay", path})
+
+	c.Assert(cmd.Execute(), qt.IsNil)
+	sized, _ := capturedModel.(tui.Model).Update(tea.WindowSizeMsg{Width: 160, Height: 24})
+	view := sized.(tui.Model).View()
+
+	c.Assert(view, qt.Contains, "ROUTER")
+	c.Assert(view, qt.Contains, "router-a")
+	c.Assert(view, qt.Contains, "incomplete results: router router-b unreachable")
+	c.Assert(view, qt.Not(qt.Contains), "BLOCK")
+}
+
 func TestReplayHeaderShowsTraceTarget(t *testing.T) {
 	c := qt.New(t)
 	restoreTTY := setPrinterTTY(t, true)

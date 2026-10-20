@@ -68,7 +68,14 @@ func helpModalLines(state helpState) []string {
 			"",
 		)
 	}
-	if !support.supports(actionTerminateTxn) {
+	switch {
+	case !support.hasActions():
+		lines = append(lines,
+			headerStyle.Render("Actions"),
+			"  Read-only: queries and connections cannot be cancelled or terminated from this view.",
+			"",
+		)
+	case !support.supports(actionTerminateTxn):
 		lines = append(lines,
 			headerStyle.Render("Actions"),
 			"  c  Kill the selected query (KILL QUERY) using the query_id from the selected process.",
@@ -76,7 +83,7 @@ func helpModalLines(state helpState) []string {
 			"  c and K require confirmation. Replay mode blocks backend actions.",
 			"",
 		)
-	} else {
+	default:
 		lines = append(lines,
 			headerStyle.Render("Actions"),
 			"  c  Cancel the selected query (pg_cancel_backend) only if it is the same active query we observed.",

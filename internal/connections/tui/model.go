@@ -56,6 +56,7 @@ type connectionDisplayPreset string
 const (
 	connectionDisplayDefault     connectionDisplayPreset = ""
 	connectionDisplayProcesslist connectionDisplayPreset = "processlist"
+	connectionDisplayNeki        connectionDisplayPreset = "neki"
 )
 
 type ConnectionViewProfile struct {
@@ -84,6 +85,13 @@ var (
 		},
 		defaultSort: live.SortByDuration,
 		sortModes:   []live.SortMode{live.SortByDuration},
+	}
+	// NekiConnectionView presents read-only Neki router sessions.
+	NekiConnectionView = ConnectionViewProfile{
+		displayPreset: connectionDisplayNeki,
+		capabilities:  ConnectionCapabilities{configured: true},
+		defaultSort:   live.SortByTransactionStart,
+		sortModes:     []live.SortMode{live.SortByTransactionStart, live.SortByDuration},
 	}
 )
 
@@ -182,12 +190,13 @@ type Model struct {
 	helpOpen            bool
 	helpOffset          int
 
-	detailOpen     bool
-	detailInstance string
-	detailPID      int
-	detailTab      detailTab
-	blockerRow     int
-	queryOffset    int
+	detailOpen         bool
+	detailInstance     string
+	detailPID          int
+	detailBackendStart *time.Time
+	detailTab          detailTab
+	blockerRow         int
+	queryOffset        int
 }
 
 func NewModel(ctx context.Context, client ConnectionsClient, interval, duration time.Duration) Model {
@@ -501,6 +510,7 @@ func (m Model) handleTableKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.detailOpen = true
 		m.detailInstance = conn.Instance
 		m.detailPID = conn.PID
+		m.detailBackendStart = conn.BackendStart
 		m.blockerRow = 0
 		m.queryOffset = 0
 		if strings.EqualFold(msg.String(), "b") {
@@ -604,6 +614,7 @@ func (m Model) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if ok {
 				m.detailInstance = target.Instance
 				m.detailPID = target.PID
+				m.detailBackendStart = target.BackendStart
 				m.blockerRow = 0
 				m.queryOffset = 0
 				m.clampBlockerSelection()
@@ -1116,7 +1127,16 @@ func (m *Model) reanchorProcesslistSelection(previous live.Connection, previousI
 }
 
 func sameConnection(a, b live.Connection) bool {
-	return a.PID == b.PID && a.Instance == b.Instance
+	return a.PID == b.PID && a.Instance == b.Instance && sameBackendStart(a.BackendStart, b.BackendStart)
+}
+
+// sameBackendStart tells a reused PID apart from the session that held it
+// before. Rows without a backend start fall back to PID and instance identity.
+func sameBackendStart(a, b *time.Time) bool {
+	if a == nil || b == nil {
+		return true
+	}
+	return a.Equal(*b)
 }
 
 func nearestProcesslistWorkIndex(connections []live.Connection, index int) int {
@@ -1145,7 +1165,7 @@ func (m Model) detailSubject() (live.Connection, bool) {
 		return live.Connection{}, false
 	}
 	for _, conn := range m.lastSuccessfulList.Connections {
-		if conn.PID == m.detailPID && conn.Instance == m.detailInstance {
+		if conn.PID == m.detailPID && conn.Instance == m.detailInstance && sameBackendStart(conn.BackendStart, m.detailBackendStart) {
 			return conn, true
 		}
 	}

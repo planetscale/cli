@@ -137,6 +137,7 @@ type listResponse struct {
 	Instances    []InstanceMeta `json:"instances"`
 	Topology     *Topology      `json:"topology"`
 	Data         []listEntry    `json:"data"`
+	Warnings     []string       `json:"warnings"`
 }
 
 type listEntry struct {
@@ -158,10 +159,17 @@ type listEntry struct {
 	DurationMS      int64      `json:"duration_ms"`
 	BlockedBy       []int      `json:"blocked_by"`
 	QueryText       string     `json:"query_text"`
+
+	BackendStart     *time.Time       `json:"backend_start"`
+	RouterName       string           `json:"router_name"`
+	RouterCell       string           `json:"router_cell"`
+	RouterUID        string           `json:"router_uid"`
+	AvailabilityZone string           `json:"availability_zone"`
+	SidecarBackends  []SidecarBackend `json:"sidecar_backends"`
 }
 
-func (e listEntry) connection() Connection {
-	return Connection{
+func (e listEntry) connection(kind DatabaseKind) Connection {
+	conn := Connection{
 		PID:             e.PID,
 		Instance:        e.Instance,
 		DatabaseName:    e.DatabaseName,
@@ -180,7 +188,19 @@ func (e listEntry) connection() Connection {
 		Duration:        time.Duration(e.DurationMS) * time.Millisecond,
 		BlockedBy:       e.BlockedBy,
 		QueryText:       e.QueryText,
+
+		RouterName:       e.RouterName,
+		RouterCell:       e.RouterCell,
+		RouterUID:        e.RouterUID,
+		AvailabilityZone: e.AvailabilityZone,
+		SidecarBackends:  e.SidecarBackends,
 	}
+	// Postgres also reports backend_start, but older pscale versions reject
+	// unknown fields when replaying captures, so only Neki rows carry it.
+	if kind == DatabaseKindNeki {
+		conn.BackendStart = e.BackendStart
+	}
+	return conn
 }
 
 func (s *Client) List(ctx context.Context, sort SortMode) (ConnectionList, error) {
@@ -298,17 +318,18 @@ func (s *Client) tryList(ctx context.Context, sort SortMode) (ConnectionList, ti
 }
 
 func (r listResponse) connectionList(sort SortMode) ConnectionList {
-	list := NewConnectionList(r.CapturedAt, connectionsFromEntries(r.Data), sort)
+	list := NewConnectionList(r.CapturedAt, connectionsFromEntries(r.Data, r.DatabaseKind), sort)
 	list.DatabaseKind = r.DatabaseKind
 	list.Instances = r.Instances
 	list.Topology = r.Topology
+	list.Warnings = r.Warnings
 	return list
 }
 
-func connectionsFromEntries(entries []listEntry) []Connection {
+func connectionsFromEntries(entries []listEntry, kind DatabaseKind) []Connection {
 	connections := make([]Connection, 0, len(entries))
 	for _, entry := range entries {
-		connections = append(connections, entry.connection())
+		connections = append(connections, entry.connection(kind))
 	}
 	return connections
 }
@@ -491,12 +512,24 @@ func actionIDName(op string) string {
 	}
 }
 
+// NotFoundError is the connections endpoint's 404, which the API returns both
+// for a branch that does not exist and for one without live connections.
+type NotFoundError struct {
+	Organization string
+	Database     string
+	Branch       string
+}
+
+func (e *NotFoundError) Error() string {
+	return fmt.Sprintf(
+		"branch %s does not exist in database %s (organization: %s), or live connections are not enabled for it",
+		e.Branch, e.Database, e.Organization,
+	)
+}
+
 func (s *Client) formatHTTPError(op string, status int, body []byte) error {
 	if status == http.StatusNotFound {
-		return fmt.Errorf(
-			"branch %s does not exist in database %s (organization: %s), or live connections are not enabled for it",
-			s.cfg.Branch, s.cfg.Database, s.cfg.Organization,
-		)
+		return &NotFoundError{Organization: s.cfg.Organization, Database: s.cfg.Database, Branch: s.cfg.Branch}
 	}
 	if status == http.StatusTooManyRequests {
 		return fmt.Errorf("%s: rate limited, please retry in a moment", op)

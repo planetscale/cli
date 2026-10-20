@@ -152,6 +152,35 @@ func TestCaptureRoundTripIsByteIdentical(t *testing.T) {
 	c.Assert(second.Bytes(), qt.DeepEquals, first.Bytes())
 }
 
+func TestCaptureRoundTripPreservesNekiSessions(t *testing.T) {
+	c := qt.New(t)
+	backendStart := time.Date(2026, 10, 16, 12, 0, 0, 123456000, time.UTC)
+	list := connections.NewConnectionList(time.Date(2026, 10, 16, 12, 0, 5, 0, time.UTC), []connections.Connection{{
+		PID:              2147483647,
+		Instance:         "router-a",
+		RouterName:       "router-a",
+		RouterCell:       "us-east-1a",
+		RouterUID:        "router-a-us-east-1a-1",
+		AvailabilityZone: "us-east-1a",
+		BackendStart:     &backendStart,
+		SidecarBackends: []connections.SidecarBackend{{
+			ShardUID:   "shard-1",
+			ShardName:  "-80",
+			SidecarUID: "sidecar-1",
+			BackendPID: 4242,
+		}},
+	}}, connections.SortByTransactionStart)
+	list.DatabaseKind = connections.DatabaseKindNeki
+	list.Warnings = []string{"router router-b unreachable"}
+	var buffer bytes.Buffer
+	c.Assert(NewCaptureWriter(&buffer).Write(NewCapture(list)), qt.IsNil)
+
+	capture, err := NewCaptureReader(bytes.NewReader(buffer.Bytes())).Read()
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(capture.List, qt.DeepEquals, list)
+}
+
 // Anti-regression: a pre-amendment capture file with old-only fields must
 // surface a clear decode error rather than being accepted as a replayable
 // capture.

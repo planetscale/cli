@@ -47,7 +47,7 @@ func runList(ctx context.Context, ch *cmdutil.Helper, database, branch string, f
 		return err
 	}
 
-	list, err := filteredLister{client: client, filter: filter}.List(ctx, live.SortByTransactionStart)
+	list, err := filteredLister{client: client, filter: filter, notFound: newNotFoundExplainer(ch, database, branch)}.List(ctx, live.SortByTransactionStart)
 	if err != nil {
 		return live.UserFacingError(err, "view")
 	}
@@ -76,6 +76,7 @@ type printableList struct {
 	Topology     *ListTopology         `json:"topology,omitempty"`
 	Instances    []printableInstance   `json:"instances"`
 	Connections  []printableConnection `json:"connections"`
+	Warnings     []string              `json:"warnings,omitempty"`
 }
 
 type printableInstance struct {
@@ -101,6 +102,13 @@ type printableConnection struct {
 	QueryID         *string `csv:"query_id" header:"query_id" json:"query_id"`
 	TransactionID   *string `csv:"transaction_id" header:"transaction_id" json:"transaction_id"`
 	ConnectionID    *string `csv:"connection_id" header:"connection_id" json:"connection_id"`
+
+	RouterName       string                `csv:"-" json:"router_name,omitempty"`
+	RouterCell       string                `csv:"-" json:"router_cell,omitempty"`
+	RouterUID        string                `csv:"-" json:"router_uid,omitempty"`
+	AvailabilityZone string                `csv:"-" json:"availability_zone,omitempty"`
+	BackendStart     *time.Time            `csv:"-" json:"backend_start,omitempty"`
+	SidecarBackends  []live.SidecarBackend `csv:"-" json:"sidecar_backends,omitempty"`
 }
 
 func toPrintableList(list live.ConnectionList, topology ListTopology) printableList {
@@ -109,6 +117,7 @@ func toPrintableList(list live.ConnectionList, topology ListTopology) printableL
 		CapturedAt:   list.CapturedAt,
 		Instances:    toPrintableInstances(list.Instances),
 		Connections:  toPrintableConnections(list),
+		Warnings:     list.Warnings,
 	}
 	if !topology.isEmpty() {
 		out.Topology = &topology
@@ -150,7 +159,7 @@ func (p printableList) hasDatabaseName() bool {
 func toPrintableConnections(list live.ConnectionList) []printableConnection {
 	connections := make([]printableConnection, 0, len(list.Connections))
 	for _, conn := range list.Connections {
-		connections = append(connections, printableConnection{
+		printable := printableConnection{
 			PID:             conn.PID,
 			Instance:        conn.Instance,
 			InstanceRole:    conn.InstanceRole,
@@ -167,7 +176,16 @@ func toPrintableConnections(list live.ConnectionList) []printableConnection {
 			QueryID:         conn.QueryID,
 			TransactionID:   conn.TransactionID,
 			ConnectionID:    conn.ConnectionID,
-		})
+		}
+		if list.DatabaseKind == live.DatabaseKindNeki {
+			printable.RouterName = conn.RouterName
+			printable.RouterCell = conn.RouterCell
+			printable.RouterUID = conn.RouterUID
+			printable.AvailabilityZone = conn.AvailabilityZone
+			printable.BackendStart = conn.BackendStart
+			printable.SidecarBackends = conn.SidecarBackends
+		}
+		connections = append(connections, printable)
 	}
 	return connections
 }
@@ -185,6 +203,7 @@ func printableBlockedBy(blockedBy []int) []int {
 func printHumanConnectionList(out io.Writer, list live.ConnectionList, topology ListTopology) {
 	fmt.Fprintf(out, "captured_at: %s\n", list.CapturedAt.Format(time.RFC3339))
 	vitess := list.DatabaseKind == live.DatabaseKindMySQL || !topology.isEmpty()
+	neki := list.DatabaseKind == live.DatabaseKindNeki
 	if !topology.isEmpty() {
 		fmt.Fprintln(out, "topology:")
 		fmt.Fprintf(out, "  keyspace: %s\n", topology.Keyspace)
@@ -193,6 +212,9 @@ func printHumanConnectionList(out io.Writer, list live.ConnectionList, topology 
 	}
 	if warning := unreachableInstanceWarning(list.Instances); warning != "" {
 		fmt.Fprintln(out, warning)
+	}
+	for _, warning := range list.Warnings {
+		fmt.Fprintln(out, "warning: incomplete results: "+live.SanitizeDisplayText(warning))
 	}
 
 	if len(list.Connections) == 0 {
@@ -207,13 +229,16 @@ func printHumanConnectionList(out io.Writer, list live.ConnectionList, topology 
 
 		fmt.Fprintf(out, "*************************** %d. row ***************************\n", i+1)
 		fields := conn.HumanFields()
-		if vitess {
+		switch {
+		case vitess:
 			fields = vitessHumanFields(conn)
+		case neki:
+			fields = conn.NekiHumanFields()
 		}
 		for _, field := range fields {
 			writeHumanField(out, field[0], field[1])
 		}
-		if conn.DatabaseName != "" {
+		if conn.DatabaseName != "" && !neki {
 			writeHumanField(out, "database", conn.DatabaseName)
 		}
 		fmt.Fprintln(out, "query:")
