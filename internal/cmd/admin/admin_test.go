@@ -172,7 +172,7 @@ func TestAdminParametersCmd(t *testing.T) {
 	cmd.SetArgs([]string{"app", "main"})
 	c.Assert(cmd.Execute(), qt.IsNil)
 	c.Assert(out.String(), qt.JSONEquals, []map[string]interface{}{{
-		"name": "recovery-poll-interval", "display_name": "", "namespace": "admin", "advanced": false,
+		"name": "recovery-poll-interval", "display_name": "", "namespace": "admin", "advanced": false, "internal": false,
 		"category": nil, "description": "", "parameter_type": "", "default_value": nil, "value": "20s",
 		"required": false, "created_at": "0001-01-01T00:00:00Z", "updated_at": nil, "restart": false, "url": "", "requires_update": nil,
 	}})

@@ -382,17 +382,17 @@ func TestConfigProfileParametersCmd(t *testing.T) {
 	cmd.SetArgs([]string{"app", "main", "metal", "--namespace", "pgconf", "--extension"})
 	c.Assert(cmd.Execute(), qt.IsNil)
 	c.Assert(out.String(), qt.JSONEquals, []map[string]interface{}{{
-		"name": "work_mem", "display_name": "", "namespace": "pgconf", "advanced": false,
+		"name": "work_mem", "display_name": "", "namespace": "pgconf", "advanced": false, "internal": false,
 		"category": nil, "description": "", "parameter_type": "", "default_value": nil, "value": "64MB",
 		"required": false, "created_at": "0001-01-01T00:00:00Z", "updated_at": nil, "restart": false, "url": "", "requires_update": "configuration_profile",
 	}})
 }
 
-func TestConfigProfileParametersRequiresUpdateTable(t *testing.T) {
+func TestConfigProfileParametersTable(t *testing.T) {
 	c := qt.New(t)
 	var parameters []*ps.NekiParameter
 	c.Assert(json.Unmarshal([]byte(`[
-		{"namespace":"pgconf","name":"profile_locked","requires_update":"configuration_profile"},
+		{"namespace":"pgconf","name":"profile_locked","internal":true,"requires_update":"configuration_profile"},
 		{"namespace":"pgconf","name":"cluster_locked","requires_update":"cluster"},
 		{"namespace":"pgconf","name":"editable","requires_update":null}
 	]`), &parameters), qt.IsNil)
@@ -406,9 +406,10 @@ func TestConfigProfileParametersRequiresUpdateTable(t *testing.T) {
 	lines := strings.Split(strings.TrimSpace(out.String()), "\n")
 	c.Assert(len(lines), qt.Equals, 5)
 	c.Assert(lines[0], qt.Contains, "REQUIRES UPDATE")
-	c.Assert(strings.Fields(lines[2]), qt.DeepEquals, []string{"pgconf", "profile_locked", "No", "No", "Yes"})
-	c.Assert(strings.Fields(lines[3]), qt.DeepEquals, []string{"pgconf", "cluster_locked", "No", "No", "Yes"})
-	c.Assert(strings.Fields(lines[4]), qt.DeepEquals, []string{"pgconf", "editable", "No", "No", "No"})
+	c.Assert(lines[0], qt.Contains, "INTERNAL")
+	c.Assert(strings.Fields(lines[2]), qt.DeepEquals, []string{"pgconf", "profile_locked", "No", "Yes", "No", "Yes"})
+	c.Assert(strings.Fields(lines[3]), qt.DeepEquals, []string{"pgconf", "cluster_locked", "No", "No", "No", "Yes"})
+	c.Assert(strings.Fields(lines[4]), qt.DeepEquals, []string{"pgconf", "editable", "No", "No", "No", "No"})
 }
 
 func TestConfigProfileChangesCancelCmd(t *testing.T) {

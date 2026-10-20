@@ -39,6 +39,7 @@ func TestBranch_ParametersCmd(t *testing.T) {
 			return []*ps.PostgresParameter{
 				{Namespace: "pgconf", Name: "max_connections", Value: "200", DefaultValue: "100", ParameterType: "integer", Restart: true, RequiresUpdate: &requiresUpdate},
 				{Namespace: "pgbouncer", Name: "default_pool_size", Value: "20", DefaultValue: "20", ParameterType: "integer"},
+				{Namespace: "pgconf", Name: "archive_timeout", Internal: true},
 			}, nil
 		},
 	}
@@ -65,6 +66,8 @@ func TestBranch_ParametersCmd(t *testing.T) {
 	c.Assert(json.Unmarshal(buf.Bytes(), &parameters), qt.IsNil)
 	c.Assert(parameters[0]["requires_update"], qt.Equals, "cluster")
 	c.Assert(parameters[1]["requires_update"], qt.IsNil)
+	c.Assert(parameters[0]["internal"], qt.Equals, false)
+	c.Assert(parameters[2]["internal"], qt.Equals, true)
 	c.Assert(buf.String(), qt.Contains, `"requires_update": null`)
 }
 
@@ -139,11 +142,11 @@ func TestBranch_ParametersCmd_NamespaceFilter(t *testing.T) {
 	c.Assert(buf.String(), qt.Not(qt.Contains), "max_connections")
 }
 
-func TestBranch_ParametersRequiresUpdateTable(t *testing.T) {
+func TestBranch_ParametersTable(t *testing.T) {
 	c := qt.New(t)
 	var parameters []*ps.PostgresParameter
 	c.Assert(json.Unmarshal([]byte(`[
-		{"namespace":"pgconf","name":"locked","requires_update":"cluster"},
+		{"namespace":"pgconf","name":"locked","internal":true,"requires_update":"cluster"},
 		{"namespace":"pgconf","name":"editable","requires_update":null}
 	]`), &parameters), qt.IsNil)
 
@@ -156,6 +159,7 @@ func TestBranch_ParametersRequiresUpdateTable(t *testing.T) {
 	lines := strings.Split(strings.TrimSpace(out.String()), "\n")
 	c.Assert(len(lines), qt.Equals, 4)
 	c.Assert(lines[0], qt.Contains, "REQUIRES UPDATE")
-	c.Assert(strings.Fields(lines[2]), qt.DeepEquals, []string{"pgconf", "locked", "No", "Yes"})
-	c.Assert(strings.Fields(lines[3]), qt.DeepEquals, []string{"pgconf", "editable", "No", "No"})
+	c.Assert(lines[0], qt.Contains, "INTERNAL")
+	c.Assert(strings.Fields(lines[2]), qt.DeepEquals, []string{"pgconf", "locked", "No", "Yes", "Yes"})
+	c.Assert(strings.Fields(lines[3]), qt.DeepEquals, []string{"pgconf", "editable", "No", "No", "No"})
 }

@@ -217,6 +217,7 @@ type PostgresParameter struct {
 	Value          any     `json:"value"`
 	Required       bool    `json:"required"`
 	Restart        bool    `json:"restart"`
+	Internal       bool    `json:"internal"`
 	RequiresUpdate *string `json:"requires_update"`
 
 	// Min, Max, and Step are numbers for plain numeric parameters but strings

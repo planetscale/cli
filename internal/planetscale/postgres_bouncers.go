@@ -39,6 +39,7 @@ type PostgresBouncerParameter struct {
 	Value         string    `json:"value"`
 	Required      bool      `json:"required"`
 	Restart       bool      `json:"restart"`
+	Internal      bool      `json:"internal"`
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
 }

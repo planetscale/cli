@@ -79,6 +79,7 @@ type parameterDisplay struct {
 	Default        string `header:"default" json:"default_value"`
 	Type           string `header:"type" json:"parameter_type"`
 	Restart        bool   `header:"restart" json:"restart"`
+	Internal       bool   `header:"internal" json:"internal"`
 	Required       bool   `header:"required" json:"required"`
 	RequiresUpdate bool   `header:"requires update" json:"requires_update"`
 	orig           *ps.NekiParameter
@@ -108,6 +109,7 @@ func toParameters(parameters []*ps.NekiParameter) []*parameterDisplay {
 			Default:        formatValue(p.DefaultValue),
 			Type:           p.ParameterType,
 			Restart:        p.Restart,
+			Internal:       p.Internal,
 			Required:       p.Required,
 			RequiresUpdate: p.RequiresUpdate != nil,
 			orig:           p,
