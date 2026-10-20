@@ -181,7 +181,7 @@ func GlobalJSONError(err error) JSONErrorResponse {
 	// exists; retry the follow-up command once the snapshot finishes.
 	case strings.Contains(lower, "schema refreshing"):
 		status = "action_required"
-		code = "schema_snapshot_not_ready"
+		code = "schema_refreshing"
 		nextSteps = []string{
 			"Wait for the branch schema snapshot to become ready, then retry",
 		}
@@ -202,7 +202,7 @@ func GlobalJSONError(err error) JSONErrorResponse {
 			nextSteps = []string{
 				"Wait for the active vtctld mutation or deploy to finish, then retry",
 			}
-		case "schema_snapshot_not_ready":
+		case "schema_refreshing", "schema_snapshot_not_ready":
 			status = "action_required"
 			nextSteps = []string{
 				"Wait for the branch schema snapshot to become ready, then retry",

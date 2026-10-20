@@ -180,7 +180,23 @@ func TestGlobalJSONErrorSchemaRefreshing(t *testing.T) {
 	if resp.Status != "action_required" {
 		t.Fatalf("status = %q", resp.Status)
 	}
-	if resp.Code() != "schema_snapshot_not_ready" {
+	if resp.Code() != "schema_refreshing" {
+		t.Fatalf("code = %q", resp.Code())
+	}
+	if len(resp.NextSteps) != 1 || resp.NextSteps[0] != "Wait for the branch schema snapshot to become ready, then retry" {
+		t.Fatalf("next_steps = %#v", resp.NextSteps)
+	}
+}
+
+func TestGlobalJSONErrorSchemaRefreshingAPICode(t *testing.T) {
+	resp := GlobalJSONError(&planetscale.Error{
+		APICode: "schema_refreshing",
+	})
+
+	if resp.Status != "action_required" {
+		t.Fatalf("status = %q", resp.Status)
+	}
+	if resp.Code() != "schema_refreshing" {
 		t.Fatalf("code = %q", resp.Code())
 	}
 	if len(resp.NextSteps) != 1 || resp.NextSteps[0] != "Wait for the branch schema snapshot to become ready, then retry" {
