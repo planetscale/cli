@@ -343,6 +343,23 @@ func renderConnectionStatus(label string, conn live.Connection, width int) strin
 	return clipLine(status, width)
 }
 
+// detailActionTarget mirrors Model.actionTargetConnection: on the Blockers tab
+// the keys act on the highlighted blocker, otherwise on the subject.
+func detailActionTarget(state detailState) (live.Connection, bool) {
+	if !state.SubjectFound {
+		return live.Connection{}, false
+	}
+	if state.Tab != tabBlockers {
+		return state.Subject, true
+	}
+	rows := detailBlockerRows(state.List, state.Subject)
+	if state.BlockerSelection < 0 || state.BlockerSelection >= len(rows) {
+		return state.Subject, true
+	}
+	row := rows[state.BlockerSelection]
+	return row.Connection, row.Present
+}
+
 func renderDetailHelp(state detailState) string {
 	labels := actionHelpLabels(state.DisplayPreset)
 	cancelHelp := labels.cancel
@@ -371,14 +388,15 @@ func renderDetailHelp(state detailState) string {
 	bindings = append(bindings, key.NewBinding(key.WithKeys("q", "esc"), key.WithHelp("q/esc", "back")))
 	// An ended connection has nothing to act on, so suppress the destructive
 	// action hints rather than advertise keys that no-op.
-	if state.SubjectFound && !state.ReadOnlyActions && !state.Replay {
-		if support.supports(actionCancelQuery) {
+	if target, ok := detailActionTarget(state); ok && !state.ReadOnlyActions && !state.Replay {
+		actions := support.forConnection(target)
+		if actions.supports(actionCancelQuery) {
 			bindings = append(bindings, key.NewBinding(key.WithKeys("c"), key.WithHelp("c", cancelHelp)))
 		}
-		if support.supports(actionTerminateTxn) {
+		if actions.supports(actionTerminateTxn) {
 			bindings = append(bindings, key.NewBinding(key.WithKeys("k"), key.WithHelp("k", killTxnHelp)))
 		}
-		if support.supports(actionTerminateConn) {
+		if actions.supports(actionTerminateConn) {
 			bindings = append(bindings, key.NewBinding(key.WithKeys("K"), key.WithHelp("shift+K", terminateHelp)))
 		}
 	}

@@ -711,9 +711,16 @@ func renderFooter(state tableState) string {
 		} else if state.Notice != "" {
 			lines = append(lines, clipLine("status: "+state.Notice, tableWidth(state.Width)))
 		}
-		lines = append(lines, renderHelpFor(state.Width, state.ReadOnlyActions, state.Replay, state.DisplayPreset, state.Capabilities, state.CanSort, state.HasList, state.HasList && len(state.List.Connections) > 0, state.CanStepHistory, state.Paused))
+		lines = append(lines, renderHelpFor(state.Width, state.ReadOnlyActions, state.Replay, state.DisplayPreset, selectedCapabilities(state), state.CanSort, state.HasList, state.HasList && len(state.List.Connections) > 0, state.CanStepHistory, state.Paused))
 	}
 	return strings.Join(lines, "\n")
+}
+
+func selectedCapabilities(state tableState) ConnectionCapabilities {
+	if !state.HasList || state.Selected < 0 || state.Selected >= len(state.List.Connections) {
+		return state.Capabilities
+	}
+	return state.Capabilities.forConnection(state.List.Connections[state.Selected])
 }
 
 func renderSelectedStatus(state tableState) string {

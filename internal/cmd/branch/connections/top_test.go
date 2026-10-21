@@ -654,8 +654,8 @@ func TestTopCmdRunsNekiTop(t *testing.T) {
 	c.Assert(view, qt.Contains, "router-a")
 	c.Assert(view, qt.Contains, "incomplete results: router router-b unreachable")
 	c.Assert(view, qt.Not(qt.Contains), "BLOCK")
-	c.Assert(view, qt.Contains, "cancel query")
-	c.Assert(view, qt.Contains, "force terminate")
+	c.Assert(view, qt.Not(qt.Contains), "cancel query")
+	c.Assert(view, qt.Not(qt.Contains), "force terminate")
 	c.Assert(blockersView, qt.Not(qt.Contains), "[blockers]")
 	c.Assert(cancelConfirming, qt.IsFalse)
 }

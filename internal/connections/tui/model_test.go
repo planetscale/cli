@@ -1946,9 +1946,9 @@ func TestModelNekiConnectionView(t *testing.T) {
 	c.Assert(tableView, qt.Contains, "ROUTER")
 	c.Assert(tableView, qt.Contains, "router-a")
 	c.Assert(tableView, qt.Not(qt.Contains), "BLOCK")
-	c.Assert(tableView, qt.Contains, "cancel query")
-	c.Assert(tableView, qt.Contains, "kill transaction")
-	c.Assert(tableView, qt.Contains, "force terminate")
+	c.Assert(tableView, qt.Not(qt.Contains), "cancel query")
+	c.Assert(tableView, qt.Not(qt.Contains), "kill transaction")
+	c.Assert(tableView, qt.Not(qt.Contains), "force terminate")
 
 	for _, key := range []string{"c", "k", "K"} {
 		updated, _ := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(key)})
@@ -1971,7 +1971,7 @@ func TestModelNekiConnectionView(t *testing.T) {
 	c.Assert(detailView, qt.Contains, "shard_backends:  1")
 	c.Assert(detailView, qt.Contains, "backend_pid:     4242")
 	c.Assert(detailView, qt.Not(qt.Contains), "left/right tabs")
-	c.Assert(detailView, qt.Contains, "cancel query")
+	c.Assert(detailView, qt.Not(qt.Contains), "cancel query")
 }
 
 func TestModelNekiConnectionViewSortsWithoutBlockers(t *testing.T) {

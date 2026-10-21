@@ -388,7 +388,7 @@ func TestDetailRendersConnectionEndedWhenSubjectMissing(t *testing.T) {
 	c.Assert(strings.Contains(endedFooter, "terminate"), qt.IsFalse)
 	c.Assert(strings.Contains(endedFooter, "q/esc back"), qt.IsTrue)
 
-	liveFooter := stripANSI(renderDetailHelp(detailState{SubjectFound: true, Width: 200}))
+	liveFooter := stripANSI(renderDetailHelp(detailState{SubjectFound: true, Subject: connectionWithActionIDs(), Width: 200}))
 	c.Assert(strings.Contains(liveFooter, "cancel query"), qt.IsTrue)
 	c.Assert(strings.Contains(liveFooter, "kill transaction"), qt.IsTrue)
 }
@@ -498,10 +498,15 @@ func TestDetailFooterShowsShiftKForForceTerminate(t *testing.T) {
 
 	footer := stripANSI(renderDetailHelp(detailState{
 		SubjectFound: true,
+		Subject:      connectionWithActionIDs(),
 		Width:        160,
 	}))
 
 	c.Assert(footer, qt.Contains, "shift+K force terminate")
+}
+
+func connectionWithActionIDs() live.Connection {
+	return live.Connection{QueryID: new("query-1"), TransactionID: new("transaction-1"), ConnectionID: new("connection-1")}
 }
 
 // The Blockers-tab contextual footer includes both navigation and destructive
@@ -511,6 +516,7 @@ func TestDetailBlockersFooterFitsOneLineAtDefaultRecordingWidth(t *testing.T) {
 
 	footer := stripANSI(renderDetailHelp(detailState{
 		SubjectFound: true,
+		Subject:      connectionWithActionIDs(),
 		Tab:          tabBlockers,
 		Width:        200,
 	}))
