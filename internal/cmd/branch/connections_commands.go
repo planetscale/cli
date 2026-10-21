@@ -84,9 +84,6 @@ the current query.`,
 			if err != nil {
 				return err
 			}
-			if err := connections.ValidateActionEngine(engine); err != nil {
-				return err
-			}
 			target := connections.ConnectionTarget{Keyspace: flags.keyspace, Shard: flags.shard}
 			if err := connections.ValidateEngineFlags(engine, connections.ConnectionFilter{}, target); err != nil {
 				return err
@@ -108,11 +105,11 @@ the current query.`,
 func ConnectionsKillTransactionCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "kill-transaction <database> <branch> <transaction-id>",
-		Short: "Kill a Postgres branch transaction",
-		Long: `Kill a Postgres branch transaction.
+		Short: "Kill a Postgres or Neki branch transaction",
+		Long: `Kill a Postgres or Neki branch transaction.
 
 This is destructive. Pass a transaction_id from connections show to terminate
-the matching Postgres connection.`,
+the matching connection.`,
 		Args: cmdutil.RequiredArgs("database", "branch", "transaction-id"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := connections.ValidateTransactionID(args[2]); err != nil {
@@ -122,11 +119,8 @@ the matching Postgres connection.`,
 			if err != nil {
 				return err
 			}
-			if err := connections.ValidateActionEngine(engine); err != nil {
-				return err
-			}
-			if engine != ps.DatabaseEnginePostgres {
-				return errors.New("connections kill-transaction is only supported for Postgres databases")
+			if engine != ps.DatabaseEnginePostgres && engine != ps.DatabaseEngineNeki {
+				return errors.New("connections kill-transaction is only supported for Postgres and Neki databases")
 			}
 			return connections.RunKillTransactionForEngine(cmd.Context(), ch, args[0], args[1], args[2], engine, connections.ConnectionTarget{})
 		},

@@ -284,6 +284,9 @@ func (c Connection) NekiHumanFields() [][2]string {
 		{"application", c.ApplicationName},
 		{"client_addr", c.ClientAddr},
 		{"backend_start", formatOptionalTime(c.BackendStart)},
+		{"query_id", DerefString(c.QueryID)},
+		{"transaction_id", DerefString(c.TransactionID)},
+		{"connection_id", DerefString(c.ConnectionID)},
 		{"shard_backends", strconv.Itoa(len(c.SidecarBackends))},
 	}
 	for _, backend := range c.SidecarBackends {

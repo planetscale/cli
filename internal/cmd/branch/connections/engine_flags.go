@@ -9,7 +9,6 @@ import (
 var (
 	errVitessTargetOnly   = errors.New("--keyspace/--shard are only supported for Vitess databases")
 	errPostgresFilterOnly = errors.New("--instance/--role are only supported for Postgres databases")
-	errNekiReadOnly       = errors.New("connections are read-only for Neki databases")
 )
 
 // ValidateEngineFlags rejects flags that only apply to another database engine.
@@ -35,14 +34,6 @@ func validateEngineFlags(engine ps.DatabaseEngine, filter connectionFilter, targ
 		if filter.active() {
 			return errPostgresFilterOnly
 		}
-	}
-	return nil
-}
-
-// ValidateActionEngine rejects kill commands for engines whose connections are read-only.
-func ValidateActionEngine(engine ps.DatabaseEngine) error {
-	if engine == ps.DatabaseEngineNeki {
-		return errNekiReadOnly
 	}
 	return nil
 }

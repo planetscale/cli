@@ -1937,7 +1937,7 @@ func TestModelPreListPausedFooterHidesRefresh(t *testing.T) {
 	c.Assert(view, qt.Not(qt.Contains), "r refresh")
 }
 
-func TestModelNekiConnectionViewIsReadOnly(t *testing.T) {
+func TestModelNekiConnectionView(t *testing.T) {
 	c := qt.New(t)
 	client := &clientStub{}
 	model := nekiModel(client, nil, nekiConnection("router-a", 7, time.Unix(50, 0)))
@@ -1946,9 +1946,9 @@ func TestModelNekiConnectionViewIsReadOnly(t *testing.T) {
 	c.Assert(tableView, qt.Contains, "ROUTER")
 	c.Assert(tableView, qt.Contains, "router-a")
 	c.Assert(tableView, qt.Not(qt.Contains), "BLOCK")
-	c.Assert(tableView, qt.Not(qt.Contains), "cancel query")
-	c.Assert(tableView, qt.Not(qt.Contains), "kill transaction")
-	c.Assert(tableView, qt.Not(qt.Contains), "force terminate")
+	c.Assert(tableView, qt.Contains, "cancel query")
+	c.Assert(tableView, qt.Contains, "kill transaction")
+	c.Assert(tableView, qt.Contains, "force terminate")
 
 	for _, key := range []string{"c", "k", "K"} {
 		updated, _ := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(key)})
@@ -1961,8 +1961,7 @@ func TestModelNekiConnectionViewIsReadOnly(t *testing.T) {
 
 	updated, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("?")})
 	helpView := stripANSI(updated.(Model).View())
-	c.Assert(helpView, qt.Contains, "Read-only")
-	c.Assert(helpView, qt.Not(qt.Contains), "pg_cancel_backend")
+	c.Assert(helpView, qt.Contains, "pg_cancel_backend")
 	c.Assert(helpView, qt.Not(qt.Contains), "KILL QUERY")
 
 	updated, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
@@ -1972,7 +1971,7 @@ func TestModelNekiConnectionViewIsReadOnly(t *testing.T) {
 	c.Assert(detailView, qt.Contains, "shard_backends:  1")
 	c.Assert(detailView, qt.Contains, "backend_pid:     4242")
 	c.Assert(detailView, qt.Not(qt.Contains), "left/right tabs")
-	c.Assert(detailView, qt.Not(qt.Contains), "cancel query")
+	c.Assert(detailView, qt.Contains, "cancel query")
 }
 
 func TestModelNekiConnectionViewSortsWithoutBlockers(t *testing.T) {

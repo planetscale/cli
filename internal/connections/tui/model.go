@@ -86,12 +86,17 @@ var (
 		defaultSort: live.SortByDuration,
 		sortModes:   []live.SortMode{live.SortByDuration},
 	}
-	// NekiConnectionView presents read-only Neki router sessions.
+	// NekiConnectionView presents Neki router sessions.
 	NekiConnectionView = ConnectionViewProfile{
 		displayPreset: connectionDisplayNeki,
-		capabilities:  ConnectionCapabilities{configured: true},
-		defaultSort:   live.SortByTransactionStart,
-		sortModes:     []live.SortMode{live.SortByTransactionStart, live.SortByDuration},
+		capabilities: ConnectionCapabilities{
+			CancelQuery:          ActionTargetQueryID,
+			TerminateTransaction: ActionTargetTransactionID,
+			TerminateConnection:  ActionTargetConnectionID,
+			configured:           true,
+		},
+		defaultSort: live.SortByTransactionStart,
+		sortModes:   []live.SortMode{live.SortByTransactionStart, live.SortByDuration},
 	}
 )
 
