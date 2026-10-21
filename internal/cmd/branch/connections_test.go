@@ -43,7 +43,6 @@ func TestConnectionsHelpListsEngines(t *testing.T) {
 	c.Assert(help, qt.Contains, "MySQL (Vitess):")
 	c.Assert(help, qt.Contains, "Postgres:")
 	c.Assert(help, qt.Contains, "Neki:")
-	c.Assert(help, qt.Contains, "Read-only.")
 }
 
 func TestConnectionsShowHelpListsTargetAndFilterFlags(t *testing.T) {
@@ -541,31 +540,34 @@ func TestConnectionsKillTransactionRejectsVitess(t *testing.T) {
 
 	err := cmd.Execute()
 
-	c.Assert(err, qt.ErrorMatches, "connections kill-transaction is only supported for Postgres databases")
+	c.Assert(err, qt.ErrorMatches, "connections kill-transaction is only supported for Postgres and Neki databases")
 }
 
-func TestConnectionsRejectsNekiActionsBeforeAPI(t *testing.T) {
+func TestConnectionsSendsNekiActions(t *testing.T) {
 	tests := []struct {
-		name string
-		args []string
+		name     string
+		args     []string
+		wantPath string
 	}{
-		{name: "kill", args: []string{"kill", "neki", "main", "primary-123-c"}},
-		{name: "kill query", args: []string{"kill", "neki", "main", "primary-123-q", "--query"}},
-		{name: "kill-transaction", args: []string{"kill-transaction", "neki", "main", "primary-123-t"}},
+		{name: "kill", args: []string{"kill", "neki", "main", "primary-123-c"}, wantPath: "/connections/connection/primary-123-c"},
+		{name: "kill query", args: []string{"kill", "neki", "main", "primary-123-q", "--query"}, wantPath: "/connections/query/primary-123-q"},
+		{name: "kill-transaction", args: []string{"kill-transaction", "neki", "main", "primary-123-t"}, wantPath: "/connections/transaction/primary-123-t"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := qt.New(t)
 			server := liveConnectionsBranchServer(t, func(w http.ResponseWriter, r *http.Request) {
-				c.Fatalf("%s should reject Neki before calling %s", tt.name, r.URL.Path)
+				c.Assert(r.Method, qt.Equals, http.MethodDelete)
+				c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/acme/databases/neki/branches/main"+tt.wantPath)
+				_, _ = io.WriteString(w, `{"success":true}`)
 			})
 			cmd := connectionsCmdForTest(connectionsTestHelper("acme", ps.DatabaseEngineNeki, nil, server.URL, printer.JSON, &bytes.Buffer{}))
 			cmd.SetArgs(tt.args)
 
 			err := cmd.Execute()
 
-			c.Assert(err, qt.ErrorMatches, "connections are read-only for Neki databases")
+			c.Assert(err, qt.IsNil)
 		})
 	}
 }
@@ -696,7 +698,7 @@ func TestConnectionsShowNekiHuman(t *testing.T) {
 	c.Assert(got, qt.Contains, "shard_backends:  1\nshard:           -80\nshard_uid:       shard-1\nsidecar:         sidecar-1\nbackend_pid:     4242\n")
 	c.Assert(got, qt.Contains, "backend_query:   SELECT 1\n")
 	c.Assert(got, qt.Contains, "shard_backends:  0\n")
-	c.Assert(got, qt.Not(qt.Contains), "connection_id:")
+	c.Assert(got, qt.Contains, "connection_id:   aws_useast1b_3:router-b-7-1779364000000000\n")
 	c.Assert(strings.Count(got, "database:"), qt.Equals, 2)
 }
 
@@ -958,7 +960,7 @@ func sampleBranchConnectionsListResponse() string {
 func sampleNekiConnectionsListResponse() string {
 	return `{"type":"list","database_kind":"neki","captured_at":"2026-10-16T12:00:05Z","instances":[],"warnings":["router router-b unreachable"],"data":[` +
 		`{"pid":7,"instance":"router-a","router_name":"router-a","router_cell":"us-east-1a","router_uid":"router-a-us-east-1a-1","availability_zone":"us-east-1a","state":"active","usename":"app","datname":"postgres","application_name":"worker","client_addr":null,"duration_ms":5000,"query_text":"SELECT 1","xact_start":"2026-10-16T12:00:00Z","backend_start":"2026-10-16T12:00:00.123456Z","sidecar_backends":[{"shard_uid":"shard-1","shard_name":"-80","sidecar_uid":"sidecar-1","backend_pid":4242,"query_text":"SELECT\n  1"}]},` +
-		`{"pid":7,"instance":"router-b","router_name":"router-b","router_cell":"us-east-1b","router_uid":"router-b-us-east-1b-1","availability_zone":"us-east-1b","state":"idle","usename":"app","datname":"postgres","application_name":"","duration_ms":null,"query_text":"SELECT 2","xact_start":"2026-10-16T12:00:01Z","backend_start":"2026-10-16T11:59:00Z","sidecar_backends":[]}` +
+		`{"pid":7,"instance":"router-b","router_name":"router-b","connection_id":"aws_useast1b_3:router-b-7-1779364000000000","router_cell":"us-east-1b","router_uid":"router-b-us-east-1b-1","availability_zone":"us-east-1b","state":"idle","usename":"app","datname":"postgres","application_name":"","duration_ms":null,"query_text":"SELECT 2","xact_start":"2026-10-16T12:00:01Z","backend_start":"2026-10-16T11:59:00Z","sidecar_backends":[]}` +
 		`]}`
 }
 

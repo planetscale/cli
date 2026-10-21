@@ -137,7 +137,7 @@ func printActionResult(ch *cmdutil.Helper, result live.ActionResult, engine ps.D
 	if ch.Printer.Format() == printer.JSON {
 		return ch.Printer.PrintResource(toActionResult(result))
 	}
-	if engine == ps.DatabaseEnginePostgres {
+	if engine == ps.DatabaseEnginePostgres || engine == ps.DatabaseEngineNeki {
 		return ch.Printer.PrintResource(toCompactActionResult(result))
 	}
 	return ch.Printer.PrintResource(toActionResult(result))

@@ -11,7 +11,7 @@ func ConnectionsCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "connections <command>",
 		Short: "Show and kill branch connections",
-		Long: `Show and kill MySQL or Postgres branch connections, and show Neki branch connections.
+		Long: `Show and kill MySQL, Postgres, or Neki branch connections.
 
 MySQL (Vitess):
   show/kill/top with --keyspace and --shard.
@@ -21,7 +21,8 @@ Postgres:
   kill-transaction terminates a transaction_id from show.
 
 Neki:
-  show/top list client sessions across the branch's routers. Read-only.
+  show/top list client sessions across the branch's routers.
+  kill-transaction terminates a transaction_id from show.
 
 Agent workflow:
   1. Run: pscale branch connections show <database> <branch> --format json
@@ -33,7 +34,7 @@ Agent workflow:
 Action semantics:
   kill <database> <branch> <query-id> --query        Cancels the listed query_id.
   kill-transaction <database> <branch> <transaction-id>
-                                                     Postgres only. destructive. Terminates the listed transaction_id if it still matches server state.
+                                                     Postgres and Neki only. destructive. Terminates the listed transaction_id if it still matches server state.
   kill <database> <branch> <connection-id>           destructive. Terminates the listed connection_id.
 
 Use --format json when an agent or script needs to inspect query_id,

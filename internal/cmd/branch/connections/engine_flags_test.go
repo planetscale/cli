@@ -34,11 +34,3 @@ func TestValidateEngineFlagsForNeki(t *testing.T) {
 		})
 	}
 }
-
-func TestValidateActionEngine(t *testing.T) {
-	c := qt.New(t)
-
-	c.Assert(ValidateActionEngine(ps.DatabaseEngineNeki), qt.ErrorMatches, "connections are read-only for Neki databases")
-	c.Assert(ValidateActionEngine(ps.DatabaseEnginePostgres), qt.IsNil)
-	c.Assert(ValidateActionEngine(ps.DatabaseEngineMySQL), qt.IsNil)
-}
