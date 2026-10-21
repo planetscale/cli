@@ -77,6 +77,23 @@ func (s ConnectionCapabilities) supports(kind actionKind) bool {
 	return requirement.field != actionTargetUnset
 }
 
+// forConnection drops the actions whose required ID conn lacks, so controls
+// are only offered for actions the backend can run against that connection.
+func (s ConnectionCapabilities) forConnection(conn live.Connection) ConnectionCapabilities {
+	s = s.effective()
+	target := actionTargetFor(conn)
+	if s.missingActionID(actionCancelQuery, target) != "" {
+		s.CancelQuery = ActionRequirement{}
+	}
+	if s.missingActionID(actionTerminateTxn, target) != "" {
+		s.TerminateTransaction = ActionRequirement{}
+	}
+	if s.missingActionID(actionTerminateConn, target) != "" {
+		s.TerminateConnection = ActionRequirement{}
+	}
+	return s
+}
+
 func (s ConnectionCapabilities) requirement(kind actionKind) ActionRequirement {
 	s = s.effective()
 	switch kind {
