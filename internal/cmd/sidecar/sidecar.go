@@ -12,11 +12,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const deprecation = "use \"pscale branch config-profile update <database> <branch> <profile> --parameters sidecar.<name>=<value>\" instead."
+
 func SidecarCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "sidecar <command>",
-		Short: "Manage sidecars for a Neki database branch",
-		Long:  "Manage sidecars for a Neki database branch.\n\nEach configuration profile has one sidecar. Sidecars are created and deleted with their profile. This command is only supported for Neki databases.",
+		Use:               "sidecar <command>",
+		Short:             "Manage sidecars for a Neki database branch",
+		Long:              "Manage sidecars for a Neki database branch.\n\nEach configuration profile has one sidecar. Sidecars are created and deleted with their profile. This command is only supported for Neki databases.",
+		Deprecated:        deprecation,
+		PersistentPreRunE: cmdutil.WarnDeprecated("sidecar", deprecation, cmdutil.CheckAuthentication(ch.Config)),
 	}
 
 	cmd.AddCommand(
