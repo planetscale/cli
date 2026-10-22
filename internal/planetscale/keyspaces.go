@@ -72,6 +72,13 @@ type ListKeyspacesRequest struct {
 	Branch       string `json:"-"`
 }
 
+// CreateKeyspaceCustomShard describes one explicitly ranged shard of a new
+// keyspace. ClusterSize overrides the keyspace's default cluster size when set.
+type CreateKeyspaceCustomShard struct {
+	KeyRange    string `json:"key_range"`
+	ClusterSize string `json:"cluster_size,omitempty"`
+}
+
 type CreateKeyspaceRequest struct {
 	Organization  string `json:"-"`
 	Database      string `json:"-"`
@@ -79,7 +86,12 @@ type CreateKeyspaceRequest struct {
 	Name          string `json:"name"`
 	ClusterSize   string `json:"cluster_size"`
 	ExtraReplicas int    `json:"extra_replicas"`
-	Shards        int    `json:"shards"`
+	// Shards is the number of equally sized shards. It is mutually exclusive
+	// with CustomShards and is omitted from the request when nil.
+	Shards *int `json:"shards,omitempty"`
+	// CustomShards creates shards with explicit key ranges instead of Shards
+	// equal shards. The API validates that the ranges cover the keyspace.
+	CustomShards []CreateKeyspaceCustomShard `json:"custom_shards,omitempty"`
 }
 
 type ExternalDatasource struct {
