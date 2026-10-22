@@ -198,7 +198,11 @@ func runTopInteractive(ctx context.Context, ch *cmdutil.Helper, request topReque
 		Keyspace: source.Target.Keyspace,
 		Shard:    source.Target.Shard,
 	}
-	return runInteractive(ctx, source.Client, flags.duration, flags.interval, control, target, request.Filter.chip(), source.View)
+	var denial string
+	if client, err := newConnectionsClient(ch, request.Database, request.Branch, ConnectionTarget{}); err == nil {
+		denial = killDenial(ctx, ch, client, request.Database, request.Branch, request.Engine)
+	}
+	return runInteractive(ctx, source.Client, flags.duration, flags.interval, control, target, request.Filter.chip(), source.View, denial)
 }
 
 func runTopHeadless(ctx context.Context, cmd *cobra.Command, ch *cmdutil.Helper, request topRequest, source topSource, flags topFlags) error {
@@ -312,7 +316,7 @@ var runTeaProgram = func(model tea.Model, options ...tea.ProgramOption) error {
 	return err
 }
 
-func runInteractive(ctx context.Context, client tui.ConnectionsClient, duration, interval time.Duration, control *tui.CaptureControl, target tui.Target, filterChip string, view tui.ConnectionViewProfile) (err error) {
+func runInteractive(ctx context.Context, client tui.ConnectionsClient, duration, interval time.Duration, control *tui.CaptureControl, target tui.Target, filterChip string, view tui.ConnectionViewProfile, killDenial string) (err error) {
 	runCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	if control != nil {
@@ -327,6 +331,9 @@ func runInteractive(ctx context.Context, client tui.ConnectionsClient, duration,
 		WithConnectionView(view)
 	if control != nil {
 		model = model.WithCaptureControl(control)
+	}
+	if killDenial != "" {
+		model = model.WithReadOnlyActions(killDenial)
 	}
 	return runTeaProgram(model, tea.WithAltScreen(), tea.WithContext(runCtx))
 }
