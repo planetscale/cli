@@ -592,6 +592,47 @@ func (e *UnknownInstanceError) Error() string {
 	return fmt.Sprintf("unknown instance %q (valid instances: %s)", e.Instance, strings.Join(e.Valid, ", "))
 }
 
+// Permissions returns the caller's actions on the database, combining the
+// database and organization permission maps the way api-bb authorizes them.
+func (s *Client) Permissions(ctx context.Context) (map[string]bool, error) {
+	if s.cfg.RequestTimeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, s.cfg.RequestTimeout)
+		defer cancel()
+	}
+	base := strings.TrimRight(s.cfg.BaseURL, "/") + "/v1/organizations/" + url.PathEscape(s.cfg.Organization)
+	merged := map[string]bool{}
+	for _, u := range []string{base + "/databases/" + url.PathEscape(s.cfg.Database) + "/permissions", base + "/permissions"} {
+		permissions, err := s.fetchPermissions(ctx, u)
+		if err != nil {
+			return nil, err
+		}
+		for action, allowed := range permissions {
+			merged[action] = merged[action] || allowed
+		}
+	}
+	return merged, nil
+}
+
+func (s *Client) fetchPermissions(ctx context.Context, u string) (map[string]bool, error) {
+	resp, err := s.do(ctx, http.MethodGet, u)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode > 299 {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		return nil, fmt.Errorf("permissions: HTTP %d", resp.StatusCode)
+	}
+	var body struct {
+		Permissions map[string]bool `json:"permissions"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		return nil, fmt.Errorf("permissions: invalid response: %w", err)
+	}
+	return body.Permissions, nil
+}
+
 func (s *Client) connectionsURL(suffix string) string {
 	raw := fmt.Sprintf(
 		"%s/v1/organizations/%s/databases/%s/branches/%s/connections",

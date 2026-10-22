@@ -758,6 +758,10 @@ func setRunTeaProgram(t *testing.T, run func(tea.Model, ...tea.ProgramOption) er
 func liveConnectionsServer(t *testing.T, body string) *httptest.Server {
 	t.Helper()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/permissions") {
+			writeKillPermissions(w)
+			return
+		}
 		if r.URL.Path != "/v1/organizations/acme/databases/pgload/branches/main/connections" {
 			t.Fatalf("path = %q", r.URL.Path)
 		}
@@ -769,9 +773,19 @@ func liveConnectionsServer(t *testing.T, body string) *httptest.Server {
 
 func liveConnectionsServerForTop(t *testing.T, handler http.HandlerFunc) *httptest.Server {
 	t.Helper()
-	server := httptest.NewServer(handler)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/permissions") {
+			writeKillPermissions(w)
+			return
+		}
+		handler(w, r)
+	}))
 	t.Cleanup(server.Close)
 	return server
+}
+
+func writeKillPermissions(w http.ResponseWriter) {
+	_, _ = io.WriteString(w, `{"permissions":{"manage_live_connections":true,"manage_production_live_connections":true}}`)
 }
 
 func topCmdForServer(baseURL string, out *bytes.Buffer) *cobra.Command {
@@ -795,6 +809,16 @@ func topDatabaseClient(engine ps.DatabaseEngine) func() (*ps.Client, error) {
 			Databases: &mock.DatabaseService{
 				GetFn: func(ctx context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
 					return &ps.Database{Name: req.Database, Kind: engine}, nil
+				},
+			},
+			DatabaseBranches: &mock.DatabaseBranchesService{
+				GetFn: func(_ context.Context, req *ps.GetDatabaseBranchRequest) (*ps.DatabaseBranch, error) {
+					return &ps.DatabaseBranch{Name: req.Branch}, nil
+				},
+			},
+			PostgresBranches: &mock.PostgresBranchesService{
+				GetFn: func(_ context.Context, req *ps.GetPostgresBranchRequest) (*ps.PostgresBranch, error) {
+					return &ps.PostgresBranch{Name: req.Branch}, nil
 				},
 			},
 		}, nil

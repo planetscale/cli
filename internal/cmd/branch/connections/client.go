@@ -100,6 +100,51 @@ func (e *notFoundExplainer) resolve(ctx context.Context, err error) error {
 	}
 }
 
+const killPermissionDenied = "you don't have permission to kill processes on this branch"
+
+// killDenial returns the message to show when the caller can't kill connections
+// on the branch. It returns an empty string when they can, and also when the
+// branch or permissions can't be read, since api-bb enforces the permission on
+// every kill regardless.
+func killDenial(ctx context.Context, ch *cmdutil.Helper, client *live.Client, database, branch string, engine ps.DatabaseEngine) string {
+	production, err := branchIsProduction(ctx, ch, database, branch, engine)
+	if err != nil {
+		return ""
+	}
+	permissions, err := client.Permissions(ctx)
+	if err != nil {
+		return ""
+	}
+	action := "manage_live_connections"
+	if production {
+		action = "manage_production_live_connections"
+	}
+	if permissions[action] {
+		return ""
+	}
+	return killPermissionDenied
+}
+
+func branchIsProduction(ctx context.Context, ch *cmdutil.Helper, database, branch string, engine ps.DatabaseEngine) (bool, error) {
+	client, err := ch.Client()
+	if err != nil {
+		return false, err
+	}
+	org := ch.Config.Organization
+	if engine == ps.DatabaseEngineMySQL {
+		b, err := client.DatabaseBranches.Get(ctx, &ps.GetDatabaseBranchRequest{Organization: org, Database: database, Branch: branch})
+		if err != nil {
+			return false, err
+		}
+		return b.Production, nil
+	}
+	b, err := client.PostgresBranches.Get(ctx, &ps.GetPostgresBranchRequest{Organization: org, Database: database, Branch: branch})
+	if err != nil {
+		return false, err
+	}
+	return b.Production, nil
+}
+
 func newConnectionsClient(ch *cmdutil.Helper, database, branch string, target ConnectionTarget) (*live.Client, error) {
 	return live.NewClient(live.ClientConfig{
 		BaseURL:        ch.Config.BaseURL,
