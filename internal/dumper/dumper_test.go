@@ -5,6 +5,7 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -1419,6 +1420,110 @@ func TestDumperInvertMatch(t *testing.T) {
 
 	want_test2 := strings.Contains(string(dat_test2), `(1337)`)
 	c.Assert(want_test2, qt.IsTrue)
+}
+
+// TestDumperKeepsRowsAtChunkBoundary checks that rows that are not yet part
+// of an INSERT statement when a chunk file is flushed are still written, even
+// when the table ends right after that flush.
+func TestDumperKeepsRowsAtChunkBoundary(t *testing.T) {
+	c := qt.New(t)
+
+	log := xlog.NewStdLog(xlog.Level(xlog.INFO))
+	fakedbs := driver.NewTestHandler(log)
+	server, err := driver.MockMysqlServer(log, fakedbs)
+	c.Assert(err, qt.IsNil)
+	c.Cleanup(func() { server.Close() })
+
+	payload := strings.Repeat("x", 1000)
+	rowLen := len(`(1,"` + payload + `")`)
+	stmtSize := 10 * rowLen
+	// The last row is the first one to reach the 1 MiB chunk size, and it
+	// does not complete an INSERT statement.
+	numRows := (1024*1024 + rowLen - 1) / rowLen
+	c.Assert(numRows%10, qt.Not(qt.Equals), 0)
+
+	selectResult := &sqltypes.Result{
+		Fields: []*querypb.Field{
+			{Name: "id", Type: querypb.Type_INT32},
+			{Name: "name", Type: querypb.Type_VARCHAR},
+		},
+	}
+	for i := 0; i < numRows; i++ {
+		selectResult.Rows = append(selectResult.Rows, []sqltypes.Value{
+			sqltypes.MakeTrusted(querypb.Type_INT32, []byte("1")),
+			sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte(payload)),
+		})
+	}
+
+	schemaResult := &sqltypes.Result{
+		Fields: []*querypb.Field{
+			{Name: "Table", Type: querypb.Type_VARCHAR},
+			{Name: "Create Table", Type: querypb.Type_VARCHAR},
+		},
+		Rows: [][]sqltypes.Value{
+			{
+				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("t1")),
+				sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("CREATE TABLE `t1` (`id` int, `name` text) ENGINE=InnoDB")),
+			},
+		},
+	}
+
+	tablesResult := &sqltypes.Result{
+		Fields: []*querypb.Field{{Name: "Tables_in_test", Type: querypb.Type_VARCHAR}},
+		Rows: [][]sqltypes.Value{
+			{sqltypes.MakeTrusted(querypb.Type_VARCHAR, []byte("t1"))},
+		},
+	}
+
+	fieldsResult := &sqltypes.Result{
+		Fields: []*querypb.Field{
+			{Name: "Field", Type: querypb.Type_VARCHAR},
+			{Name: "Type", Type: querypb.Type_VARCHAR},
+			{Name: "Null", Type: querypb.Type_VARCHAR},
+			{Name: "Key", Type: querypb.Type_VARCHAR},
+			{Name: "Default", Type: querypb.Type_VARCHAR},
+			{Name: "Extra", Type: querypb.Type_VARCHAR},
+		},
+		Rows: [][]sqltypes.Value{
+			testRow("id", ""),
+			testRow("name", ""),
+		},
+	}
+
+	fakedbs.AddQueryPattern("use .*", &sqltypes.Result{})
+	fakedbs.AddQueryPattern("show create table .*", schemaResult)
+	fakedbs.AddQueryPattern("show tables from .*", tablesResult)
+	fakedbs.AddQueryPattern("select table_name \n\t\t\t from information_schema.tables \n\t\t\t where table_schema like 'test' \n\t\t\t and table_type = 'view'\n\t\t\t", &sqltypes.Result{})
+	fakedbs.AddQueryPattern("show fields from .*", fieldsResult)
+	fakedbs.AddQueryPattern("select .* from `test`\\..* .*", selectResult)
+	fakedbs.AddQueryPattern("set .*", &sqltypes.Result{})
+
+	cfg := &Config{
+		Database:      "test",
+		Outdir:        c.TempDir(),
+		User:          "mock",
+		Password:      "mock",
+		Address:       server.Addr(),
+		ChunksizeInMB: 1,
+		Threads:       1,
+		StmtSize:      stmtSize,
+		IntervalMs:    500,
+	}
+
+	d, err := NewDumper(cfg)
+	c.Assert(err, qt.IsNil)
+	c.Assert(d.Run(context.Background()), qt.IsNil)
+
+	files, err := filepath.Glob(filepath.Join(cfg.Outdir, "test.t1.*.sql"))
+	c.Assert(err, qt.IsNil)
+
+	dumpedRows := 0
+	for _, file := range files {
+		dat, err := os.ReadFile(file)
+		c.Assert(err, qt.IsNil)
+		dumpedRows += strings.Count(string(dat), `(1,"`+payload+`")`)
+	}
+	c.Assert(dumpedRows, qt.Equals, numRows)
 }
 
 func TestWriteFile(t *testing.T) {

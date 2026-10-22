@@ -58,10 +58,7 @@ func (w *sqlWriter) WriteRow(row []sqltypes.Value) (int, error) {
 	w.chunkbytes += rowBytes
 
 	if w.stmtsize >= w.cfg.StmtSize {
-		insertone := fmt.Sprintf("INSERT INTO %s(%s) VALUES\n%s", w.table, strings.Join(w.fields, ","), strings.Join(w.rows, ",\n"))
-		w.inserts = append(w.inserts, insertone)
-		w.rows = w.rows[:0]
-		w.stmtsize = 0
+		w.appendInsert()
 	}
 
 	return rowBytes, nil
@@ -71,7 +68,21 @@ func (w *sqlWriter) ShouldFlush() bool {
 	return (w.chunkbytes / 1024 / 1024) >= w.cfg.ChunksizeInMB
 }
 
+// appendInsert turns the buffered rows into an INSERT statement.
+func (w *sqlWriter) appendInsert() {
+	insertone := fmt.Sprintf("INSERT INTO %s(%s) VALUES\n%s", w.table, strings.Join(w.fields, ","), strings.Join(w.rows, ",\n"))
+	w.inserts = append(w.inserts, insertone)
+	w.rows = w.rows[:0]
+	w.stmtsize = 0
+}
+
 func (w *sqlWriter) Flush(outdir, database, table string, fileNo int) error {
+	// Write the rows that are not part of an INSERT statement yet, so they
+	// are not lost when the table ends right after this flush.
+	if len(w.rows) > 0 {
+		w.appendInsert()
+	}
+
 	query := strings.Join(w.inserts, ";\n") + ";\n"
 	file, err := dumpOutputPath(outdir, database, table, fmt.Sprintf(".%05d.sql", fileNo))
 	if err != nil {
@@ -89,10 +100,6 @@ func (w *sqlWriter) Flush(outdir, database, table string, fileNo int) error {
 
 func (w *sqlWriter) Close(outdir, database, table string, fileNo int) error {
 	if w.chunkbytes > 0 {
-		if len(w.rows) > 0 {
-			insertone := fmt.Sprintf("INSERT INTO %s(%s) VALUES\n%s", w.table, strings.Join(w.fields, ","), strings.Join(w.rows, ",\n"))
-			w.inserts = append(w.inserts, insertone)
-		}
 		return w.Flush(outdir, database, table, fileNo)
 	}
 	return nil
