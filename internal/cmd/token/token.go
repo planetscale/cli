@@ -49,11 +49,13 @@ func TokenCmd(ch *cmdutil.Helper) *cobra.Command {
 
 // ServiceToken returns a table and json serializable service token for listing.
 type ServiceToken struct {
-	ID         string `header:"id" json:"id"`
-	Name       string `header:"name" json:"name"`
-	LastUsedAt int64  `header:"last_used_at,timestamp(ms|utc|human)" json:"last_used_at"`
-	ExpiresAt  int64  `header:"expires_at,timestamp(ms|utc|human)" json:"expires_at"`
-	CreatedAt  int64  `header:"created_at,timestamp(ms|utc|human)" json:"created_at"`
+	ID                   string `header:"id" json:"id"`
+	Name                 string `header:"name" json:"name"`
+	LastUsedAt           int64  `header:"last_used_at,timestamp(ms|utc|human)" json:"last_used_at"`
+	LastUsedIP           string `header:"last_used_ip" json:"last_used_ip"`
+	LastUsedOrganization string `header:"last_used_organization" json:"last_used_organization"`
+	ExpiresAt            int64  `header:"expires_at,timestamp(ms|utc|human)" json:"expires_at"`
+	CreatedAt            int64  `header:"created_at,timestamp(ms|utc|human)" json:"created_at"`
 
 	orig *ps.ServiceToken
 }
@@ -83,38 +85,53 @@ func toServiceToken(st *ps.ServiceToken) *ServiceToken {
 	}
 
 	return &ServiceToken{
-		ID:         st.ID,
-		Name:       name,
-		LastUsedAt: lastUsedAt,
-		ExpiresAt:  expiresAt,
-		CreatedAt:  printer.GetMilliseconds(st.CreatedAt),
-		orig:       st,
+		ID:                   st.ID,
+		Name:                 name,
+		LastUsedAt:           lastUsedAt,
+		LastUsedIP:           derefString(st.LastUsedIP),
+		LastUsedOrganization: derefString(st.LastUsedAsnOrganization),
+		ExpiresAt:            expiresAt,
+		CreatedAt:            printer.GetMilliseconds(st.CreatedAt),
+		orig:                 st,
 	}
 }
 
+func derefString(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
+}
+
 type ServiceTokenDetails struct {
-	ID         string `header:"id"`
-	Name       string `header:"name"`
-	LastUsedAt int64  `header:"last_used_at,timestamp(ms|utc|human)"`
-	ExpiresAt  int64  `header:"expires_at,timestamp(ms|utc|human)"`
-	CreatedAt  int64  `header:"created_at,timestamp(ms|utc|human)"`
+	ID                   string `header:"id"`
+	Name                 string `header:"name"`
+	LastUsedAt           int64  `header:"last_used_at,timestamp(ms|utc|human)"`
+	LastUsedIP           string `header:"last_used_ip"`
+	LastUsedOrganization string `header:"last_used_organization"`
+	ExpiresAt            int64  `header:"expires_at,timestamp(ms|utc|human)"`
+	CreatedAt            int64  `header:"created_at,timestamp(ms|utc|human)"`
 
 	orig *ps.ServiceToken
 }
 
 func (s *ServiceTokenDetails) MarshalJSON() ([]byte, error) {
 	return json.MarshalIndent(struct {
-		ID         string     `json:"id"`
-		Name       *string    `json:"name"`
-		CreatedAt  time.Time  `json:"created_at"`
-		LastUsedAt *time.Time `json:"last_used_at"`
-		ExpiresAt  *time.Time `json:"expires_at"`
+		ID                      string     `json:"id"`
+		Name                    *string    `json:"name"`
+		CreatedAt               time.Time  `json:"created_at"`
+		LastUsedAt              *time.Time `json:"last_used_at"`
+		LastUsedIP              *string    `json:"last_used_ip"`
+		LastUsedAsnOrganization *string    `json:"last_used_asn_organization"`
+		ExpiresAt               *time.Time `json:"expires_at"`
 	}{
-		ID:         s.orig.ID,
-		Name:       s.orig.Name,
-		CreatedAt:  s.orig.CreatedAt,
-		LastUsedAt: s.orig.LastUsedAt,
-		ExpiresAt:  s.orig.ExpiresAt,
+		ID:                      s.orig.ID,
+		Name:                    s.orig.Name,
+		CreatedAt:               s.orig.CreatedAt,
+		LastUsedAt:              s.orig.LastUsedAt,
+		LastUsedIP:              s.orig.LastUsedIP,
+		LastUsedAsnOrganization: s.orig.LastUsedAsnOrganization,
+		ExpiresAt:               s.orig.ExpiresAt,
 	}, "", "  ")
 }
 
@@ -122,12 +139,14 @@ func toServiceTokenDetails(st *ps.ServiceToken) *ServiceTokenDetails {
 	token := toServiceToken(st)
 
 	return &ServiceTokenDetails{
-		ID:         token.ID,
-		Name:       token.Name,
-		LastUsedAt: token.LastUsedAt,
-		ExpiresAt:  token.ExpiresAt,
-		CreatedAt:  token.CreatedAt,
-		orig:       st,
+		ID:                   token.ID,
+		Name:                 token.Name,
+		LastUsedAt:           token.LastUsedAt,
+		LastUsedIP:           token.LastUsedIP,
+		LastUsedOrganization: token.LastUsedOrganization,
+		ExpiresAt:            token.ExpiresAt,
+		CreatedAt:            token.CreatedAt,
+		orig:                 st,
 	}
 }
 
