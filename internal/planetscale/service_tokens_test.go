@@ -103,7 +103,7 @@ func TestServiceTokens_Get(t *testing.T) {
 		c.Assert(r.Method, qt.Equals, http.MethodGet)
 		c.Assert(r.URL.String(), qt.Equals, wantURL)
 
-		out := `{"id":"1234","name":"my-token","token":null,"created_at":"2021-01-14T10:19:23.000Z","last_used_at":"2021-01-15T12:30:00.000Z","service_token_accesses":[{"access":"read_branch"}]}`
+		out := `{"id":"1234","name":"my-token","token":null,"created_at":"2021-01-14T10:19:23.000Z","last_used_at":"2021-01-15T12:30:00.000Z","last_used_ip":"203.0.113.5","last_used_asn_organization":"Example Networks","service_token_accesses":[{"access":"read_branch"}]}`
 		_, err := w.Write([]byte(out))
 		c.Assert(err, qt.IsNil)
 	}))
@@ -119,11 +119,15 @@ func TestServiceTokens_Get(t *testing.T) {
 
 	tokenName := "my-token"
 	lastUsedAt := time.Date(2021, 1, 15, 12, 30, 0, 0, time.UTC)
+	lastUsedIP := "203.0.113.5"
+	lastUsedOrganization := "Example Networks"
 	want := &ServiceToken{
-		ID:         "1234",
-		Name:       &tokenName,
-		CreatedAt:  time.Date(2021, 1, 14, 10, 19, 23, 0, time.UTC),
-		LastUsedAt: &lastUsedAt,
+		ID:                      "1234",
+		Name:                    &tokenName,
+		CreatedAt:               time.Date(2021, 1, 14, 10, 19, 23, 0, time.UTC),
+		LastUsedAt:              &lastUsedAt,
+		LastUsedIP:              &lastUsedIP,
+		LastUsedAsnOrganization: &lastUsedOrganization,
 	}
 
 	c.Assert(err, qt.IsNil)

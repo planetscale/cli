@@ -172,13 +172,15 @@ type DeleteServiceTokenAccessRequest struct {
 }
 
 type ServiceToken struct {
-	ID         string     `json:"id"`
-	Type       string     `json:"type"`
-	Token      string     `json:"token"`
-	Name       *string    `json:"name"`
-	CreatedAt  time.Time  `json:"created_at"`
-	LastUsedAt *time.Time `json:"last_used_at"`
-	ExpiresAt  *time.Time `json:"expires_at"`
+	ID                      string     `json:"id"`
+	Type                    string     `json:"type"`
+	Token                   string     `json:"token"`
+	Name                    *string    `json:"name"`
+	CreatedAt               time.Time  `json:"created_at"`
+	LastUsedAt              *time.Time `json:"last_used_at"`
+	LastUsedIP              *string    `json:"last_used_ip"`
+	LastUsedAsnOrganization *string    `json:"last_used_asn_organization"`
+	ExpiresAt               *time.Time `json:"expires_at"`
 }
 
 type ServiceTokenGrant struct {
