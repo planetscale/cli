@@ -12,8 +12,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// cloneTabletTypes are the valid values for --clone-tablet-type.
-var cloneTabletTypes = []string{"primary", "replica", "rdonly"}
+// emergencySources are the valid values for --emergency-source.
+var emergencySources = []string{"primary", "replica", "rdonly"}
 
 func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	createReq := &ps.CreateBackupRequest{}
@@ -23,7 +23,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 		Long: `Backup a branch's data and schema.
 
 --emergency requests an emergency backup, which clones data from a live
-tablet instead of waiting for the next scheduled backup. --clone-tablet-type
+tablet instead of waiting for the next scheduled backup. --emergency-source
 selects which tablet type to clone from and is required with --emergency
 (and rejected otherwise).`,
 		Args:    cmdutil.RequiredArgs("database", "branch"),
@@ -34,14 +34,14 @@ selects which tablet type to clone from and is required with --emergency
 			branch := args[1]
 
 			if createReq.Emergency {
-				if !cmd.Flags().Changed("clone-tablet-type") {
-					return fmt.Errorf("--clone-tablet-type is required when --emergency is set")
+				if !cmd.Flags().Changed("emergency-source") {
+					return fmt.Errorf("--emergency-source is required when --emergency is set")
 				}
-				if !slices.Contains(cloneTabletTypes, createReq.CloneTabletType) {
-					return fmt.Errorf("invalid --clone-tablet-type %q, must be one of: %s", createReq.CloneTabletType, strings.Join(cloneTabletTypes, ", "))
+				if !slices.Contains(emergencySources, createReq.EmergencySource) {
+					return fmt.Errorf("invalid --emergency-source %q, must be one of: %s", createReq.EmergencySource, strings.Join(emergencySources, ", "))
 				}
-			} else if cmd.Flags().Changed("clone-tablet-type") {
-				return fmt.Errorf("--clone-tablet-type is only valid when --emergency is set")
+			} else if cmd.Flags().Changed("emergency-source") {
+				return fmt.Errorf("--emergency-source is only valid when --emergency is set")
 			}
 
 			createReq.Database = database
@@ -79,8 +79,8 @@ selects which tablet type to clone from and is required with --emergency
 	}
 
 	cmd.Flags().StringVar(&createReq.Name, "name", "", "Optional name for the backup")
-	cmd.Flags().BoolVar(&createReq.Emergency, "emergency", false, "Request an emergency backup that clones data from a live tablet instead of waiting for the next scheduled backup. Requires --clone-tablet-type.")
-	cmd.Flags().StringVar(&createReq.CloneTabletType, "clone-tablet-type", "", "Tablet type to clone from for an emergency backup: primary, replica, or rdonly. Required with --emergency; rejected otherwise.")
+	cmd.Flags().BoolVar(&createReq.Emergency, "emergency", false, "Request an emergency backup that clones data from a live tablet instead of waiting for the next scheduled backup. Requires --emergency-source.")
+	cmd.Flags().StringVar(&createReq.EmergencySource, "emergency-source", "", "Tablet type to clone from for an emergency backup: primary, replica, or rdonly. Required with --emergency; rejected otherwise.")
 
 	return cmd
 }

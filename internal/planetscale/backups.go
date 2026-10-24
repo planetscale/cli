@@ -38,7 +38,7 @@ type CreateBackupRequest struct {
 	RetentionUnit   string `json:"retention_unit,omitempty"`
 	RetentionValue  int    `json:"retention_value,omitempty"`
 	Emergency       bool   `json:"emergency,omitempty"`
-	CloneTabletType string `json:"clone_tablet_type,omitempty"`
+	EmergencySource string `json:"emergency_source,omitempty"`
 }
 
 type ListBackupsRequest struct {

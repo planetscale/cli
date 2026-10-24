@@ -983,10 +983,10 @@ pscale billing invoice line-items <invoice-id> --org <org> --format json
 
 ```bash
 pscale backup create <database> <branch> --org <org> --format json \
-  --emergency --clone-tablet-type replica
+  --emergency --emergency-source replica
 ```
 
-- `--clone-tablet-type` is `primary`, `replica`, or `rdonly`. It is **required** when `--emergency` is set, and **rejected** when `--emergency` is not set — there is no default tablet type.
+- `--emergency-source` is `primary`, `replica`, or `rdonly`. It is **required** when `--emergency` is set, and **rejected** when `--emergency` is not set — there is no default source. The create request sends it as `emergency_source`.
 
 ## Neki backup restore
 

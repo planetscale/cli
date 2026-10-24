@@ -127,7 +127,7 @@ func TestBackup_CreateCmdWithEmergency(t *testing.T) {
 			c.Assert(req.Database, qt.Equals, db)
 			c.Assert(req.Branch, qt.Equals, branch)
 			c.Assert(req.Emergency, qt.IsTrue)
-			c.Assert(req.CloneTabletType, qt.Equals, "replica")
+			c.Assert(req.EmergencySource, qt.Equals, "replica")
 
 			return res, nil
 		},
@@ -146,7 +146,7 @@ func TestBackup_CreateCmdWithEmergency(t *testing.T) {
 	}
 
 	cmd := CreateCmd(ch)
-	cmd.SetArgs([]string{db, branch, "--emergency", "--clone-tablet-type", "replica"})
+	cmd.SetArgs([]string{db, branch, "--emergency", "--emergency-source", "replica"})
 	err := cmd.Execute()
 
 	c.Assert(err, qt.IsNil)
@@ -154,7 +154,7 @@ func TestBackup_CreateCmdWithEmergency(t *testing.T) {
 	c.Assert(buf.String(), qt.JSONEquals, res)
 }
 
-func TestBackup_CreateCmdEmergencyRequiresCloneTabletType(t *testing.T) {
+func TestBackup_CreateCmdEmergencyRequiresEmergencySource(t *testing.T) {
 	c := qt.New(t)
 
 	format := printer.JSON
@@ -178,11 +178,11 @@ func TestBackup_CreateCmdEmergencyRequiresCloneTabletType(t *testing.T) {
 	cmd.SetArgs([]string{"planetscale", "development", "--emergency"})
 	err := cmd.Execute()
 
-	c.Assert(err, qt.ErrorMatches, "--clone-tablet-type is required when --emergency is set")
+	c.Assert(err, qt.ErrorMatches, "--emergency-source is required when --emergency is set")
 	c.Assert(svc.CreateFnInvoked, qt.IsFalse)
 }
 
-func TestBackup_CreateCmdCloneTabletTypeRequiresEmergency(t *testing.T) {
+func TestBackup_CreateCmdEmergencySourceRequiresEmergency(t *testing.T) {
 	c := qt.New(t)
 
 	format := printer.JSON
@@ -203,14 +203,14 @@ func TestBackup_CreateCmdCloneTabletTypeRequiresEmergency(t *testing.T) {
 	}
 
 	cmd := CreateCmd(ch)
-	cmd.SetArgs([]string{"planetscale", "development", "--clone-tablet-type", "replica"})
+	cmd.SetArgs([]string{"planetscale", "development", "--emergency-source", "replica"})
 	err := cmd.Execute()
 
-	c.Assert(err, qt.ErrorMatches, "--clone-tablet-type is only valid when --emergency is set")
+	c.Assert(err, qt.ErrorMatches, "--emergency-source is only valid when --emergency is set")
 	c.Assert(svc.CreateFnInvoked, qt.IsFalse)
 }
 
-func TestBackup_CreateCmdInvalidCloneTabletType(t *testing.T) {
+func TestBackup_CreateCmdInvalidEmergencySource(t *testing.T) {
 	c := qt.New(t)
 
 	format := printer.JSON
@@ -231,9 +231,9 @@ func TestBackup_CreateCmdInvalidCloneTabletType(t *testing.T) {
 	}
 
 	cmd := CreateCmd(ch)
-	cmd.SetArgs([]string{"planetscale", "development", "--emergency", "--clone-tablet-type", "bogus"})
+	cmd.SetArgs([]string{"planetscale", "development", "--emergency", "--emergency-source", "bogus"})
 	err := cmd.Execute()
 
-	c.Assert(err, qt.ErrorMatches, `invalid --clone-tablet-type "bogus", must be one of: primary, replica, rdonly`)
+	c.Assert(err, qt.ErrorMatches, `invalid --emergency-source "bogus", must be one of: primary, replica, rdonly`)
 	c.Assert(svc.CreateFnInvoked, qt.IsFalse)
 }
