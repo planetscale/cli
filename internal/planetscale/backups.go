@@ -34,10 +34,11 @@ type CreateBackupRequest struct {
 	Database     string `json:"-"`
 	Branch       string `json:"-"`
 
-	Name           string `json:"name,omitempty"`
-	RetentionUnit  string `json:"retention_unit,omitempty"`
-	RetentionValue int    `json:"retention_value,omitempty"`
-	Emergency      bool   `json:"emergency,omitempty"`
+	Name            string `json:"name,omitempty"`
+	RetentionUnit   string `json:"retention_unit,omitempty"`
+	RetentionValue  int    `json:"retention_value,omitempty"`
+	Emergency       bool   `json:"emergency,omitempty"`
+	CloneTabletType string `json:"clone_tablet_type,omitempty"`
 }
 
 type ListBackupsRequest struct {

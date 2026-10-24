@@ -977,6 +977,17 @@ pscale billing invoice line-items <invoice-id> --org <org> --format json
 - JSON preserves the API objects. Line items include the billed database and nested resource (usually a branch).
 - Requires `read_invoices` on a service token.
 
+## Emergency backups
+
+`pscale backup create` normally schedules a backup through the regular backup pipeline. `--emergency` instead clones data directly from a live tablet, skipping the wait for the next scheduled backup.
+
+```bash
+pscale backup create <database> <branch> --org <org> --format json \
+  --emergency --clone-tablet-type replica
+```
+
+- `--clone-tablet-type` is `primary`, `replica`, or `rdonly`. It is **required** when `--emergency` is set, and **rejected** when `--emergency` is not set — there is no default tablet type.
+
 ## Neki backup restore
 
 Restoring a Neki backup creates a new branch. Configuration profiles and routers are restored; omitted sizes inherit the source. Sidecar, admin, and parameter settings are not restored.
