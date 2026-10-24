@@ -234,6 +234,34 @@ func TestBackup_CreateCmdInvalidEmergencySource(t *testing.T) {
 	cmd.SetArgs([]string{"planetscale", "development", "--emergency", "--emergency-source", "bogus"})
 	err := cmd.Execute()
 
-	c.Assert(err, qt.ErrorMatches, `invalid --emergency-source "bogus", must be one of: primary, replica, rdonly`)
+	c.Assert(err, qt.ErrorMatches, `invalid --emergency-source "bogus", must be one of: primary, replica`)
+	c.Assert(svc.CreateFnInvoked, qt.IsFalse)
+}
+
+func TestBackup_CreateCmdRdonlyEmergencySource(t *testing.T) {
+	c := qt.New(t)
+
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+
+	svc := &mock.BackupsService{}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: "planetscale",
+		},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{
+				Backups: svc,
+			}, nil
+		},
+	}
+
+	cmd := CreateCmd(ch)
+	cmd.SetArgs([]string{"planetscale", "development", "--emergency", "--emergency-source", "rdonly"})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.ErrorMatches, `invalid --emergency-source "rdonly", must be one of: primary, replica`)
 	c.Assert(svc.CreateFnInvoked, qt.IsFalse)
 }

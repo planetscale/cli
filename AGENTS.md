@@ -986,7 +986,7 @@ pscale backup create <database> <branch> --org <org> --format json \
   --emergency --emergency-source replica
 ```
 
-- `--emergency-source` is `primary`, `replica`, or `rdonly`. It is **required** when `--emergency` is set, and **rejected** when `--emergency` is not set — there is no default source. The create request sends it as `emergency_source`.
+- `--emergency-source` is `primary` or `replica`. `rdonly` is rejected. It is **required** when `--emergency` is set, and **rejected** when `--emergency` is not set — there is no default source. The create request sends it as `emergency_source`.
 
 ## Neki backup restore
 

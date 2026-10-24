@@ -13,7 +13,7 @@ import (
 )
 
 // emergencySources are the valid values for --emergency-source.
-var emergencySources = []string{"primary", "replica", "rdonly"}
+var emergencySources = []string{"primary", "replica"}
 
 func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	createReq := &ps.CreateBackupRequest{}
@@ -24,8 +24,8 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 
 --emergency requests an emergency backup, which clones data from a live
 tablet instead of waiting for the next scheduled backup. --emergency-source
-selects which tablet type to clone from and is required with --emergency
-(and rejected otherwise).`,
+selects which tablet type to clone from (primary or replica) and is required
+with --emergency (and rejected otherwise). rdonly is not accepted.`,
 		Args:    cmdutil.RequiredArgs("database", "branch"),
 		Aliases: []string{"b"},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -80,7 +80,7 @@ selects which tablet type to clone from and is required with --emergency
 
 	cmd.Flags().StringVar(&createReq.Name, "name", "", "Optional name for the backup")
 	cmd.Flags().BoolVar(&createReq.Emergency, "emergency", false, "Request an emergency backup that clones data from a live tablet instead of waiting for the next scheduled backup. Requires --emergency-source.")
-	cmd.Flags().StringVar(&createReq.EmergencySource, "emergency-source", "", "Tablet type to clone from for an emergency backup: primary, replica, or rdonly. Required with --emergency; rejected otherwise.")
+	cmd.Flags().StringVar(&createReq.EmergencySource, "emergency-source", "", "Tablet type to clone from for an emergency backup: primary or replica. Required with --emergency; rejected otherwise.")
 
 	return cmd
 }
