@@ -39,17 +39,17 @@ func TestNekiAdminsService(t *testing.T) {
 		case r.Method == http.MethodGet && r.URL.Path == adminPath+"/parameters":
 			_, _ = w.Write([]byte(`[{"name":"recovery-poll-interval","display_name":"Recovery poll interval","namespace":"admin","advanced":false,"category":null,"description":"How often the admin runs recovery analysis and repairs.","parameter_type":"time","default_value":"10s","value":"20s","required":false,"created_at":"2026-08-04T12:00:00Z","updated_at":null,"restart":false,"url":"https://example.test/parameter"}]`))
 
-		case r.Method == http.MethodGet && r.URL.Path == adminPath+"/changes":
+		case r.Method == http.MethodGet && r.URL.Path == adminPath+"/change-requests":
 			c.Assert(r.URL.Query().Get("period"), qt.Equals, "24h")
 			c.Assert(r.URL.Query().Get("completed_at"), qt.Equals, "2026-08-04")
 			c.Assert(r.URL.Query().Get("page"), qt.Equals, "2")
 			c.Assert(r.URL.Query().Get("per_page"), qt.Equals, "25")
 			_, _ = w.Write([]byte(`{"data":[{"id":"change-1","state":"pending","created_at":"2026-08-04T12:00:00Z","updated_at":"2026-08-04T12:00:00Z","admin_size":"NKA_1","admin_size_display_name":"NKA-1","previous_admin_size":"NKA_0","previous_admin_size_display_name":"NKA-0","parameters":{"admin":{"recovery-poll-interval":"20s"}},"previous_parameters":{"admin":{"recovery-poll-interval":"10s"}}}]}`))
 
-		case r.Method == http.MethodGet && r.URL.Path == adminPath+"/changes/change-1":
+		case r.Method == http.MethodGet && r.URL.Path == adminPath+"/change-requests/change-1":
 			_, _ = w.Write([]byte(`{"id":"change-1","state":"pending","created_at":"2026-08-04T12:00:00Z","updated_at":"2026-08-04T12:00:00Z","admin_size":"NKA_1","admin_size_display_name":"NKA-1","previous_admin_size":"NKA_0","previous_admin_size_display_name":"NKA-0","parameters":{"admin":{"recovery-poll-interval":"20s"}},"previous_parameters":{"admin":{"recovery-poll-interval":"10s"}}}`))
 
-		case r.Method == http.MethodDelete && r.URL.Path == adminPath+"/changes/change-1":
+		case r.Method == http.MethodDelete && r.URL.Path == adminPath+"/change-requests/change-1":
 			w.WriteHeader(http.StatusNoContent)
 
 		case r.Method == http.MethodPost && r.URL.Path == adminPath:

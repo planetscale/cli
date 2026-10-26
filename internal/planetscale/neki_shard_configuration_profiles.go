@@ -390,7 +390,7 @@ func nekiDefaultShardConfigurationProfileAPIPath(org, database, branch string) s
 }
 
 func nekiShardConfigurationProfileChangesAPIPath(org, database, branch, profile string) string {
-	return path.Join(nekiShardConfigurationProfileAPIPath(org, database, branch, profile), "changes")
+	return path.Join(nekiShardConfigurationProfileAPIPath(org, database, branch, profile), "change-requests")
 }
 
 func nekiShardConfigurationProfileChangeAPIPath(org, database, branch, profile, change string) string {

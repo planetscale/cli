@@ -117,17 +117,17 @@ func TestNekiRoutersService(t *testing.T) {
 				"url":"https://planetscale.com/docs"
 			}]`))
 
-		case r.Method == http.MethodGet && r.URL.Path == "/v1/organizations/acme/databases/app/branches/main/routers/analytics/changes":
+		case r.Method == http.MethodGet && r.URL.Path == "/v1/organizations/acme/databases/app/branches/main/routers/analytics/change-requests":
 			c.Assert(r.URL.Query().Get("period"), qt.Equals, "24h")
 			c.Assert(r.URL.Query().Get("completed_at"), qt.Equals, "2026-08-04")
 			c.Assert(r.URL.Query().Get("page"), qt.Equals, "2")
 			c.Assert(r.URL.Query().Get("per_page"), qt.Equals, "25")
 			_, _ = w.Write([]byte(`{"data":[{"id":"change-1","state":"pending","created_at":"2026-08-04T12:00:00Z","updated_at":"2026-08-04T12:00:00Z","router_size":"NKR_10","previous_router_size":"NKR_5","replicas_per_cell":2,"previous_replicas_per_cell":1,"parameters":{"router":{"replication-lag-tolerable-max":"15m"}},"previous_parameters":{"router":{"replication-lag-tolerable-max":"10m"}}}]}`))
 
-		case r.Method == http.MethodGet && r.URL.Path == "/v1/organizations/acme/databases/app/branches/main/routers/analytics/changes/change-1":
+		case r.Method == http.MethodGet && r.URL.Path == "/v1/organizations/acme/databases/app/branches/main/routers/analytics/change-requests/change-1":
 			_, _ = w.Write([]byte(`{"id":"change-1","state":"pending","created_at":"2026-08-04T12:00:00Z","updated_at":"2026-08-04T12:00:00Z","router_size":"NKR_10","previous_router_size":"NKR_5","replicas_per_cell":2,"previous_replicas_per_cell":1}`))
 
-		case r.Method == http.MethodDelete && r.URL.Path == "/v1/organizations/acme/databases/app/branches/main/routers/analytics/changes/change-1":
+		case r.Method == http.MethodDelete && r.URL.Path == "/v1/organizations/acme/databases/app/branches/main/routers/analytics/change-requests/change-1":
 			w.WriteHeader(http.StatusNoContent)
 
 		case r.Method == http.MethodDelete && r.URL.Path == "/v1/organizations/acme/databases/app/branches/main/routers/analytics":
