@@ -196,7 +196,7 @@ func nekiAdminAPIPath(org, database, branch string) string {
 }
 
 func nekiAdminChangesAPIPath(org, database, branch string) string {
-	return path.Join(nekiAdminAPIPath(org, database, branch), "changes")
+	return path.Join(nekiAdminAPIPath(org, database, branch), "change-requests")
 }
 
 func nekiAdminChangeAPIPath(org, database, branch, change string) string {
