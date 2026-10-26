@@ -13,7 +13,7 @@ require (
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/huh v1.0.0
 	github.com/charmbracelet/lipgloss v1.1.0
-	github.com/charmbracelet/x/ansi v0.11.8
+	github.com/charmbracelet/x/ansi v0.11.9
 	github.com/dustin/go-humanize v1.1.0
 	github.com/fatih/color v1.19.0
 	github.com/frankban/quicktest v1.14.6
@@ -81,10 +81,10 @@ require (
 	github.com/klauspost/connect-compress/v2 v2.1.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
-	github.com/lucasb-eyer/go-colorful v1.4.0 // indirect
+	github.com/lucasb-eyer/go-colorful v1.4.1 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-localereader v0.0.1 // indirect
-	github.com/mattn/go-runewidth v0.0.24 // indirect
+	github.com/mattn/go-runewidth v0.0.27 // indirect
 	github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d // indirect
 	github.com/minio/minlz v1.0.1 // indirect
 	github.com/mitchellh/hashstructure/v2 v2.0.2 // indirect
