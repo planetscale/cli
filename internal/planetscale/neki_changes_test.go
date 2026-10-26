@@ -12,7 +12,7 @@ import (
 
 func TestNekiChangesService(t *testing.T) {
 	c := qt.New(t)
-	const basePath = "/v1/organizations/acme/databases/app/branches/main/neki-changes"
+	const basePath = "/v1/organizations/acme/databases/app/branches/main/change-requests"
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
