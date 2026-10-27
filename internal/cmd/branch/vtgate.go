@@ -16,20 +16,32 @@ import (
 var knownVTGateSizes = []string{
 	"VTG_DEV", "VTG_5", "VTG_10", "VTG_20", "VTG_40",
 	"VTG_80", "VTG_320", "VTG_640", "VTG_1280", "VTG_2560",
+	"VTG_DEV_ARM", "VTG_5_ARM", "VTG_10_ARM", "VTG_20_ARM", "VTG_40_ARM",
+	"VTG_80_ARM", "VTG_320_ARM", "VTG_640_ARM", "VTG_1280_ARM", "VTG_2560_ARM",
 }
 
 // vtgateInternalToName maps API-internal VTGate sizes to public SKU names.
 var vtgateInternalToName = map[string]string{
-	"vg.g1.pico":    "VTG_DEV",
-	"vg.c1.nano":    "VTG_5",
-	"vg.c1.micro":   "VTG_10",
-	"vg.c1.small":   "VTG_20",
-	"vg.c1.medium":  "VTG_40",
-	"vg.c1.large":   "VTG_80",
-	"vg.c1.xlarge":  "VTG_320",
-	"vg.c1.2xlarge": "VTG_640",
-	"vg.c1.4xlarge": "VTG_1280",
-	"vg.c1.8xlarge": "VTG_2560",
+	"vg.g1.pico":          "VTG_DEV",
+	"vg.c1.nano":          "VTG_5",
+	"vg.c1.micro":         "VTG_10",
+	"vg.c1.small":         "VTG_20",
+	"vg.c1.medium":        "VTG_40",
+	"vg.c1.large":         "VTG_80",
+	"vg.c1.xlarge":        "VTG_320",
+	"vg.c1.2xlarge":       "VTG_640",
+	"vg.c1.4xlarge":       "VTG_1280",
+	"vg.c1.8xlarge":       "VTG_2560",
+	"vg.g1.arm64.pico":    "VTG_DEV_ARM",
+	"vg.c1.arm64.nano":    "VTG_5_ARM",
+	"vg.c1.arm64.micro":   "VTG_10_ARM",
+	"vg.c1.arm64.small":   "VTG_20_ARM",
+	"vg.c1.arm64.medium":  "VTG_40_ARM",
+	"vg.c1.arm64.large":   "VTG_80_ARM",
+	"vg.c1.arm64.xlarge":  "VTG_320_ARM",
+	"vg.c1.arm64.2xlarge": "VTG_640_ARM",
+	"vg.c1.arm64.4xlarge": "VTG_1280_ARM",
+	"vg.c1.arm64.8xlarge": "VTG_2560_ARM",
 }
 
 type branchVTGateConfig struct {
