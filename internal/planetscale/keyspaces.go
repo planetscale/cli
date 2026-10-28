@@ -72,14 +72,20 @@ type ListKeyspacesRequest struct {
 	Branch       string `json:"-"`
 }
 
+type CreateKeyspaceCustomShard struct {
+	KeyRange    string `json:"key_range"`
+	ClusterSize string `json:"cluster_size,omitempty"`
+}
+
 type CreateKeyspaceRequest struct {
-	Organization  string `json:"-"`
-	Database      string `json:"-"`
-	Branch        string `json:"-"`
-	Name          string `json:"name"`
-	ClusterSize   string `json:"cluster_size"`
-	ExtraReplicas int    `json:"extra_replicas"`
-	Shards        int    `json:"shards"`
+	Organization  string                      `json:"-"`
+	Database      string                      `json:"-"`
+	Branch        string                      `json:"-"`
+	Name          string                      `json:"name"`
+	ClusterSize   string                      `json:"cluster_size"`
+	ExtraReplicas int                         `json:"extra_replicas"`
+	Shards        *int                        `json:"shards,omitempty"`
+	CustomShards  []CreateKeyspaceCustomShard `json:"custom_shards,omitempty"`
 }
 
 type ExternalDatasource struct {
