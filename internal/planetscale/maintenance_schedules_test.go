@@ -2,6 +2,7 @@ package planetscale
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -144,4 +145,56 @@ func TestMaintenanceSchedules_ListWindows(t *testing.T) {
 	c.Assert(windows[0].ID, qt.Equals, "win-1")
 	c.Assert(windows[0].StartedAt, qt.IsNotNil)
 	c.Assert(windows[0].FinishedAt, qt.IsNotNil)
+}
+
+func TestMaintenanceSchedules_Update(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodPatch)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/my-db/maintenance-schedules/sched-1")
+		body, err := io.ReadAll(r.Body)
+		c.Assert(err, qt.IsNil)
+		// Sunday is day 0 and must still be sent; the unset hour must not be.
+		c.Assert(string(body), qt.JSONEquals, map[string]int{"day": 0})
+		w.WriteHeader(200)
+		out := `{
+			"id":"sched-1",
+			"name":"Production branch maintenance window",
+			"next_window_datetime":"2021-01-17T04:00:00.000Z",
+			"duration":1,
+			"day":0,
+			"hour":4,
+			"frequency_value":1,
+			"frequency_unit":"week",
+			"enabled":true,
+			"database_branch":{
+				"id":"branch-1",
+				"name":"main",
+				"created_at":"2021-01-01T00:00:00.000Z",
+				"updated_at":"2021-01-01T00:00:00.000Z",
+				"deleted_at":null
+			}
+		}`
+		_, err = w.Write([]byte(out))
+		c.Assert(err, qt.IsNil)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	day := 0
+	schedule, err := client.MaintenanceSchedules.Update(context.Background(), &UpdateMaintenanceScheduleRequest{
+		Organization: testOrg,
+		Database:     "my-db",
+		Schedule:     "sched-1",
+		Day:          &day,
+	})
+	c.Assert(err, qt.IsNil)
+	c.Assert(schedule.Day, qt.Equals, 0)
+	c.Assert(schedule.Hour, qt.Equals, 4)
+	c.Assert(schedule.DatabaseBranch, qt.IsNotNil)
+	c.Assert(schedule.DatabaseBranch.ID, qt.Equals, "branch-1")
+	c.Assert(schedule.DatabaseBranch.Name, qt.Equals, "main")
+	c.Assert(schedule.DatabaseBranch.DeletedAt, qt.IsNil)
 }

@@ -63,6 +63,7 @@ type Client struct {
 	Keyspaces                      KeyspacesService
 	Logs                           LogsService
 	LookupVindex                   LookupVindexService
+	MaintenanceEvents              MaintenanceEventsService
 	MaintenanceSchedules           MaintenanceSchedulesService
 	Materialize                    MaterializeService
 	Metrics                        MetricsService
@@ -369,6 +370,7 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 	c.Keyspaces = &keyspacesService{client: c}
 	c.Logs = &logsService{client: c}
 	c.LookupVindex = &lookupVindexService{client: c}
+	c.MaintenanceEvents = &maintenanceEventsService{client: c}
 	c.MaintenanceSchedules = &maintenanceSchedulesService{client: c}
 	c.Materialize = &materializeService{client: c}
 	c.Metrics = &metricsService{client: c}

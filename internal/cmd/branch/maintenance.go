@@ -13,17 +13,23 @@ import (
 func MaintenanceCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "maintenance <command>",
-		Short: "Run maintenance for a Postgres or Neki branch",
+		Short: "Manage maintenance for a Postgres or Neki branch",
 		Long: `Manage maintenance for a Postgres or Neki branch.
 
-PlanetScale upgrades a branch's image in emergencies, such as patching security
-issues, or when you initiate the upgrade yourself. 'maintenance run' initiates
-one.
+'pscale branch maintenance run' upgrades a branch to the latest image now.
+
+PlanetScale schedules maintenance that restarts Postgres, such as security
+fixes and image updates, in each Postgres branch's weekly maintenance window,
+with at least 7 days' notice. Use 'pscale branch maintenance window' to see or
+change the window, and 'pscale branch maintenance event' to see and reschedule
+upcoming maintenance.
 
 See https://planetscale.com/docs/postgres/operations-philosophy`,
 	}
 
 	cmd.AddCommand(MaintenanceRunCmd(ch))
+	cmd.AddCommand(MaintenanceWindowCmd(ch))
+	cmd.AddCommand(MaintenanceEventCmd(ch))
 
 	return cmd
 }
@@ -41,8 +47,8 @@ func MaintenanceRunCmd(ch *cmdutil.Helper) *cobra.Command {
 available image. Vitess (MySQL) databases are not supported.
 
 This is how regular version bumps, bugfixes, and quality-of-life improvements
-reach a branch. PlanetScale otherwise upgrades images only in emergencies, such
-as patching security issues.
+reach a branch right away. On Postgres, PlanetScale also schedules some updates
+in the branch's maintenance window (see 'pscale branch maintenance event').
 
 The upgrade is applied to the replicas first, followed by a switchover from the
 old primary to an upgraded replica. That failover leads to a short period of

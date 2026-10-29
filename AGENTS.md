@@ -23,7 +23,7 @@ PlanetScale is a serverless database platform for **MySQL** (via Vitess), **Post
 
 On Vitess/MySQL, schema changes ship via **deploy requests**: online, non-blocking migrations you review and then deploy.
 
-Many commands are engine-specific, and some operations use different commands per engine. Schema changes: Vitess/MySQL uses `deploy-request`; Postgres and Neki branches apply DDL directly. Access: Vitess/MySQL uses `password`; Postgres and Neki use `role`. Resize: Vitess/MySQL uses `keyspace resize`; Postgres uses `branch resize`; Neki uses `branch config-profile`, `router`, and `shard`. Vitess/MySQL-only: `deploy-request`, `keyspace` (including `keyspace create-external`), `branch vtctld move-tables`, `connect`, `password`. `pscale workflow` is deprecated; use `pscale branch vtctld move-tables` to move tables. Postgres-only: `traffic-control`, branch `switchover`/`parameters`, `branch extensions enable`/`disable`, and `import d1`. Postgres and Neki: `role`, branch `maintenance`. Neki-only: `branch shard`, `config-profile`, `router`, `sidecar`, `admin`, `data-topology`, `changes`. The rest (`database`, `branch`, `sql`, `shell`, `insights`, `metrics`, `backup`, `org`, `auth`, `api`) work on all three.
+Many commands are engine-specific, and some operations use different commands per engine. Schema changes: Vitess/MySQL uses `deploy-request`; Postgres and Neki branches apply DDL directly. Access: Vitess/MySQL uses `password`; Postgres and Neki use `role`. Resize: Vitess/MySQL uses `keyspace resize`; Postgres uses `branch resize`; Neki uses `branch config-profile`, `router`, and `shard`. Vitess/MySQL-only: `deploy-request`, `keyspace` (including `keyspace create-external`), `branch vtctld move-tables`, `connect`, `password`. `pscale workflow` is deprecated; use `pscale branch vtctld move-tables` to move tables. Postgres-only: `traffic-control`, branch `switchover`/`parameters`, `branch extensions enable`/`disable`, `branch maintenance window`/`event`, and `import d1`. Postgres and Neki: `role`, `branch maintenance run`. Neki-only: `branch shard`, `config-profile`, `router`, `sidecar`, `admin`, `data-topology`, `changes`. The rest (`database`, `branch`, `sql`, `shell`, `insights`, `metrics`, `backup`, `org`, `auth`, `api`) work on all three.
 
 When a database is "weird" (slow, erroring, locked, bloated):
 
@@ -564,6 +564,8 @@ pscale maintenance windows <database> <schedule-id> --org <org> --format json
 
 `--org` is required. Schedules include next/last window times, frequency, and any pending Vitess/MySQL version updates. Vitess Enterprise only.
 
+Each schedule names the branch it belongs to: `database_branch` (`id`, `name`, `created_at`, `updated_at`, `deleted_at`) in JSON, and the `branch` column in human and CSV output.
+
 ## Postgres branch changes (size, replicas, parameters) — Postgres only
 
 `pscale branch resize` queues a single asynchronous **change request** for a Postgres branch covering cluster size, replica count, and configuration parameters in any combination. Track it with `resize status`; cancel it with `resize cancel` while queued.
@@ -678,7 +680,7 @@ pscale branch switchover show <database> <branch> <id> --org <org> --format json
 
 ## Branch maintenance
 
-`pscale branch maintenance run` upgrades a Postgres or Neki branch to the latest cluster image. This is how regular version bumps, bugfixes, and quality-of-life improvements reach a branch; PlanetScale otherwise upgrades images only in emergencies, such as patching security issues.
+`pscale branch maintenance run` upgrades a Postgres or Neki branch to the latest cluster image. This is how regular version bumps, bugfixes, and quality-of-life improvements reach a branch right away. On Postgres, PlanetScale also schedules some updates in the branch's maintenance window (see the sections below).
 
 ```bash
 # Run maintenance now
@@ -694,6 +696,49 @@ pscale branch maintenance run <database> <branch> --org <org> --format json --up
 - `--update-postgres-minor-version` is rejected when the branch is already on the latest minor version or the upgrade is unavailable for it.
 - Postgres and Neki only; Vitess/MySQL databases are rejected before any API call.
 - See https://planetscale.com/docs/postgres/operations-philosophy
+
+### Maintenance window (Postgres only)
+
+A Postgres branch can have a weekly maintenance window: the day and hour, in UTC, when scheduled maintenance is allowed to start. `window show` reads it and `window set` moves it.
+
+```bash
+pscale branch maintenance window show <database> <branch> --org <org> --format json
+pscale branch maintenance window set <database> <branch> --org <org> --format json --day sunday --hour 3
+pscale branch maintenance window set <database> <branch> --org <org> --format json --hour 14
+```
+
+- `--day` is a day name (`sunday` to `saturday`) or a number from `0` (Sunday) to `6` (Saturday). `--hour` is `0`-`23`. Both are UTC. At least one is required; a flag that is omitted keeps its current value.
+- JSON is the branch's maintenance schedule object, the same shape as `pscale maintenance show`: `day` (a number, `0` = Sunday), `hour`, `duration` (hours), `next_window_datetime`, and `database_branch`.
+- `set` returns the schedule unchanged, without updating anything, when the window already has the requested day and hour.
+- The API refuses a change while the window is open, and when maintenance already scheduled for the branch could no longer run before its deadline. The refusal message is returned as the error; do not retry it unchanged.
+- The window is addressed by branch name; there is no schedule ID to pass.
+- Fails with `maintenance windows are not available for database <database>` when the database does not have maintenance windows, and with `branch <branch> in database <database> has no maintenance window` when the branch has none.
+- Postgres only; Vitess/MySQL and Neki databases are rejected before any API call. `set` needs `write_database` on a service token.
+
+### Maintenance events (Postgres only)
+
+A maintenance event is an update PlanetScale has scheduled for a Postgres branch, such as an image update that restarts it. It runs in the branch's maintenance window and must run by its deadline (`not_after`).
+
+```bash
+# List events for a branch, latest scheduled time first (supports --page and --per-page)
+pscale branch maintenance event list <database> <branch> --org <org> --format json
+pscale branch maintenance event list <database> <branch> --org <org> --format json --state scheduled
+
+# Show one event, including the times it can be rescheduled to
+pscale branch maintenance event show <database> <branch> <id> --org <org> --format json
+
+# Move an event to one of its available times
+pscale branch maintenance event reschedule <database> <branch> <id> --org <org> --format json --to <RFC3339>
+```
+
+- Fields: `id`, `state`, `what`, `why`, `expected_impact`, `scheduled_at`, `not_after`, `completed_at`, `reschedules_remaining`, `branch`, and `available_times`.
+- `state` is `scheduled`, `in_progress`, `completed`, `canceled`, or `expired`. `--state` takes one of those values.
+- `--to` is an RFC 3339 time (for example `2026-10-25T03:00:00Z`) and must be one of the event's `available_times`, which are upcoming openings of the branch's maintenance window before `not_after`. Read them from `event show` first. Any other time fails before the request and the error lists the valid times.
+- An event with no `available_times` cannot be rescheduled right now, for example because it is no longer `scheduled`, has no reschedules left (`reschedules_remaining` is `0`), or its maintenance window is open.
+- Rescheduling changes when the branch restarts. Ask the user before running `reschedule`.
+- Moving the maintenance window with `window set` also moves the branch's scheduled events to the new window; check them with `event list` afterwards.
+- `event list` fails with `maintenance events are not available for database <database>` when the database does not have maintenance events. `event show` and `event reschedule` report the event as not existing instead.
+- Postgres only; Vitess/MySQL and Neki databases are rejected before any API call. `reschedule` needs `write_database` on a service token.
 
 ## Neki data topology
 
