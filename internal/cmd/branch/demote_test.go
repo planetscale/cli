@@ -36,6 +36,8 @@ func TestBranch_DemoteCmd(t *testing.T) {
 			c.Assert(req.Branch, qt.Equals, branch)
 			c.Assert(req.Database, qt.Equals, db)
 			c.Assert(req.Organization, qt.Equals, org)
+			c.Assert(req.ClusterSize, qt.Equals, "")
+			c.Assert(req.Replicas, qt.IsNil)
 
 			return res, nil
 		},
@@ -60,6 +62,48 @@ func TestBranch_DemoteCmd(t *testing.T) {
 	c.Assert(err, qt.IsNil)
 	c.Assert(svc.DemoteFnInvoked, qt.IsTrue)
 	c.Assert(buf.String(), qt.JSONEquals, res)
+}
+
+func TestBranch_DemoteCmd_ClusterSizeAndReplicas(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	db := "planetscale"
+	branch := "main"
+	replicas := 0
+
+	svc := &mock.DatabaseBranchesService{
+		DemoteFn: func(ctx context.Context, req *ps.DemoteRequest) (*ps.DatabaseBranch, error) {
+			c.Assert(req.ClusterSize, qt.Equals, "PS_DEV")
+			c.Assert(req.Replicas, qt.DeepEquals, &replicas)
+			return &ps.DatabaseBranch{Name: branch, Production: false}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: org},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{DatabaseBranches: svc}, nil
+		},
+	}
+
+	cmd := DemoteCmd(ch)
+	cmd.SetArgs([]string{db, branch, "--cluster-size", "PS-DEV", "--replicas", "0"})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(svc.DemoteFnInvoked, qt.IsTrue)
+}
+
+func TestBranch_DemoteCmd_HelpStatesEngineSupport(t *testing.T) {
+	c := qt.New(t)
+	cmd := DemoteCmd(&cmdutil.Helper{})
+
+	c.Assert(cmd.Long, qt.Contains, "This command is supported for MySQL databases and for enabled Postgres branches. Neki databases are not supported.")
 }
 
 func TestBranch_DemoteCmd_ServiceTokenPermissionError(t *testing.T) {
