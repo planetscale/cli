@@ -73,6 +73,15 @@ type DeletePostgresDedicatedReadReplicaRequest struct {
 	Replica      string
 }
 
+// DetachPostgresDedicatedReadReplicaRequest encapsulates detaching a dedicated
+// read replica from its branch and promoting it to a standalone branch.
+type DetachPostgresDedicatedReadReplicaRequest struct {
+	Organization string
+	Database     string
+	Branch       string
+	Replica      string
+}
+
 // PostgresDedicatedReadReplicasService is an interface for the Postgres dedicated
 // read replicas API.
 type PostgresDedicatedReadReplicasService interface {
@@ -81,6 +90,7 @@ type PostgresDedicatedReadReplicasService interface {
 	Create(context.Context, *CreatePostgresDedicatedReadReplicaRequest) (*PostgresDedicatedReadReplica, error)
 	Update(context.Context, *UpdatePostgresDedicatedReadReplicaRequest) (*PostgresDedicatedReadReplica, error)
 	Delete(context.Context, *DeletePostgresDedicatedReadReplicaRequest) error
+	Detach(context.Context, *DetachPostgresDedicatedReadReplicaRequest) (*PostgresBranch, error)
 }
 
 // PostgresReadOnlyReplica is the former name for PostgresDedicatedReadReplica.
@@ -177,10 +187,31 @@ func (s *postgresDedicatedReadReplicasService) Delete(ctx context.Context, delet
 	return s.client.do(ctx, req, nil)
 }
 
+// Detach promotes a dedicated read replica to a standalone branch of the
+// database and returns that branch. The replica no longer exists afterwards.
+func (s *postgresDedicatedReadReplicasService) Detach(ctx context.Context, detachReq *DetachPostgresDedicatedReadReplicaRequest) (*PostgresBranch, error) {
+	req, err := s.client.newRequest(http.MethodPost, postgresDedicatedReadReplicaDetachmentAPIPath(detachReq.Organization, detachReq.Database, detachReq.Branch, detachReq.Replica), nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request for detach postgres dedicated read replica: %w", err)
+	}
+
+	branch := &PostgresBranch{}
+	if err := s.client.do(ctx, req, branch); err != nil {
+		return nil, err
+	}
+	return branch, nil
+}
+
 func postgresDedicatedReadReplicasAPIPath(org, db, branch string) string {
 	return path.Join(postgresBranchAPIPath(org, db, branch), "read-only-replicas")
 }
 
 func postgresDedicatedReadReplicaAPIPath(org, db, branch, replica string) string {
 	return path.Join(postgresDedicatedReadReplicasAPIPath(org, db, branch), replica)
+}
+
+// postgresDedicatedReadReplicaDetachmentAPIPath uses the dedicated-read-replicas
+// route. Detachment is not served under the deprecated read-only-replicas path.
+func postgresDedicatedReadReplicaDetachmentAPIPath(org, db, branch, replica string) string {
+	return path.Join(postgresBranchAPIPath(org, db, branch), "dedicated-read-replicas", replica, "detachment")
 }

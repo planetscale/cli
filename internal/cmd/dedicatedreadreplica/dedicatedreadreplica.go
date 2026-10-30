@@ -51,6 +51,7 @@ This command is only available for PostgreSQL databases.`,
 	cmd.AddCommand(CreateCmd(ch))
 	cmd.AddCommand(UpdateCmd(ch))
 	cmd.AddCommand(DeleteCmd(ch))
+	cmd.AddCommand(DetachCmd(ch))
 
 	return cmd
 }
