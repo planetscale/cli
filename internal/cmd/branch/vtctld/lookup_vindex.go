@@ -11,9 +11,8 @@ import (
 
 func LookupVindexCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:    "lookup-vindex <command>",
-		Short:  "Manage Lookup Vindex operations",
-		Hidden: true,
+		Use:   "lookup-vindex <command>",
+		Short: "Manage Lookup Vindex operations",
 	}
 
 	cmd.AddCommand(LookupVindexCreateCmd(ch))
