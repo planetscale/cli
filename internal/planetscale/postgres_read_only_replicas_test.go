@@ -172,6 +172,48 @@ func TestPostgresDedicatedReadReplicas_Delete(t *testing.T) {
 	c.Assert(err, qt.IsNil)
 }
 
+func TestPostgresDedicatedReadReplicas_Detach(t *testing.T) {
+	c := qt.New(t)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodPost)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/my-db/branches/main/dedicated-read-replicas/analytics/detachment")
+		c.Assert(r.ContentLength, qt.Equals, int64(0))
+		w.WriteHeader(http.StatusCreated)
+		_, err := w.Write([]byte(`{
+			"id":"branch-2",
+			"name":"analytics",
+			"state":"ready",
+			"production":true,
+			"ready":false,
+			"parent_branch":"",
+			"kind":"postgresql",
+			"replicas":2,
+			"cluster_name":"PS_10_GCP_X86",
+			"created_at":"2026-08-28T10:19:23.000Z",
+			"updated_at":"2026-08-28T10:20:23.000Z",
+			"region":{"id":"region-1","slug":"us-east","provider":"GCP","display_name":"US East"}
+		}`))
+		c.Assert(err, qt.IsNil)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	branch, err := client.PostgresDedicatedReadReplicas.Detach(context.Background(), &DetachPostgresDedicatedReadReplicaRequest{
+		Organization: testOrg,
+		Database:     "my-db",
+		Branch:       "main",
+		Replica:      "analytics",
+	})
+	c.Assert(err, qt.IsNil)
+	c.Assert(branch.ID, qt.Equals, "branch-2")
+	c.Assert(branch.Name, qt.Equals, "analytics")
+	c.Assert(branch.Production, qt.IsTrue)
+	c.Assert(branch.Ready, qt.IsFalse)
+	c.Assert(branch.Region.Slug, qt.Equals, "us-east")
+}
+
 func TestPostgresReadOnlyReplicasBackwardCompatibility(t *testing.T) {
 	c := qt.New(t)
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

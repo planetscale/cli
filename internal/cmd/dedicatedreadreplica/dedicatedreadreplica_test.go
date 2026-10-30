@@ -255,6 +255,77 @@ func TestDeleteCmdRequiresForceInJSON(t *testing.T) {
 	c.Assert(svc.DeleteFnInvoked, qt.IsFalse)
 }
 
+func testDetachedBranch() *ps.PostgresBranch {
+	return &ps.PostgresBranch{
+		ID:          "branch-2",
+		Name:        "analytics",
+		State:       "ready",
+		ClusterName: "PS_10_GCP_X86",
+		Replicas:    2,
+		Production:  true,
+		Ready:       false,
+		Kind:        "postgresql",
+		CreatedAt:   time.Date(2026, 8, 28, 10, 19, 23, 0, time.UTC),
+		UpdatedAt:   time.Date(2026, 8, 28, 10, 20, 23, 0, time.UTC),
+		Region:      ps.Region{ID: "region-1", Slug: "us-east", Name: "US East"},
+	}
+}
+
+func TestDetachCmd(t *testing.T) {
+	c := qt.New(t)
+	var buf bytes.Buffer
+	org, database, branch := "planetscale", "mydb", "main"
+	detached := testDetachedBranch()
+	svc := &mock.PostgresDedicatedReadReplicasService{
+		DetachFn: func(ctx context.Context, req *ps.DetachPostgresDedicatedReadReplicaRequest) (*ps.PostgresBranch, error) {
+			c.Assert(req.Organization, qt.Equals, org)
+			c.Assert(req.Database, qt.Equals, database)
+			c.Assert(req.Branch, qt.Equals, branch)
+			c.Assert(req.Replica, qt.Equals, "analytics")
+			return detached, nil
+		},
+	}
+
+	cmd := DetachCmd(testHelper(org, databaseService(c, org, database), svc, printer.JSON, &buf))
+	cmd.SetArgs([]string{database, branch, "analytics", "--force"})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(svc.DetachFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.JSONEquals, detached)
+}
+
+func TestDetachCmdIsHidden(t *testing.T) {
+	c := qt.New(t)
+
+	cmd := DetachCmd(&cmdutil.Helper{Config: &config.Config{}})
+
+	c.Assert(cmd.Hidden, qt.IsTrue)
+}
+
+func TestDetachCmdRequiresForceInJSON(t *testing.T) {
+	c := qt.New(t)
+	org, database := "planetscale", "mydb"
+	svc := &mock.PostgresDedicatedReadReplicasService{}
+	cmd := DetachCmd(testHelper(org, databaseService(c, org, database), svc, printer.JSON, &bytes.Buffer{}))
+	cmd.SetArgs([]string{database, "main", "analytics"})
+	c.Assert(cmd.Execute(), qt.ErrorMatches, `(?s).*run with --force.*`)
+	c.Assert(svc.DetachFnInvoked, qt.IsFalse)
+}
+
+func TestDetachCmdRejectsMySQL(t *testing.T) {
+	c := qt.New(t)
+	org, database := "planetscale", "mydb"
+	dbSvc := &mock.DatabaseService{
+		GetFn: func(ctx context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
+			return &ps.Database{Name: database, Kind: ps.DatabaseEngineMySQL}, nil
+		},
+	}
+	svc := &mock.PostgresDedicatedReadReplicasService{}
+	cmd := DetachCmd(testHelper(org, dbSvc, svc, printer.JSON, &bytes.Buffer{}))
+	cmd.SetArgs([]string{database, "main", "analytics", "--force"})
+	c.Assert(cmd.Execute(), qt.ErrorMatches, `(?s).*only available for PostgreSQL.*mysql.*`)
+	c.Assert(svc.DetachFnInvoked, qt.IsFalse)
+}
+
 func TestListCmdRejectsMySQL(t *testing.T) {
 	c := qt.New(t)
 	org, database := "planetscale", "mydb"
