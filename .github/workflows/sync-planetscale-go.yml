@@ -20,8 +20,13 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: sync-planetscale-go
+  cancel-in-progress: false
+
 jobs:
   sync:
+    name: Sync
     runs-on: ubuntu-latest
     # The CLI app credentials (CLI_APP_ID, CLI_APP_PRIVATE_KEY) are scoped to
     # the release environment. This job only reads secrets and deploys
@@ -44,8 +49,9 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           path: cli
+          persist-credentials: false
 
-      - name: Check out planetscale-go
+      - name: Check out planetscale-go # zizmor: ignore[artipacked]
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           repository: planetscale/planetscale-go
@@ -59,6 +65,7 @@ jobs:
         uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
           go-version-file: cli/go.mod
+          cache: false
 
       - name: Sync client files
         run: ./cli/script/sync-planetscale-go.sh cli planetscale-go
@@ -126,9 +133,10 @@ jobs:
         working-directory: planetscale-go
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          BRANCH: ${{ steps.commit.outputs.branch }}
         run: |
           source_sha=$(git -C ../cli rev-parse --short HEAD)
-          branch="${{ steps.commit.outputs.branch }}"
+          branch="$BRANCH"
           git push origin "$branch"
           {
             echo "Automated sync of the API client from planetscale/cli@${source_sha}."
@@ -159,8 +167,9 @@ jobs:
         working-directory: planetscale-go
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          BRANCH: ${{ steps.commit.outputs.branch }}
         run: |
-          branch="${{ steps.commit.outputs.branch }}"
+          branch="$BRANCH"
           pr_json=$(gh pr view --repo planetscale/planetscale-go "$branch" \
             --json state,reviews 2>/dev/null || echo '{}')
           state=$(printf '%s' "$pr_json" | jq -r '.state // "NONE"')
@@ -198,8 +207,9 @@ jobs:
         working-directory: planetscale-go
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          BRANCH: ${{ steps.commit.outputs.branch }}
         run: |
-          branch="${{ steps.commit.outputs.branch }}"
+          branch="$BRANCH"
           pr_json=$(gh pr view --repo planetscale/planetscale-go "$branch" \
             --json url,state,autoMergeRequest)
           state=$(printf '%s' "$pr_json" | jq -r .state)

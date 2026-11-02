@@ -3,8 +3,15 @@ name: Release
 on:
   workflow_dispatch:
 
+permissions: {}
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
   release:
+    name: Release
     # This workflow should always be run on main - this is enforced by the
     # `release` environment directly but added here for visibility.
     # If the workflow fails during publishing, a new release must be published
