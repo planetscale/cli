@@ -475,6 +475,9 @@ Ask the user for the source password; do not invent credentials. `--dry-run` che
 ```bash
 pscale keyspace list <database> <branch> --org <org> --format json
 pscale keyspace show <database> <branch> <keyspace> --org <org> --format json
+pscale keyspace create <database> <branch> <keyspace> --org <org> --format json --cluster-size PS_40 --shards 2
+pscale keyspace create <database> <branch> <keyspace> --org <org> --format json --cluster-size PS_40 \
+  --custom-shard key-range=-40,cluster-size=PS_80 --custom-shard key-range=40-80 --custom-shard key-range=80-
 pscale size cluster list --org <org> --format json --external
 pscale keyspace create-external <database> <branch> <keyspace> --org <org> --format json \
   --host <host> --source-database <remote-db> --username <user> --password <password> \
@@ -487,6 +490,8 @@ pscale keyspace resize status <database> <branch> <keyspace> --org <org> --forma
 ```
 
 External create required flags: `--host`, `--source-database`, `--username`, `--password`, `--ssl-mode` (`disabled`, `preferred`, `required`, `verify_ca`, `verify_identity`). Default `--port` is `3306`.
+
+Internal `keyspace create` requires `--cluster-size`. `--shards` (default `1`) creates equal shards. `--custom-shard key-range=<range>[,cluster-size=<size>]` is repeatable and creates shards with explicit Vitess key ranges instead; it needs at least two entries whose ranges together cover the keyspace, and cannot be combined with `--shards`. A shard without `cluster-size` uses the keyspace `--cluster-size`. The API validates range continuity and size eligibility.
 
 Keyspace VTTablet and MySQL parameters: list them with current and default values, then change them with `parameters set`. Prefix each parameter with its namespace (`vttablet.` or `mysqld.`); `--reset` sets a parameter back to its default. Changes for both namespaces are submitted together and roll out to the keyspace; follow them with `parameters changes list`. Only one unfinished change per namespace can exist on a keyspace at a time.
 
