@@ -11,8 +11,7 @@ endif
 REPO=planetscale
 NAME=pscale
 BUILD_PKG=github.com/planetscale/cli/cmd/pscale
-GORELEASE_CROSS_VERSION ?= v1.26.0
-SYFT_VERSION ?= 1.38.0
+SYFT_VERSION ?= 1.55.0
 
 .PHONY: all
 all: build test lint
@@ -27,8 +26,7 @@ build:
 
 .PHONY: lint
 lint:
-	@go install honnef.co/go/tools/cmd/staticcheck@HEAD
-	@staticcheck ./...
+	@go tool -modfile=tools/go.mod staticcheck ./...
 	@go vet ./...
 
 .PHONY: build-image
@@ -55,7 +53,7 @@ clean:
 
 .PHONY: release
 release:
-	@docker build --build-arg GORELEASE_CROSS_VERSION=$(GORELEASE_CROSS_VERSION) --build-arg SYFT_VERSION=$(SYFT_VERSION) -t releaser -f docker/Dockerfile.goreleaser .
+	@docker build --build-arg SYFT_VERSION=$(SYFT_VERSION) -t releaser -f docker/Dockerfile.goreleaser .
 	@docker run \
 		--rm \
 		-e GITHUB_TOKEN=${GITHUB_TOKEN} \

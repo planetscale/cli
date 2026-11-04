@@ -35,7 +35,7 @@ jobs:
       name: release
       deployment: false
     steps:
-      - uses: actions/create-github-app-token@f8d387b68d61c58ab83c6c016672934102569859 # v3.0.0
+      - uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         id: app-token
         with:
           app-id: ${{ vars.CLI_APP_ID }}
@@ -46,13 +46,13 @@ jobs:
           repositories: planetscale-go
 
       - name: Check out cli
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           path: cli
           persist-credentials: false
 
       - name: Check out planetscale-go # zizmor: ignore[artipacked]
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: planetscale/planetscale-go
           token: ${{ steps.app-token.outputs.token }}
@@ -62,7 +62,7 @@ jobs:
           fetch-tags: true
 
       - name: Set up Go
-        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: cli/go.mod
           cache: false
@@ -117,13 +117,13 @@ jobs:
         working-directory: planetscale-go
         run: |
           # gorelease requires a clean tree, hence running after the commit.
-          go install golang.org/x/exp/cmd/gorelease@latest
+          go -C ../cli/tools build -o "$RUNNER_TEMP/gorelease" golang.org/x/exp/cmd/gorelease
           base=$(git describe --tags --abbrev=0)
           echo "Comparing against $base"
           {
             echo '## gorelease report (base: '"$base"')'
             echo '```'
-            gorelease -base="$base" 2>&1 || true
+            "$RUNNER_TEMP/gorelease" -base="$base" 2>&1 || true
             echo '```'
           } > /tmp/gorelease-report.md
           cat /tmp/gorelease-report.md
