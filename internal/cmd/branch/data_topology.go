@@ -93,9 +93,10 @@ func ListDataTopologyCmd(ch *cmdutil.Helper) *cobra.Command {
 
 func GetDataTopologyCmd(ch *cmdutil.Helper) *cobra.Command {
 	return &cobra.Command{
-		Use:   "get <database> <branch>",
-		Short: "Show the data topology of a Neki branch",
-		Args:  cmdutil.ExactArgs("database", "branch"),
+		Use:     "get <database> <branch>",
+		Aliases: []string{"show"},
+		Short:   "Show the data topology of a Neki branch",
+		Args:    cmdutil.ExactArgs("database", "branch"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			database, branch := args[0], args[1]

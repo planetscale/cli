@@ -21,9 +21,10 @@ func GetCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:   "get <database> <branch> <role-id>",
-		Short: "Retrieve information about a specific role",
-		Args:  cmdutil.RequiredArgs("database", "branch", "role-id"),
+		Use:     "get <database> <branch> <role-id>",
+		Aliases: []string{"show"},
+		Short:   "Retrieve information about a specific role",
+		Args:    cmdutil.RequiredArgs("database", "branch", "role-id"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			database := args[0]

@@ -461,6 +461,7 @@ func checkUnknownSubcommand(root *cobra.Command, args []string) error {
 	if suggestions := cmd.SuggestionsFor(positional[0]); !cmd.DisableSuggestions && len(suggestions) > 0 {
 		msg += "\n\nDid you mean this?\n\t" + strings.Join(suggestions, "\n\t")
 	}
+	msg += fmt.Sprintf("\n\nRun '%s --help' for usage.", cmd.CommandPath())
 	return errors.New(msg)
 }
 
