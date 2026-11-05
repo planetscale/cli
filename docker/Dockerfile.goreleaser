@@ -1,10 +1,10 @@
-ARG GORELEASE_CROSS_VERSION=v1.26.0
-FROM ghcr.io/goreleaser/goreleaser-cross:${GORELEASE_CROSS_VERSION}
+FROM ghcr.io/goreleaser/goreleaser-cross:v1.26.10@sha256:4ddb0de02f2eaac64d2b33e16d1d702d800db6a110154f8768f283858fb26c02
 
 RUN apt-get update --allow-releaseinfo-change || apt-get update; apt-get install -y openssh-client
 
-ARG SYFT_VERSION=1.38.0
-RUN wget -O syft.deb https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/syft_${SYFT_VERSION}_linux_amd64.deb && dpkg -i syft.deb
+ARG SYFT_VERSION=1.55.0
+ARG SYFT_SHA256=070620d4a7ed6a2fbca67dae6cd0622c05354b351e171f325f0a3c9e7f42adab
+RUN wget -O syft.deb https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/syft_${SYFT_VERSION}_linux_amd64.deb && echo "${SYFT_SHA256}  syft.deb" | sha256sum -c - && dpkg -i syft.deb
 
 RUN mv /entrypoint.sh /base-entrypoint.sh
 COPY docker/entrypoint.sh /entrypoint.sh
