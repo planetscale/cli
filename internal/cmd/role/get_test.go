@@ -62,7 +62,7 @@ func TestRole_GetCmdIncludesStatusAndExpiration(t *testing.T) {
 		"expires_at":       "2026-08-20T12:00:00Z",
 		"password":         "",
 		"access_host_url":  "pg.psdb.cloud",
-		"database_url":     "postgresql://app-user:@pg.psdb.cloud:5432/postgres?sslmode=verify-full",
+		"database_url":     "postgresql://app-user:@pg.psdb.cloud:5432/postgres?sslmode=verify-full&sslrootcert=system",
 		"with_replication": false,
 	})
 }
@@ -84,7 +84,7 @@ func TestRole_GetCmdConnectionTargets(t *testing.T) {
 			},
 			username:      "app.branch|replica",
 			accessHostURL: "primary.pg.psdb.cloud",
-			databaseURL:   "postgresql://app.branch%7Creplica:@primary.pg.psdb.cloud:5432/postgres?sslmode=verify-full",
+			databaseURL:   "postgresql://app.branch%7Creplica:@primary.pg.psdb.cloud:5432/postgres?sslmode=verify-full&sslrootcert=system",
 		},
 		{
 			name: "dedicated read replica",
@@ -94,7 +94,7 @@ func TestRole_GetCmdConnectionTargets(t *testing.T) {
 			},
 			username:      "app.read-only|replica",
 			accessHostURL: "analytics.pg.psdb.cloud",
-			databaseURL:   "postgresql://app.read-only%7Creplica:@analytics.pg.psdb.cloud:5432/postgres?sslmode=verify-full",
+			databaseURL:   "postgresql://app.read-only%7Creplica:@analytics.pg.psdb.cloud:5432/postgres?sslmode=verify-full&sslrootcert=system",
 		},
 		{
 			name: "deprecated read-only replica alias",
@@ -104,7 +104,7 @@ func TestRole_GetCmdConnectionTargets(t *testing.T) {
 			},
 			username:      "app.read-only|replica",
 			accessHostURL: "analytics.pg.psdb.cloud",
-			databaseURL:   "postgresql://app.read-only%7Creplica:@analytics.pg.psdb.cloud:5432/postgres?sslmode=verify-full",
+			databaseURL:   "postgresql://app.read-only%7Creplica:@analytics.pg.psdb.cloud:5432/postgres?sslmode=verify-full&sslrootcert=system",
 		},
 		{
 			name: "bouncer",
@@ -114,7 +114,7 @@ func TestRole_GetCmdConnectionTargets(t *testing.T) {
 			},
 			username:      "app.branch|pool",
 			accessHostURL: "primary.pg.psdb.cloud",
-			databaseURL:   "postgresql://app.branch%7Cpool:@primary.pg.psdb.cloud:6432/postgres?sslmode=verify-full",
+			databaseURL:   "postgresql://app.branch%7Cpool:@primary.pg.psdb.cloud:6432/postgres?sslmode=verify-full&sslrootcert=system",
 		},
 	}
 
@@ -226,7 +226,7 @@ func TestRole_GetCmdNekiConnectionTargets(t *testing.T) {
 				Router: "default",
 			},
 			username:    "app.branch|default",
-			databaseURL: "postgresql://app.branch%7Cdefault:@pg.psdb.cloud:5432/postgres?sslmode=verify-full",
+			databaseURL: "postgresql://app.branch%7Cdefault:@pg.psdb.cloud:5432/postgres?sslmode=verify-full&sslrootcert=system",
 		},
 		{
 			name: "replica",
@@ -236,7 +236,7 @@ func TestRole_GetCmdNekiConnectionTargets(t *testing.T) {
 			},
 			username:    "app.branch",
 			options:     "-c __neki.target=REPLICA",
-			databaseURL: "postgresql://app.branch:@pg.psdb.cloud:5432/postgres?sslmode=verify-full&options=-c%20__neki.target=REPLICA",
+			databaseURL: "postgresql://app.branch:@pg.psdb.cloud:5432/postgres?sslmode=verify-full&sslrootcert=system&options=-c%20__neki.target=REPLICA",
 		},
 		{
 			name: "shard",
@@ -246,7 +246,7 @@ func TestRole_GetCmdNekiConnectionTargets(t *testing.T) {
 			},
 			username:    "app.branch",
 			options:     "-c __neki.shard=shzabc",
-			databaseURL: "postgresql://app.branch:@pg.psdb.cloud:5432/postgres?sslmode=verify-full&options=-c%20__neki.shard=shzabc",
+			databaseURL: "postgresql://app.branch:@pg.psdb.cloud:5432/postgres?sslmode=verify-full&sslrootcert=system&options=-c%20__neki.shard=shzabc",
 		},
 		{
 			name: "replica shard and router",
@@ -258,7 +258,7 @@ func TestRole_GetCmdNekiConnectionTargets(t *testing.T) {
 			},
 			username:    "app.branch|default",
 			options:     "-c __neki.target=REPLICA -c __neki.shard=shzabc",
-			databaseURL: "postgresql://app.branch%7Cdefault:@pg.psdb.cloud:5432/postgres?sslmode=verify-full&options=-c%20__neki.target=REPLICA%20-c%20__neki.shard=shzabc",
+			databaseURL: "postgresql://app.branch%7Cdefault:@pg.psdb.cloud:5432/postgres?sslmode=verify-full&sslrootcert=system&options=-c%20__neki.target=REPLICA%20-c%20__neki.shard=shzabc",
 		},
 	}
 
