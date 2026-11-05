@@ -1,4 +1,4 @@
-FROM ghcr.io/goreleaser/goreleaser-cross:v1.26.10@sha256:4ddb0de02f2eaac64d2b33e16d1d702d800db6a110154f8768f283858fb26c02
+FROM ghcr.io/goreleaser/goreleaser-cross:v1.27.3@sha256:1820cee53c4c06cfb43c2203caca73f9497042f5b6061c8916a251228a321975
 
 RUN apt-get update --allow-releaseinfo-change || apt-get update; apt-get install -y openssh-client
 
