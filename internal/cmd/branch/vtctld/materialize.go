@@ -12,9 +12,8 @@ import (
 
 func MaterializeCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:    "materialize <command>",
-		Short:  "Manage Materialize workflows",
-		Hidden: true,
+		Use:   "materialize <command>",
+		Short: "Manage Materialize workflows",
 	}
 
 	cmd.AddCommand(MaterializeCreateCmd(ch))

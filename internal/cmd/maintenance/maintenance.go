@@ -36,6 +36,7 @@ Maintenance schedules define when PlanetScale can perform planned maintenance
 type MaintenanceSchedule struct {
 	ID                   string `header:"id" json:"id"`
 	Name                 string `header:"name" json:"name"`
+	Branch               string `header:"branch" json:"branch"`
 	Enabled              bool   `header:"enabled" json:"enabled"`
 	Required             bool   `header:"required" json:"required"`
 	Frequency            string `header:"frequency" json:"frequency"`
@@ -81,6 +82,9 @@ func toMaintenanceSchedule(schedule *ps.MaintenanceSchedule) *MaintenanceSchedul
 		CreatedAt:     printer.GetMilliseconds(schedule.CreatedAt),
 		UpdatedAt:     printer.GetMilliseconds(schedule.UpdatedAt),
 		orig:          schedule,
+	}
+	if schedule.DatabaseBranch != nil {
+		out.Branch = schedule.DatabaseBranch.Name
 	}
 	if schedule.PendingVitessVersion != nil && *schedule.PendingVitessVersion != "" {
 		out.PendingVitessVersion = *schedule.PendingVitessVersion

@@ -292,7 +292,7 @@ func nekiRouterAPIPath(org, database, branch, router string) string {
 }
 
 func nekiRouterChangesAPIPath(org, database, branch, router string) string {
-	return path.Join(nekiRouterAPIPath(org, database, branch, router), "changes")
+	return path.Join(nekiRouterAPIPath(org, database, branch, router), "change-requests")
 }
 
 func nekiRouterChangeAPIPath(org, database, branch, router, change string) string {

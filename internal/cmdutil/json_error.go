@@ -41,6 +41,8 @@ func (r JSONErrorResponse) Code() string {
 // reach a JSON payload.
 var ansiEscape = regexp.MustCompile(`\x1b\[[0-9;]*m`)
 
+var unknownCommandParent = regexp.MustCompile(`unknown command "[^"]*" for "([^"]+)"`)
+
 // GlobalJSONError classifies an error for the global JSON envelope.
 //
 // Classification is by message text because this is the top-level fallback:
@@ -111,8 +113,12 @@ func GlobalJSONError(err error) JSONErrorResponse {
 
 	case strings.Contains(msg, "unknown command"):
 		code = "UNKNOWN_COMMAND"
+		parent := "pscale"
+		if m := unknownCommandParent.FindStringSubmatch(msg); m != nil {
+			parent = m[1]
+		}
 		nextSteps = []string{
-			"Run `pscale --help` to list valid commands",
+			fmt.Sprintf("Run `%s --help` to list valid commands", parent),
 			AgentGuideCmd(),
 		}
 

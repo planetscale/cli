@@ -18,20 +18,21 @@ type Actor struct {
 
 // DatabaseBranch represents a database branch.
 type DatabaseBranch struct {
-	ID             string    `json:"id"`
-	Name           string    `json:"name"`
-	ParentBranch   string    `json:"parent_branch"`
-	Actor          Actor     `json:"actor"`
-	Region         Region    `json:"region"`
-	Ready          bool      `json:"ready"`
-	SchemaReady    bool      `json:"schema_ready"`
-	Production     bool      `json:"production"`
-	HtmlURL        string    `json:"html_url"`
-	CreatedAt      time.Time `json:"created_at"`
-	UpdatedAt      time.Time `json:"updated_at"`
-	SafeMigrations bool      `json:"safe_migrations"`
-	VTGateSize     string    `json:"vtgate_size"`
-	VTGateCount    int       `json:"vtgate_count"`
+	ID             string         `json:"id"`
+	Name           string         `json:"name"`
+	ParentBranch   string         `json:"parent_branch"`
+	Actor          Actor          `json:"actor"`
+	Region         Region         `json:"region"`
+	Ready          bool           `json:"ready"`
+	SchemaReady    bool           `json:"schema_ready"`
+	Production     bool           `json:"production"`
+	HtmlURL        string         `json:"html_url"`
+	CreatedAt      time.Time      `json:"created_at"`
+	UpdatedAt      time.Time      `json:"updated_at"`
+	SafeMigrations bool           `json:"safe_migrations"`
+	Kind           DatabaseEngine `json:"kind,omitempty"`
+	VTGateSize     string         `json:"vtgate_size"`
+	VTGateCount    int            `json:"vtgate_count"`
 }
 
 type databaseBranchesResponse struct {
@@ -127,6 +128,12 @@ type DemoteRequest struct {
 	Organization string `json:"-"`
 	Database     string `json:"-"`
 	Branch       string `json:"-"`
+
+	// ClusterSize is the Postgres cluster size to apply. Empty leaves the size unchanged.
+	ClusterSize string `json:"cluster_size,omitempty"`
+	// Replicas is the Postgres replica count, not including the primary.
+	// Nil leaves the count unchanged. Zero is a single node.
+	Replicas *int `json:"replicas,omitempty"`
 }
 
 // PromoteRequest encapsulates the request for promoting a request to
@@ -135,6 +142,12 @@ type PromoteRequest struct {
 	Organization string `json:"-"`
 	Database     string `json:"-"`
 	Branch       string `json:"-"`
+
+	// ClusterSize is the cluster size to apply. Empty leaves the API default.
+	ClusterSize string `json:"cluster_size,omitempty"`
+	// Replicas is the Postgres replica count, not including the primary.
+	// Nil leaves the count unchanged. Zero is a single node.
+	Replicas *int `json:"replicas,omitempty"`
 }
 
 // EnableSafeMigrationsRequest encapsulates the request for enabling safe
@@ -418,7 +431,7 @@ func (d *databaseBranchesService) RefreshSchema(ctx context.Context, refreshReq 
 // Promote promotes a branch from development to production.
 func (d *databaseBranchesService) Promote(ctx context.Context, promoteReq *PromoteRequest) (*DatabaseBranch, error) {
 	path := path.Join(databaseBranchAPIPath(promoteReq.Organization, promoteReq.Database, promoteReq.Branch), "promote")
-	req, err := d.client.newRequest(http.MethodPost, path, nil)
+	req, err := d.client.newRequest(http.MethodPost, path, promoteReq)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request for branch promotion: %w", err)
 	}
@@ -473,7 +486,7 @@ func (d *databaseBranchesService) DisableSafeMigrations(ctx context.Context, dis
 // second call by a different admin in order to complete demotion.
 func (d *databaseBranchesService) Demote(ctx context.Context, demoteReq *DemoteRequest) (*DatabaseBranch, error) {
 	path := path.Join(databaseBranchAPIPath(demoteReq.Organization, demoteReq.Database, demoteReq.Branch), "demote")
-	req, err := d.client.newRequest(http.MethodPost, path, nil)
+	req, err := d.client.newRequest(http.MethodPost, path, demoteReq)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request for branch demotion: %w", err)
 	}

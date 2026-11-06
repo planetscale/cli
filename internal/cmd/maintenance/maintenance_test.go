@@ -130,6 +130,39 @@ func TestMaintenance_ShowCmd(t *testing.T) {
 	c.Assert(buf.String(), qt.JSONEquals, &MaintenanceSchedule{orig: schedule})
 }
 
+func TestMaintenance_BranchColumn(t *testing.T) {
+	c := qt.New(t)
+
+	schedule := &ps.MaintenanceSchedule{
+		ID:             "sched-1",
+		FrequencyValue: 1,
+		FrequencyUnit:  "week",
+		DatabaseBranch: &ps.MaintenanceBranch{ID: "branch-1", Name: "release"},
+	}
+
+	var buf bytes.Buffer
+	format := printer.Human
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: "planetscale"},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{MaintenanceSchedules: &mock.MaintenanceSchedulesService{
+				ListFn: func(context.Context, *ps.ListMaintenanceSchedulesRequest, ...ps.ListOption) ([]*ps.MaintenanceSchedule, error) {
+					return []*ps.MaintenanceSchedule{schedule}, nil
+				},
+			}}, nil
+		},
+	}
+
+	cmd := ListCmd(ch)
+	cmd.SetArgs([]string{"mydb"})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(buf.String(), qt.Matches, `(?si).*branch.*release.*`)
+}
+
 func TestFormatDay(t *testing.T) {
 	c := qt.New(t)
 	c.Assert(formatDay(0), qt.Equals, "Sunday")

@@ -9,14 +9,20 @@ import (
 )
 
 func ClusterSizesCompletionFunc(ch *Helper, cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
-	return clusterSizesCompletionFunc(ch, cmd, toComplete)
+	return clusterSizesCompletionFunc(ch, cmd, toComplete, false)
+}
+
+// ClusterSizesIncludingDevelopmentCompletionFunc completes cluster sizes and
+// includes PS-DEV. ClusterSizesCompletionFunc omits that size.
+func ClusterSizesIncludingDevelopmentCompletionFunc(ch *Helper, cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
+	return clusterSizesCompletionFunc(ch, cmd, toComplete, true)
 }
 
 func ExternalClusterSizesCompletionFunc(ch *Helper, cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
-	return clusterSizesCompletionFunc(ch, cmd, toComplete, ps.WithExternal())
+	return clusterSizesCompletionFunc(ch, cmd, toComplete, false, ps.WithExternal())
 }
 
-func clusterSizesCompletionFunc(ch *Helper, cmd *cobra.Command, toComplete string, extraOpts ...ps.ListOption) ([]cobra.Completion, cobra.ShellCompDirective) {
+func clusterSizesCompletionFunc(ch *Helper, cmd *cobra.Command, toComplete string, includeDevelopment bool, extraOpts ...ps.ListOption) ([]cobra.Completion, cobra.ShellCompDirective) {
 	ctx := cmd.Context()
 
 	org := ch.Config.Organization // --org flag
@@ -52,7 +58,7 @@ func clusterSizesCompletionFunc(ch *Helper, cmd *cobra.Command, toComplete strin
 
 	clusterSizes := make([]cobra.Completion, 0)
 	for _, c := range clusterSKUs {
-		if c.Enabled && strings.Contains(c.Name, toComplete) && c.Rate != nil && c.Name != "PS_DEV" {
+		if c.Enabled && strings.Contains(c.Name, toComplete) && c.Rate != nil && (includeDevelopment || c.Name != "PS_DEV") {
 			var description strings.Builder
 			if c.Metal {
 				description.WriteString(c.DisplayName)

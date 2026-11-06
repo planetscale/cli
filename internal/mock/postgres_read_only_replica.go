@@ -21,6 +21,9 @@ type PostgresDedicatedReadReplicasService struct {
 
 	DeleteFn        func(context.Context, *ps.DeletePostgresDedicatedReadReplicaRequest) error
 	DeleteFnInvoked bool
+
+	DetachFn        func(context.Context, *ps.DetachPostgresDedicatedReadReplicaRequest) (*ps.PostgresBranch, error)
+	DetachFnInvoked bool
 }
 
 // PostgresReadOnlyReplicasService is the former name for PostgresDedicatedReadReplicasService.
@@ -50,4 +53,9 @@ func (s *PostgresDedicatedReadReplicasService) Update(ctx context.Context, req *
 func (s *PostgresDedicatedReadReplicasService) Delete(ctx context.Context, req *ps.DeletePostgresDedicatedReadReplicaRequest) error {
 	s.DeleteFnInvoked = true
 	return s.DeleteFn(ctx, req)
+}
+
+func (s *PostgresDedicatedReadReplicasService) Detach(ctx context.Context, req *ps.DetachPostgresDedicatedReadReplicaRequest) (*ps.PostgresBranch, error) {
+	s.DetachFnInvoked = true
+	return s.DetachFn(ctx, req)
 }

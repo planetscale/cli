@@ -70,7 +70,7 @@ func TestResetDefaultCmd(t *testing.T) {
 		"expires_at":       nil,
 		"password":         "new-password-123",
 		"access_host_url":  "pg.psdb.cloud",
-		"database_url":     "postgresql://postgres:new-password-123@pg.psdb.cloud:5432/postgres?sslmode=verify-full",
+		"database_url":     "postgresql://postgres:new-password-123@pg.psdb.cloud:5432/postgres?sslmode=verify-full&sslrootcert=system",
 		"with_replication": false,
 	}
 	c.Assert(buf.String(), qt.JSONEquals, expectedOutput)

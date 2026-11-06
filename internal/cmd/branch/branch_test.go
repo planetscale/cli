@@ -30,6 +30,8 @@ func TestBranchCmdGroupsCommandsByEngine(t *testing.T) {
 	}
 
 	c.Assert(got["create"], qt.Equals, branchGroupDatabase)
+	c.Assert(got["promote"], qt.Equals, branchGroupMySQLPostgres)
+	c.Assert(got["demote"], qt.Equals, branchGroupMySQLPostgres)
 	c.Assert(got["connections"], qt.Equals, branchGroupMySQLPostgres)
 	c.Assert(got["lint"], qt.Equals, branchGroupVitess)
 	c.Assert(got["routing-rules"], qt.Equals, branchGroupVitess)

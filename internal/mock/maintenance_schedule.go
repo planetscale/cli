@@ -13,6 +13,9 @@ type MaintenanceSchedulesService struct {
 	GetFn        func(context.Context, *ps.GetMaintenanceScheduleRequest) (*ps.MaintenanceSchedule, error)
 	GetFnInvoked bool
 
+	UpdateFn        func(context.Context, *ps.UpdateMaintenanceScheduleRequest) (*ps.MaintenanceSchedule, error)
+	UpdateFnInvoked bool
+
 	ListWindowsFn        func(context.Context, *ps.ListMaintenanceWindowsRequest, ...ps.ListOption) ([]*ps.MaintenanceWindow, error)
 	ListWindowsFnInvoked bool
 }
@@ -25,6 +28,11 @@ func (s *MaintenanceSchedulesService) List(ctx context.Context, req *ps.ListMain
 func (s *MaintenanceSchedulesService) Get(ctx context.Context, req *ps.GetMaintenanceScheduleRequest) (*ps.MaintenanceSchedule, error) {
 	s.GetFnInvoked = true
 	return s.GetFn(ctx, req)
+}
+
+func (s *MaintenanceSchedulesService) Update(ctx context.Context, req *ps.UpdateMaintenanceScheduleRequest) (*ps.MaintenanceSchedule, error) {
+	s.UpdateFnInvoked = true
+	return s.UpdateFn(ctx, req)
 }
 
 func (s *MaintenanceSchedulesService) ListWindows(ctx context.Context, req *ps.ListMaintenanceWindowsRequest, opts ...ps.ListOption) ([]*ps.MaintenanceWindow, error) {

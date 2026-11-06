@@ -77,6 +77,13 @@ func TestGlobalJSONErrorUnknownCommand(t *testing.T) {
 	}
 }
 
+func TestGlobalJSONErrorUnknownSubcommandNamesParent(t *testing.T) {
+	resp := GlobalJSONError(errors.New(`unknown command "describe" for "pscale role"`))
+	if len(resp.NextSteps) == 0 || resp.NextSteps[0] != "Run `pscale role --help` to list valid commands" {
+		t.Fatalf("next_steps = %#v", resp.NextSteps)
+	}
+}
+
 func TestGlobalJSONErrorConfirmationRequired(t *testing.T) {
 	resp := GlobalJSONError(errors.New("cannot confirm deletion of database (run with --force to override)"))
 	if resp.Status != "action_required" {

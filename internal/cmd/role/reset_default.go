@@ -228,7 +228,7 @@ func buildRoleConnectionURL(username, password, accessHostURL, defaultPort, opti
 		port = defaultPort
 	}
 
-	conn := fmt.Sprintf("postgresql://%s:%s@%s:%s/postgres?sslmode=verify-full",
+	conn := fmt.Sprintf("postgresql://%s:%s@%s:%s/postgres?sslmode=verify-full&sslrootcert=system",
 		url.PathEscape(username),
 		url.PathEscape(password),
 		host,
