@@ -27,12 +27,16 @@ func TestServiceToken_ShowCmd(t *testing.T) {
 	name := "deploy-token"
 	createdAt := time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC)
 	lastUsedAt := time.Date(2025, 1, 20, 14, 45, 0, 0, time.UTC)
+	lastUsedIP := "203.0.113.5"
+	lastUsedOrganization := "Example Networks"
 	token := &ps.ServiceToken{
-		ID:         id,
-		Name:       &name,
-		Token:      "must-not-be-printed",
-		CreatedAt:  createdAt,
-		LastUsedAt: &lastUsedAt,
+		ID:                      id,
+		Name:                    &name,
+		Token:                   "must-not-be-printed",
+		CreatedAt:               createdAt,
+		LastUsedAt:              &lastUsedAt,
+		LastUsedIP:              &lastUsedIP,
+		LastUsedAsnOrganization: &lastUsedOrganization,
 	}
 
 	svc := &mock.ServiceTokenService{
@@ -52,11 +56,13 @@ func TestServiceToken_ShowCmd(t *testing.T) {
 	c.Assert(err, qt.IsNil)
 	c.Assert(svc.GetFnInvoked, qt.IsTrue)
 	c.Assert(buf.String(), qt.JSONEquals, map[string]any{
-		"id":           id,
-		"name":         name,
-		"created_at":   "2025-01-15T10:30:00Z",
-		"last_used_at": "2025-01-20T14:45:00Z",
-		"expires_at":   nil,
+		"id":                         id,
+		"name":                       name,
+		"created_at":                 "2025-01-15T10:30:00Z",
+		"last_used_at":               "2025-01-20T14:45:00Z",
+		"last_used_ip":               "203.0.113.5",
+		"last_used_asn_organization": "Example Networks",
+		"expires_at":                 nil,
 	})
 	c.Assert(buf.String(), qt.Not(qt.Contains), token.Token)
 }
@@ -73,11 +79,15 @@ func TestServiceToken_ShowCmdHuman(t *testing.T) {
 	name := "deploy-token"
 	svc := &mock.ServiceTokenService{
 		GetFn: func(ctx context.Context, req *ps.GetServiceTokenRequest) (*ps.ServiceToken, error) {
+			lastUsedIP := "203.0.113.5"
+			lastUsedOrganization := "Example Networks"
 			return &ps.ServiceToken{
-				ID:        "token-id",
-				Name:      &name,
-				Token:     "must-not-be-printed",
-				CreatedAt: time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC),
+				ID:                      "token-id",
+				Name:                    &name,
+				Token:                   "must-not-be-printed",
+				CreatedAt:               time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC),
+				LastUsedIP:              &lastUsedIP,
+				LastUsedAsnOrganization: &lastUsedOrganization,
 			}, nil
 		},
 	}
@@ -90,6 +100,8 @@ func TestServiceToken_ShowCmdHuman(t *testing.T) {
 	c.Assert(err, qt.IsNil)
 	c.Assert(buf.String(), qt.Contains, "token-id")
 	c.Assert(buf.String(), qt.Contains, "deploy-token")
+	c.Assert(buf.String(), qt.Contains, "203.0.113.5")
+	c.Assert(buf.String(), qt.Contains, "Example Networks")
 	c.Assert(buf.String(), qt.Not(qt.Contains), "must-not-be-printed")
 }
 

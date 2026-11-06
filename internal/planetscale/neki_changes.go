@@ -125,7 +125,7 @@ func (s *nekiChangesService) Cancel(ctx context.Context, r *CancelNekiChangeRequ
 }
 
 func nekiChangesAPIPath(org, database, branch string) string {
-	return path.Join(databaseBranchAPIPath(org, database, branch), "neki-changes")
+	return path.Join(databaseBranchAPIPath(org, database, branch), "change-requests")
 }
 
 func nekiChangeAPIPath(org, database, branch, change string) string {

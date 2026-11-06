@@ -274,6 +274,36 @@ func TestUnknownCommandsFail(t *testing.T) {
 	}
 }
 
+func TestUnknownCommandPointsAtParentHelp(t *testing.T) {
+	result := runRootCLI(t, "role", "describe")
+	if !strings.Contains(result.stderr, "Run 'pscale role --help' for usage.") {
+		t.Fatalf("stderr = %q, want a pointer to pscale role --help", result.stderr)
+	}
+
+	result = runRootCLI(t, "role", "describe", "--format", "json")
+	if !strings.Contains(result.stdout, "Run `pscale role --help` to list valid commands") {
+		t.Fatalf("stdout = %q, want a next step for pscale role --help", result.stdout)
+	}
+}
+
+func TestShowAliasesGet(t *testing.T) {
+	for _, args := range [][]string{
+		{"role", "show"},
+		{"branch", "data-topology", "show"},
+		{"branch", "routing-rules", "show"},
+	} {
+		t.Run(strings.Join(args, " "), func(t *testing.T) {
+			result := runRootCLI(t, args...)
+			if strings.Contains(result.stderr, "unknown command") {
+				t.Fatalf("stderr = %q, want show to resolve to get", result.stderr)
+			}
+			if !strings.Contains(result.stderr, "missing argument") {
+				t.Fatalf("stderr = %q, want get's missing argument error", result.stderr)
+			}
+		})
+	}
+}
+
 func TestUnknownCommandJSON(t *testing.T) {
 	for _, args := range [][]string{
 		{"nonexistentcmd", "--format", "json"},

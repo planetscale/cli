@@ -30,9 +30,10 @@ const schemaMutationInProgressWarning = "The routing rules may be stale due to a
 // GetRoutingRulesCmd is the command for showing the routing rules of a branch.
 func GetRoutingRulesCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "get <database> <branch>",
-		Short: "Show the routing rules of a MySQL branch",
-		Args:  cmdutil.RequiredArgs("database", "branch"),
+		Use:     "get <database> <branch>",
+		Aliases: []string{"show"},
+		Short:   "Show the routing rules of a MySQL branch",
+		Args:    cmdutil.RequiredArgs("database", "branch"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			database, branch := args[0], args[1]

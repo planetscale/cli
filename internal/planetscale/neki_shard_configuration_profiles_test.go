@@ -105,17 +105,17 @@ func TestNekiShardConfigurationProfilesService(t *testing.T) {
 		case r.Method == http.MethodGet && r.URL.Path == profilePath+"/extensions":
 			_, _ = w.Write([]byte(`[{"name":"pg_stat_statements","description":"Stats","enabled":true,"can_enable":true,"internal":false,"loader":"shared_preload_libraries","url":"https://example.test/extension","parameters":[]}]`))
 
-		case r.Method == http.MethodGet && r.URL.Path == profilePath+"/changes":
+		case r.Method == http.MethodGet && r.URL.Path == profilePath+"/change-requests":
 			c.Assert(r.URL.Query().Get("period"), qt.Equals, "24h")
 			c.Assert(r.URL.Query().Get("completed_at"), qt.Equals, "2026-08-04")
 			c.Assert(r.URL.Query().Get("page"), qt.Equals, "2")
 			c.Assert(r.URL.Query().Get("per_page"), qt.Equals, "25")
 			_, _ = w.Write([]byte(`{"data":[{"id":"change-1","state":"pending","created_at":"2026-08-04T12:00:00Z","updated_at":"2026-08-04T12:00:00Z","name":"metal","previous_name":"default","cluster_size":"M1-10","cluster_display_name":"Metal 10","metal":true,"cluster_rank":1,"replicas":2,"read_only_replicas":3,"previous_read_only_replicas":1,"parameters":{},"previous_cluster_size":"PS-10","previous_cluster_display_name":"PS 10","previous_metal":false,"previous_cluster_rank":2,"previous_replicas":0,"previous_parameters":{}}]}`))
 
-		case r.Method == http.MethodGet && r.URL.Path == profilePath+"/changes/change-1":
+		case r.Method == http.MethodGet && r.URL.Path == profilePath+"/change-requests/change-1":
 			_, _ = w.Write([]byte(`{"id":"change-1","state":"pending","created_at":"2026-08-04T12:00:00Z","updated_at":"2026-08-04T12:00:00Z","name":"metal","cluster_size":"M1-10","replicas":2,"read_only_replicas":0,"previous_read_only_replicas":3,"parameters":{},"previous_parameters":{}}`))
 
-		case r.Method == http.MethodDelete && r.URL.Path == profilePath+"/changes/change-1":
+		case r.Method == http.MethodDelete && r.URL.Path == profilePath+"/change-requests/change-1":
 			w.WriteHeader(http.StatusNoContent)
 
 		default:
