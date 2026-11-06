@@ -103,7 +103,7 @@ func TestBranch_PromoteCmd_HelpStatesEngineSupport(t *testing.T) {
 	c := qt.New(t)
 	cmd := PromoteCmd(&cmdutil.Helper{})
 
-	c.Assert(cmd.Long, qt.Contains, "This command is supported for MySQL databases and for enabled Postgres branches. Neki databases are not supported.")
+	c.Assert(cmd.Long, qt.Contains, "This command is supported for MySQL databases and for enabled Postgres and Neki branches.")
 }
 
 func TestBranch_PromoteCmd_MySQLSuccessText(t *testing.T) {

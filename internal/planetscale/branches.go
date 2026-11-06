@@ -129,9 +129,9 @@ type DemoteRequest struct {
 	Database     string `json:"-"`
 	Branch       string `json:"-"`
 
-	// ClusterSize is the Postgres cluster size to apply. Empty leaves the size unchanged.
+	// ClusterSize is the Postgres or Neki cluster size to apply. Empty leaves the size unchanged.
 	ClusterSize string `json:"cluster_size,omitempty"`
-	// Replicas is the Postgres replica count, not including the primary.
+	// Replicas is the Postgres or Neki replica count, not including the primary.
 	// Nil leaves the count unchanged. Zero is a single node.
 	Replicas *int `json:"replicas,omitempty"`
 }
@@ -145,7 +145,7 @@ type PromoteRequest struct {
 
 	// ClusterSize is the cluster size to apply. Empty leaves the API default.
 	ClusterSize string `json:"cluster_size,omitempty"`
-	// Replicas is the Postgres replica count, not including the primary.
+	// Replicas is the Postgres or Neki replica count, not including the primary.
 	// Nil leaves the count unchanged. Zero is a single node.
 	Replicas *int `json:"replicas,omitempty"`
 }
