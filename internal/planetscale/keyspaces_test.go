@@ -167,18 +167,30 @@ func TestKeyspaces_Create(t *testing.T) {
 	c := qt.New(t)
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodPost)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/foo/databases/bar/branches/baz/keyspaces")
+		var body map[string]any
+		c.Assert(json.NewDecoder(r.Body).Decode(&body), qt.IsNil)
+		c.Assert(body, qt.DeepEquals, map[string]any{
+			"name":           "qux",
+			"cluster_size":   "small",
+			"extra_replicas": float64(3),
+			"shards":         float64(2),
+		})
+
 		w.WriteHeader(201)
 		out := `{"type":"Keyspace","id":"thisisanid","name":"planetscale","shards":2,"sharded":true,"created_at":"2022-01-14T15:39:28.394Z","updated_at":"2021-12-20T21:11:07.697Z"}`
 		_, err := w.Write([]byte(out))
 		c.Assert(err, qt.IsNil)
-		c.Assert(r.Method, qt.Equals, http.MethodPost)
 	}))
+	defer ts.Close()
 
 	client, err := NewClient(WithBaseURL(ts.URL))
 	c.Assert(err, qt.IsNil)
 
 	ctx := context.Background()
 
+	shards := 2
 	keyspace, err := client.Keyspaces.Create(ctx, &CreateKeyspaceRequest{
 		Organization:  "foo",
 		Database:      "bar",
@@ -186,7 +198,7 @@ func TestKeyspaces_Create(t *testing.T) {
 		Name:          "qux",
 		ClusterSize:   "small",
 		ExtraReplicas: 3,
-		Shards:        2,
+		Shards:        &shards,
 	})
 
 	wantID := "thisisanid"
@@ -195,6 +207,51 @@ func TestKeyspaces_Create(t *testing.T) {
 	c.Assert(keyspace.ID, qt.Equals, wantID)
 	c.Assert(keyspace.Sharded, qt.Equals, true)
 	c.Assert(keyspace.Shards, qt.Equals, 2)
+}
+
+func TestKeyspaces_CreateCustomShards(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodPost)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/foo/databases/bar/branches/baz/keyspaces")
+		var body map[string]any
+		c.Assert(json.NewDecoder(r.Body).Decode(&body), qt.IsNil)
+		c.Assert(body, qt.DeepEquals, map[string]any{
+			"name":           "events",
+			"cluster_size":   "PS_40",
+			"extra_replicas": float64(0),
+			"custom_shards": []any{
+				map[string]any{"key_range": "-40", "cluster_size": "PS_80"},
+				map[string]any{"key_range": "40-80"},
+				map[string]any{"key_range": "80-", "cluster_size": "PS_20"},
+			},
+		})
+
+		w.WriteHeader(http.StatusCreated)
+		_, err := w.Write([]byte(`{"id":"thisisanid","name":"events","shards":3,"sharded":true,"cluster_name":"PS_40"}`))
+		c.Assert(err, qt.IsNil)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	keyspace, err := client.Keyspaces.Create(context.Background(), &CreateKeyspaceRequest{
+		Organization: "foo",
+		Database:     "bar",
+		Branch:       "baz",
+		Name:         "events",
+		ClusterSize:  "PS_40",
+		CustomShards: []CreateKeyspaceCustomShard{
+			{KeyRange: "-40", ClusterSize: "PS_80"},
+			{KeyRange: "40-80"},
+			{KeyRange: "80-", ClusterSize: "PS_20"},
+		},
+	})
+	c.Assert(err, qt.IsNil)
+	c.Assert(keyspace.ID, qt.Equals, "thisisanid")
+	c.Assert(keyspace.Shards, qt.Equals, 3)
 }
 
 func TestKeyspaces_CreateExternal(t *testing.T) {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/planetscale/cli/internal/cmdutil"
@@ -20,6 +21,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 		shards             int
 		clusterSize        string
 		additionalReplicas int
+		customShards       []string
 		wait               bool
 	}
 
@@ -35,9 +37,23 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			createReq.Database = database
 			createReq.Branch = branch
 			createReq.Name = keyspace
-			createReq.Shards = flags.shards
 			createReq.ExtraReplicas = flags.additionalReplicas
 			createReq.ClusterSize = flags.clusterSize
+
+			if len(flags.customShards) > 0 {
+				if cmd.Flags().Changed("shards") {
+					return errors.New("--shards cannot be combined with --custom-shard")
+				}
+				customShards, err := parseCustomShards(flags.customShards)
+				if err != nil {
+					return err
+				}
+				createReq.Shards = nil
+				createReq.CustomShards = customShards
+			} else {
+				createReq.Shards = &flags.shards
+				createReq.CustomShards = nil
+			}
 
 			client, err := ch.Client()
 			if err != nil {
@@ -86,6 +102,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().IntVar(&flags.shards, "shards", 1, "Number of shards in the keyspace")
 	cmd.Flags().StringVar(&flags.clusterSize, "cluster-size", "", "cluster size for the keyspace. Use `pscale size cluster list` to get a list of valid sizes.")
 	cmd.Flags().IntVar(&flags.additionalReplicas, "additional-replicas", 0, "number of additional replicas per shard. By default, each production cluster includes 2 replicas.")
+	cmd.Flags().StringArrayVar(&flags.customShards, "custom-shard", nil, customShardFlagHelp)
 	cmd.Flags().BoolVar(&flags.wait, "wait", false, "Wait until the keyspace is ready")
 
 	cmd.MarkFlagRequired("cluster-size")
@@ -95,6 +112,67 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	})
 
 	return cmd
+}
+
+const customShardFlagHelp = "key range and optional cluster size for one shard as key-range=<range>[,cluster-size=<size>]. Repeatable; requires at least two shards whose ranges cover the whole keyspace. Shards without a cluster-size use --cluster-size. Cannot be combined with --shards."
+
+// parseCustomShards parses repeatable --custom-shard flags.
+func parseCustomShards(raw []string) ([]planetscale.CreateKeyspaceCustomShard, error) {
+	if len(raw) < 2 {
+		return nil, fmt.Errorf("--custom-shard requires at least two shards, got %d", len(raw))
+	}
+	out := make([]planetscale.CreateKeyspaceCustomShard, 0, len(raw))
+	seen := make(map[string]struct{}, len(raw))
+	for _, s := range raw {
+		entry, err := parseCustomShard(s)
+		if err != nil {
+			return nil, err
+		}
+		if _, ok := seen[entry.KeyRange]; ok {
+			return nil, fmt.Errorf("duplicate --custom-shard key-range %q", entry.KeyRange)
+		}
+		seen[entry.KeyRange] = struct{}{}
+		out = append(out, entry)
+	}
+	return out, nil
+}
+
+func parseCustomShard(s string) (planetscale.CreateKeyspaceCustomShard, error) {
+	var entry planetscale.CreateKeyspaceCustomShard
+	seen := make(map[string]struct{}, 2)
+	for part := range strings.SplitSeq(s, ",") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		k, v, ok := strings.Cut(part, "=")
+		if !ok {
+			return entry, fmt.Errorf("invalid --custom-shard %q: expected key-range=<range>[,cluster-size=<size>]", s)
+		}
+		k = strings.TrimSpace(k)
+		v = strings.TrimSpace(v)
+		switch k {
+		case "key-range", "cluster-size":
+		default:
+			return entry, fmt.Errorf("unknown --custom-shard field %q in %q: valid fields are key-range, cluster-size", k, s)
+		}
+		if _, dup := seen[k]; dup {
+			return entry, fmt.Errorf("duplicate --custom-shard field %q in %q", k, s)
+		}
+		seen[k] = struct{}{}
+		if v == "" {
+			return entry, fmt.Errorf("invalid --custom-shard %q: %s must not be empty", s, k)
+		}
+		if k == "key-range" {
+			entry.KeyRange = v
+		} else {
+			entry.ClusterSize = cmdutil.ToSizeSKUName(v)
+		}
+	}
+	if entry.KeyRange == "" {
+		return entry, fmt.Errorf("--custom-shard %q is missing required field key-range", s)
+	}
+	return entry, nil
 }
 
 func waitUntilReady(ctx context.Context, client *planetscale.Client, printer *printer.Printer, debug bool, getReq *planetscale.GetKeyspaceRequest) (*planetscale.Keyspace, error) {
