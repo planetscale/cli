@@ -100,6 +100,7 @@ type Client struct {
 	VDiff                    VDiffService
 	Vtctld                   VtctldService
 	Webhooks                 WebhooksService
+	OIDCTrusts               OIDCTrustsService
 	Workflows                WorkflowsService
 }
 
@@ -407,6 +408,7 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 	c.VDiff = &vdiffService{client: c}
 	c.Vtctld = &vtctldService{client: c}
 	c.Webhooks = &webhooksService{client: c}
+	c.OIDCTrusts = &oidcTrustsService{client: c}
 	c.Workflows = &workflowsService{client: c}
 
 	return c, nil
