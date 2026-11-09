@@ -39,16 +39,19 @@ type Config struct {
 	Branch   string
 }
 
-func New() (*Config, error) {
-	accessToken, err := readAccessToken()
-	if err != nil {
-		return nil, err
-	}
+func New() *Config {
+	return &Config{BaseURL: ps.DefaultBaseURL}
+}
 
-	return &Config{
-		AccessToken: accessToken,
-		BaseURL:     ps.DefaultBaseURL,
-	}, nil
+// LoadAccessToken reads the user's token from the keyring when no other
+// credential is set, so service-token and --api-token runs never open it.
+func (c *Config) LoadAccessToken() error {
+	if c.AccessToken != "" || c.ServiceTokenIsSet() {
+		return nil
+	}
+	token, err := readAccessToken()
+	c.AccessToken = token
+	return err
 }
 
 func (c *Config) IsAuthenticated() error {
