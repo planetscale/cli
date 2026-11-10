@@ -38,6 +38,11 @@ func ListCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			end()
 
+			if len(trusts) == 0 && ch.Printer.Format() == printer.Human {
+				ch.Printer.Printf("No OIDC trusts exist in organization %s.\n", printer.BoldBlue(ch.Config.Organization))
+				return nil
+			}
+
 			out := make([]*OIDCTrust, 0, len(trusts))
 			for _, t := range trusts {
 				out = append(out, toOIDCTrust(t))
