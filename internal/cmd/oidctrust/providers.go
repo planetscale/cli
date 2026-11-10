@@ -10,7 +10,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// Provider is a table and json serializable OIDC trust provider.
+// Provider is a table and CSV serializable OIDC trust provider. JSON output
+// uses the API objects directly so that required claims remain an array.
 type Provider struct {
 	Name           string `header:"name" json:"name"`
 	DisplayName    string `header:"display name" json:"display_name"`
@@ -46,6 +47,10 @@ func ProvidersCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			end()
+
+			if ch.Printer.Format() == printer.JSON {
+				return ch.Printer.PrintJSON(providers)
+			}
 
 			results := make([]*Provider, 0, len(providers))
 			for _, p := range providers {
