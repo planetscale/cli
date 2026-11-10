@@ -46,6 +46,10 @@ func (t *OIDCTrust) MarshalJSON() ([]byte, error) {
 	return json.MarshalIndent(t.orig, "", "  ")
 }
 
+func (t *OIDCTrust) MarshalCSVValue() interface{} {
+	return []*OIDCTrust{t}
+}
+
 func toOIDCTrust(t *ps.OIDCTrust) *OIDCTrust {
 	conditions := make([]string, 0, len(t.Conditions))
 	for _, c := range t.Conditions {
