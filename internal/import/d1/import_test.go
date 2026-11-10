@@ -3,10 +3,13 @@ package d1
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	ps "github.com/planetscale/cli/internal/planetscale"
+	"github.com/planetscale/cli/internal/postgres"
 )
 
 type failingImportClient struct{}
@@ -287,5 +290,69 @@ func TestWithConnectionRetryRespectsContext(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("expected context or retry error")
+	}
+}
+
+func TestSplitConnPassword(t *testing.T) {
+	cases := []struct {
+		name     string
+		conninfo string
+		password string
+	}{
+		{
+			name: "resolved role connection string",
+			conninfo: postgres.BuildConnectionString(&postgres.Config{
+				Host:     "aws.connect.psdb.cloud",
+				Port:     5432,
+				User:     "d1_import_abc",
+				Password: `pscale_pw_it's a secret`,
+				Database: "postgres",
+				SSLMode:  "verify-full",
+				Options:  map[string]string{"sslrootcert": "system"},
+			}),
+			password: `pscale_pw_it's a secret`,
+		},
+		{name: "unquoted keyword password", conninfo: "host=localhost password=hunter2 dbname=app sslmode=disable", password: "hunter2"},
+		{name: "spaces around equals", conninfo: "host = localhost password = 'a b' user=me sslmode=disable", password: "a b"},
+		{name: "no password", conninfo: "host=localhost dbname=app sslmode=disable"},
+		{name: "uri userinfo", conninfo: "postgresql://me:p%40ss@localhost:5432/app?sslmode=disable", password: "p@ss"},
+		{name: "uri query password", conninfo: "postgres://me@localhost/app?password=qp&sslmode=disable", password: "qp"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			stripped, password, err := splitConnPassword(tc.conninfo)
+			if err != nil {
+				t.Fatalf("splitConnPassword: %v", err)
+			}
+			if password != tc.password {
+				t.Fatalf("password = %q, want %q", password, tc.password)
+			}
+			if tc.password != "" && strings.Contains(stripped, tc.password) {
+				t.Fatalf("stripped connection string still contains the password: %q", stripped)
+			}
+
+			want, err := pgconn.ParseConfig(tc.conninfo)
+			if err != nil {
+				t.Fatalf("parse original: %v", err)
+			}
+			t.Setenv("PGPASSWORD", password)
+			got, err := pgconn.ParseConfig(stripped)
+			if err != nil {
+				t.Fatalf("parse stripped %q: %v", stripped, err)
+			}
+			if got.Host != want.Host || got.Port != want.Port || got.User != want.User ||
+				got.Database != want.Database || got.Password != want.Password {
+				t.Fatalf("stripped %q parses to %s@%s:%d/%s, want %s@%s:%d/%s",
+					stripped, got.User, got.Host, got.Port, got.Database, want.User, want.Host, want.Port, want.Database)
+			}
+		})
+	}
+}
+
+func TestSplitConnPasswordMalformed(t *testing.T) {
+	for _, conninfo := range []string{"host=localhost password='unterminated", "host localhost"} {
+		if _, _, err := splitConnPassword(conninfo); err == nil {
+			t.Fatalf("splitConnPassword(%q): expected error", conninfo)
+		}
 	}
 }
