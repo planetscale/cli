@@ -14,19 +14,21 @@ import (
 
 func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
-		wait           bool
-		dataBranching  bool
-		region         string
-		parentBranch   string
-		clusterSize    string
-		backupID       string
-		restorePoint   string
-		majorVersion   string
-		replicas       int
-		minStorage     int64
-		maxStorage     int64
-		configProfiles []string
-		routers        []string
+		wait              bool
+		dataBranching     bool
+		region            string
+		parentBranch      string
+		clusterSize       string
+		backupID          string
+		restorePoint      string
+		majorVersion      string
+		replicas          int
+		minStorage        int64
+		maxStorage        int64
+		storageIOPS       int64
+		storageThroughput int64
+		configProfiles    []string
+		routers           []string
 	}
 
 	cmd := &cobra.Command{
@@ -80,6 +82,9 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 			if cmd.Flags().Changed("replicas") && flags.backupID == "" && flags.restorePoint == "" {
 				return fmt.Errorf("--replicas can only be used with a PostgreSQL backup restore or point-in-time recovery")
+			}
+			if (cmd.Flags().Changed("storage-iops") || cmd.Flags().Changed("storage-throughput")) && flags.backupID == "" && flags.restorePoint == "" {
+				return fmt.Errorf("--storage-iops and --storage-throughput can only be used with a PostgreSQL backup restore or point-in-time recovery")
 			}
 
 			client, err := ch.Client()
@@ -136,6 +141,9 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 				}
 				if cmd.Flags().Changed("min-storage") || cmd.Flags().Changed("max-storage") {
 					return fmt.Errorf("--min-storage and --max-storage are only supported for PostgreSQL databases")
+				}
+				if cmd.Flags().Changed("storage-iops") || cmd.Flags().Changed("storage-throughput") {
+					return fmt.Errorf("--storage-iops and --storage-throughput are only supported for PostgreSQL databases")
 				}
 				if flags.restorePoint != "" {
 					return fmt.Errorf("--restore-point is only supported for PostgreSQL databases")
@@ -234,13 +242,19 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 					return err
 				}
 
-				if cmd.Flags().Changed("min-storage") || cmd.Flags().Changed("max-storage") {
+				if cmd.Flags().Changed("min-storage") || cmd.Flags().Changed("max-storage") || cmd.Flags().Changed("storage-iops") || cmd.Flags().Changed("storage-throughput") {
 					createReq.Storage = &ps.StorageConfig{}
 					if cmd.Flags().Changed("min-storage") {
 						createReq.Storage.MinimumStorageBytes = &flags.minStorage
 					}
 					if cmd.Flags().Changed("max-storage") {
 						createReq.Storage.MaximumStorageBytes = &flags.maxStorage
+					}
+					if cmd.Flags().Changed("storage-iops") {
+						createReq.Storage.StorageIOPS = &flags.storageIOPS
+					}
+					if cmd.Flags().Changed("storage-throughput") {
+						createReq.Storage.StorageThroughputMiBs = &flags.storageThroughput
 					}
 				}
 
@@ -302,6 +316,8 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().IntVar(&flags.replicas, "replicas", 0, "Number of additional replicas for a PostgreSQL restore. 0 creates a single-node branch; omit to use the target cluster size default.")
 	cmd.Flags().Int64Var(&flags.minStorage, "min-storage", 0, "Minimum storage size in bytes")
 	cmd.Flags().Int64Var(&flags.maxStorage, "max-storage", 0, "Maximum storage size in bytes for autoscaling")
+	cmd.Flags().Int64Var(&flags.storageIOPS, "storage-iops", 0, "Storage IOPS for a PostgreSQL restore. Requires --restore or --restore-point.")
+	cmd.Flags().Int64Var(&flags.storageThroughput, "storage-throughput", 0, "Storage throughput in MiB/s for a PostgreSQL restore. Requires --restore or --restore-point.")
 	cmd.Flags().StringArrayVar(&flags.configProfiles, "config-profile", nil, cmdutil.ConfigProfileSizeFlagHelp)
 	cmd.Flags().StringArrayVar(&flags.routers, "router", nil, cmdutil.RouterSizeFlagHelp)
 
