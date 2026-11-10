@@ -51,8 +51,11 @@ func TestListWorkflowsProgressIncludesOrganization(t *testing.T) {
 	branch := "my-branch"
 
 	svc := &mock.VtctldService{
-		ListWorkflowsFn: func(ctx context.Context, req *ps.VtctldListWorkflowsRequest) (json.RawMessage, error) {
-			return json.RawMessage(`{"workflows":[]}`), nil
+		ListWorkflowsFn: func(ctx context.Context, req *ps.VtctldListWorkflowsRequest) (*ps.VtctldOperationReference, error) {
+			return &ps.VtctldOperationReference{ID: "op-123"}, nil
+		},
+		GetOperationFn: func(ctx context.Context, req *ps.GetVtctldOperationRequest) (*ps.VtctldOperation, error) {
+			return &ps.VtctldOperation{ID: "op-123", State: "completed", Completed: true}, nil
 		},
 	}
 

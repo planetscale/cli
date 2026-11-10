@@ -44,7 +44,12 @@ func ListWorkflowsCmd(ch *cmdutil.Helper) *cobra.Command {
 				req.IncludeLogs = &flags.includeLogs
 			}
 
-			data, err := client.Vtctld.ListWorkflows(ctx, req)
+			operation, err := client.Vtctld.ListWorkflows(ctx, req)
+			if err != nil {
+				return cmdutil.HandleError(err)
+			}
+
+			data, err := waitForMoveTablesOperationResult(ctx, client, ch.Config.Organization, database, branch, operation.ID)
 			if err != nil {
 				return cmdutil.HandleError(err)
 			}
