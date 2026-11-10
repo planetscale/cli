@@ -13,6 +13,7 @@ var _ OIDCTrustsService = &oidcTrustsService{}
 // OIDC trusts API.
 type OIDCTrustsService interface {
 	ListProviders(context.Context, *ListOIDCTrustProvidersRequest) ([]*OIDCTrustProvider, error)
+	List(context.Context, *ListOIDCTrustsRequest, ...ListOption) ([]*OIDCTrust, error)
 	Get(context.Context, *GetOIDCTrustRequest) (*OIDCTrust, error)
 }
 
@@ -44,6 +45,15 @@ type OIDCTrustAccess struct {
 	ResourceName string `json:"resource_name"`
 	ResourceID   string `json:"resource_id"`
 	ResourceType string `json:"resource_type"`
+}
+
+// ListOIDCTrustsRequest is the request for listing OIDC trusts.
+type ListOIDCTrustsRequest struct {
+	Organization string `json:"-"`
+}
+
+type oidcTrustsResponse struct {
+	Trusts []*OIDCTrust `json:"data"`
 }
 
 // GetOIDCTrustRequest is the request for getting an OIDC trust.
@@ -89,6 +99,22 @@ func (s *oidcTrustsService) ListProviders(ctx context.Context, listReq *ListOIDC
 
 func oidcTrustProvidersAPIPath(org string) string {
 	return path.Join("v1/organizations", org, "oidc-trust-providers")
+}
+
+func (s *oidcTrustsService) List(ctx context.Context, listReq *ListOIDCTrustsRequest, opts ...ListOption) ([]*OIDCTrust, error) {
+	listOpts := defaultListOptions(opts...)
+
+	req, err := s.client.newRequest(http.MethodGet, oidcTrustsAPIPath(listReq.Organization), nil, WithQueryParams(*listOpts.URLValues))
+	if err != nil {
+		return nil, err
+	}
+
+	resp := &oidcTrustsResponse{}
+	if err := s.client.do(ctx, req, &resp); err != nil {
+		return nil, err
+	}
+
+	return resp.Trusts, nil
 }
 
 func (s *oidcTrustsService) Get(ctx context.Context, getReq *GetOIDCTrustRequest) (*OIDCTrust, error) {
