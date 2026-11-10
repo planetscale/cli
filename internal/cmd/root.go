@@ -52,6 +52,7 @@ import (
 	"github.com/planetscale/cli/internal/cmd/logs"
 	"github.com/planetscale/cli/internal/cmd/maintenance"
 	"github.com/planetscale/cli/internal/cmd/metrics"
+	"github.com/planetscale/cli/internal/cmd/oidctrust"
 	"github.com/planetscale/cli/internal/cmd/org"
 	"github.com/planetscale/cli/internal/cmd/password"
 	"github.com/planetscale/cli/internal/cmd/pgbouncer"
@@ -323,6 +324,10 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 	tokenCmd := token.TokenCmd(ch)
 	tokenCmd.GroupID = "platform"
 	rootCmd.AddCommand(tokenCmd)
+
+	oidcTrustCmd := oidctrust.OIDCTrustCmd(ch)
+	oidcTrustCmd.GroupID = "platform"
+	rootCmd.AddCommand(oidcTrustCmd)
 
 	versionCmd := version.VersionCmd(ch, ver, commit, buildDate)
 	versionCmd.GroupID = "platform"
