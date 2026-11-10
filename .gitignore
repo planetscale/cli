@@ -12,6 +12,7 @@ cmd/pscale/pscale
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
+bin/
 dist/
 completions/
 vendor/
