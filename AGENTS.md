@@ -521,7 +521,7 @@ pscale branch vtgate changes cancel <database> <branch> <change-id> --org <org> 
 
 Copy tables between keyspaces with `pscale branch vtctld move-tables`. `pscale workflow` is deprecated; use `move-tables` instead. JSON output includes `next_steps` — follow those commands. Typical order: create the target keyspace (`keyspace create` or `keyspace create-external`), create the workflow, poll `status`, switch replica traffic, then primary traffic (ask the user first), then `complete --dry-run` and `complete` after approval. Create with `--auto-start=false` to leave streams stopped, then `start` when you are ready.
 
-`--workflow` is the workflow name you choose. `--source-keyspace` and `--target-keyspace` are required on create. Pass `--tables t1,t2` or `--all-tables` (mutually exclusive). `list` without `--target-keyspace` returns workflows in every keyspace on the branch.
+`--workflow` is the workflow name you choose. `--source-keyspace` and `--target-keyspace` are required on create. Pass `--tables t1,t2` or `--all-tables` (mutually exclusive). Omit `--cells`, or pass `--all-cells`, to select source tablets in every cell. `--cells` restricts that selection to the listed cells and cannot be combined with `--all-cells`. `list` without `--target-keyspace` returns workflows in every keyspace on the branch.
 
 ```bash
 pscale branch vtctld move-tables list <database> <branch> --org <org> --format json

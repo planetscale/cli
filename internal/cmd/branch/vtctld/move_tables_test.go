@@ -241,6 +241,75 @@ func TestMoveTablesCreateWithAllFlags(t *testing.T) {
 	})
 }
 
+func TestMoveTablesCreateAllCellsOmitsCells(t *testing.T) {
+	c := qt.New(t)
+	setMoveTablesPollInterval(t, 0)
+
+	org := "my-org"
+	db := "my-db"
+	branch := "my-branch"
+
+	svc := &mock.MoveTablesService{
+		CreateFn: func(ctx context.Context, req *ps.MoveTablesCreateRequest) (*ps.VtctldOperationReference, error) {
+			c.Assert(req.Cells, qt.IsNil)
+			return &ps.VtctldOperationReference{ID: "create-op"}, nil
+		},
+	}
+
+	vtctldSvc := &mock.VtctldService{
+		GetOperationFn: func(ctx context.Context, req *ps.GetVtctldOperationRequest) (*ps.VtctldOperation, error) {
+			return &ps.VtctldOperation{
+				ID:        "create-op",
+				State:     "completed",
+				Completed: true,
+				Result:    json.RawMessage(`{"summary":"created"}`),
+			}, nil
+		},
+	}
+
+	var buf bytes.Buffer
+	ch := moveTablesTestHelper(org, svc, vtctldSvc, &buf)
+	create := MoveTablesCreateCmd(ch)
+	c.Assert(create.Flags().Lookup("cells").Usage, qt.Contains, "Restrict source tablet selection")
+	c.Assert(create.Flags().Lookup("cells").Usage, qt.Contains, "When omitted, all cells are used")
+	c.Assert(create.Flags().Lookup("all-cells").Usage, qt.Contains, "all cells")
+
+	cmd := MoveTablesCmd(ch)
+	cmd.SetArgs([]string{"create", db, branch,
+		"--workflow", "my-workflow",
+		"--target-keyspace", "target-ks",
+		"--source-keyspace", "source-ks",
+		"--all-cells",
+	})
+	err := cmd.Execute()
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.CreateFnInvoked, qt.IsTrue)
+}
+
+func TestMoveTablesCreateCellsAndAllCellsAreExclusive(t *testing.T) {
+	c := qt.New(t)
+
+	svc := &mock.MoveTablesService{
+		CreateFn: func(ctx context.Context, req *ps.MoveTablesCreateRequest) (*ps.VtctldOperationReference, error) {
+			return &ps.VtctldOperationReference{ID: "create-op"}, nil
+		},
+	}
+
+	cmd := MoveTablesCmd(moveTablesTestHelper("my-org", svc, nil, &bytes.Buffer{}))
+	cmd.SilenceUsage = true
+	cmd.SetErr(&bytes.Buffer{})
+	cmd.SetArgs([]string{"create", "my-db", "my-branch",
+		"--workflow", "my-workflow",
+		"--target-keyspace", "target-ks",
+		"--source-keyspace", "source-ks",
+		"--cells", "zone1",
+		"--all-cells",
+	})
+	err := cmd.Execute()
+	c.Assert(err, qt.ErrorMatches, `if any flags in the group \[cells all-cells\] are set none of the others can be; \[all-cells cells\] were all set`)
+	c.Assert(svc.CreateFnInvoked, qt.IsFalse)
+}
+
 func TestMoveTablesSwitchTrafficWithMaxLag(t *testing.T) {
 	c := qt.New(t)
 	setMoveTablesPollInterval(t, 0)

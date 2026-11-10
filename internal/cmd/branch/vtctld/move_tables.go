@@ -142,7 +142,9 @@ func MoveTablesCreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().StringVar(&flags.globalKeyspace, "global-keyspace", "", "Unsharded keyspace in which to create the backing sequence tables when --sharded-auto-increment-handling is REPLACE")
 	cmd.Flags().StringVar(&flags.sourceTimeZone, "source-time-zone", "", "Source time zone")
 	cmd.Flags().StringVar(&flags.tenantID, "tenant-id", "", "Tenant ID")
-	cmd.Flags().StringSliceVar(&flags.cells, "cells", nil, "Cells to restrict the workflow to (comma-separated)")
+	cmd.Flags().StringSliceVar(&flags.cells, "cells", nil, "Restrict source tablet selection to these cells (comma-separated). When omitted, all cells are used")
+	// Omitted cells is the server all-cells default, so --all-cells sends no cells field.
+	cmd.Flags().Bool("all-cells", false, "Select source tablets from all cells. This is the default when --cells is omitted")
 	cmd.Flags().StringSliceVar(&flags.tabletTypes, "tablet-types", nil, "Tablet types to use for the workflow (comma-separated)")
 	cmd.Flags().StringSliceVar(&flags.excludeTables, "exclude-tables", nil, "Tables to exclude from the move (comma-separated)")
 	cmd.Flags().BoolVar(&flags.atomicCopy, "atomic-copy", false, "Use atomic copy for the workflow")
@@ -152,6 +154,7 @@ func MoveTablesCreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.MarkFlagRequired("source-keyspace") // nolint:errcheck
 	cmd.MarkFlagsMutuallyExclusive("tables", "all-tables")
 	cmd.MarkFlagsMutuallyExclusive("tables", "exclude-tables")
+	cmd.MarkFlagsMutuallyExclusive("cells", "all-cells")
 
 	return cmd
 }
