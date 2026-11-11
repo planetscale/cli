@@ -2,6 +2,8 @@ package planetscale
 
 import (
 	"context"
+	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -84,4 +86,54 @@ func TestOIDCTrusts_Get(t *testing.T) {
 		}},
 		BulkDatabaseAccesses: []string{"read_branch"},
 	})
+}
+
+func TestOIDCTrusts_Create(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodPost)
+		c.Assert(r.URL.String(), qt.Equals, "/v1/organizations/my-org/oidc-trusts")
+		body, err := io.ReadAll(r.Body)
+		c.Assert(err, qt.IsNil)
+		c.Assert(string(body), qt.JSONEquals, map[string]any{
+			"display_name":    "CI",
+			"provider":        "github",
+			"max_ttl_seconds": 3600,
+			"conditions":      []map[string]string{{"claim": "repository", "value": "acme/app"}},
+			"accesses": []map[string]string{
+				{"access": "create_databases"},
+				{"access": "connect_branch", "database": "mydb"},
+			},
+			"bulk_database_accesses": []string{"read_branch"},
+		})
+
+		w.WriteHeader(201)
+		_, err = w.Write([]byte(`{"id": "trust-1"}`))
+		c.Assert(err, qt.IsNil)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	trust, err := client.OIDCTrusts.Create(context.Background(), &CreateOIDCTrustRequest{
+		Organization:  testOrg,
+		DisplayName:   "CI",
+		Provider:      "github",
+		MaxTTLSeconds: 3600,
+		Conditions:    []OIDCTrustConditionInput{{Claim: "repository", Value: "acme/app"}},
+		Accesses: []OIDCTrustAccessInput{
+			{Access: "create_databases"},
+			{Access: "connect_branch", Database: "mydb"},
+		},
+		BulkDatabaseAccesses: []string{"read_branch"},
+	})
+	c.Assert(err, qt.IsNil)
+	c.Assert(trust.ID, qt.Equals, "trust-1")
+
+	// Empty lists must encode as [], not null.
+	b, err := json.Marshal(&CreateOIDCTrustRequest{Conditions: []OIDCTrustConditionInput{}, Accesses: []OIDCTrustAccessInput{}})
+	c.Assert(err, qt.IsNil)
+	c.Assert(string(b), qt.Contains, `"conditions":[],"accesses":[]`)
 }

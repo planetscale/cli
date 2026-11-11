@@ -15,6 +15,7 @@ type OIDCTrustsService interface {
 	ListProviders(context.Context, *ListOIDCTrustProvidersRequest) ([]*OIDCTrustProvider, error)
 	List(context.Context, *ListOIDCTrustsRequest, ...ListOption) ([]*OIDCTrust, error)
 	Get(context.Context, *GetOIDCTrustRequest) (*OIDCTrust, error)
+	Create(context.Context, *CreateOIDCTrustRequest) (*OIDCTrust, error)
 }
 
 // OIDCTrust represents a trust between an organization and an identity provider.
@@ -137,4 +138,50 @@ func oidcTrustsAPIPath(org string) string {
 
 func oidcTrustAPIPath(org, id string) string {
 	return path.Join(oidcTrustsAPIPath(org), id)
+}
+
+// OIDCTrustConditionInput is a claim condition to set on a trust.
+type OIDCTrustConditionInput struct {
+	Claim string `json:"claim"`
+	Value string `json:"value"`
+}
+
+// OIDCTrustAccessInput is an access to grant. An empty Database grants the
+// access on the organization.
+type OIDCTrustAccessInput struct {
+	Access   string `json:"access"`
+	Database string `json:"database,omitempty"`
+}
+
+// CreateOIDCTrustRequest is the request for creating an OIDC trust.
+type CreateOIDCTrustRequest struct {
+	Organization         string                    `json:"-"`
+	DisplayName          string                    `json:"display_name"`
+	Provider             string                    `json:"provider"`
+	MaxTTLSeconds        int                       `json:"max_ttl_seconds"`
+	Conditions           []OIDCTrustConditionInput `json:"conditions"`
+	Accesses             []OIDCTrustAccessInput    `json:"accesses"`
+	BulkDatabaseAccesses []string                  `json:"bulk_database_accesses,omitempty"`
+}
+
+func (s *oidcTrustsService) Create(ctx context.Context, createReq *CreateOIDCTrustRequest) (*OIDCTrust, error) {
+	body := *createReq
+	if body.Conditions == nil {
+		body.Conditions = []OIDCTrustConditionInput{}
+	}
+	if body.Accesses == nil {
+		body.Accesses = []OIDCTrustAccessInput{}
+	}
+
+	req, err := s.client.newRequest(http.MethodPost, oidcTrustsAPIPath(createReq.Organization), &body)
+	if err != nil {
+		return nil, err
+	}
+
+	trust := &OIDCTrust{}
+	if err := s.client.do(ctx, req, &trust); err != nil {
+		return nil, err
+	}
+
+	return trust, nil
 }

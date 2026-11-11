@@ -22,6 +22,7 @@ func OIDCTrustCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.PersistentFlags().StringVar(&ch.Config.Organization, "org", ch.Config.Organization, "The organization for the current user")
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
 
+	cmd.AddCommand(CreateCmd(ch))
 	cmd.AddCommand(ListCmd(ch))
 	cmd.AddCommand(ProvidersCmd(ch))
 	cmd.AddCommand(ShowCmd(ch))
@@ -80,4 +81,31 @@ func toOIDCTrust(t *ps.OIDCTrust) *OIDCTrust {
 		CreatedAt:  printer.GetMilliseconds(t.CreatedAt),
 		orig:       t,
 	}
+}
+
+func parseConditions(values []string) ([]ps.OIDCTrustConditionInput, error) {
+	conditions := make([]ps.OIDCTrustConditionInput, 0, len(values))
+	for _, v := range values {
+		claim, value, ok := strings.Cut(v, "=")
+		if !ok || claim == "" {
+			return nil, fmt.Errorf("invalid --condition %q: expected claim=value", v)
+		}
+		conditions = append(conditions, ps.OIDCTrustConditionInput{Claim: claim, Value: value})
+	}
+	return conditions, nil
+}
+
+func parseAccesses(orgAccesses, databaseAccesses []string) ([]ps.OIDCTrustAccessInput, error) {
+	accesses := make([]ps.OIDCTrustAccessInput, 0, len(orgAccesses)+len(databaseAccesses))
+	for _, a := range orgAccesses {
+		accesses = append(accesses, ps.OIDCTrustAccessInput{Access: a})
+	}
+	for _, v := range databaseAccesses {
+		database, access, ok := strings.Cut(v, ":")
+		if !ok || database == "" || access == "" {
+			return nil, fmt.Errorf("invalid --database-access %q: expected database:access", v)
+		}
+		accesses = append(accesses, ps.OIDCTrustAccessInput{Access: access, Database: database})
+	}
+	return accesses, nil
 }

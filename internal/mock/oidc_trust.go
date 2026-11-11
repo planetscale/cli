@@ -15,6 +15,9 @@ type OIDCTrustsService struct {
 
 	GetFn        func(context.Context, *ps.GetOIDCTrustRequest) (*ps.OIDCTrust, error)
 	GetFnInvoked bool
+
+	CreateFn        func(context.Context, *ps.CreateOIDCTrustRequest) (*ps.OIDCTrust, error)
+	CreateFnInvoked bool
 }
 
 func (s *OIDCTrustsService) ListProviders(ctx context.Context, req *ps.ListOIDCTrustProvidersRequest) ([]*ps.OIDCTrustProvider, error) {
@@ -30,4 +33,9 @@ func (s *OIDCTrustsService) List(ctx context.Context, req *ps.ListOIDCTrustsRequ
 func (s *OIDCTrustsService) Get(ctx context.Context, req *ps.GetOIDCTrustRequest) (*ps.OIDCTrust, error) {
 	s.GetFnInvoked = true
 	return s.GetFn(ctx, req)
+}
+
+func (s *OIDCTrustsService) Create(ctx context.Context, req *ps.CreateOIDCTrustRequest) (*ps.OIDCTrust, error) {
+	s.CreateFnInvoked = true
+	return s.CreateFn(ctx, req)
 }
