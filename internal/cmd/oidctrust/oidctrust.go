@@ -23,9 +23,11 @@ func OIDCTrustCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
 
 	cmd.AddCommand(CreateCmd(ch))
+	cmd.AddCommand(DeleteCmd(ch))
 	cmd.AddCommand(ListCmd(ch))
 	cmd.AddCommand(ProvidersCmd(ch))
 	cmd.AddCommand(ShowCmd(ch))
+	cmd.AddCommand(UpdateCmd(ch))
 
 	return cmd
 }
