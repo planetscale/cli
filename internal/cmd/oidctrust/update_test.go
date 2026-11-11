@@ -55,3 +55,21 @@ func TestOIDCTrust_UpdateCmd_NoFlags(t *testing.T) {
 	c.Assert(cmd.Execute(), qt.ErrorMatches, `at least one of --name.*must be provided`)
 	c.Assert(svc.UpdateFnInvoked, qt.IsFalse)
 }
+
+func TestOIDCTrust_UpdateCmd_EmptyFlagsClearLists(t *testing.T) {
+	c := qt.New(t)
+
+	svc := &mock.OIDCTrustsService{
+		UpdateFn: func(ctx context.Context, req *ps.UpdateOIDCTrustRequest) (*ps.OIDCTrust, error) {
+			c.Assert(req.Conditions, qt.DeepEquals, &[]ps.OIDCTrustConditionInput{})
+			c.Assert(req.Accesses, qt.DeepEquals, &[]ps.OIDCTrustAccessInput{})
+			c.Assert(req.BulkDatabaseAccesses, qt.DeepEquals, &[]string{})
+			return &ps.OIDCTrust{ID: "trust-1"}, nil
+		},
+	}
+
+	cmd := UpdateCmd(newUpdateHelper(svc))
+	cmd.SetArgs([]string{"trust-1", "--condition=", "--org-access=", "--database-access=", "--all-databases-access="})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(svc.UpdateFnInvoked, qt.IsTrue)
+}

@@ -111,3 +111,15 @@ func parseAccesses(orgAccesses, databaseAccesses []string) ([]ps.OIDCTrustAccess
 	}
 	return accesses, nil
 }
+
+// nonEmpty drops blank values so that `--flag=` yields an empty list, which
+// the update API treats as clearing the list.
+func nonEmpty(values []string) []string {
+	out := make([]string, 0, len(values))
+	for _, v := range values {
+		if v != "" {
+			out = append(out, v)
+		}
+	}
+	return out
+}

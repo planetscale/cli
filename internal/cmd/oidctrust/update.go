@@ -39,7 +39,7 @@ func UpdateCmd(ch *cmdutil.Helper) *cobra.Command {
 				changed = true
 			}
 			if f.Changed("condition") {
-				conditions, err := parseConditions(flags.conditions)
+				conditions, err := parseConditions(nonEmpty(flags.conditions))
 				if err != nil {
 					return err
 				}
@@ -47,7 +47,7 @@ func UpdateCmd(ch *cmdutil.Helper) *cobra.Command {
 				changed = true
 			}
 			if f.Changed("org-access") || f.Changed("database-access") {
-				accesses, err := parseAccesses(flags.orgAccesses, flags.databaseAccesses)
+				accesses, err := parseAccesses(nonEmpty(flags.orgAccesses), nonEmpty(flags.databaseAccesses))
 				if err != nil {
 					return err
 				}
@@ -55,7 +55,8 @@ func UpdateCmd(ch *cmdutil.Helper) *cobra.Command {
 				changed = true
 			}
 			if f.Changed("all-databases-access") {
-				req.BulkDatabaseAccesses = &flags.allDatabasesAccesses
+				bulk := nonEmpty(flags.allDatabasesAccesses)
+				req.BulkDatabaseAccesses = &bulk
 				changed = true
 			}
 
