@@ -594,17 +594,28 @@ func TestMoveTablesList(t *testing.T) {
 	branch := "my-branch"
 
 	svc := &mock.MoveTablesService{
-		ListFn: func(ctx context.Context, req *ps.MoveTablesListRequest) (json.RawMessage, error) {
+		ListFn: func(ctx context.Context, req *ps.MoveTablesListRequest) (*ps.MoveTablesListOperations, error) {
 			c.Assert(req.Organization, qt.Equals, org)
 			c.Assert(req.Database, qt.Equals, db)
 			c.Assert(req.Branch, qt.Equals, branch)
 			c.Assert(req.TargetKeyspace, qt.Equals, "target-ks")
-			return json.RawMessage(`{"workflows":[{"name":"my-workflow","target":{"keyspace":"target-ks"}}]}`), nil
+			return &ps.MoveTablesListOperations{IDs: []string{"op-1"}}, nil
+		},
+	}
+	vtctldSvc := &mock.VtctldService{
+		GetOperationFn: func(ctx context.Context, req *ps.GetVtctldOperationRequest) (*ps.VtctldOperation, error) {
+			c.Assert(req.ID, qt.Equals, "op-1")
+			return &ps.VtctldOperation{
+				ID:        "op-1",
+				State:     "completed",
+				Completed: true,
+				Result:    json.RawMessage(`{"workflows":[{"name":"my-workflow","target":{"keyspace":"target-ks"}}]}`),
+			}, nil
 		},
 	}
 
 	var buf bytes.Buffer
-	ch := moveTablesTestHelper(org, svc, nil, &buf)
+	ch := moveTablesTestHelper(org, svc, vtctldSvc, &buf)
 
 	cmd := MoveTablesCmd(ch)
 	cmd.SetArgs([]string{"list", db, branch, "--target-keyspace", "target-ks"})
@@ -631,22 +642,34 @@ func TestMoveTablesListLeavesEntriesWithoutTargetAlone(t *testing.T) {
 	branch := "my-branch"
 
 	svc := &mock.MoveTablesService{
-		ListFn: func(ctx context.Context, req *ps.MoveTablesListRequest) (json.RawMessage, error) {
-			return json.RawMessage(`[{"name":"my-workflow","target_keyspace":null}]`), nil
+		ListFn: func(ctx context.Context, req *ps.MoveTablesListRequest) (*ps.MoveTablesListOperations, error) {
+			return &ps.MoveTablesListOperations{IDs: []string{"op-1"}}, nil
+		},
+	}
+	vtctldSvc := &mock.VtctldService{
+		GetOperationFn: func(ctx context.Context, req *ps.GetVtctldOperationRequest) (*ps.VtctldOperation, error) {
+			return &ps.VtctldOperation{
+				ID:        "op-1",
+				State:     "completed",
+				Completed: true,
+				Result:    json.RawMessage(`{"workflows":[{"name":"my-workflow","target_keyspace":null}]}`),
+			}, nil
 		},
 	}
 
 	var buf bytes.Buffer
-	ch := moveTablesTestHelper(org, svc, nil, &buf)
+	ch := moveTablesTestHelper(org, svc, vtctldSvc, &buf)
 
 	cmd := MoveTablesCmd(ch)
 	cmd.SetArgs([]string{"list", db, branch})
 	err := cmd.Execute()
 	c.Assert(err, qt.IsNil)
-	c.Assert(buf.String(), qt.JSONEquals, []any{map[string]any{
-		"name":            "my-workflow",
-		"target_keyspace": nil,
-	}})
+	c.Assert(buf.String(), qt.JSONEquals, map[string]any{
+		"workflows": []any{map[string]any{
+			"name":            "my-workflow",
+			"target_keyspace": nil,
+		}},
+	})
 }
 
 func TestMoveTablesListWithoutTargetKeyspace(t *testing.T) {
@@ -657,9 +680,19 @@ func TestMoveTablesListWithoutTargetKeyspace(t *testing.T) {
 	branch := "my-branch"
 
 	svc := &mock.MoveTablesService{
-		ListFn: func(ctx context.Context, req *ps.MoveTablesListRequest) (json.RawMessage, error) {
+		ListFn: func(ctx context.Context, req *ps.MoveTablesListRequest) (*ps.MoveTablesListOperations, error) {
 			c.Assert(req.TargetKeyspace, qt.Equals, "")
-			return json.RawMessage(`[]`), nil
+			return &ps.MoveTablesListOperations{IDs: []string{"op-1", "op-2"}}, nil
+		},
+	}
+	vtctldSvc := &mock.VtctldService{
+		GetOperationFn: func(ctx context.Context, req *ps.GetVtctldOperationRequest) (*ps.VtctldOperation, error) {
+			return &ps.VtctldOperation{
+				ID:        req.ID,
+				State:     "completed",
+				Completed: true,
+				Result:    json.RawMessage(`{"workflows":[{"name":"` + req.ID + `"}]}`),
+			}, nil
 		},
 	}
 
@@ -667,14 +700,16 @@ func TestMoveTablesListWithoutTargetKeyspace(t *testing.T) {
 	c.Assert(listCmd.Flags().Lookup("target-keyspace").Usage, qt.Contains, "lists all keyspaces if omitted")
 
 	var buf bytes.Buffer
-	ch := moveTablesTestHelper(org, svc, nil, &buf)
+	ch := moveTablesTestHelper(org, svc, vtctldSvc, &buf)
 
 	cmd := MoveTablesCmd(ch)
 	cmd.SetArgs([]string{"list", db, branch})
 	err := cmd.Execute()
 	c.Assert(err, qt.IsNil)
 	c.Assert(svc.ListFnInvoked, qt.IsTrue)
-	c.Assert(buf.String(), qt.JSONEquals, []any{})
+	c.Assert(buf.String(), qt.JSONEquals, map[string]any{
+		"workflows": []any{map[string]any{"name": "op-1"}, map[string]any{"name": "op-2"}},
+	})
 }
 
 func TestMoveTablesShow(t *testing.T) {

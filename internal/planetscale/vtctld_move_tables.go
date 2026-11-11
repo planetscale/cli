@@ -12,7 +12,7 @@ import (
 // MoveTablesService is an interface for interacting with the MoveTables endpoints of the
 // PlanetScale API.
 type MoveTablesService interface {
-	List(context.Context, *MoveTablesListRequest) (json.RawMessage, error)
+	List(context.Context, *MoveTablesListRequest) (*MoveTablesListOperations, error)
 	Create(context.Context, *MoveTablesCreateRequest) (*VtctldOperationReference, error)
 	Show(context.Context, *MoveTablesShowRequest) (json.RawMessage, error)
 	Status(context.Context, *MoveTablesStatusRequest) (json.RawMessage, error)
@@ -29,7 +29,13 @@ type MoveTablesListRequest struct {
 	Organization   string `json:"-"`
 	Database       string `json:"-"`
 	Branch         string `json:"-"`
-	TargetKeyspace string `json:"-"`
+	TargetKeyspace string `json:"target_keyspace,omitempty"`
+}
+
+// MoveTablesListOperations references the vtctld operations that list MoveTables workflows, one per
+// keyspace.
+type MoveTablesListOperations struct {
+	IDs []string `json:"ids"`
 }
 
 // MoveTablesCreateRequest is a request for creating a MoveTables workflow.
@@ -158,23 +164,15 @@ func moveTablesWorkflowAPIPath(org, db, branch, workflow string) string {
 	return path.Join(moveTablesWorkflowsAPIPath(org, db, branch), workflow)
 }
 
-func (s *moveTablesService) List(ctx context.Context, req *MoveTablesListRequest) (json.RawMessage, error) {
-	p := moveTablesWorkflowsAPIPath(req.Organization, req.Database, req.Branch)
-	v := url.Values{}
-	if req.TargetKeyspace != "" {
-		v.Set("target_keyspace", req.TargetKeyspace)
-	}
-	httpReq, err := s.client.newRequest(http.MethodGet, p, nil, WithQueryParams(v))
+func (s *moveTablesService) List(ctx context.Context, req *MoveTablesListRequest) (*MoveTablesListOperations, error) {
+	p := path.Join(databaseBranchAPIPath(req.Organization, req.Database, req.Branch), "move-tables", "list-workflows")
+	httpReq, err := s.client.newRequest(http.MethodPost, p, req)
 	if err != nil {
 		return nil, fmt.Errorf("error creating http request: %w", err)
 	}
-	var resp json.RawMessage
-	if err := s.client.do(ctx, httpReq, &resp); err != nil {
+	resp := &MoveTablesListOperations{}
+	if err := s.client.do(ctx, httpReq, resp); err != nil {
 		return nil, err
-	}
-	var envelope vtctldDataResponse
-	if err := json.Unmarshal(resp, &envelope); err == nil && len(envelope.Data) > 0 {
-		return envelope.Data, nil
 	}
 	return resp, nil
 }

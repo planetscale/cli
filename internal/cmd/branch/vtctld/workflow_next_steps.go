@@ -40,43 +40,20 @@ func printWorkflowJSON(p *printer.Printer, data json.RawMessage, steps []workflo
 	return p.PrettyPrintJSON(enriched)
 }
 
-func printMoveTablesListJSON(p *printer.Printer, data json.RawMessage, org, database, branch string) error {
-	enriched, err := withMoveTablesListNextSteps(data, org, database, branch)
+func printMoveTablesListJSON(p *printer.Printer, workflows []json.RawMessage, org, database, branch string) error {
+	listed, err := json.Marshal(workflows)
 	if err != nil {
 		return err
 	}
-	return p.PrettyPrintJSON(enriched)
-}
-
-func withMoveTablesListNextSteps(data json.RawMessage, org, database, branch string) (json.RawMessage, error) {
-	if bytes.HasPrefix(bytes.TrimSpace(data), []byte("[")) {
-		return withMoveTablesWorkflowArrayNextSteps(data, org, database, branch)
-	}
-
-	var fields map[string]json.RawMessage
-	if err := json.Unmarshal(data, &fields); err != nil || fields == nil {
-		return data, nil
-	}
-	workflows, ok := fields["workflows"]
-	if !ok || !bytes.HasPrefix(bytes.TrimSpace(workflows), []byte("[")) {
-		return data, nil
-	}
-
-	enriched, err := withMoveTablesWorkflowArrayNextSteps(workflows, org, database, branch)
+	enriched, err := withMoveTablesWorkflowArrayNextSteps(listed, org, database, branch)
 	if err != nil {
-		return nil, err
+		return err
 	}
-
-	index := bytes.Index(data, workflows)
-	if index < 0 {
-		return data, nil
+	data, err := json.Marshal(map[string]json.RawMessage{"workflows": enriched})
+	if err != nil {
+		return err
 	}
-
-	result := make([]byte, 0, len(data)+len(enriched)-len(workflows))
-	result = append(result, data[:index]...)
-	result = append(result, enriched...)
-	result = append(result, data[index+len(workflows):]...)
-	return result, nil
+	return p.PrettyPrintJSON(data)
 }
 
 func withMoveTablesWorkflowArrayNextSteps(data json.RawMessage, org, database, branch string) (json.RawMessage, error) {

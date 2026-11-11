@@ -180,7 +180,7 @@ func MoveTablesListCmd(ch *cmdutil.Helper) *cobra.Command {
 					progressTarget(ch.Config.Organization, database, branch)))
 			defer end()
 
-			data, err := client.MoveTables.List(ctx, &ps.MoveTablesListRequest{
+			operations, err := client.MoveTables.List(ctx, &ps.MoveTablesListRequest{
 				Organization:   ch.Config.Organization,
 				Database:       database,
 				Branch:         branch,
@@ -190,8 +190,24 @@ func MoveTablesListCmd(ch *cmdutil.Helper) *cobra.Command {
 				return cmdutil.HandleError(err)
 			}
 
+			workflows := []json.RawMessage{}
+			for _, id := range operations.IDs {
+				result, err := waitForMoveTablesOperationResult(ctx, client, ch.Config.Organization, database, branch, id)
+				if err != nil {
+					return cmdutil.HandleError(err)
+				}
+
+				var listed struct {
+					Workflows []json.RawMessage `json:"workflows"`
+				}
+				if err := json.Unmarshal(result, &listed); err != nil {
+					return fmt.Errorf("unable to read workflows from vtctld operation %s: %w", id, err)
+				}
+				workflows = append(workflows, listed.Workflows...)
+			}
+
 			end()
-			return printMoveTablesListJSON(ch.Printer, data, ch.Config.Organization, database, branch)
+			return printMoveTablesListJSON(ch.Printer, workflows, ch.Config.Organization, database, branch)
 		},
 	}
 
