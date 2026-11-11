@@ -7,13 +7,12 @@ import (
 	"net/http"
 	"net/url"
 	"path"
-	"strconv"
 )
 
 // VtctldService is an interface for interacting with the general vtctld endpoints of the
 // PlanetScale API.
 type VtctldService interface {
-	ListWorkflows(context.Context, *VtctldListWorkflowsRequest) (json.RawMessage, error)
+	ListWorkflows(context.Context, *VtctldListWorkflowsRequest) (*VtctldOperationReference, error)
 	ListKeyspaces(context.Context, *VtctldListKeyspacesRequest) (json.RawMessage, error)
 	GetRoutingRules(context.Context, *VtctldGetRoutingRulesRequest) (json.RawMessage, error)
 	GetKeyspaceRoutingRules(context.Context, *VtctldGetKeyspaceRoutingRulesRequest) (json.RawMessage, error)
@@ -34,9 +33,9 @@ type VtctldListWorkflowsRequest struct {
 	Organization string `json:"-"`
 	Database     string `json:"-"`
 	Branch       string `json:"-"`
-	Keyspace     string `json:"-"`
-	Workflow     string `json:"-"`
-	IncludeLogs  *bool  `json:"-"`
+	Keyspace     string `json:"keyspace"`
+	Workflow     string `json:"workflow,omitempty"`
+	IncludeLogs  *bool  `json:"include_logs,omitempty"`
 }
 
 type VtctldListKeyspacesRequest struct {
@@ -240,25 +239,17 @@ func vtctldShardRefreshStateAPIPath(org, db, branch string) string {
 	return path.Join(databaseBranchAPIPath(org, db, branch), "vtctld", "shard", "refresh-state")
 }
 
-func (s *vtctldService) ListWorkflows(ctx context.Context, req *VtctldListWorkflowsRequest) (json.RawMessage, error) {
-	p := vtctldWorkflowsAPIPath(req.Organization, req.Database, req.Branch)
-	v := url.Values{}
-	v.Set("keyspace", req.Keyspace)
-	if req.Workflow != "" {
-		v.Set("workflow", req.Workflow)
-	}
-	if req.IncludeLogs != nil {
-		v.Set("include_logs", strconv.FormatBool(*req.IncludeLogs))
-	}
-	httpReq, err := s.client.newRequest(http.MethodGet, p, nil, WithQueryParams(v))
+func (s *vtctldService) ListWorkflows(ctx context.Context, req *VtctldListWorkflowsRequest) (*VtctldOperationReference, error) {
+	p := path.Join(databaseBranchAPIPath(req.Organization, req.Database, req.Branch), "vtctld", "list-workflows")
+	httpReq, err := s.client.newRequest(http.MethodPost, p, req)
 	if err != nil {
 		return nil, fmt.Errorf("error creating http request: %w", err)
 	}
-	resp := &vtctldDataResponse{}
+	resp := &VtctldOperationReference{}
 	if err := s.client.do(ctx, httpReq, resp); err != nil {
 		return nil, err
 	}
-	return resp.Data, nil
+	return resp, nil
 }
 
 func (s *vtctldService) ListKeyspaces(ctx context.Context, req *VtctldListKeyspacesRequest) (json.RawMessage, error) {

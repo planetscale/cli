@@ -8,7 +8,7 @@ import (
 )
 
 type VtctldService struct {
-	ListWorkflowsFn        func(context.Context, *ps.VtctldListWorkflowsRequest) (json.RawMessage, error)
+	ListWorkflowsFn        func(context.Context, *ps.VtctldListWorkflowsRequest) (*ps.VtctldOperationReference, error)
 	ListWorkflowsFnInvoked bool
 
 	ListKeyspacesFn        func(context.Context, *ps.VtctldListKeyspacesRequest) (json.RawMessage, error)
@@ -54,7 +54,7 @@ type VtctldService struct {
 	GetOperationFnInvoked bool
 }
 
-func (s *VtctldService) ListWorkflows(ctx context.Context, req *ps.VtctldListWorkflowsRequest) (json.RawMessage, error) {
+func (s *VtctldService) ListWorkflows(ctx context.Context, req *ps.VtctldListWorkflowsRequest) (*ps.VtctldOperationReference, error) {
 	s.ListWorkflowsFnInvoked = true
 	return s.ListWorkflowsFn(ctx, req)
 }

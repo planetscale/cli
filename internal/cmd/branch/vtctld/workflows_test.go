@@ -44,13 +44,22 @@ func TestListWorkflows(t *testing.T) {
 			branch := "my-branch"
 
 			svc := &mock.VtctldService{
-				ListWorkflowsFn: func(ctx context.Context, req *ps.VtctldListWorkflowsRequest) (json.RawMessage, error) {
+				ListWorkflowsFn: func(ctx context.Context, req *ps.VtctldListWorkflowsRequest) (*ps.VtctldOperationReference, error) {
 					c.Assert(req.Organization, qt.Equals, org)
 					c.Assert(req.Database, qt.Equals, db)
 					c.Assert(req.Branch, qt.Equals, branch)
 					c.Assert(req.Keyspace, qt.Equals, "my-keyspace")
 					c.Assert(req.IncludeLogs, qt.DeepEquals, tt.includeLogs)
-					return json.RawMessage(`{"workflows":[]}`), nil
+					return &ps.VtctldOperationReference{ID: "op-123"}, nil
+				},
+				GetOperationFn: func(ctx context.Context, req *ps.GetVtctldOperationRequest) (*ps.VtctldOperation, error) {
+					c.Assert(req.ID, qt.Equals, "op-123")
+					return &ps.VtctldOperation{
+						ID:        "op-123",
+						State:     "completed",
+						Completed: true,
+						Result:    json.RawMessage(`{"workflows":[{"name":"my-workflow"}]}`),
+					}, nil
 				},
 			}
 
@@ -75,6 +84,39 @@ func TestListWorkflows(t *testing.T) {
 			err := cmd.Execute()
 			c.Assert(err, qt.IsNil)
 			c.Assert(svc.ListWorkflowsFnInvoked, qt.IsTrue)
+			c.Assert(buf.String(), qt.Contains, `"name": "my-workflow"`)
 		})
 	}
+}
+
+func TestListWorkflowsReturnsOperationError(t *testing.T) {
+	c := qt.New(t)
+
+	svc := &mock.VtctldService{
+		ListWorkflowsFn: func(ctx context.Context, req *ps.VtctldListWorkflowsRequest) (*ps.VtctldOperationReference, error) {
+			return &ps.VtctldOperationReference{ID: "op-123"}, nil
+		},
+		GetOperationFn: func(ctx context.Context, req *ps.GetVtctldOperationRequest) (*ps.VtctldOperation, error) {
+			return &ps.VtctldOperation{ID: "op-123", State: "failed", Completed: true, Error: "keyspace not found"}, nil
+		},
+	}
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: "my-org"},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{Vtctld: svc}, nil
+		},
+	}
+
+	cmd := ListWorkflowsCmd(ch)
+	cmd.SetArgs([]string{"my-db", "my-branch", "--keyspace", "my-keyspace"})
+
+	err := cmd.Execute()
+	c.Assert(err, qt.ErrorMatches, "keyspace not found")
 }
