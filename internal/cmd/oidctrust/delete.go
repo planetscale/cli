@@ -10,6 +10,8 @@ import (
 )
 
 func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
+	var force bool
+
 	cmd := &cobra.Command{
 		Use:   "delete <trust-id>",
 		Short: "Delete an OIDC trust",
@@ -20,6 +22,12 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 			client, err := ch.Client()
 			if err != nil {
 				return err
+			}
+
+			if !force {
+				if err := ch.Printer.ConfirmCommand(id, "delete OIDC trust", "OIDC trust deletion"); err != nil {
+					return err
+				}
 			}
 
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Deleting OIDC trust %s", printer.BoldBlue(id)))
@@ -45,6 +53,8 @@ func DeleteCmd(ch *cmdutil.Helper) *cobra.Command {
 			})
 		},
 	}
+
+	cmd.Flags().BoolVar(&force, "force", false, "Delete the OIDC trust without confirmation")
 
 	return cmd
 }
