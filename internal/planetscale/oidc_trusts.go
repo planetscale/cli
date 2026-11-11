@@ -16,6 +16,8 @@ type OIDCTrustsService interface {
 	List(context.Context, *ListOIDCTrustsRequest, ...ListOption) ([]*OIDCTrust, error)
 	Get(context.Context, *GetOIDCTrustRequest) (*OIDCTrust, error)
 	Create(context.Context, *CreateOIDCTrustRequest) (*OIDCTrust, error)
+	Update(context.Context, *UpdateOIDCTrustRequest) (*OIDCTrust, error)
+	Delete(context.Context, *DeleteOIDCTrustRequest) error
 }
 
 // OIDCTrust represents a trust between an organization and an identity provider.
@@ -184,4 +186,45 @@ func (s *oidcTrustsService) Create(ctx context.Context, createReq *CreateOIDCTru
 	}
 
 	return trust, nil
+}
+
+// UpdateOIDCTrustRequest is the request for updating an OIDC trust. Pointer
+// fields that are nil are not sent; a sent list replaces the existing list.
+type UpdateOIDCTrustRequest struct {
+	Organization         string                     `json:"-"`
+	ID                   string                     `json:"-"`
+	DisplayName          *string                    `json:"display_name,omitempty"`
+	MaxTTLSeconds        *int                       `json:"max_ttl_seconds,omitempty"`
+	Conditions           *[]OIDCTrustConditionInput `json:"conditions,omitempty"`
+	Accesses             *[]OIDCTrustAccessInput    `json:"accesses,omitempty"`
+	BulkDatabaseAccesses *[]string                  `json:"bulk_database_accesses,omitempty"`
+}
+
+// DeleteOIDCTrustRequest is the request for deleting an OIDC trust.
+type DeleteOIDCTrustRequest struct {
+	Organization string `json:"-"`
+	ID           string `json:"-"`
+}
+
+func (s *oidcTrustsService) Update(ctx context.Context, updateReq *UpdateOIDCTrustRequest) (*OIDCTrust, error) {
+	req, err := s.client.newRequest(http.MethodPatch, oidcTrustAPIPath(updateReq.Organization, updateReq.ID), updateReq)
+	if err != nil {
+		return nil, err
+	}
+
+	trust := &OIDCTrust{}
+	if err := s.client.do(ctx, req, &trust); err != nil {
+		return nil, err
+	}
+
+	return trust, nil
+}
+
+func (s *oidcTrustsService) Delete(ctx context.Context, deleteReq *DeleteOIDCTrustRequest) error {
+	req, err := s.client.newRequest(http.MethodDelete, oidcTrustAPIPath(deleteReq.Organization, deleteReq.ID), nil)
+	if err != nil {
+		return err
+	}
+
+	return s.client.do(ctx, req, nil)
 }

@@ -23,9 +23,11 @@ func OIDCTrustCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
 
 	cmd.AddCommand(CreateCmd(ch))
+	cmd.AddCommand(DeleteCmd(ch))
 	cmd.AddCommand(ListCmd(ch))
 	cmd.AddCommand(ProvidersCmd(ch))
 	cmd.AddCommand(ShowCmd(ch))
+	cmd.AddCommand(UpdateCmd(ch))
 
 	return cmd
 }
@@ -108,4 +110,16 @@ func parseAccesses(orgAccesses, databaseAccesses []string) ([]ps.OIDCTrustAccess
 		accesses = append(accesses, ps.OIDCTrustAccessInput{Access: access, Database: database})
 	}
 	return accesses, nil
+}
+
+// nonEmpty drops blank values so that `--flag=` yields an empty list, which
+// the update API treats as clearing the list.
+func nonEmpty(values []string) []string {
+	out := make([]string, 0, len(values))
+	for _, v := range values {
+		if v != "" {
+			out = append(out, v)
+		}
+	}
+	return out
 }
