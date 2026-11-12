@@ -62,7 +62,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&flags.name, "name", "", "The display name of the trust")
-	cmd.Flags().StringVar(&flags.provider, "provider", "", "The identity provider; run 'pscale oidc-trust providers' to list them")
+	cmd.Flags().StringVar(&flags.provider, "provider", "", "The identity provider; run 'pscale oidc-trust providers list' to list them")
 	cmd.Flags().IntVar(&flags.maxTTL, "max-ttl", 0, "The maximum token lifetime in seconds")
 	cmd.Flags().StringArrayVar(&flags.conditions, "condition", nil, "A claim the token must match, as claim=value; repeatable")
 	cmd.Flags().StringArrayVar(&flags.orgAccesses, "org-access", nil, "An organization access to grant; repeatable")

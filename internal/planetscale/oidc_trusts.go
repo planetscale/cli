@@ -67,10 +67,18 @@ type GetOIDCTrustRequest struct {
 
 // OIDCTrustProvider represents an identity provider that can be trusted.
 type OIDCTrustProvider struct {
-	Name           string   `json:"name"`
-	DisplayName    string   `json:"display_name"`
-	Issuer         string   `json:"issuer"`
-	RequiredClaims []string `json:"required_claims"`
+	Name           string                   `json:"name"`
+	DisplayName    string                   `json:"display_name"`
+	Issuer         string                   `json:"issuer"`
+	RequiredClaims []string                 `json:"required_claims"`
+	Claims         []OIDCTrustProviderClaim `json:"claims"`
+}
+
+// OIDCTrustProviderClaim describes one claim a provider puts in its tokens.
+type OIDCTrustProviderClaim struct {
+	Name        string `json:"name"`
+	Required    bool   `json:"required"`
+	Description string `json:"description"`
 }
 
 // ListOIDCTrustProvidersRequest is the request for listing OIDC trust providers.
