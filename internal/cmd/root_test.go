@@ -222,7 +222,6 @@ func runRootCLIWithHome(t *testing.T, home string, args ...string) rootCLIResult
 	command := exec.Command(os.Args[0], testArgs...)
 	command.Env = append(os.Environ(),
 		rootCLIHelperEnv+"=1",
-		"PSCALE_DISABLE_DEV_WARNING=true",
 		"PSCALE_NO_UPDATE_NOTIFIER=1",
 		"XDG_CONFIG_HOME="+t.TempDir(),
 	)
