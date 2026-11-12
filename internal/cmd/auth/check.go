@@ -13,6 +13,9 @@ func CheckCmd(ch *cmdutil.Helper) *cobra.Command {
 		Args:  cobra.NoArgs,
 		Short: "Check if you are authenticated",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := ch.Config.LoadAccessToken(); err != nil {
+				return err
+			}
 			ctx := cmd.Context()
 			resp := buildAuthCheckResponse(ctx, ch)
 

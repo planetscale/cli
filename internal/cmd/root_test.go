@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"os/exec"
@@ -10,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/99designs/keyring"
 	"github.com/planetscale/cli/internal/cmd/agentguide"
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/spf13/cobra"
@@ -27,6 +29,52 @@ func TestAddCommandGroupsOmitsNeki(t *testing.T) {
 }
 
 const rootCLIHelperEnv = "PSCALE_ROOT_CLI_HELPER"
+
+func TestStoredTokenLoadingIsLazyAndReportsJSONErrors(t *testing.T) {
+	for _, backend := range keyring.AvailableBackends() {
+		switch backend {
+		case keyring.KeychainBackend, keyring.SecretServiceBackend, keyring.KWalletBackend, keyring.WinCredBackend:
+			t.Skip("requires file fallback; run with CGO_ENABLED=0 on macOS")
+		}
+	}
+	home := writeHomeConfig(t, "")
+	// Reading a directory as a token reliably fails without touching a keychain.
+	if err := os.Mkdir(filepath.Join(home, ".config", "planetscale", "access-token"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	for _, args := range [][]string{
+		{"--help", "--format", "json"},
+		{"--version", "--format", "json"},
+		{"--skill", "--format", "json"},
+	} {
+		result := runRootCLIWithHome(t, home, args...)
+		if result.exitCode != 0 {
+			t.Fatalf("%v loaded stored credentials: stdout=%q stderr=%q", args, result.stdout, result.stderr)
+		}
+	}
+	for _, args := range [][]string{
+		{"org", "list", "--format", "json"},
+		{"auth", "check", "--format", "json"},
+		{"auth", "logout", "--format", "json"},
+	} {
+		result := runRootCLIWithHome(t, home, args...)
+		if result.exitCode != cmdutil.FatalErrExitCode {
+			t.Fatalf("%v exit code = %d, stdout=%q stderr=%q", args, result.exitCode, result.stdout, result.stderr)
+		}
+		var resp struct {
+			Status    string   `json:"status"`
+			Error     string   `json:"error"`
+			Issues    []any    `json:"issues"`
+			NextSteps []string `json:"next_steps"`
+		}
+		if err := json.Unmarshal([]byte(result.stdout), &resp); err != nil {
+			t.Fatalf("%v did not return one JSON envelope: %v, stdout=%q", args, err, result.stdout)
+		}
+		if resp.Status != "error" || !strings.Contains(resp.Error, "access-token") || len(resp.Issues) == 0 || len(resp.NextSteps) == 0 {
+			t.Fatalf("%v invalid JSON error envelope: %s", args, result.stdout)
+		}
+	}
+}
 
 func TestRootSkillFlag(t *testing.T) {
 	for _, args := range [][]string{
