@@ -122,3 +122,37 @@ func TestOIDCTrust_ProvidersShowCmd(t *testing.T) {
 	cmd.SetArgs([]string{"show", "nope"})
 	c.Assert(cmd.Execute(), qt.ErrorMatches, `OIDC trust provider .*nope.* is not available in organization .*planetscale.*`)
 }
+
+func TestOIDCTrust_ProvidersShowCmd_CSV(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.CSV
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	svc := &mock.OIDCTrustsService{
+		ListProvidersFn: func(ctx context.Context, req *ps.ListOIDCTrustProvidersRequest) ([]*ps.OIDCTrustProvider, error) {
+			return []*ps.OIDCTrustProvider{
+				{
+					Name:           "cursor",
+					DisplayName:    "Cursor",
+					Issuer:         "https://cursor.com",
+					RequiredClaims: []string{"team_id"},
+				},
+			}, nil
+		},
+	}
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: "planetscale"},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{OIDCTrusts: svc}, nil
+		},
+	}
+
+	cmd := ProvidersCmd(ch)
+	cmd.SetArgs([]string{"show", "cursor"})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(buf.String(), qt.Equals, "Name,DisplayName,Issuer,RequiredClaims\ncursor,Cursor,https://cursor.com,team_id\n\n")
+}

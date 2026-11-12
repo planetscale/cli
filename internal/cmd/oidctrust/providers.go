@@ -19,6 +19,12 @@ type Provider struct {
 	RequiredClaims string `header:"required claims" json:"required_claims"`
 }
 
+// MarshalCSVValue wraps a single provider in a slice, which the CSV encoder
+// requires.
+func (p *Provider) MarshalCSVValue() interface{} {
+	return []*Provider{p}
+}
+
 // ProviderClaim is a table serializable claim of one OIDC trust provider.
 type ProviderClaim struct {
 	Name        string `header:"claim" json:"name"`
