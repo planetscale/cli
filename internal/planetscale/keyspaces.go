@@ -2,6 +2,8 @@ package planetscale
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -291,6 +293,42 @@ type KeyspaceStorageUpdate struct {
 	StorageBytes        *int64  `json:"storage_bytes,omitempty"`
 	IOPS                *int64  `json:"iops,omitempty"`
 	ThroughputMiBs      *int64  `json:"throughput_mibs,omitempty"`
+
+	// ResetIOPS and ResetThroughputMiBs send null for the value, which clears
+	// the override so the storage class default applies. They cannot be
+	// combined with IOPS or ThroughputMiBs.
+	ResetIOPS           bool `json:"-"`
+	ResetThroughputMiBs bool `json:"-"`
+}
+
+func (u KeyspaceStorageUpdate) MarshalJSON() ([]byte, error) {
+	if u.ResetIOPS && u.IOPS != nil {
+		return nil, errors.New("cannot both set and reset iops")
+	}
+	if u.ResetThroughputMiBs && u.ThroughputMiBs != nil {
+		return nil, errors.New("cannot both set and reset throughput_mibs")
+	}
+
+	// The alias drops this method, so the fields are encoded with their
+	// struct tags.
+	type alias KeyspaceStorageUpdate
+	b, err := json.Marshal(alias(u))
+	if err != nil || (!u.ResetIOPS && !u.ResetThroughputMiBs) {
+		return b, err
+	}
+
+	fields := map[string]json.RawMessage{}
+	if err := json.Unmarshal(b, &fields); err != nil {
+		return nil, err
+	}
+	if u.ResetIOPS {
+		fields["iops"] = json.RawMessage("null")
+	}
+	if u.ResetThroughputMiBs {
+		fields["throughput_mibs"] = json.RawMessage("null")
+	}
+
+	return json.Marshal(fields)
 }
 
 // KeyspacesService is an interface for interacting with the keyspace endpoints of the PlanetScale API

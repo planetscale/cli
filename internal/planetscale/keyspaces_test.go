@@ -712,3 +712,68 @@ func TestKeyspaces_GetStorageIONotConfigurable(t *testing.T) {
 	c.Assert(keyspace.Storage.MaxIOPS, qt.IsNil)
 	c.Assert(keyspace.Storage.MinThroughputMiBs, qt.IsNil)
 }
+
+func TestKeyspaceStorageUpdate_MarshalJSON(t *testing.T) {
+	iops := int64(6000)
+	throughput := int64(500)
+	strategy := "grow"
+
+	tests := []struct {
+		name    string
+		update  KeyspaceStorageUpdate
+		want    string
+		wantErr string
+	}{
+		{
+			name:   "empty",
+			update: KeyspaceStorageUpdate{},
+			want:   `{}`,
+		},
+		{
+			name:   "values",
+			update: KeyspaceStorageUpdate{IOPS: &iops, ThroughputMiBs: &throughput},
+			want:   `{"iops":6000,"throughput_mibs":500}`,
+		},
+		{
+			name:   "reset iops",
+			update: KeyspaceStorageUpdate{ResetIOPS: true},
+			want:   `{"iops":null}`,
+		},
+		{
+			name:   "reset throughput",
+			update: KeyspaceStorageUpdate{ResetThroughputMiBs: true},
+			want:   `{"throughput_mibs":null}`,
+		},
+		{
+			name:   "reset iops and set throughput and strategy",
+			update: KeyspaceStorageUpdate{DiskScalingStrategy: &strategy, ResetIOPS: true, ThroughputMiBs: &throughput},
+			want:   `{"disk_scaling_strategy":"grow","iops":null,"throughput_mibs":500}`,
+		},
+		{
+			name:    "set and reset iops",
+			update:  KeyspaceStorageUpdate{IOPS: &iops, ResetIOPS: true},
+			wantErr: ".*cannot both set and reset iops",
+		},
+		{
+			name:    "set and reset throughput",
+			update:  KeyspaceStorageUpdate{ThroughputMiBs: &throughput, ResetThroughputMiBs: true},
+			wantErr: ".*cannot both set and reset throughput_mibs",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := qt.New(t)
+
+			// Encode through the request, the way the client sends it.
+			got, err := json.Marshal(&UpdateKeyspaceSettingsRequest{Storage: &tt.update})
+			if tt.wantErr != "" {
+				c.Assert(err, qt.ErrorMatches, tt.wantErr)
+				return
+			}
+
+			c.Assert(err, qt.IsNil)
+			c.Assert(string(got), qt.Equals, `{"storage":`+tt.want+`}`)
+		})
+	}
+}
