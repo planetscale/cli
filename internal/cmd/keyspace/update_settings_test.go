@@ -1301,6 +1301,82 @@ func TestKeyspace_UpdateSettingsCmd_StorageIOPSMustBePositive(t *testing.T) {
 	c.Assert(svc.UpdateSettingsFnInvoked, qt.IsFalse)
 }
 
+func TestKeyspace_UpdateSettingsCmd_StorageIONotApplied(t *testing.T) {
+	iops := int64(3000)
+	throughput := int64(125)
+
+	tests := []struct {
+		name    string
+		args    []string
+		storage *ps.KeyspaceStorage
+		wantErr string
+	}{
+		{
+			// The API leaves the values out when configurable disk I/O is
+			// not enabled for the organization.
+			name:    "iops left out of the response",
+			args:    []string{"--storage-iops=6000"},
+			storage: &ps.KeyspaceStorage{DiskScalingStrategy: "grow"},
+			wantErr: "--storage-iops was not applied: configurable disk IOPS and throughput are not enabled for this keyspace. Any other requested settings were applied",
+		},
+		{
+			name:    "throughput left out of the response",
+			args:    []string{"--storage-throughput=500"},
+			storage: &ps.KeyspaceStorage{DiskScalingStrategy: "grow"},
+			wantErr: "--storage-throughput was not applied: configurable disk IOPS and throughput are not enabled for this keyspace. Any other requested settings were applied",
+		},
+		{
+			name:    "no storage in the response",
+			args:    []string{"--storage-iops=6000"},
+			wantErr: "--storage-iops was not applied: .*",
+		},
+		{
+			name:    "iops differs from the request",
+			args:    []string{"--storage-iops=6000"},
+			storage: &ps.KeyspaceStorage{IOPS: &iops, ThroughputMiBs: &throughput},
+			wantErr: "--storage-iops was not applied: the keyspace reports 3000 instead of 6000. Any other requested settings were applied",
+		},
+		{
+			name:    "throughput differs from the request",
+			args:    []string{"--storage-throughput=500"},
+			storage: &ps.KeyspaceStorage{IOPS: &iops, ThroughputMiBs: &throughput},
+			wantErr: "--storage-throughput was not applied: the keyspace reports 125 instead of 500. Any other requested settings were applied",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := qt.New(t)
+
+			var buf bytes.Buffer
+			format := printer.JSON
+			p := printer.NewPrinter(&format)
+			p.SetResourceOutput(&buf)
+
+			svc := &mock.KeyspacesService{
+				UpdateSettingsFn: func(ctx context.Context, req *ps.UpdateKeyspaceSettingsRequest) (*ps.Keyspace, error) {
+					return &ps.Keyspace{ID: "ks1", Name: "sharded", Storage: tt.storage}, nil
+				},
+			}
+
+			ch := &cmdutil.Helper{
+				Printer: p,
+				Config:  &config.Config{Organization: "planetscale"},
+				Client: func() (*ps.Client, error) {
+					return &ps.Client{Keyspaces: svc}, nil
+				},
+			}
+
+			cmd := UpdateSettingsCmd(ch)
+			cmd.SetArgs(append([]string{"planetscale", "main", "sharded"}, tt.args...))
+			err := cmd.Execute()
+			c.Assert(err, qt.ErrorMatches, tt.wantErr)
+			c.Assert(svc.UpdateSettingsFnInvoked, qt.IsTrue)
+			c.Assert(buf.String(), qt.Equals, "")
+		})
+	}
+}
+
 func TestKeyspace_UpdateSettingsCmd_MaxStorageAcceptsHumanReadableSize(t *testing.T) {
 	c := qt.New(t)
 

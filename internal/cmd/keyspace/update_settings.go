@@ -222,6 +222,21 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			end()
 
+			// The API ignores IOPS and throughput for organizations without
+			// configurable disk I/O and still answers with success, so check
+			// that the returned keyspace has the requested values.
+			if storageIOPSChanged {
+				if err := checkStorageIOApplied("--storage-iops", flags.storageIOPS, storageIOPS(k)); err != nil {
+					return err
+				}
+			}
+
+			if storageThroughputChanged {
+				if err := checkStorageIOApplied("--storage-throughput", flags.storageThroughput, storageThroughputMiBs(k)); err != nil {
+					return err
+				}
+			}
+
 			return ch.Printer.PrintResource(toKeyspaceSettings(k))
 		},
 	}
@@ -415,6 +430,35 @@ func updateKeyspaceSettings(ctx context.Context, client *ps.Client, updateReq *p
 	}
 
 	return k, nil
+}
+
+func storageIOPS(k *ps.Keyspace) *int64 {
+	if k.Storage == nil {
+		return nil
+	}
+	return k.Storage.IOPS
+}
+
+func storageThroughputMiBs(k *ps.Keyspace) *int64 {
+	if k.Storage == nil {
+		return nil
+	}
+	return k.Storage.ThroughputMiBs
+}
+
+// checkStorageIOApplied returns an error when the keyspace returned by the API
+// does not have the requested IOPS or throughput value. The API leaves the
+// value out when configurable disk I/O is not enabled for the organization.
+func checkStorageIOApplied(flag string, want int64, got *int64) error {
+	if got == nil {
+		return fmt.Errorf("%s was not applied: configurable disk IOPS and throughput are not enabled for this keyspace. Any other requested settings were applied", flag)
+	}
+
+	if *got != want {
+		return fmt.Errorf("%s was not applied: the keyspace reports %d instead of %d. Any other requested settings were applied", flag, *got, want)
+	}
+
+	return nil
 }
 
 // Helper function for translating the API value to a more semantic string.
