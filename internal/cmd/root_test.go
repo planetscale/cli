@@ -55,7 +55,6 @@ func TestStoredTokenLoadingIsLazyAndReportsJSONErrors(t *testing.T) {
 	for _, args := range [][]string{
 		{"org", "list", "--format", "json"},
 		{"auth", "check", "--format", "json"},
-		{"auth", "logout", "--format", "json"},
 	} {
 		result := runRootCLIWithHome(t, home, args...)
 		if result.exitCode != cmdutil.FatalErrExitCode {
@@ -73,6 +72,13 @@ func TestStoredTokenLoadingIsLazyAndReportsJSONErrors(t *testing.T) {
 		if resp.Status != "error" || !strings.Contains(resp.Error, "access-token") || len(resp.Issues) == 0 || len(resp.NextSteps) == 0 {
 			t.Fatalf("%v invalid JSON error envelope: %s", args, result.stdout)
 		}
+	}
+	result := runRootCLIWithHome(t, home, "auth", "logout", "--format", "json")
+	if result.exitCode != 0 {
+		t.Fatalf("auth logout exit code = %d, stdout=%q stderr=%q", result.exitCode, result.stdout, result.stderr)
+	}
+	if _, err := os.Stat(filepath.Join(home, ".config", "planetscale", "access-token")); !os.IsNotExist(err) {
+		t.Fatalf("auth logout left unreadable token in place: %v", err)
 	}
 }
 
