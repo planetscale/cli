@@ -49,8 +49,19 @@ func New() *Config {
 	}
 }
 
+// LoadAccessToken fills AccessToken from credential storage unless explicit
+// credentials were provided.
 func (c *Config) LoadAccessToken() error {
-	if c.AccessToken != "" || c.ServiceTokenID != "" || c.ServiceToken != "" || c.loadAccessToken == nil {
+	if c.ServiceTokenID != "" || c.ServiceToken != "" {
+		return nil
+	}
+	return c.LoadStoredAccessToken()
+}
+
+// LoadStoredAccessToken fills AccessToken from credential storage unless an
+// access token was provided, even when service token credentials are set.
+func (c *Config) LoadStoredAccessToken() error {
+	if c.AccessToken != "" || c.loadAccessToken == nil {
 		return nil
 	}
 	token, err := c.loadAccessToken()

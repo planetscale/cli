@@ -77,3 +77,21 @@ func TestExplicitCredentialsSkipAccessTokenLookup(t *testing.T) {
 		})
 	}
 }
+
+func TestStoredAccessTokenLoadsWithServiceToken(t *testing.T) {
+	cfg := New()
+	cfg.ServiceTokenID, cfg.ServiceToken = "id", "secret"
+	cfg.loadAccessToken = func() (string, error) { return "stored-token", nil }
+	if err := cfg.LoadAccessToken(); err != nil {
+		t.Fatal(err)
+	}
+	if cfg.AccessToken != "" {
+		t.Fatalf("LoadAccessToken loaded %q despite service token", cfg.AccessToken)
+	}
+	if err := cfg.LoadStoredAccessToken(); err != nil {
+		t.Fatal(err)
+	}
+	if cfg.AccessToken != "stored-token" {
+		t.Fatalf("access token = %q, want stored-token", cfg.AccessToken)
+	}
+}

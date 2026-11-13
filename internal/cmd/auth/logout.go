@@ -23,7 +23,7 @@ func LogoutCmd(ch *cmdutil.Helper) *cobra.Command {
 		Args:  cobra.NoArgs,
 		Short: "Log out of the PlanetScale API",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := ch.Config.LoadAccessToken(); err != nil {
+			if err := ch.Config.LoadStoredAccessToken(); err != nil {
 				return err
 			}
 			if ch.Config.AccessToken == "" {
