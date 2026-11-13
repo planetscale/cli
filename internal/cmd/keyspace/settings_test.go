@@ -265,4 +265,53 @@ func TestBuildKeyspaceSettings(t *testing.T) {
 
 	staffSettings := toKeyspaceSettings(staffKs)
 	c.Assert(staffSettings.Storage.MaxStorageBytes, qt.Equals, "8.0 TiB (set by PlanetScale staff)")
+
+	// Configurable IOPS and throughput are shown as they are.
+	configurable := true
+	iops := int64(6000)
+	throughput := int64(500)
+	ioKs := &ps.Keyspace{
+		ID:   "ks1",
+		Name: "test",
+		Storage: &ps.KeyspaceStorage{
+			IOPSConfigurable: &configurable,
+			IOPS:             &iops,
+			ThroughputMiBs:   &throughput,
+		},
+	}
+
+	ioSettings := toKeyspaceSettings(ioKs)
+	c.Assert(ioSettings.Storage.IOPS, qt.Equals, "6000")
+	c.Assert(ioSettings.Storage.Throughput, qt.Equals, "500 MiB/s")
+
+	// Storage class defaults that cannot be changed are marked.
+	notConfigurable := false
+	fixedKs := &ps.Keyspace{
+		ID:   "ks1",
+		Name: "test",
+		Storage: &ps.KeyspaceStorage{
+			IOPSConfigurable: &notConfigurable,
+			IOPS:             &iops,
+			ThroughputMiBs:   &throughput,
+		},
+	}
+
+	fixedSettings := toKeyspaceSettings(fixedKs)
+	c.Assert(fixedSettings.Storage.IOPS, qt.Equals, "6000 (not configurable)")
+	c.Assert(fixedSettings.Storage.Throughput, qt.Equals, "500 MiB/s (not configurable)")
+
+	// Without a value there is nothing to mark.
+	fixedNilKs := &ps.Keyspace{
+		ID:   "ks1",
+		Name: "test",
+		Storage: &ps.KeyspaceStorage{
+			IOPSConfigurable: &notConfigurable,
+		},
+	}
+
+	fixedNilSettings := toKeyspaceSettings(fixedNilKs)
+	c.Assert(fixedNilSettings.Storage.IOPS, qt.Equals, "not set")
+	c.Assert(fixedNilSettings.Storage.Throughput, qt.Equals, "not set")
+	c.Assert(nilSettings.Storage.IOPS, qt.Equals, "not set")
+	c.Assert(nilSettings.Storage.Throughput, qt.Equals, "not set")
 }
