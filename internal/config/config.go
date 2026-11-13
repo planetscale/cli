@@ -202,7 +202,10 @@ func readAccessToken() (string, error) {
 	if errors.Is(err, keyring.ErrKeyNotFound) {
 		// Migrate to keychain
 		accessToken, tokenErr := readAccessTokenPath()
-		if len(accessToken) > 0 && tokenErr == nil {
+		if tokenErr != nil && !os.IsNotExist(tokenErr) {
+			return "", tokenErr
+		}
+		if len(accessToken) > 0 {
 			return migrateAccessToken(ring, accessToken)
 		}
 		// Might need to improve this, but today the empty
