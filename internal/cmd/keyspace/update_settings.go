@@ -15,6 +15,7 @@ import (
 	ps "github.com/planetscale/cli/internal/planetscale"
 	"github.com/planetscale/cli/internal/printer"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 // diskScalingStrategies are the disk scaling strategies accepted by the
@@ -278,6 +279,14 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().BoolVarP(&flags.interactive, "interactive", "i", false, "Run the command in interactive mode")
 	cmd.MarkFlagsMutuallyExclusive("storage-iops", "reset-storage-iops")
 	cmd.MarkFlagsMutuallyExclusive("storage-throughput", "reset-storage-throughput")
+
+	// The interactive form only covers some settings and returns before the
+	// other flags are read, so they would be silently ignored.
+	cmd.Flags().VisitAll(func(f *pflag.Flag) {
+		if f.Name != "interactive" {
+			cmd.MarkFlagsMutuallyExclusive("interactive", f.Name)
+		}
+	})
 
 	_ = cmd.RegisterFlagCompletionFunc("disk-scaling-strategy", cobra.FixedCompletions(diskScalingStrategies, cobra.ShellCompDirectiveNoFileComp))
 

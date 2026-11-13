@@ -14,6 +14,7 @@ import (
 	"github.com/planetscale/cli/internal/mock"
 	ps "github.com/planetscale/cli/internal/planetscale"
 	"github.com/planetscale/cli/internal/printer"
+	"github.com/spf13/pflag"
 )
 
 func TestKeyspace_UpdateSettingsCmd_OnlyVReplicationFlags(t *testing.T) {
@@ -2040,6 +2041,51 @@ func TestKeyspace_UpdateSettingsCmd_SetAndResetStorageIO(t *testing.T) {
 			cmd.SetArgs(append([]string{"planetscale", "main", "sharded"}, tt.args...))
 			err := cmd.Execute()
 			c.Assert(err, qt.ErrorMatches, tt.wantErr)
+			c.Assert(svc.UpdateSettingsFnInvoked, qt.IsFalse)
+		})
+	}
+}
+
+func TestKeyspace_UpdateSettingsCmd_InteractiveRejectsOtherFlags(t *testing.T) {
+	c := qt.New(t)
+
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+
+	svc := &mock.KeyspacesService{}
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: "planetscale"},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{Keyspaces: svc}, nil
+		},
+	}
+
+	cmd := UpdateSettingsCmd(ch)
+
+	var flags []string
+	cmd.Flags().VisitAll(func(f *pflag.Flag) {
+		if f.Name != "interactive" {
+			flags = append(flags, f.Name)
+		}
+	})
+	c.Assert(flags, qt.Not(qt.HasLen), 0)
+
+	for _, name := range flags {
+		c.Run(name, func(c *qt.C) {
+			value := "1"
+			if name == "disk-scaling-strategy" {
+				value = "grow"
+			}
+			if name == "replication-durability-constraints-strategy" {
+				value = "maximum"
+			}
+
+			cmd := UpdateSettingsCmd(ch)
+			cmd.SetArgs([]string{"planetscale", "main", "sharded", "--interactive", "--" + name + "=" + value})
+			err := cmd.Execute()
+			c.Assert(err, qt.ErrorMatches, `.*\[interactive `+name+`\] were all set.*|.*\[`+name+` interactive\] were all set.*`)
+			c.Assert(svc.GetFnInvoked, qt.IsFalse)
 			c.Assert(svc.UpdateSettingsFnInvoked, qt.IsFalse)
 		})
 	}
