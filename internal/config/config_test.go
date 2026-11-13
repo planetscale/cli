@@ -2,8 +2,13 @@ package config
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
 	"sync"
 	"testing"
+
+	"github.com/99designs/keyring"
+	"github.com/mitchellh/go-homedir"
 )
 
 func TestAccessTokenLookupCached(t *testing.T) {
@@ -93,5 +98,33 @@ func TestStoredAccessTokenLoadsWithServiceToken(t *testing.T) {
 	}
 	if cfg.AccessToken != "stored-token" {
 		t.Fatalf("access token = %q, want stored-token", cfg.AccessToken)
+	}
+}
+
+func TestDeleteAccessTokenRemovesUnreadableTokenFile(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	homedir.Reset()
+	t.Cleanup(homedir.Reset)
+	ring := keyring.NewArrayKeyring(nil)
+	original := openKeyring
+	openKeyring = func() (keyring.Keyring, error) { return ring, nil }
+	t.Cleanup(func() { openKeyring = original })
+
+	tokenPath := filepath.Join(home, ".config", "planetscale", "access-token")
+	if err := os.MkdirAll(tokenPath, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := readAccessToken(); err == nil {
+		t.Fatal("readAccessToken succeeded on an unreadable token file")
+	}
+	if err := DeleteAccessToken(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(tokenPath); !os.IsNotExist(err) {
+		t.Fatalf("token file still exists: %v", err)
+	}
+	if token, err := readAccessToken(); token != "" || err != nil {
+		t.Fatalf("readAccessToken = %q, %v after delete", token, err)
 	}
 }

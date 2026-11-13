@@ -259,10 +259,19 @@ func DeleteAccessToken() error {
 		return deleteAccessTokenPath()
 	}
 
-	return ring.Remove(keyringKey)
+	// Remove the token file left by keyring migration so a later read
+	// doesn't migrate it back or fail on it.
+	if err := deleteAccessTokenFile(); err != nil {
+		return err
+	}
+	err = ring.Remove(keyringKey)
+	if err != nil && !errors.Is(err, keyring.ErrKeyNotFound) {
+		return err
+	}
+	return nil
 }
 
-func openKeyring() (keyring.Keyring, error) {
+var openKeyring = func() (keyring.Keyring, error) {
 	return keyring.Open(keyring.Config{
 		AllowedBackends: []keyring.BackendType{
 			keyring.SecretServiceBackend,
@@ -311,17 +320,22 @@ func readAccessTokenPath() ([]byte, error) {
 	return accessToken, nil
 }
 
-func deleteAccessTokenPath() error {
+func deleteAccessTokenFile() error {
 	tokenPath, err := accessTokenPath()
 	if err != nil {
 		return err
 	}
 
 	err = os.Remove(tokenPath)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			return fmt.Errorf("error removing access token file: %w", err)
-		}
+	if err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("error removing access token file: %w", err)
+	}
+	return nil
+}
+
+func deleteAccessTokenPath() error {
+	if err := deleteAccessTokenFile(); err != nil {
+		return err
 	}
 
 	configFile, err := DefaultConfigPath()
