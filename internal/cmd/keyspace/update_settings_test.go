@@ -1213,7 +1213,7 @@ func TestKeyspace_UpdateSettingsCmd_Storage(t *testing.T) {
 	c.Assert(buf.String(), qt.JSONEquals, updatedKs)
 }
 
-func TestKeyspace_UpdateSettingsCmd_StorageIOPS(t *testing.T) {
+func TestKeyspace_UpdateSettingsCmd_StorageIO(t *testing.T) {
 	c := qt.New(t)
 
 	var buf bytes.Buffer
@@ -1281,26 +1281,103 @@ func TestKeyspace_UpdateSettingsCmd_StorageIOPS(t *testing.T) {
 	c.Assert(buf.String(), qt.JSONEquals, updatedKs)
 }
 
-func TestKeyspace_UpdateSettingsCmd_StorageIOPSMustBePositive(t *testing.T) {
-	c := qt.New(t)
-
-	format := printer.JSON
-	p := printer.NewPrinter(&format)
-
-	svc := &mock.KeyspacesService{}
-	ch := &cmdutil.Helper{
-		Printer: p,
-		Config:  &config.Config{Organization: "planetscale"},
-		Client: func() (*ps.Client, error) {
-			return &ps.Client{Keyspaces: svc}, nil
-		},
+func TestKeyspace_UpdateSettingsCmd_StorageIOMustBePositive(t *testing.T) {
+	tests := []struct {
+		arg     string
+		wantErr string
+	}{
+		{arg: "--storage-iops=0", wantErr: "--storage-iops must be greater than 0"},
+		{arg: "--storage-iops=-1", wantErr: "--storage-iops must be greater than 0"},
+		{arg: "--storage-throughput=0", wantErr: "--storage-throughput must be greater than 0"},
+		{arg: "--storage-throughput=-1", wantErr: "--storage-throughput must be greater than 0"},
+		{arg: "--storage-iops=9223372036854775808", wantErr: `invalid argument .* for "--storage-iops" flag: .*out of range`},
 	}
 
-	cmd := UpdateSettingsCmd(ch)
-	cmd.SetArgs([]string{"planetscale", "main", "sharded", "--storage-iops=0"})
-	err := cmd.Execute()
-	c.Assert(err, qt.ErrorMatches, "--storage-iops must be greater than 0")
-	c.Assert(svc.UpdateSettingsFnInvoked, qt.IsFalse)
+	for _, tt := range tests {
+		t.Run(tt.arg, func(t *testing.T) {
+			c := qt.New(t)
+
+			format := printer.JSON
+			p := printer.NewPrinter(&format)
+
+			svc := &mock.KeyspacesService{}
+			ch := &cmdutil.Helper{
+				Printer: p,
+				Config:  &config.Config{Organization: "planetscale"},
+				Client: func() (*ps.Client, error) {
+					return &ps.Client{Keyspaces: svc}, nil
+				},
+			}
+
+			cmd := UpdateSettingsCmd(ch)
+			cmd.SetArgs([]string{"planetscale", "main", "sharded", tt.arg})
+			err := cmd.Execute()
+			c.Assert(err, qt.ErrorMatches, tt.wantErr)
+			c.Assert(svc.UpdateSettingsFnInvoked, qt.IsFalse)
+		})
+	}
+}
+
+// A single IOPS or throughput flag must leave the other value out of the
+// request, so the API keeps its current value.
+func TestKeyspace_UpdateSettingsCmd_SingleStorageIOFlag(t *testing.T) {
+	iops := int64(6000)
+	throughput := int64(250)
+
+	tests := []struct {
+		arg      string
+		wantBody string
+	}{
+		{arg: "--storage-iops=6000", wantBody: `{"iops":6000}`},
+		{arg: "--storage-throughput=250", wantBody: `{"throughput_mibs":250}`},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.arg, func(t *testing.T) {
+			c := qt.New(t)
+
+			var buf bytes.Buffer
+			format := printer.JSON
+			p := printer.NewPrinter(&format)
+			p.SetResourceOutput(&buf)
+
+			svc := &mock.KeyspacesService{
+				UpdateSettingsFn: func(ctx context.Context, req *ps.UpdateKeyspaceSettingsRequest) (*ps.Keyspace, error) {
+					c.Assert(req.Throttler, qt.IsNil)
+					c.Assert(req.VReplicationFlags, qt.IsNil)
+					c.Assert(req.ReplicationDurabilityConstraints, qt.IsNil)
+					c.Assert(req.MaxRollout, qt.IsNil)
+
+					body, err := json.Marshal(req.Storage)
+					c.Assert(err, qt.IsNil)
+					c.Assert(string(body), qt.Equals, tt.wantBody)
+
+					return &ps.Keyspace{
+						ID:   "ks1",
+						Name: "sharded",
+						Storage: &ps.KeyspaceStorage{
+							IOPS:           &iops,
+							ThroughputMiBs: &throughput,
+						},
+					}, nil
+				},
+			}
+
+			ch := &cmdutil.Helper{
+				Printer: p,
+				Config:  &config.Config{Organization: "planetscale"},
+				Client: func() (*ps.Client, error) {
+					return &ps.Client{Keyspaces: svc}, nil
+				},
+			}
+
+			cmd := UpdateSettingsCmd(ch)
+			cmd.SetArgs([]string{"planetscale", "main", "sharded", tt.arg})
+			err := cmd.Execute()
+			c.Assert(err, qt.IsNil)
+			c.Assert(svc.UpdateSettingsFnInvoked, qt.IsTrue)
+		})
+	}
 }
 
 func TestKeyspace_UpdateSettingsCmd_StorageIONotApplied(t *testing.T) {
