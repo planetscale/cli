@@ -60,6 +60,8 @@ func toKeyspaceSettings(ks *ps.Keyspace) *KeyspaceSettings {
 			DiskScalingStrategy: "not set",
 			StorageBytes:        "not set",
 			MaxStorageBytes:     "not set",
+			IOPS:                "not set",
+			Throughput:          "not set",
 		},
 		orig: ks,
 	}
@@ -119,6 +121,12 @@ func toKeyspaceSettings(ks *ps.Keyspace) *KeyspaceSettings {
 			if ks.Storage.MaxStorageBytesManagedByStaff {
 				settings.Storage.MaxStorageBytes += " (set by PlanetScale staff)"
 			}
+		}
+		if ks.Storage.IOPS != nil {
+			settings.Storage.IOPS = strconv.FormatInt(*ks.Storage.IOPS, 10)
+		}
+		if ks.Storage.ThroughputMiBs != nil {
+			settings.Storage.Throughput = fmt.Sprintf("%d MiB/s", *ks.Storage.ThroughputMiBs)
 		}
 	}
 

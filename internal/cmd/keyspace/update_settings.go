@@ -33,6 +33,8 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 		diskScalingStrategy              string
 		maxStorage                       string
 		storage                          string
+		storageIOPS                      int64
+		storageThroughput                int64
 		interactive                      bool
 	}
 
@@ -70,7 +72,9 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 			strategyChanged := cmd.Flags().Changed("disk-scaling-strategy")
 			maxStorageChanged := cmd.Flags().Changed("max-storage")
 			storageChanged := cmd.Flags().Changed("storage")
-			diskStorageChanged := strategyChanged || maxStorageChanged || storageChanged
+			storageIOPSChanged := cmd.Flags().Changed("storage-iops")
+			storageThroughputChanged := cmd.Flags().Changed("storage-throughput")
+			diskStorageChanged := strategyChanged || maxStorageChanged || storageChanged || storageIOPSChanged || storageThroughputChanged
 
 			if !rdcChanged && !vrfChanged && !throttlerChanged && !maxRolloutChanged && !diskStorageChanged {
 				ch.Printer.Println("No changes were requested. No update performed.")
@@ -102,6 +106,14 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 				if maxStorageBytes <= 0 {
 					return errors.New("--max-storage must be greater than 0")
 				}
+			}
+
+			if storageIOPSChanged && flags.storageIOPS <= 0 {
+				return errors.New("--storage-iops must be greater than 0")
+			}
+
+			if storageThroughputChanged && flags.storageThroughput <= 0 {
+				return errors.New("--storage-throughput must be greater than 0")
 			}
 
 			var storageBytes int64
@@ -193,6 +205,14 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 				if storageChanged {
 					updateReq.Storage.StorageBytes = &storageBytes
 				}
+
+				if storageIOPSChanged {
+					updateReq.Storage.IOPS = &flags.storageIOPS
+				}
+
+				if storageThroughputChanged {
+					updateReq.Storage.ThroughputMiBs = &flags.storageThroughput
+				}
 			}
 
 			k, err := updateKeyspaceSettings(ctx, client, updateReq)
@@ -216,6 +236,8 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().StringVar(&flags.diskScalingStrategy, "disk-scaling-strategy", "grow", fmt.Sprintf("The disk scaling strategy (%s). 'grow' lets dedicated disks grow automatically up to --max-storage; 'disable' turns autoscaling off; 'shrink' recreates disks at --storage and then disables autoscaling.", strings.Join(diskScalingStrategies, ", ")))
 	cmd.Flags().StringVar(&flags.maxStorage, "max-storage", "", "The maximum size that dedicated disks may autoscale to, in bytes or with a unit such as 200GiB or 1TiB. Must be at least 12 GiB and no smaller than the current disk size. Cannot be raised above the organization default (4 TiB, or 16 TiB for managed tenancy). Read-only while PlanetScale staff have raised it above that default.")
 	cmd.Flags().StringVar(&flags.storage, "storage", "", "The disk size to recreate disks at, in bytes or with a unit such as 200GiB or 1TiB. Must be a multiple of 1 GiB. Only accepted when the disk scaling strategy is shrink, either passed with --disk-scaling-strategy or already set on the keyspace.")
+	cmd.Flags().Int64Var(&flags.storageIOPS, "storage-iops", 0, "The provisioned IOPS for each AWS gp3 disk, from 3000 up to 500 per GiB of disk size (at most 80000). Applied without replacing disks.")
+	cmd.Flags().Int64Var(&flags.storageThroughput, "storage-throughput", 0, "The provisioned throughput in MiB/s for each AWS gp3 disk, from 125 up to 0.25 per provisioned IOPS (at most 2000). Applied without replacing disks.")
 	cmd.Flags().BoolVarP(&flags.interactive, "interactive", "i", false, "Run the command in interactive mode")
 
 	_ = cmd.RegisterFlagCompletionFunc("disk-scaling-strategy", cobra.FixedCompletions(diskScalingStrategies, cobra.ShellCompDirectiveNoFileComp))

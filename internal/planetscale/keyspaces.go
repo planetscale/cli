@@ -45,6 +45,12 @@ type KeyspaceStorage struct {
 	// DiskScalingStrategy is the disk scaling strategy: "grow", "disable" or
 	// "shrink".
 	DiskScalingStrategy string `json:"disk_scaling_strategy"`
+	// IOPS is the provisioned IOPS for each disk. Only returned when
+	// configurable IOPS are enabled for the organization.
+	IOPS *int64 `json:"iops,omitempty"`
+	// ThroughputMiBs is the provisioned throughput in MiB/s for each disk.
+	// Only returned when configurable IOPS are enabled for the organization.
+	ThroughputMiBs *int64 `json:"throughput_mibs,omitempty"`
 }
 
 type ReadOnlyRegionKeyspace struct {
@@ -270,6 +276,8 @@ type KeyspaceStorageUpdate struct {
 	DiskScalingStrategy *string `json:"disk_scaling_strategy,omitempty"`
 	MaxStorageBytes     *int64  `json:"max_storage_bytes,omitempty"`
 	StorageBytes        *int64  `json:"storage_bytes,omitempty"`
+	IOPS                *int64  `json:"iops,omitempty"`
+	ThroughputMiBs      *int64  `json:"throughput_mibs,omitempty"`
 }
 
 // KeyspacesService is an interface for interacting with the keyspace endpoints of the PlanetScale API
