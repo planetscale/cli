@@ -166,6 +166,9 @@ func WarnDeprecated(name, message string, next func(cmd *cobra.Command, args []s
 // actionable error message.
 func CheckAuthentication(cfg *config.Config) func(cmd *cobra.Command, args []string) error {
 	return func(cmd *cobra.Command, args []string) error {
+		if err := cfg.LoadAccessToken(); err != nil {
+			return err
+		}
 		if err := cfg.IsAuthenticated(); err != nil {
 			if commandFormat(cmd) == printer.JSON.String() {
 				resp := struct {

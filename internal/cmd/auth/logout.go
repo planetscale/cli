@@ -2,6 +2,8 @@ package auth
 
 import (
 	"bufio"
+	"errors"
+	"fmt"
 	"io"
 
 	"github.com/planetscale/cli/internal/auth"
@@ -23,7 +25,9 @@ func LogoutCmd(ch *cmdutil.Helper) *cobra.Command {
 		Args:  cobra.NoArgs,
 		Short: "Log out of the PlanetScale API",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if ch.Config.AccessToken == "" {
+			// An unreadable token can't be revoked, but deleting it still logs out.
+			readErr := ch.Config.LoadStoredAccessToken()
+			if readErr == nil && ch.Config.AccessToken == "" {
 				ch.Printer.Println("Already logged out. Exiting...")
 				return nil
 			}
@@ -42,15 +46,20 @@ func LogoutCmd(ch *cmdutil.Helper) *cobra.Command {
 
 			end := ch.Printer.PrintProgress("Logging out...")
 			defer end()
-			err = authenticator.RevokeToken(ctx, ch.Config.AccessToken)
-			if err != nil {
-				return err
+			if readErr == nil {
+				err = authenticator.RevokeToken(ctx, ch.Config.AccessToken)
+				if err != nil {
+					return err
+				}
 			}
 			err = config.DeleteAccessToken()
 			if err != nil {
-				return err
+				return errors.Join(readErr, err)
 			}
 			end()
+			if readErr != nil {
+				fmt.Fprintf(cmd.ErrOrStderr(), "Warning: deleted the stored access token without revoking it: %v\n", readErr)
+			}
 			ch.Printer.Println("Successfully logged out.")
 
 			return nil

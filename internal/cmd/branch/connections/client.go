@@ -146,6 +146,9 @@ func branchIsProduction(ctx context.Context, ch *cmdutil.Helper, database, branc
 }
 
 func newConnectionsClient(ch *cmdutil.Helper, database, branch string, target ConnectionTarget) (*live.Client, error) {
+	if err := ch.Config.LoadAccessToken(); err != nil {
+		return nil, err
+	}
 	return live.NewClient(live.ClientConfig{
 		BaseURL:        ch.Config.BaseURL,
 		Organization:   ch.Config.Organization,
