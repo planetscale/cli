@@ -633,3 +633,82 @@ func TestKeyspaces_UpdateSettingsStorage(t *testing.T) {
 	c.Assert(keyspace.Storage.StorageBytes, qt.Equals, int64(214748364800))
 	c.Assert(keyspace.Storage.MaxStorageBytes, qt.Equals, int64(4398046511104))
 }
+
+func TestKeyspaces_UpdateSettingsStorageIO(t *testing.T) {
+	c := qt.New(t)
+
+	var body string
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodPatch)
+
+		raw, err := io.ReadAll(r.Body)
+		c.Assert(err, qt.IsNil)
+		body = string(raw)
+
+		w.WriteHeader(200)
+		out := `{"type":"Keyspace","id":"thisisanid","name":"planetscale","storage":{"storage_bytes":107374182400,"max_storage_bytes":4398046511104,"disk_scaling_strategy":"grow","iops_configurable":true,"iops":6000,"throughput_mibs":500,"min_iops":3000,"max_iops":10000,"min_throughput_mibs":125}}`
+		_, err = w.Write([]byte(out))
+		c.Assert(err, qt.IsNil)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	ctx := context.Background()
+	iops := int64(6000)
+	throughput := int64(500)
+
+	keyspace, err := client.Keyspaces.UpdateSettings(ctx, &UpdateKeyspaceSettingsRequest{
+		Organization: "foo",
+		Database:     "bar",
+		Branch:       "baz",
+		Keyspace:     "qux",
+		Storage: &KeyspaceStorageUpdate{
+			IOPS:           &iops,
+			ThroughputMiBs: &throughput,
+		},
+	})
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(strings.TrimSpace(body), qt.Equals, `{"storage":{"iops":6000,"throughput_mibs":500}}`)
+	c.Assert(keyspace.Storage, qt.Not(qt.IsNil))
+	c.Assert(*keyspace.Storage.IOPSConfigurable, qt.IsTrue)
+	c.Assert(*keyspace.Storage.IOPS, qt.Equals, int64(6000))
+	c.Assert(*keyspace.Storage.ThroughputMiBs, qt.Equals, int64(500))
+	c.Assert(*keyspace.Storage.MinIOPS, qt.Equals, int64(3000))
+	c.Assert(*keyspace.Storage.MaxIOPS, qt.Equals, int64(10000))
+	c.Assert(*keyspace.Storage.MinThroughputMiBs, qt.Equals, int64(125))
+}
+
+func TestKeyspaces_GetStorageIONotConfigurable(t *testing.T) {
+	c := qt.New(t)
+
+	// Keyspaces that cannot configure IOPS still report the storage class
+	// default, with null limits.
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		out := `{"type":"Keyspace","id":"thisisanid","name":"planetscale","storage":{"disk_scaling_strategy":"grow","iops_configurable":false,"iops":null,"throughput_mibs":null,"min_iops":null,"max_iops":null,"min_throughput_mibs":null}}`
+		_, err := w.Write([]byte(out))
+		c.Assert(err, qt.IsNil)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	keyspace, err := client.Keyspaces.Get(context.Background(), &GetKeyspaceRequest{
+		Organization: "foo",
+		Database:     "bar",
+		Branch:       "baz",
+		Keyspace:     "qux",
+	})
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(keyspace.Storage, qt.Not(qt.IsNil))
+	c.Assert(*keyspace.Storage.IOPSConfigurable, qt.IsFalse)
+	c.Assert(keyspace.Storage.IOPS, qt.IsNil)
+	c.Assert(keyspace.Storage.ThroughputMiBs, qt.IsNil)
+	c.Assert(keyspace.Storage.MinIOPS, qt.IsNil)
+	c.Assert(keyspace.Storage.MaxIOPS, qt.IsNil)
+	c.Assert(keyspace.Storage.MinThroughputMiBs, qt.IsNil)
+}

@@ -51,6 +51,19 @@ type KeyspaceStorage struct {
 	// ThroughputMiBs is the provisioned throughput in MiB/s for each disk.
 	// Only returned when configurable IOPS are enabled for the organization.
 	ThroughputMiBs *int64 `json:"throughput_mibs,omitempty"`
+	// IOPSConfigurable is true when IOPS and throughput can be configured for
+	// the keyspace's disks. The fields below are only returned when
+	// configurable IOPS are enabled for the organization, and the limits are
+	// null when IOPSConfigurable is false.
+	IOPSConfigurable *bool `json:"iops_configurable,omitempty"`
+	// MinIOPS is the minimum IOPS that can be configured.
+	MinIOPS *int64 `json:"min_iops,omitempty"`
+	// MaxIOPS is the maximum IOPS that can be configured for the current disk
+	// size.
+	MaxIOPS *int64 `json:"max_iops,omitempty"`
+	// MinThroughputMiBs is the minimum throughput in MiB/s that can be
+	// configured. The maximum is 0.25 MiB/s per provisioned IOPS, up to 2000.
+	MinThroughputMiBs *int64 `json:"min_throughput_mibs,omitempty"`
 }
 
 type ReadOnlyRegionKeyspace struct {

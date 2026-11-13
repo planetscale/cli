@@ -128,6 +128,16 @@ func toKeyspaceSettings(ks *ps.Keyspace) *KeyspaceSettings {
 		if ks.Storage.ThroughputMiBs != nil {
 			settings.Storage.Throughput = fmt.Sprintf("%d MiB/s", *ks.Storage.ThroughputMiBs)
 		}
+		// The API reports the storage class default even when the values
+		// cannot be changed, so the table says so.
+		if ks.Storage.IOPSConfigurable != nil && !*ks.Storage.IOPSConfigurable {
+			if ks.Storage.IOPS != nil {
+				settings.Storage.IOPS += " (not configurable)"
+			}
+			if ks.Storage.ThroughputMiBs != nil {
+				settings.Storage.Throughput += " (not configurable)"
+			}
+		}
 	}
 
 	return settings
