@@ -38,6 +38,7 @@ func TokenCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
 
 	cmd.AddCommand(CreateCmd(ch))
+	cmd.AddCommand(DuplicateCmd(ch))
 	cmd.AddCommand(ListCmd(ch))
 	cmd.AddCommand(ShowCmd(ch))
 	cmd.AddCommand(ShowAccessCmd(ch))
