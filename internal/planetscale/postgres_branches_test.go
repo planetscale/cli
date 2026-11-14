@@ -761,6 +761,8 @@ func TestPostgresBranches_CreateWithStorage(t *testing.T) {
 		c.Assert(ok, qt.IsTrue, qt.Commentf("storage field should be a nested object"))
 		c.Assert(storage["minimum_storage_bytes"], qt.Equals, float64(10737418240))
 		c.Assert(storage["maximum_storage_bytes"], qt.Equals, float64(107374182400))
+		c.Assert(storage["storage_iops"], qt.Equals, float64(3000))
+		c.Assert(storage["storage_throughput_mibs"], qt.Equals, float64(125))
 
 		out := `{"id":"postgres-test-branch","name":"postgres-test-branch","created_at":"2021-01-14T10:19:23.000Z","updated_at":"2021-01-14T10:19:23.000Z", "region": {"slug": "us-west", "display_name": "US West"}}`
 		_, err = w.Write([]byte(out))
@@ -773,6 +775,8 @@ func TestPostgresBranches_CreateWithStorage(t *testing.T) {
 	ctx := context.Background()
 	minStorage := int64(10737418240)
 	maxStorage := int64(107374182400)
+	storageIOPS := int64(3000)
+	storageThroughput := int64(125)
 
 	branch, err := client.PostgresBranches.Create(ctx, &CreatePostgresBranchRequest{
 		Organization: "my-org",
@@ -781,8 +785,10 @@ func TestPostgresBranches_CreateWithStorage(t *testing.T) {
 		Name:         testPostgresBranch,
 		ParentBranch: "main",
 		Storage: &StorageConfig{
-			MinimumStorageBytes: &minStorage,
-			MaximumStorageBytes: &maxStorage,
+			MinimumStorageBytes:   &minStorage,
+			MaximumStorageBytes:   &maxStorage,
+			StorageIOPS:           &storageIOPS,
+			StorageThroughputMiBs: &storageThroughput,
 		},
 	})
 
