@@ -3,6 +3,9 @@ package token
 import (
 	"bytes"
 	"context"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -155,4 +158,63 @@ func TestServiceToken_CreateCmdWithTTL(t *testing.T) {
 
 	res := &ServiceTokenWithSecret{orig: orig}
 	c.Assert(buf.String(), qt.JSONEquals, res)
+}
+
+func TestServiceToken_DuplicateCmd(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	sourceID := "123456"
+	name := "copy-token"
+	secret := "d2980bbd91a4ab878601ef0573a7af7b1b15e705"
+	newID := "654321"
+	createdAt := time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC)
+
+	var requests int
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		c.Assert(r.Method, qt.Equals, http.MethodPost)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/planetscale/service-tokens/123456/duplicate")
+		c.Assert(r.Header.Get("Authorization"), qt.Equals, "Bearer test-token")
+		body, err := io.ReadAll(r.Body)
+		c.Assert(err, qt.IsNil)
+		c.Assert(string(body), qt.Equals, "{\"name\":\"copy-token\"}\n")
+
+		_, err = io.WriteString(w, `{"id":"654321","type":"ServiceToken","token":"d2980bbd91a4ab878601ef0573a7af7b1b15e705","name":"copy-token","created_at":"2025-01-15T10:30:00.000Z"}`)
+		c.Assert(err, qt.IsNil)
+	}))
+	t.Cleanup(ts.Close)
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: org,
+			AccessToken:  "test-token",
+		},
+		Client: func() (*ps.Client, error) {
+			return ps.NewClient(ps.WithBaseURL(ts.URL), ps.WithAccessToken("test-token"))
+		},
+	}
+
+	cmd := TokenCmd(ch)
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	cmd.SetArgs([]string{"duplicate", sourceID, "--name", name, "--org", org})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(requests, qt.Equals, 1)
+
+	tokenName := name
+	orig := &ps.ServiceToken{
+		ID:        newID,
+		Type:      "ServiceToken",
+		Token:     secret,
+		Name:      &tokenName,
+		CreatedAt: createdAt,
+	}
+	c.Assert(buf.String(), qt.JSONEquals, &ServiceTokenWithSecret{orig: orig})
 }

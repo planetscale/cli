@@ -13,6 +13,7 @@ var _ ServiceTokenService = &serviceTokenService{}
 // Service Token API.
 type ServiceTokenService interface {
 	Create(context.Context, *CreateServiceTokenRequest) (*ServiceToken, error)
+	Duplicate(context.Context, *DuplicateServiceTokenRequest) (*ServiceToken, error)
 	Get(context.Context, *GetServiceTokenRequest) (*ServiceToken, error)
 	List(context.Context, *ListServiceTokensRequest) ([]*ServiceToken, error)
 	ListGrants(context.Context, *ListServiceTokenGrantsRequest) ([]*ServiceTokenGrant, error)
@@ -28,6 +29,20 @@ type serviceTokenService struct {
 
 func (s *serviceTokenService) Create(ctx context.Context, createReq *CreateServiceTokenRequest) (*ServiceToken, error) {
 	req, err := s.client.newRequest(http.MethodPost, serviceTokensAPIPath(createReq.Organization), createReq)
+	if err != nil {
+		return nil, err
+	}
+
+	st := &ServiceToken{}
+	if err := s.client.do(ctx, req, &st); err != nil {
+		return nil, err
+	}
+
+	return st, nil
+}
+
+func (s *serviceTokenService) Duplicate(ctx context.Context, dupReq *DuplicateServiceTokenRequest) (*ServiceToken, error) {
+	req, err := s.client.newRequest(http.MethodPost, path.Join(serviceTokenAPIPath(dupReq.Organization, dupReq.ID), "duplicate"), dupReq)
 	if err != nil {
 		return nil, err
 	}
@@ -131,6 +146,12 @@ type CreateServiceTokenRequest struct {
 	Organization string  `json:"-"`
 	Name         *string `json:"name,omitempty"`
 	TTL          *int    `json:"ttl,omitempty"`
+}
+
+type DuplicateServiceTokenRequest struct {
+	Organization string `json:"-"`
+	ID           string `json:"-"`
+	Name         string `json:"name"`
 }
 
 type GetServiceTokenRequest struct {
