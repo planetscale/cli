@@ -3,6 +3,7 @@ package token
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/planetscale/cli/internal/cmdutil"
@@ -38,6 +39,7 @@ func TokenCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.MarkPersistentFlagRequired("org") // nolint:errcheck
 
 	cmd.AddCommand(CreateCmd(ch))
+	cmd.AddCommand(UpdateCmd(ch))
 	cmd.AddCommand(DuplicateCmd(ch))
 	cmd.AddCommand(ListCmd(ch))
 	cmd.AddCommand(ShowCmd(ch))
@@ -52,6 +54,7 @@ func TokenCmd(ch *cmdutil.Helper) *cobra.Command {
 type ServiceToken struct {
 	ID                   string `header:"id" json:"id"`
 	Name                 string `header:"name" json:"name"`
+	CIDRs                string `header:"cidrs"`
 	LastUsedAt           int64  `header:"last_used_at,timestamp(ms|utc|human)" json:"last_used_at"`
 	LastUsedIP           string `header:"last_used_ip" json:"last_used_ip"`
 	LastUsedOrganization string `header:"last_used_organization" json:"last_used_organization"`
@@ -88,6 +91,7 @@ func toServiceToken(st *ps.ServiceToken) *ServiceToken {
 	return &ServiceToken{
 		ID:                   st.ID,
 		Name:                 name,
+		CIDRs:                formatCIDRs(st.CIDRs),
 		LastUsedAt:           lastUsedAt,
 		LastUsedIP:           derefString(st.LastUsedIP),
 		LastUsedOrganization: derefString(st.LastUsedAsnOrganization),
@@ -95,6 +99,10 @@ func toServiceToken(st *ps.ServiceToken) *ServiceToken {
 		CreatedAt:            printer.GetMilliseconds(st.CreatedAt),
 		orig:                 st,
 	}
+}
+
+func formatCIDRs(cidrs []string) string {
+	return strings.Join(cidrs, ", ")
 }
 
 func derefString(value *string) string {
@@ -107,6 +115,7 @@ func derefString(value *string) string {
 type ServiceTokenDetails struct {
 	ID                   string `header:"id"`
 	Name                 string `header:"name"`
+	CIDRs                string `header:"cidrs"`
 	LastUsedAt           int64  `header:"last_used_at,timestamp(ms|utc|human)"`
 	LastUsedIP           string `header:"last_used_ip"`
 	LastUsedOrganization string `header:"last_used_organization"`
@@ -125,6 +134,7 @@ func (s *ServiceTokenDetails) MarshalJSON() ([]byte, error) {
 		LastUsedIP              *string    `json:"last_used_ip"`
 		LastUsedAsnOrganization *string    `json:"last_used_asn_organization"`
 		ExpiresAt               *time.Time `json:"expires_at"`
+		CIDRs                   []string   `json:"cidrs"`
 	}{
 		ID:                      s.orig.ID,
 		Name:                    s.orig.Name,
@@ -133,6 +143,7 @@ func (s *ServiceTokenDetails) MarshalJSON() ([]byte, error) {
 		LastUsedIP:              s.orig.LastUsedIP,
 		LastUsedAsnOrganization: s.orig.LastUsedAsnOrganization,
 		ExpiresAt:               s.orig.ExpiresAt,
+		CIDRs:                   s.orig.CIDRs,
 	}, "", "  ")
 }
 
@@ -142,6 +153,7 @@ func toServiceTokenDetails(st *ps.ServiceToken) *ServiceTokenDetails {
 	return &ServiceTokenDetails{
 		ID:                   token.ID,
 		Name:                 token.Name,
+		CIDRs:                token.CIDRs,
 		LastUsedAt:           token.LastUsedAt,
 		LastUsedIP:           token.LastUsedIP,
 		LastUsedOrganization: token.LastUsedOrganization,
@@ -155,6 +167,7 @@ func toServiceTokenDetails(st *ps.ServiceToken) *ServiceTokenDetails {
 type ServiceTokenWithSecret struct {
 	ID        string `header:"id" json:"id"`
 	Name      string `header:"name" json:"name"`
+	CIDRs     string `header:"cidrs"`
 	Token     string `header:"token" json:"token"`
 	ExpiresAt int64  `header:"expires_at,timestamp(ms|utc|human)" json:"expires_at"`
 	CreatedAt int64  `header:"created_at,timestamp(ms|utc|human)" json:"created_at"`
@@ -181,6 +194,7 @@ func toServiceTokenWithSecret(st *ps.ServiceToken) *ServiceTokenWithSecret {
 	return &ServiceTokenWithSecret{
 		ID:        st.ID,
 		Name:      name,
+		CIDRs:     formatCIDRs(st.CIDRs),
 		Token:     st.Token,
 		ExpiresAt: expiresAt,
 		CreatedAt: printer.GetMilliseconds(st.CreatedAt),

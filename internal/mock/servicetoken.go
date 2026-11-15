@@ -19,6 +19,9 @@ type ServiceTokenService struct {
 	ListFn        func(context.Context, *ps.ListServiceTokensRequest) ([]*ps.ServiceToken, error)
 	ListFnInvoked bool
 
+	UpdateFn        func(context.Context, *ps.UpdateServiceTokenRequest) (*ps.ServiceToken, error)
+	UpdateFnInvoked bool
+
 	DeleteFn        func(context.Context, *ps.DeleteServiceTokenRequest) error
 	DeleteFnInvoked bool
 
@@ -53,6 +56,11 @@ func (s *ServiceTokenService) Get(ctx context.Context, req *ps.GetServiceTokenRe
 func (s *ServiceTokenService) List(ctx context.Context, req *ps.ListServiceTokensRequest) ([]*ps.ServiceToken, error) {
 	s.ListFnInvoked = true
 	return s.ListFn(ctx, req)
+}
+
+func (s *ServiceTokenService) Update(ctx context.Context, req *ps.UpdateServiceTokenRequest) (*ps.ServiceToken, error) {
+	s.UpdateFnInvoked = true
+	return s.UpdateFn(ctx, req)
 }
 
 func (s *ServiceTokenService) Delete(ctx context.Context, req *ps.DeleteServiceTokenRequest) error {

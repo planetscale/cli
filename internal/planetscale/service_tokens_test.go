@@ -95,6 +95,91 @@ func TestServiceTokens_CreateWithTTL(t *testing.T) {
 	c.Assert(snapshot, qt.DeepEquals, want)
 }
 
+func TestServiceTokens_CreateWithCIDRs(t *testing.T) {
+	c := qt.New(t)
+
+	wantBody := []byte("{\"cidrs\":[\"203.0.113.0/24\",\"198.51.100.10\"]}\n")
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodPost)
+		data, err := io.ReadAll(r.Body)
+		c.Assert(err, qt.IsNil)
+		c.Assert(data, qt.DeepEquals, wantBody)
+
+		out := `{"id":"test-id","type":"ServiceToken","token":"secret","created_at":"2021-01-14T10:19:23.000Z","cidrs":["203.0.113.0/24","198.51.100.10"]}`
+		_, err = w.Write([]byte(out))
+		c.Assert(err, qt.IsNil)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	cidrs := []string{"203.0.113.0/24", "198.51.100.10"}
+	snapshot, err := client.ServiceTokens.Create(context.Background(), &CreateServiceTokenRequest{
+		Organization: testOrg,
+		CIDRs:        &cidrs,
+	})
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(snapshot.CIDRs, qt.DeepEquals, cidrs)
+}
+
+func TestServiceTokens_UpdateCIDRs(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodPatch)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/service-tokens/1234")
+
+		data, err := io.ReadAll(r.Body)
+		c.Assert(err, qt.IsNil)
+		c.Assert(data, qt.DeepEquals, []byte("{\"cidrs\":[\"203.0.113.10/32\"]}\n"))
+
+		_, err = w.Write([]byte(`{"id":"1234","cidrs":["203.0.113.10/32"],"created_at":"2021-01-14T10:19:23.000Z"}`))
+		c.Assert(err, qt.IsNil)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	cidrs := []string{"203.0.113.10/32"}
+	token, err := client.ServiceTokens.Update(context.Background(), &UpdateServiceTokenRequest{
+		Organization: testOrg,
+		ID:           "1234",
+		CIDRs:        &cidrs,
+	})
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(token.ID, qt.Equals, "1234")
+	c.Assert(token.CIDRs, qt.DeepEquals, []string{"203.0.113.10/32"})
+}
+
+func TestServiceTokens_UpdateClearsCIDRs(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		data, err := io.ReadAll(r.Body)
+		c.Assert(err, qt.IsNil)
+		c.Assert(data, qt.DeepEquals, []byte("{\"cidrs\":[]}\n"))
+
+		_, err = w.Write([]byte(`{"id":"1234","cidrs":[],"created_at":"2021-01-14T10:19:23.000Z"}`))
+		c.Assert(err, qt.IsNil)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	cidrs := []string{}
+	token, err := client.ServiceTokens.Update(context.Background(), &UpdateServiceTokenRequest{
+		Organization: testOrg,
+		ID:           "1234",
+		CIDRs:        &cidrs,
+	})
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(token.CIDRs, qt.HasLen, 0)
+}
+
 func TestServiceTokens_Get(t *testing.T) {
 	c := qt.New(t)
 

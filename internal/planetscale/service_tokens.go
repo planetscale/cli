@@ -17,6 +17,7 @@ type ServiceTokenService interface {
 	Get(context.Context, *GetServiceTokenRequest) (*ServiceToken, error)
 	List(context.Context, *ListServiceTokensRequest) ([]*ServiceToken, error)
 	ListGrants(context.Context, *ListServiceTokenGrantsRequest) ([]*ServiceTokenGrant, error)
+	Update(context.Context, *UpdateServiceTokenRequest) (*ServiceToken, error)
 	Delete(context.Context, *DeleteServiceTokenRequest) error
 	GetAccess(context.Context, *GetServiceTokenAccessRequest) ([]*ServiceTokenAccess, error)
 	AddAccess(context.Context, *AddServiceTokenAccessRequest) ([]*ServiceTokenAccess, error)
@@ -83,6 +84,20 @@ func (s *serviceTokenService) List(ctx context.Context, listReq *ListServiceToke
 	return tokenListResponse.ServiceTokens, nil
 }
 
+func (s *serviceTokenService) Update(ctx context.Context, updateReq *UpdateServiceTokenRequest) (*ServiceToken, error) {
+	req, err := s.client.newRequest(http.MethodPatch, serviceTokenAPIPath(updateReq.Organization, updateReq.ID), updateReq)
+	if err != nil {
+		return nil, err
+	}
+
+	st := &ServiceToken{}
+	if err := s.client.do(ctx, req, st); err != nil {
+		return nil, err
+	}
+
+	return st, nil
+}
+
 func (s *serviceTokenService) Delete(ctx context.Context, delReq *DeleteServiceTokenRequest) error {
 	req, err := s.client.newRequest(http.MethodDelete, serviceTokenAPIPath(delReq.Organization, delReq.ID), nil)
 	if err != nil {
@@ -146,6 +161,17 @@ type CreateServiceTokenRequest struct {
 	Organization string  `json:"-"`
 	Name         *string `json:"name,omitempty"`
 	TTL          *int    `json:"ttl,omitempty"`
+	// CIDRs sets IP restrictions when non-nil. Nil omits the field.
+	CIDRs *[]string `json:"cidrs,omitempty"`
+}
+
+// UpdateServiceTokenRequest replaces a service token's IP restrictions.
+// Only CIDRs is sent. A pointer to an empty slice clears the restriction;
+// nil omits the field.
+type UpdateServiceTokenRequest struct {
+	Organization string    `json:"-"`
+	ID           string    `json:"-"`
+	CIDRs        *[]string `json:"cidrs,omitempty"`
 }
 
 type DuplicateServiceTokenRequest struct {
@@ -202,6 +228,7 @@ type ServiceToken struct {
 	LastUsedIP              *string    `json:"last_used_ip"`
 	LastUsedAsnOrganization *string    `json:"last_used_asn_organization"`
 	ExpiresAt               *time.Time `json:"expires_at"`
+	CIDRs                   []string   `json:"cidrs"`
 }
 
 type ServiceTokenGrant struct {

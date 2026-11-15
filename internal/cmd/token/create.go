@@ -12,10 +12,13 @@ import (
 func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	var name string
 	var ttl int
+	var cidrs []string
 
 	cmd := &cobra.Command{
 		Use:   "create",
 		Short: "create a service token for the organization",
+		Example: `  pscale service-token create --name ci --cidrs 10.0.0.0/8,192.168.1.1/32
+  pscale service-token create --name ci`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			client, err := ch.Client()
@@ -27,6 +30,10 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 				Organization: ch.Config.Organization,
 				Name:         stringPtrOrNil(name),
 				TTL:          intPtrOrNil(ttl),
+			}
+			if cmd.Flags().Changed("cidrs") {
+				normalized := normalizeCIDRs(cidrs)
+				req.CIDRs = &normalized
 			}
 
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Creating service token in org %s", printer.BoldBlue(ch.Config.Organization)))
@@ -50,6 +57,8 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	cmd.Flags().StringVar(&name, "name", "", "optional name for the service token")
 	cmd.Flags().IntVar(&ttl, "ttl", 0, "Time to live (in seconds) for the service token. The token will be invalid when TTL has passed")
+	cmd.Flags().StringSliceVar(&cidrs, "cidrs", nil,
+		"IP addresses and CIDR ranges allowed to use this service token. Omit to leave the token unrestricted")
 
 	return cmd
 }
