@@ -10,6 +10,9 @@ type ServiceTokenService struct {
 	CreateFn        func(context.Context, *ps.CreateServiceTokenRequest) (*ps.ServiceToken, error)
 	CreateFnInvoked bool
 
+	UpdateFn        func(context.Context, *ps.UpdateServiceTokenRequest) (*ps.ServiceToken, error)
+	UpdateFnInvoked bool
+
 	DuplicateFn        func(context.Context, *ps.DuplicateServiceTokenRequest) (*ps.ServiceToken, error)
 	DuplicateFnInvoked bool
 
@@ -38,6 +41,11 @@ type ServiceTokenService struct {
 func (s *ServiceTokenService) Create(ctx context.Context, req *ps.CreateServiceTokenRequest) (*ps.ServiceToken, error) {
 	s.CreateFnInvoked = true
 	return s.CreateFn(ctx, req)
+}
+
+func (s *ServiceTokenService) Update(ctx context.Context, req *ps.UpdateServiceTokenRequest) (*ps.ServiceToken, error) {
+	s.UpdateFnInvoked = true
+	return s.UpdateFn(ctx, req)
 }
 
 func (s *ServiceTokenService) Duplicate(ctx context.Context, req *ps.DuplicateServiceTokenRequest) (*ps.ServiceToken, error) {
