@@ -16,10 +16,12 @@ const (
 	DatabaseEngineNeki     DatabaseEngine = "neki"
 )
 
-// StorageConfig represents storage size configuration for a database or branch.
+// StorageConfig represents storage configuration for a database or branch.
 type StorageConfig struct {
-	MinimumStorageBytes *int64 `json:"minimum_storage_bytes,omitempty"`
-	MaximumStorageBytes *int64 `json:"maximum_storage_bytes,omitempty"`
+	MinimumStorageBytes   *int64 `json:"minimum_storage_bytes,omitempty"`
+	MaximumStorageBytes   *int64 `json:"maximum_storage_bytes,omitempty"`
+	StorageIOPS           *int64 `json:"storage_iops,omitempty"`
+	StorageThroughputMiBs *int64 `json:"storage_throughput_mibs,omitempty"`
 }
 
 // CreateDatabaseRequest encapsulates the request for creating a new database.

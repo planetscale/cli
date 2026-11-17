@@ -94,6 +94,11 @@ func TestBackup_RestoreCmd_PostgreSQL(t *testing.T) {
 			c.Assert(req.ClusterName, qt.Equals, "PS-20")
 			c.Assert(req.Replicas, qt.IsNotNil)
 			c.Assert(*req.Replicas, qt.Equals, 2)
+			c.Assert(req.Storage, qt.IsNotNil)
+			c.Assert(req.Storage.StorageIOPS, qt.IsNotNil)
+			c.Assert(*req.Storage.StorageIOPS, qt.Equals, int64(4000))
+			c.Assert(req.Storage.StorageThroughputMiBs, qt.IsNotNil)
+			c.Assert(*req.Storage.StorageThroughputMiBs, qt.Equals, int64(250))
 			return res, nil
 		},
 	}
@@ -120,7 +125,7 @@ func TestBackup_RestoreCmd_PostgreSQL(t *testing.T) {
 	}
 
 	cmd := RestoreCmd(ch)
-	cmd.SetArgs([]string{db, branch, backup, "--cluster-size", "PS-20", "--replicas", "2"})
+	cmd.SetArgs([]string{db, branch, backup, "--cluster-size", "PS-20", "--replicas", "2", "--storage-iops", "4000", "--storage-throughput", "250"})
 	err := cmd.Execute()
 
 	c.Assert(err, qt.IsNil)
@@ -299,5 +304,29 @@ func TestBackup_RestoreCmd_RejectsNekiSizingOnMySQL(t *testing.T) {
 	cmd := RestoreCmd(ch)
 	cmd.SetArgs([]string{"planetscale", "restore-branch", "mybackup", "--router", "name=default,size=NKR_20"})
 	c.Assert(cmd.Execute(), qt.ErrorMatches, `.*only supported for Neki backup restores`)
+	c.Assert(svc.CreateFnInvoked, qt.IsFalse)
+}
+
+func TestBackup_RestoreCmd_RejectsStoragePerformanceOnNeki(t *testing.T) {
+	c := qt.New(t)
+
+	svc := &mock.PostgresBranchesService{}
+	dbSvc := &mock.DatabaseService{
+		GetFn: func(ctx context.Context, req *ps.GetDatabaseRequest) (*ps.Database, error) {
+			return &ps.Database{Kind: ps.DatabaseEngineNeki}, nil
+		},
+	}
+	format := printer.JSON
+	ch := &cmdutil.Helper{
+		Printer: printer.NewPrinter(&format),
+		Config:  &config.Config{Organization: "planetscale"},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{PostgresBranches: svc, Databases: dbSvc}, nil
+		},
+	}
+
+	cmd := RestoreCmd(ch)
+	cmd.SetArgs([]string{"planetscale", "restore-branch", "mybackup", "--storage-iops", "4000"})
+	c.Assert(cmd.Execute(), qt.ErrorMatches, `.*only supported for PostgreSQL backup restores`)
 	c.Assert(svc.CreateFnInvoked, qt.IsFalse)
 }
