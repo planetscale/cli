@@ -134,6 +134,9 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			if err := cmdutil.EnsureNekiRestoreSizing(db.Kind, flags.backupID != "" || flags.restorePoint != "", flags.dataBranching, len(flags.configProfiles) > 0 || len(flags.routers) > 0); err != nil {
 				return err
 			}
+			if db.Kind != ps.DatabaseEnginePostgres && (cmd.Flags().Changed("storage-iops") || cmd.Flags().Changed("storage-throughput")) {
+				return fmt.Errorf("--storage-iops and --storage-throughput are only supported for PostgreSQL databases")
+			}
 
 			if db.Kind == "mysql" {
 				if cmd.Flags().Changed("replicas") {
@@ -141,9 +144,6 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 				}
 				if cmd.Flags().Changed("min-storage") || cmd.Flags().Changed("max-storage") {
 					return fmt.Errorf("--min-storage and --max-storage are only supported for PostgreSQL databases")
-				}
-				if cmd.Flags().Changed("storage-iops") || cmd.Flags().Changed("storage-throughput") {
-					return fmt.Errorf("--storage-iops and --storage-throughput are only supported for PostgreSQL databases")
 				}
 				if flags.restorePoint != "" {
 					return fmt.Errorf("--restore-point is only supported for PostgreSQL databases")

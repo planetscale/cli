@@ -14,8 +14,10 @@ import (
 
 func RestoreCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
-		clusterSize string
-		replicas    int
+		clusterSize       string
+		replicas          int
+		storageIOPS       int64
+		storageThroughput int64
 	}
 	var configProfiles []string
 	var routers []string
@@ -58,6 +60,9 @@ Preview Neki restore sizes from the source branch with:
 
 			if err := cmdutil.EnsureNekiRestoreSizing(db.Kind, true, false, len(configProfiles) > 0 || len(routers) > 0); err != nil {
 				return err
+			}
+			if db.Kind != planetscale.DatabaseEnginePostgres && (cmd.Flags().Changed("storage-iops") || cmd.Flags().Changed("storage-throughput")) {
+				return fmt.Errorf("--storage-iops and --storage-throughput are only supported for PostgreSQL backup restores")
 			}
 
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Restoring backup %s to %s", printer.BoldBlue(backup), printer.BoldBlue(branchName)))
@@ -102,6 +107,15 @@ Preview Neki restore sizes from the source branch with:
 					replicas := flags.replicas
 					createReq.Replicas = &replicas
 				}
+				if cmd.Flags().Changed("storage-iops") || cmd.Flags().Changed("storage-throughput") {
+					createReq.Storage = &planetscale.StorageConfig{}
+					if cmd.Flags().Changed("storage-iops") {
+						createReq.Storage.StorageIOPS = &flags.storageIOPS
+					}
+					if cmd.Flags().Changed("storage-throughput") {
+						createReq.Storage.StorageThroughputMiBs = &flags.storageThroughput
+					}
+				}
 				if err := cmdutil.ApplyNekiRestoreSizing(createReq, configProfiles, routers); err != nil {
 					return err
 				}
@@ -119,6 +133,8 @@ Preview Neki restore sizes from the source branch with:
 
 	cmd.Flags().StringVar(&flags.clusterSize, "cluster-size", "PS-10", "Cluster size for restored backup branch. For Neki, omitted unless set so the source default profile size is used. Use `pscale size cluster list` to see the valid sizes.")
 	cmd.Flags().IntVar(&flags.replicas, "replicas", 0, "Number of additional replicas for a PostgreSQL restore. 0 creates a single-node branch; omit to use the target cluster size default.")
+	cmd.Flags().Int64Var(&flags.storageIOPS, "storage-iops", 0, "Storage IOPS for a PostgreSQL restore.")
+	cmd.Flags().Int64Var(&flags.storageThroughput, "storage-throughput", 0, "Storage throughput in MiB/s for a PostgreSQL restore.")
 	cmd.Flags().StringArrayVar(&configProfiles, "config-profile", nil, cmdutil.ConfigProfileSizeFlagHelp)
 	cmd.Flags().StringArrayVar(&routers, "router", nil, cmdutil.RouterSizeFlagHelp)
 	cmd.RegisterFlagCompletionFunc("cluster-size", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
