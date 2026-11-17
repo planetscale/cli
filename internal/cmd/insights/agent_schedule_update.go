@@ -83,7 +83,7 @@ Flags that are not passed keep their current value.`,
 			if ch.Printer.Format() == printer.JSON {
 				return ch.Printer.PrintJSON(schedule)
 			}
-			return ch.Printer.PrintResource(agentScheduleRow(schedule))
+			return ch.Printer.PrintResource([]*AgentScheduleRow{agentScheduleRow(schedule)})
 		},
 	}
 
