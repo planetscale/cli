@@ -371,6 +371,13 @@ pscale insights tags summaries <database> <branch> --org <org> --format json --t
 pscale insights recommendations <database> --org <org> --format json                     # schema recommendations with ready-to-apply DDL
 pscale insights recommendations show <database> <number> --org <org> --format json        # one recommendation plus full DDL (number from list)
 pscale insights recommendations dismiss <database> <number> --org <org> --format json --force  # dismiss a recommendation
+pscale insights agent runs <database> <branch> --org <org> --format json                  # Insights Agent runs, newest first
+pscale insights agent runs show <database> <branch> <number> --org <org> --format json    # one run with its stages and pull request
+pscale insights agent runs create <database> <branch> --org <org> --format json --fingerprint <fingerprint> --keyspace <keyspace>  # review up to 5 slow queries
+pscale insights agent runs create <database> <branch> --org <org> --format json --schema-recommendation <number>  # implement up to 5 recommendations
+pscale insights agent runs cancel <database> <branch> <number> --org <org> --format json --force
+pscale insights agent schedules <database> <branch> --org <org> --format json
+pscale insights agent schedules update <database> <branch> <run-type> --org <org> --format json --enabled --frequency week --day-of-week 1 --time 03:00 --time-zone UTC
 pscale branch query-patterns list <database> <branch> --org <org> --format json
 pscale branch query-patterns show <database> <branch> <report-id> --org <org> --format json
 pscale branch query-patterns delete <database> <branch> <report-id> --org <org> --format json --force
