@@ -1,8 +1,8 @@
 package token
 
 import (
-	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/planetscale/cli/internal/cmdutil"
@@ -11,42 +11,58 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// UpdateCmd replaces the IP restrictions on a service token.
 func UpdateCmd(ch *cmdutil.Helper) *cobra.Command {
+	var name string
+	var ttl string
 	var cidrs []string
 
 	cmd := &cobra.Command{
 		Use:   "update <id>",
-		Short: "Update a service token's IP restrictions",
-		Long: `Update the IP addresses and CIDR ranges allowed to use a service token.
-
-This does not rotate the token. Pass an empty --cidrs value to remove all restrictions.`,
-		Example: `  pscale service-token update <token id> --cidrs 10.0.0.0/8,192.168.1.1/32
+		Short: "update a service token's name, expiry, or IP restrictions",
+		Long:  "Update a service token's name, expiry, or IP restrictions. This does not rotate the token secret or change its id or grants.",
+		Example: `  pscale service-token update <token id> --name ci --ttl 3600
+  pscale service-token update <token id> --cidrs 10.0.0.0/8,192.168.1.1/32
   pscale service-token update <token id> --cidrs ""`,
 		Args: cmdutil.RequiredArgs("id"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			id := args[0]
-
-			if !cmd.Flags().Changed("cidrs") {
-				return errors.New("--cidrs must be provided")
-			}
-
 			client, err := ch.Client()
 			if err != nil {
 				return err
+			}
+
+			id := args[0]
+			nameSet := cmd.Flags().Changed("name")
+			ttlSet := cmd.Flags().Changed("ttl")
+			cidrsSet := cmd.Flags().Changed("cidrs")
+			if !nameSet && !ttlSet && !cidrsSet {
+				return fmt.Errorf("at least one of --name, --ttl, or --cidrs must be provided")
+			}
+
+			req := &planetscale.UpdateServiceTokenRequest{
+				Organization: ch.Config.Organization,
+				ID:           id,
+			}
+			if nameSet {
+				req.Name = &name
+			}
+			if ttlSet {
+				parsed, err := serviceTokenTTL(ttl)
+				if err != nil {
+					return err
+				}
+				req.TTL = parsed
+			}
+			if cidrsSet {
+				normalized := normalizeCIDRs(cidrs)
+				req.CIDRs = &normalized
 			}
 
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Updating service token %s in org %s",
 				printer.BoldBlue(id), printer.BoldBlue(ch.Config.Organization)))
 			defer end()
 
-			normalized := normalizeCIDRs(cidrs)
-			token, err := client.ServiceTokens.Update(ctx, &planetscale.UpdateServiceTokenRequest{
-				Organization: ch.Config.Organization,
-				ID:           id,
-				CIDRs:        &normalized,
-			})
+			token, err := client.ServiceTokens.Update(ctx, req)
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
 				case planetscale.ErrNotFound:
@@ -59,24 +75,40 @@ This does not rotate the token. Pass an empty --cidrs value to remove all restri
 
 			end()
 
-			if ch.Printer.Format() == printer.Human {
-				ch.Printer.Printf("Service token %s was successfully updated.\n", printer.BoldBlue(token.ID))
+			if err := ch.Printer.PrintResource(toServiceTokenDetails(token)); err != nil {
+				return err
+			}
+			if ch.Printer.Format() == printer.Human && cidrsSet {
 				if len(token.CIDRs) == 0 {
 					ch.Printer.Println("IP restrictions: none")
 				} else {
 					ch.Printer.Printf("IP restrictions: %s\n", strings.Join(token.CIDRs, ", "))
 				}
-				return nil
 			}
-
-			return ch.Printer.PrintResource(toServiceTokenDetails(token))
+			return nil
 		},
 	}
 
+	cmd.Flags().StringVar(&name, "name", "", "new name for the service token. Omit to leave the name unchanged")
+	cmd.Flags().StringVar(&ttl, "ttl", "", `time to live in seconds, or "never" to remove the expiry. Omit to leave the expiry unchanged`)
 	cmd.Flags().StringSliceVar(&cidrs, "cidrs", nil,
 		"Replace the IP addresses and CIDR ranges allowed to use this service token. Pass an empty value to remove all restrictions")
 
 	return cmd
+}
+
+// serviceTokenTTL parses the same seconds unit as service-token create.
+// "never" clears the expiry. Create uses 0 for that and omits the field;
+// update cannot, because an omitted --ttl leaves the expiry alone.
+func serviceTokenTTL(v string) (*planetscale.UpdateServiceTokenTTL, error) {
+	if v == "never" {
+		return &planetscale.UpdateServiceTokenTTL{Never: true}, nil
+	}
+	seconds, err := strconv.Atoi(v)
+	if err != nil {
+		return nil, fmt.Errorf(`--ttl must be a number of seconds or "never"`)
+	}
+	return &planetscale.UpdateServiceTokenTTL{Seconds: seconds}, nil
 }
 
 // normalizeCIDRs drops the empty entries produced by flags like --cidrs "" so

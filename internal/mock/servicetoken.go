@@ -10,6 +10,9 @@ type ServiceTokenService struct {
 	CreateFn        func(context.Context, *ps.CreateServiceTokenRequest) (*ps.ServiceToken, error)
 	CreateFnInvoked bool
 
+	UpdateFn        func(context.Context, *ps.UpdateServiceTokenRequest) (*ps.ServiceToken, error)
+	UpdateFnInvoked bool
+
 	DuplicateFn        func(context.Context, *ps.DuplicateServiceTokenRequest) (*ps.ServiceToken, error)
 	DuplicateFnInvoked bool
 
@@ -18,9 +21,6 @@ type ServiceTokenService struct {
 
 	ListFn        func(context.Context, *ps.ListServiceTokensRequest) ([]*ps.ServiceToken, error)
 	ListFnInvoked bool
-
-	UpdateFn        func(context.Context, *ps.UpdateServiceTokenRequest) (*ps.ServiceToken, error)
-	UpdateFnInvoked bool
 
 	DeleteFn        func(context.Context, *ps.DeleteServiceTokenRequest) error
 	DeleteFnInvoked bool
@@ -43,6 +43,11 @@ func (s *ServiceTokenService) Create(ctx context.Context, req *ps.CreateServiceT
 	return s.CreateFn(ctx, req)
 }
 
+func (s *ServiceTokenService) Update(ctx context.Context, req *ps.UpdateServiceTokenRequest) (*ps.ServiceToken, error) {
+	s.UpdateFnInvoked = true
+	return s.UpdateFn(ctx, req)
+}
+
 func (s *ServiceTokenService) Duplicate(ctx context.Context, req *ps.DuplicateServiceTokenRequest) (*ps.ServiceToken, error) {
 	s.DuplicateFnInvoked = true
 	return s.DuplicateFn(ctx, req)
@@ -56,11 +61,6 @@ func (s *ServiceTokenService) Get(ctx context.Context, req *ps.GetServiceTokenRe
 func (s *ServiceTokenService) List(ctx context.Context, req *ps.ListServiceTokensRequest) ([]*ps.ServiceToken, error) {
 	s.ListFnInvoked = true
 	return s.ListFn(ctx, req)
-}
-
-func (s *ServiceTokenService) Update(ctx context.Context, req *ps.UpdateServiceTokenRequest) (*ps.ServiceToken, error) {
-	s.UpdateFnInvoked = true
-	return s.UpdateFn(ctx, req)
 }
 
 func (s *ServiceTokenService) Delete(ctx context.Context, req *ps.DeleteServiceTokenRequest) error {

@@ -59,6 +59,7 @@ type Client struct {
 	DatabaseBranches               DatabaseBranchesService
 	Databases                      DatabasesService
 	DeployRequests                 DeployRequestsService
+	InsightsAgent                  InsightsAgentService
 	Invoices                       InvoicesService
 	Keyspaces                      KeyspacesService
 	Logs                           LogsService
@@ -367,6 +368,7 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 	c.DatabaseBranches = &databaseBranchesService{client: c}
 	c.Databases = &databasesService{client: c}
 	c.DeployRequests = &deployRequestsService{client: c}
+	c.InsightsAgent = &insightsAgentService{client: c}
 	c.Invoices = &invoicesService{client: c}
 	c.Keyspaces = &keyspacesService{client: c}
 	c.Logs = &logsService{client: c}

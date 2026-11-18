@@ -134,7 +134,7 @@ func (s *ServiceTokenDetails) MarshalJSON() ([]byte, error) {
 		LastUsedIP              *string    `json:"last_used_ip"`
 		LastUsedAsnOrganization *string    `json:"last_used_asn_organization"`
 		ExpiresAt               *time.Time `json:"expires_at"`
-		CIDRs                   []string   `json:"cidrs"`
+		CIDRs                   []string   `json:"cidrs,omitempty"`
 	}{
 		ID:                      s.orig.ID,
 		Name:                    s.orig.Name,

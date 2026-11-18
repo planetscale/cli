@@ -91,7 +91,7 @@ func TestServiceToken_UpdateCmdRequiresCIDRs(t *testing.T) {
 	err := cmd.Execute()
 
 	c.Assert(err, qt.IsNotNil)
-	c.Assert(err.Error(), qt.Contains, "--cidrs must be provided")
+	c.Assert(err.Error(), qt.Contains, "at least one of --name, --ttl, or --cidrs must be provided")
 	c.Assert(svc.UpdateFnInvoked, qt.IsFalse)
 }
 
