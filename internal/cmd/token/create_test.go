@@ -226,7 +226,7 @@ func TestServiceToken_DuplicateCmd(t *testing.T) {
 		c.Assert(err, qt.IsNil)
 		c.Assert(string(body), qt.Equals, "{\"name\":\"copy-token\"}\n")
 
-		_, err = io.WriteString(w, `{"id":"654321","type":"ServiceToken","token":"d2980bbd91a4ab878601ef0573a7af7b1b15e705","name":"copy-token","created_at":"2025-01-15T10:30:00.000Z"}`)
+		_, err = io.WriteString(w, `{"id":"654321","type":"ServiceToken","token":"d2980bbd91a4ab878601ef0573a7af7b1b15e705","name":"copy-token","created_at":"2025-01-15T10:30:00.000Z","cidrs":["203.0.113.10/32"]}`)
 		c.Assert(err, qt.IsNil)
 	}))
 	t.Cleanup(ts.Close)
@@ -256,6 +256,7 @@ func TestServiceToken_DuplicateCmd(t *testing.T) {
 		Token:     secret,
 		Name:      &tokenName,
 		CreatedAt: createdAt,
+		CIDRs:     []string{"203.0.113.10/32"},
 	}
 	c.Assert(buf.String(), qt.JSONEquals, &ServiceTokenWithSecret{orig: orig})
 }
