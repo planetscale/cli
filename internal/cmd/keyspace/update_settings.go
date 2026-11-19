@@ -292,8 +292,9 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().Int64Var(&flags.storageThroughput, "storage-throughput", 0, "The provisioned throughput in MiB/s for each disk. Only available for keyspaces on AWS gp3 disks when configurable disk I/O is enabled for the organization. At least 125, and at most 0.25 MiB/s per provisioned IOPS, up to 2000. Applied asynchronously without replacing disks. AWS allows one change per disk every 6 hours, so further disk changes, including automatic disk growth, can be delayed for up to 6 hours.")
 	cmd.Flags().BoolVar(&flags.resetStorageIOPS, "reset-storage-iops", false, "Clear the IOPS override so the storage class default applies.")
 	cmd.Flags().BoolVar(&flags.resetStorageThroughput, "reset-storage-throughput", false, "Clear the throughput override so the storage class default applies.")
-	// Configurable disk IOPS and throughput are behind a feature flag on the
-	// API, so the flags stay hidden until they are generally available.
+	// Configurable disk IOPS and throughput are behind the
+	// vitess_storage_io_settings feature flag on the API. Keep these flags
+	// hidden until that feature flag is fully rolled out.
 	for _, name := range storageIOFlags {
 		_ = cmd.Flags().MarkHidden(name)
 	}
