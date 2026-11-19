@@ -44,6 +44,8 @@ func TestKeyspace_CreateCmd(t *testing.T) {
 			c.Assert(req.ClusterSize, qt.Equals, "PS-20")
 			c.Assert(req.ExtraReplicas, qt.Equals, 1)
 			c.Assert(req.Shards, qt.Equals, 2)
+			c.Assert(req.MaxRollout, qt.Not(qt.IsNil))
+			c.Assert(*req.MaxRollout, qt.Equals, 8)
 
 			return ks, nil
 		},
@@ -62,7 +64,7 @@ func TestKeyspace_CreateCmd(t *testing.T) {
 	}
 
 	cmd := CreateCmd(ch)
-	cmd.SetArgs([]string{db, branch, keyspace, "--cluster-size", "PS-20", "--shards", "2", "--additional-replicas", "1"})
+	cmd.SetArgs([]string{db, branch, keyspace, "--cluster-size", "PS-20", "--shards", "2", "--additional-replicas", "1", "--max-rollout", "8"})
 	err := cmd.Execute()
 	c.Assert(err, qt.IsNil)
 	c.Assert(svc.CreateFnInvoked, qt.IsTrue)
@@ -149,6 +151,7 @@ func TestKeyspace_CreateCmdOnlyClusterSize(t *testing.T) {
 			c.Assert(req.ClusterSize, qt.Equals, "PS-10")
 			c.Assert(req.ExtraReplicas, qt.Equals, 0)
 			c.Assert(req.Shards, qt.Equals, 1)
+			c.Assert(req.MaxRollout, qt.IsNil)
 
 			return ks, nil
 		},
@@ -172,4 +175,28 @@ func TestKeyspace_CreateCmdOnlyClusterSize(t *testing.T) {
 	c.Assert(err, qt.IsNil)
 	c.Assert(svc.CreateFnInvoked, qt.IsTrue)
 	c.Assert(buf.String(), qt.JSONEquals, ks)
+}
+
+func TestKeyspace_CreateCmdRejectsOutOfRangeMaxRollout(t *testing.T) {
+	c := qt.New(t)
+
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+
+	for _, arg := range []string{"--max-rollout=0", "--max-rollout=33", "--max-rollout=-1"} {
+		svc := &mock.KeyspacesService{}
+		ch := &cmdutil.Helper{
+			Printer: p,
+			Config:  &config.Config{Organization: "planetscale"},
+			Client: func() (*ps.Client, error) {
+				return &ps.Client{Keyspaces: svc}, nil
+			},
+		}
+
+		cmd := CreateCmd(ch)
+		cmd.SetArgs([]string{"planetscale", "main", "sharded", "--cluster-size", "PS-20", arg})
+		err := cmd.Execute()
+		c.Assert(err, qt.ErrorMatches, ".*max-rollout must be between 1 and 32")
+		c.Assert(svc.CreateFnInvoked, qt.IsFalse)
+	}
 }

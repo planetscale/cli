@@ -172,6 +172,9 @@ func TestKeyspaces_Create(t *testing.T) {
 		_, err := w.Write([]byte(out))
 		c.Assert(err, qt.IsNil)
 		c.Assert(r.Method, qt.Equals, http.MethodPost)
+		raw, err := io.ReadAll(r.Body)
+		c.Assert(err, qt.IsNil)
+		c.Assert(strings.TrimSpace(string(raw)), qt.Equals, `{"name":"qux","cluster_size":"small","extra_replicas":3,"shards":2}`)
 	}))
 
 	client, err := NewClient(WithBaseURL(ts.URL))
