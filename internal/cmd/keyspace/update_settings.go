@@ -213,15 +213,15 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 				}
 
 				if storageIOPSChanged {
-					updateReq.Storage.IOPS = &flags.storageIOPS
+					updateReq.Storage.StorageIOPS = &flags.storageIOPS
 				}
 
 				if storageThroughputChanged {
-					updateReq.Storage.ThroughputMiBs = &flags.storageThroughput
+					updateReq.Storage.StorageThroughputMiBs = &flags.storageThroughput
 				}
 
-				updateReq.Storage.ResetIOPS = resetStorageIOPS
-				updateReq.Storage.ResetThroughputMiBs = resetStorageThroughput
+				updateReq.Storage.ResetStorageIOPS = resetStorageIOPS
+				updateReq.Storage.ResetStorageThroughputMiBs = resetStorageThroughput
 			}
 
 			k, err := updateKeyspaceSettings(ctx, client, updateReq)
@@ -272,10 +272,16 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().StringVar(&flags.diskScalingStrategy, "disk-scaling-strategy", "grow", fmt.Sprintf("The disk scaling strategy (%s). 'grow' lets dedicated disks grow automatically up to --max-storage; 'disable' turns autoscaling off; 'shrink' recreates disks at --storage and then disables autoscaling.", strings.Join(diskScalingStrategies, ", ")))
 	cmd.Flags().StringVar(&flags.maxStorage, "max-storage", "", "The maximum size that dedicated disks may autoscale to, in bytes or with a unit such as 200GiB or 1TiB. Must be at least 12 GiB and no smaller than the current disk size. Cannot be raised above the organization default (4 TiB, or 16 TiB for managed tenancy). Read-only while PlanetScale staff have raised it above that default.")
 	cmd.Flags().StringVar(&flags.storage, "storage", "", "The disk size to recreate disks at, in bytes or with a unit such as 200GiB or 1TiB. Must be a multiple of 1 GiB. Only accepted when the disk scaling strategy is shrink, either passed with --disk-scaling-strategy or already set on the keyspace.")
-	cmd.Flags().Int64Var(&flags.storageIOPS, "storage-iops", 0, "The provisioned IOPS for each disk. Only available for keyspaces on AWS gp3 disks when configurable disk I/O is enabled for the organization. At least 3000, and at most 500 per GiB of the smallest disk. Capped at 10000 unless larger cluster sizes are enabled for the organization, and at 80000 overall. 'keyspace settings --format json' shows min_iops and max_iops. Applied without replacing disks.")
-	cmd.Flags().Int64Var(&flags.storageThroughput, "storage-throughput", 0, "The provisioned throughput in MiB/s for each disk. Only available for keyspaces on AWS gp3 disks when configurable disk I/O is enabled for the organization. At least 125, and at most 0.25 MiB/s per provisioned IOPS, up to 2000. Applied without replacing disks.")
+	cmd.Flags().Int64Var(&flags.storageIOPS, "storage-iops", 0, "The provisioned IOPS for each disk. Only available for keyspaces on AWS gp3 disks when configurable disk I/O is enabled for the organization. At least 3000. The current maximum depends on the smallest disk and on whether larger cluster sizes are enabled for the organization; 'keyspace settings --format json' shows it as max_storage_iops. Applied asynchronously without replacing disks. AWS allows one change per disk every 6 hours, so further disk changes, including automatic disk growth, can be delayed for up to 6 hours.")
+	cmd.Flags().Int64Var(&flags.storageThroughput, "storage-throughput", 0, "The provisioned throughput in MiB/s for each disk. Only available for keyspaces on AWS gp3 disks when configurable disk I/O is enabled for the organization. At least 125, and at most 0.25 MiB/s per provisioned IOPS, up to 2000. Applied asynchronously without replacing disks. AWS allows one change per disk every 6 hours, so further disk changes, including automatic disk growth, can be delayed for up to 6 hours.")
 	cmd.Flags().BoolVar(&flags.resetStorageIOPS, "reset-storage-iops", false, "Clear the IOPS override so the storage class default applies.")
 	cmd.Flags().BoolVar(&flags.resetStorageThroughput, "reset-storage-throughput", false, "Clear the throughput override so the storage class default applies.")
+	// Configurable disk IOPS and throughput are behind a feature flag on the
+	// API, so the flags stay hidden until they are generally available.
+	_ = cmd.Flags().MarkHidden("storage-iops")
+	_ = cmd.Flags().MarkHidden("storage-throughput")
+	_ = cmd.Flags().MarkHidden("reset-storage-iops")
+	_ = cmd.Flags().MarkHidden("reset-storage-throughput")
 	cmd.Flags().BoolVarP(&flags.interactive, "interactive", "i", false, "Run the command in interactive mode")
 	cmd.MarkFlagsMutuallyExclusive("storage-iops", "reset-storage-iops")
 	cmd.MarkFlagsMutuallyExclusive("storage-throughput", "reset-storage-throughput")
@@ -469,14 +475,14 @@ func storageIOPS(k *ps.Keyspace) *int64 {
 	if k.Storage == nil {
 		return nil
 	}
-	return k.Storage.IOPS
+	return k.Storage.StorageIOPS
 }
 
 func storageThroughputMiBs(k *ps.Keyspace) *int64 {
 	if k.Storage == nil {
 		return nil
 	}
-	return k.Storage.ThroughputMiBs
+	return k.Storage.StorageThroughputMiBs
 }
 
 // checkStorageIOApplied returns an error when the keyspace returned by the API

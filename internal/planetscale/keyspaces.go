@@ -47,25 +47,21 @@ type KeyspaceStorage struct {
 	// DiskScalingStrategy is the disk scaling strategy: "grow", "disable" or
 	// "shrink".
 	DiskScalingStrategy string `json:"disk_scaling_strategy"`
-	// IOPS is the provisioned IOPS for each disk. Only returned when
-	// configurable IOPS are enabled for the organization.
-	IOPS *int64 `json:"iops,omitempty"`
-	// ThroughputMiBs is the provisioned throughput in MiB/s for each disk.
-	// Only returned when configurable IOPS are enabled for the organization.
-	ThroughputMiBs *int64 `json:"throughput_mibs,omitempty"`
-	// IOPSConfigurable is true when IOPS and throughput can be configured for
-	// the keyspace's disks. The fields below are only returned when
-	// configurable IOPS are enabled for the organization, and the limits are
-	// null when IOPSConfigurable is false.
-	IOPSConfigurable *bool `json:"iops_configurable,omitempty"`
-	// MinIOPS is the minimum IOPS that can be configured.
-	MinIOPS *int64 `json:"min_iops,omitempty"`
-	// MaxIOPS is the maximum IOPS that can be configured for the current disk
-	// size.
-	MaxIOPS *int64 `json:"max_iops,omitempty"`
-	// MinThroughputMiBs is the minimum throughput in MiB/s that can be
-	// configured. The maximum is 0.25 MiB/s per provisioned IOPS, up to 2000.
-	MinThroughputMiBs *int64 `json:"min_throughput_mibs,omitempty"`
+	// IOConfigurable is true when IOPS and throughput can be configured for
+	// the keyspace's disks. It and the fields below are only returned when
+	// configurable disk I/O is enabled for the organization.
+	IOConfigurable *bool `json:"io_configurable,omitempty"`
+	// StorageIOPS is the provisioned IOPS for each disk: the keyspace
+	// override, else the storage class default. Null when the storage has no
+	// provisioned IOPS.
+	StorageIOPS *int64 `json:"storage_iops,omitempty"`
+	// StorageThroughputMiBs is the provisioned throughput in MiB/s for each
+	// disk, following the same rules as StorageIOPS.
+	StorageThroughputMiBs *int64 `json:"storage_throughput_mibs,omitempty"`
+	// MaxStorageIOPS is the highest IOPS that can be configured now. Null
+	// unless IOConfigurable. The minimums are fixed: 3000 IOPS and 125 MiB/s,
+	// and throughput is at most 0.25 MiB/s per provisioned IOPS, up to 2000.
+	MaxStorageIOPS *int64 `json:"max_storage_iops,omitempty"`
 }
 
 type ReadOnlyRegionKeyspace struct {
@@ -288,32 +284,32 @@ type KeyspaceThrottler struct {
 // KeyspaceStorageUpdate changes a keyspace's disk storage settings. Only the
 // fields that are set are sent to the API.
 type KeyspaceStorageUpdate struct {
-	DiskScalingStrategy *string `json:"disk_scaling_strategy,omitempty"`
-	MaxStorageBytes     *int64  `json:"max_storage_bytes,omitempty"`
-	StorageBytes        *int64  `json:"storage_bytes,omitempty"`
-	IOPS                *int64  `json:"iops,omitempty"`
-	ThroughputMiBs      *int64  `json:"throughput_mibs,omitempty"`
+	DiskScalingStrategy   *string `json:"disk_scaling_strategy,omitempty"`
+	MaxStorageBytes       *int64  `json:"max_storage_bytes,omitempty"`
+	StorageBytes          *int64  `json:"storage_bytes,omitempty"`
+	StorageIOPS           *int64  `json:"storage_iops,omitempty"`
+	StorageThroughputMiBs *int64  `json:"storage_throughput_mibs,omitempty"`
 
-	// ResetIOPS and ResetThroughputMiBs send null for the value, which clears
-	// the override so the storage class default applies. They cannot be
-	// combined with IOPS or ThroughputMiBs.
-	ResetIOPS           bool `json:"-"`
-	ResetThroughputMiBs bool `json:"-"`
+	// ResetStorageIOPS and ResetStorageThroughputMiBs send null for the
+	// value, which clears the override so the storage class default applies.
+	// They cannot be combined with StorageIOPS or StorageThroughputMiBs.
+	ResetStorageIOPS           bool `json:"-"`
+	ResetStorageThroughputMiBs bool `json:"-"`
 }
 
 func (u KeyspaceStorageUpdate) MarshalJSON() ([]byte, error) {
-	if u.ResetIOPS && u.IOPS != nil {
-		return nil, errors.New("cannot both set and reset iops")
+	if u.ResetStorageIOPS && u.StorageIOPS != nil {
+		return nil, errors.New("cannot both set and reset storage_iops")
 	}
-	if u.ResetThroughputMiBs && u.ThroughputMiBs != nil {
-		return nil, errors.New("cannot both set and reset throughput_mibs")
+	if u.ResetStorageThroughputMiBs && u.StorageThroughputMiBs != nil {
+		return nil, errors.New("cannot both set and reset storage_throughput_mibs")
 	}
 
 	// The alias drops this method, so the fields are encoded with their
 	// struct tags.
 	type alias KeyspaceStorageUpdate
 	b, err := json.Marshal(alias(u))
-	if err != nil || (!u.ResetIOPS && !u.ResetThroughputMiBs) {
+	if err != nil || (!u.ResetStorageIOPS && !u.ResetStorageThroughputMiBs) {
 		return b, err
 	}
 
@@ -321,11 +317,11 @@ func (u KeyspaceStorageUpdate) MarshalJSON() ([]byte, error) {
 	if err := json.Unmarshal(b, &fields); err != nil {
 		return nil, err
 	}
-	if u.ResetIOPS {
-		fields["iops"] = json.RawMessage("null")
+	if u.ResetStorageIOPS {
+		fields["storage_iops"] = json.RawMessage("null")
 	}
-	if u.ResetThroughputMiBs {
-		fields["throughput_mibs"] = json.RawMessage("null")
+	if u.ResetStorageThroughputMiBs {
+		fields["storage_throughput_mibs"] = json.RawMessage("null")
 	}
 
 	return json.Marshal(fields)

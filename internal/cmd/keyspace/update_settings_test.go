@@ -1237,21 +1237,21 @@ func TestKeyspace_UpdateSettingsCmd_StorageIO(t *testing.T) {
 		CreatedAt: ts,
 		UpdatedAt: ts,
 		Storage: &ps.KeyspaceStorage{
-			StorageBytes:        107374182400,
-			MaxStorageBytes:     4398046511104,
-			DiskScalingStrategy: "grow",
-			IOPS:                &iops,
-			ThroughputMiBs:      &throughput,
+			StorageBytes:          107374182400,
+			MaxStorageBytes:       4398046511104,
+			DiskScalingStrategy:   "grow",
+			StorageIOPS:           &iops,
+			StorageThroughputMiBs: &throughput,
 		},
 	}
 
 	svc := &mock.KeyspacesService{
 		UpdateSettingsFn: func(ctx context.Context, req *ps.UpdateKeyspaceSettingsRequest) (*ps.Keyspace, error) {
 			c.Assert(req.Storage, qt.Not(qt.IsNil))
-			c.Assert(req.Storage.IOPS, qt.Not(qt.IsNil))
-			c.Assert(*req.Storage.IOPS, qt.Equals, iops)
-			c.Assert(req.Storage.ThroughputMiBs, qt.Not(qt.IsNil))
-			c.Assert(*req.Storage.ThroughputMiBs, qt.Equals, throughput)
+			c.Assert(req.Storage.StorageIOPS, qt.Not(qt.IsNil))
+			c.Assert(*req.Storage.StorageIOPS, qt.Equals, iops)
+			c.Assert(req.Storage.StorageThroughputMiBs, qt.Not(qt.IsNil))
+			c.Assert(*req.Storage.StorageThroughputMiBs, qt.Equals, throughput)
 			c.Assert(req.Storage.DiskScalingStrategy, qt.IsNil)
 			c.Assert(req.Storage.MaxStorageBytes, qt.IsNil)
 			c.Assert(req.Storage.StorageBytes, qt.IsNil)
@@ -1328,8 +1328,8 @@ func TestKeyspace_UpdateSettingsCmd_SingleStorageIOFlag(t *testing.T) {
 		arg      string
 		wantBody string
 	}{
-		{arg: "--storage-iops=6000", wantBody: `{"iops":6000}`},
-		{arg: "--storage-throughput=250", wantBody: `{"throughput_mibs":250}`},
+		{arg: "--storage-iops=6000", wantBody: `{"storage_iops":6000}`},
+		{arg: "--storage-throughput=250", wantBody: `{"storage_throughput_mibs":250}`},
 	}
 
 	for _, tt := range tests {
@@ -1356,8 +1356,8 @@ func TestKeyspace_UpdateSettingsCmd_SingleStorageIOFlag(t *testing.T) {
 						ID:   "ks1",
 						Name: "sharded",
 						Storage: &ps.KeyspaceStorage{
-							IOPS:           &iops,
-							ThroughputMiBs: &throughput,
+							StorageIOPS:           &iops,
+							StorageThroughputMiBs: &throughput,
 						},
 					}, nil
 				},
@@ -1412,13 +1412,13 @@ func TestKeyspace_UpdateSettingsCmd_StorageIONotApplied(t *testing.T) {
 		{
 			name:    "iops differs from the request",
 			args:    []string{"--storage-iops=6000"},
-			storage: &ps.KeyspaceStorage{IOPS: &iops, ThroughputMiBs: &throughput},
+			storage: &ps.KeyspaceStorage{StorageIOPS: &iops, StorageThroughputMiBs: &throughput},
 			wantErr: "--storage-iops was not applied: the keyspace reports 3000 instead of 6000. Any other requested settings were applied",
 		},
 		{
 			name:    "throughput differs from the request",
 			args:    []string{"--storage-throughput=500"},
-			storage: &ps.KeyspaceStorage{IOPS: &iops, ThroughputMiBs: &throughput},
+			storage: &ps.KeyspaceStorage{StorageIOPS: &iops, StorageThroughputMiBs: &throughput},
 			wantErr: "--storage-throughput was not applied: the keyspace reports 125 instead of 500. Any other requested settings were applied",
 		},
 	}
@@ -1986,22 +1986,22 @@ func TestKeyspace_UpdateSettingsCmd_ResetStorageIO(t *testing.T) {
 		{
 			name:     "reset iops",
 			args:     []string{"--reset-storage-iops"},
-			wantBody: `{"storage":{"iops":null}}`,
+			wantBody: `{"storage":{"storage_iops":null}}`,
 		},
 		{
 			name:     "reset throughput",
 			args:     []string{"--reset-storage-throughput"},
-			wantBody: `{"storage":{"throughput_mibs":null}}`,
+			wantBody: `{"storage":{"storage_throughput_mibs":null}}`,
 		},
 		{
 			name:     "reset both",
 			args:     []string{"--reset-storage-iops", "--reset-storage-throughput"},
-			wantBody: `{"storage":{"iops":null,"throughput_mibs":null}}`,
+			wantBody: `{"storage":{"storage_iops":null,"storage_throughput_mibs":null}}`,
 		},
 		{
 			name:     "reset iops and set throughput",
 			args:     []string{"--reset-storage-iops", "--storage-throughput=125"},
-			wantBody: `{"storage":{"iops":null,"throughput_mibs":125}}`,
+			wantBody: `{"storage":{"storage_iops":null,"storage_throughput_mibs":125}}`,
 		},
 	}
 
@@ -2018,8 +2018,8 @@ func TestKeyspace_UpdateSettingsCmd_ResetStorageIO(t *testing.T) {
 				ID:   "ks1",
 				Name: "sharded",
 				Storage: &ps.KeyspaceStorage{
-					IOPS:           &iops,
-					ThroughputMiBs: &throughput,
+					StorageIOPS:           &iops,
+					StorageThroughputMiBs: &throughput,
 				},
 			}
 
@@ -2120,6 +2120,17 @@ func TestKeyspace_UpdateSettingsCmd_SetAndResetStorageIO(t *testing.T) {
 			c.Assert(err, qt.ErrorMatches, tt.wantErr)
 			c.Assert(svc.UpdateSettingsFnInvoked, qt.IsFalse)
 		})
+	}
+}
+
+func TestKeyspace_UpdateSettingsCmd_StorageIOFlagsHidden(t *testing.T) {
+	c := qt.New(t)
+
+	cmd := UpdateSettingsCmd(&cmdutil.Helper{})
+	for _, name := range []string{"storage-iops", "storage-throughput", "reset-storage-iops", "reset-storage-throughput"} {
+		flag := cmd.Flags().Lookup(name)
+		c.Assert(flag, qt.IsNotNil, qt.Commentf("flag %s", name))
+		c.Assert(flag.Hidden, qt.IsTrue, qt.Commentf("flag %s", name))
 	}
 }
 

@@ -274,9 +274,9 @@ func TestBuildKeyspaceSettings(t *testing.T) {
 		ID:   "ks1",
 		Name: "test",
 		Storage: &ps.KeyspaceStorage{
-			IOPSConfigurable: &configurable,
-			IOPS:             &iops,
-			ThroughputMiBs:   &throughput,
+			IOConfigurable:        &configurable,
+			StorageIOPS:           &iops,
+			StorageThroughputMiBs: &throughput,
 		},
 	}
 
@@ -290,9 +290,9 @@ func TestBuildKeyspaceSettings(t *testing.T) {
 		ID:   "ks1",
 		Name: "test",
 		Storage: &ps.KeyspaceStorage{
-			IOPSConfigurable: &notConfigurable,
-			IOPS:             &iops,
-			ThroughputMiBs:   &throughput,
+			IOConfigurable:        &notConfigurable,
+			StorageIOPS:           &iops,
+			StorageThroughputMiBs: &throughput,
 		},
 	}
 
@@ -305,7 +305,7 @@ func TestBuildKeyspaceSettings(t *testing.T) {
 		ID:   "ks1",
 		Name: "test",
 		Storage: &ps.KeyspaceStorage{
-			IOPSConfigurable: &notConfigurable,
+			IOConfigurable: &notConfigurable,
 		},
 	}
 

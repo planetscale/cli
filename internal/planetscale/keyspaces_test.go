@@ -647,7 +647,7 @@ func TestKeyspaces_UpdateSettingsStorageIO(t *testing.T) {
 		body = string(raw)
 
 		w.WriteHeader(200)
-		out := `{"type":"Keyspace","id":"thisisanid","name":"planetscale","storage":{"storage_bytes":107374182400,"max_storage_bytes":4398046511104,"disk_scaling_strategy":"grow","iops_configurable":true,"iops":6000,"throughput_mibs":500,"min_iops":3000,"max_iops":10000,"min_throughput_mibs":125}}`
+		out := `{"type":"Keyspace","id":"thisisanid","name":"planetscale","storage":{"storage_bytes":107374182400,"max_storage_bytes":4398046511104,"disk_scaling_strategy":"grow","io_configurable":true,"storage_iops":6000,"storage_throughput_mibs":500,"max_storage_iops":10000}}`
 		_, err = w.Write([]byte(out))
 		c.Assert(err, qt.IsNil)
 	}))
@@ -665,30 +665,28 @@ func TestKeyspaces_UpdateSettingsStorageIO(t *testing.T) {
 		Branch:       "baz",
 		Keyspace:     "qux",
 		Storage: &KeyspaceStorageUpdate{
-			IOPS:           &iops,
-			ThroughputMiBs: &throughput,
+			StorageIOPS:           &iops,
+			StorageThroughputMiBs: &throughput,
 		},
 	})
 
 	c.Assert(err, qt.IsNil)
-	c.Assert(strings.TrimSpace(body), qt.Equals, `{"storage":{"iops":6000,"throughput_mibs":500}}`)
+	c.Assert(strings.TrimSpace(body), qt.Equals, `{"storage":{"storage_iops":6000,"storage_throughput_mibs":500}}`)
 	c.Assert(keyspace.Storage, qt.Not(qt.IsNil))
-	c.Assert(*keyspace.Storage.IOPSConfigurable, qt.IsTrue)
-	c.Assert(*keyspace.Storage.IOPS, qt.Equals, int64(6000))
-	c.Assert(*keyspace.Storage.ThroughputMiBs, qt.Equals, int64(500))
-	c.Assert(*keyspace.Storage.MinIOPS, qt.Equals, int64(3000))
-	c.Assert(*keyspace.Storage.MaxIOPS, qt.Equals, int64(10000))
-	c.Assert(*keyspace.Storage.MinThroughputMiBs, qt.Equals, int64(125))
+	c.Assert(*keyspace.Storage.IOConfigurable, qt.IsTrue)
+	c.Assert(*keyspace.Storage.StorageIOPS, qt.Equals, int64(6000))
+	c.Assert(*keyspace.Storage.StorageThroughputMiBs, qt.Equals, int64(500))
+	c.Assert(*keyspace.Storage.MaxStorageIOPS, qt.Equals, int64(10000))
 }
 
 func TestKeyspaces_GetStorageIONotConfigurable(t *testing.T) {
 	c := qt.New(t)
 
 	// Keyspaces that cannot configure IOPS still report the storage class
-	// default, with null limits.
+	// default, with a null maximum.
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(200)
-		out := `{"type":"Keyspace","id":"thisisanid","name":"planetscale","storage":{"disk_scaling_strategy":"grow","iops_configurable":false,"iops":null,"throughput_mibs":null,"min_iops":null,"max_iops":null,"min_throughput_mibs":null}}`
+		out := `{"type":"Keyspace","id":"thisisanid","name":"planetscale","storage":{"disk_scaling_strategy":"grow","io_configurable":false,"storage_iops":3000,"storage_throughput_mibs":125,"max_storage_iops":null}}`
 		_, err := w.Write([]byte(out))
 		c.Assert(err, qt.IsNil)
 	}))
@@ -705,12 +703,40 @@ func TestKeyspaces_GetStorageIONotConfigurable(t *testing.T) {
 
 	c.Assert(err, qt.IsNil)
 	c.Assert(keyspace.Storage, qt.Not(qt.IsNil))
-	c.Assert(*keyspace.Storage.IOPSConfigurable, qt.IsFalse)
-	c.Assert(keyspace.Storage.IOPS, qt.IsNil)
-	c.Assert(keyspace.Storage.ThroughputMiBs, qt.IsNil)
-	c.Assert(keyspace.Storage.MinIOPS, qt.IsNil)
-	c.Assert(keyspace.Storage.MaxIOPS, qt.IsNil)
-	c.Assert(keyspace.Storage.MinThroughputMiBs, qt.IsNil)
+	c.Assert(*keyspace.Storage.IOConfigurable, qt.IsFalse)
+	c.Assert(*keyspace.Storage.StorageIOPS, qt.Equals, int64(3000))
+	c.Assert(*keyspace.Storage.StorageThroughputMiBs, qt.Equals, int64(125))
+	c.Assert(keyspace.Storage.MaxStorageIOPS, qt.IsNil)
+}
+
+func TestKeyspaces_GetStorageIODisabled(t *testing.T) {
+	c := qt.New(t)
+
+	// The API leaves the fields out when configurable disk I/O is not enabled
+	// for the organization.
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		out := `{"type":"Keyspace","id":"thisisanid","name":"planetscale","storage":{"disk_scaling_strategy":"grow"}}`
+		_, err := w.Write([]byte(out))
+		c.Assert(err, qt.IsNil)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	keyspace, err := client.Keyspaces.Get(context.Background(), &GetKeyspaceRequest{
+		Organization: "foo",
+		Database:     "bar",
+		Branch:       "baz",
+		Keyspace:     "qux",
+	})
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(keyspace.Storage, qt.Not(qt.IsNil))
+	c.Assert(keyspace.Storage.IOConfigurable, qt.IsNil)
+	c.Assert(keyspace.Storage.StorageIOPS, qt.IsNil)
+	c.Assert(keyspace.Storage.StorageThroughputMiBs, qt.IsNil)
+	c.Assert(keyspace.Storage.MaxStorageIOPS, qt.IsNil)
 }
 
 func TestKeyspaceStorageUpdate_MarshalJSON(t *testing.T) {
@@ -731,33 +757,33 @@ func TestKeyspaceStorageUpdate_MarshalJSON(t *testing.T) {
 		},
 		{
 			name:   "values",
-			update: KeyspaceStorageUpdate{IOPS: &iops, ThroughputMiBs: &throughput},
-			want:   `{"iops":6000,"throughput_mibs":500}`,
+			update: KeyspaceStorageUpdate{StorageIOPS: &iops, StorageThroughputMiBs: &throughput},
+			want:   `{"storage_iops":6000,"storage_throughput_mibs":500}`,
 		},
 		{
 			name:   "reset iops",
-			update: KeyspaceStorageUpdate{ResetIOPS: true},
-			want:   `{"iops":null}`,
+			update: KeyspaceStorageUpdate{ResetStorageIOPS: true},
+			want:   `{"storage_iops":null}`,
 		},
 		{
 			name:   "reset throughput",
-			update: KeyspaceStorageUpdate{ResetThroughputMiBs: true},
-			want:   `{"throughput_mibs":null}`,
+			update: KeyspaceStorageUpdate{ResetStorageThroughputMiBs: true},
+			want:   `{"storage_throughput_mibs":null}`,
 		},
 		{
 			name:   "reset iops and set throughput and strategy",
-			update: KeyspaceStorageUpdate{DiskScalingStrategy: &strategy, ResetIOPS: true, ThroughputMiBs: &throughput},
-			want:   `{"disk_scaling_strategy":"grow","iops":null,"throughput_mibs":500}`,
+			update: KeyspaceStorageUpdate{DiskScalingStrategy: &strategy, ResetStorageIOPS: true, StorageThroughputMiBs: &throughput},
+			want:   `{"disk_scaling_strategy":"grow","storage_iops":null,"storage_throughput_mibs":500}`,
 		},
 		{
 			name:    "set and reset iops",
-			update:  KeyspaceStorageUpdate{IOPS: &iops, ResetIOPS: true},
-			wantErr: ".*cannot both set and reset iops",
+			update:  KeyspaceStorageUpdate{StorageIOPS: &iops, ResetStorageIOPS: true},
+			wantErr: ".*cannot both set and reset storage_iops",
 		},
 		{
 			name:    "set and reset throughput",
-			update:  KeyspaceStorageUpdate{ThroughputMiBs: &throughput, ResetThroughputMiBs: true},
-			wantErr: ".*cannot both set and reset throughput_mibs",
+			update:  KeyspaceStorageUpdate{StorageThroughputMiBs: &throughput, ResetStorageThroughputMiBs: true},
+			wantErr: ".*cannot both set and reset storage_throughput_mibs",
 		},
 	}
 
