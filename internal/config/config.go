@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/99designs/keyring"
 	ps "github.com/planetscale/cli/internal/planetscale"
@@ -34,21 +35,41 @@ type Config struct {
 	ServiceTokenID string
 	ServiceToken   string
 
+	loadAccessToken func() (string, error)
+
 	// Project Configuration
 	Database string
 	Branch   string
 }
 
-func New() (*Config, error) {
-	accessToken, err := readAccessToken()
-	if err != nil {
-		return nil, err
-	}
-
+func New() *Config {
 	return &Config{
-		AccessToken: accessToken,
-		BaseURL:     ps.DefaultBaseURL,
-	}, nil
+		BaseURL:         ps.DefaultBaseURL,
+		loadAccessToken: sync.OnceValues(readAccessToken),
+	}
+}
+
+// LoadAccessToken fills AccessToken from credential storage unless explicit
+// credentials were provided.
+func (c *Config) LoadAccessToken() error {
+	if c.ServiceTokenID != "" || c.ServiceToken != "" {
+		return nil
+	}
+	return c.LoadStoredAccessToken()
+}
+
+// LoadStoredAccessToken fills AccessToken from credential storage unless an
+// access token was provided, even when service token credentials are set.
+func (c *Config) LoadStoredAccessToken() error {
+	if c.AccessToken != "" || c.loadAccessToken == nil {
+		return nil
+	}
+	token, err := c.loadAccessToken()
+	if err != nil {
+		return err
+	}
+	c.AccessToken = token
+	return nil
 }
 
 func (c *Config) IsAuthenticated() error {
@@ -62,6 +83,9 @@ func (c *Config) IsAuthenticated() error {
 
 	if c.ServiceTokenIsSet() {
 		return nil
+	}
+	if err := c.LoadAccessToken(); err != nil {
+		return err
 	}
 
 	if c.AccessToken == "" {
@@ -92,6 +116,9 @@ func (c *Config) NewClientFromConfig(clientOpts ...ps.ClientOption) (*ps.Client,
 	if c.ServiceTokenIsSet() {
 		opts = append(opts, ps.WithServiceToken(c.ServiceTokenID, c.ServiceToken))
 	} else {
+		if err := c.LoadAccessToken(); err != nil {
+			return nil, err
+		}
 		opts = append(opts, ps.WithAccessToken(c.AccessToken))
 	}
 	opts = append(opts, clientOpts...)
@@ -175,7 +202,10 @@ func readAccessToken() (string, error) {
 	if errors.Is(err, keyring.ErrKeyNotFound) {
 		// Migrate to keychain
 		accessToken, tokenErr := readAccessTokenPath()
-		if len(accessToken) > 0 && tokenErr == nil {
+		if tokenErr != nil && !os.IsNotExist(tokenErr) {
+			return "", tokenErr
+		}
+		if len(accessToken) > 0 {
 			return migrateAccessToken(ring, accessToken)
 		}
 		// Might need to improve this, but today the empty
@@ -229,10 +259,19 @@ func DeleteAccessToken() error {
 		return deleteAccessTokenPath()
 	}
 
-	return ring.Remove(keyringKey)
+	// Remove the token file left by keyring migration so a later read
+	// doesn't migrate it back or fail on it.
+	if err := deleteAccessTokenFile(); err != nil {
+		return err
+	}
+	err = ring.Remove(keyringKey)
+	if err != nil && !errors.Is(err, keyring.ErrKeyNotFound) {
+		return err
+	}
+	return nil
 }
 
-func openKeyring() (keyring.Keyring, error) {
+var openKeyring = func() (keyring.Keyring, error) {
 	return keyring.Open(keyring.Config{
 		AllowedBackends: []keyring.BackendType{
 			keyring.SecretServiceBackend,
@@ -264,9 +303,6 @@ func readAccessTokenPath() ([]byte, error) {
 
 	stat, err := os.Stat(tokenPath)
 	if err != nil {
-		if !os.IsNotExist(err) {
-			log.Fatal(err)
-		}
 		return nil, err
 	} else {
 		if stat.Mode()&^tokenFileMode != 0 {
@@ -277,24 +313,29 @@ func readAccessTokenPath() ([]byte, error) {
 		}
 		accessToken, err = os.ReadFile(tokenPath)
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 	}
 
 	return accessToken, nil
 }
 
-func deleteAccessTokenPath() error {
+func deleteAccessTokenFile() error {
 	tokenPath, err := accessTokenPath()
 	if err != nil {
 		return err
 	}
 
 	err = os.Remove(tokenPath)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			return fmt.Errorf("error removing access token file: %w", err)
-		}
+	if err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("error removing access token file: %w", err)
+	}
+	return nil
+}
+
+func deleteAccessTokenPath() error {
+	if err := deleteAccessTokenFile(); err != nil {
+		return err
 	}
 
 	configFile, err := DefaultConfigPath()

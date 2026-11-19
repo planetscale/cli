@@ -158,6 +158,9 @@ func ApiCmd(ch *cmdutil.Helper, userAgent string, defaultHeaders map[string]stri
 		originalHost := req.URL.Hostname()
 		redirectCheck := makeRedirectCheck(originalHost)
 
+		if err := ch.Config.LoadAccessToken(); err != nil {
+			return err
+		}
 		var cl *http.Client
 		if ch.Config.AccessToken != "" {
 			// Create a transport chain that uses OAuth2 token but honors our redirect policy

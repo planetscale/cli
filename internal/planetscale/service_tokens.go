@@ -2,6 +2,7 @@ package planetscale
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"path"
 	"time"
@@ -13,6 +14,8 @@ var _ ServiceTokenService = &serviceTokenService{}
 // Service Token API.
 type ServiceTokenService interface {
 	Create(context.Context, *CreateServiceTokenRequest) (*ServiceToken, error)
+	Update(context.Context, *UpdateServiceTokenRequest) (*ServiceToken, error)
+	Duplicate(context.Context, *DuplicateServiceTokenRequest) (*ServiceToken, error)
 	Get(context.Context, *GetServiceTokenRequest) (*ServiceToken, error)
 	List(context.Context, *ListServiceTokensRequest) ([]*ServiceToken, error)
 	ListGrants(context.Context, *ListServiceTokenGrantsRequest) ([]*ServiceTokenGrant, error)
@@ -28,6 +31,34 @@ type serviceTokenService struct {
 
 func (s *serviceTokenService) Create(ctx context.Context, createReq *CreateServiceTokenRequest) (*ServiceToken, error) {
 	req, err := s.client.newRequest(http.MethodPost, serviceTokensAPIPath(createReq.Organization), createReq)
+	if err != nil {
+		return nil, err
+	}
+
+	st := &ServiceToken{}
+	if err := s.client.do(ctx, req, &st); err != nil {
+		return nil, err
+	}
+
+	return st, nil
+}
+
+func (s *serviceTokenService) Update(ctx context.Context, updateReq *UpdateServiceTokenRequest) (*ServiceToken, error) {
+	req, err := s.client.newRequest(http.MethodPatch, serviceTokenAPIPath(updateReq.Organization, updateReq.ID), updateReq)
+	if err != nil {
+		return nil, err
+	}
+
+	st := &ServiceToken{}
+	if err := s.client.do(ctx, req, st); err != nil {
+		return nil, err
+	}
+
+	return st, nil
+}
+
+func (s *serviceTokenService) Duplicate(ctx context.Context, dupReq *DuplicateServiceTokenRequest) (*ServiceToken, error) {
+	req, err := s.client.newRequest(http.MethodPost, path.Join(serviceTokenAPIPath(dupReq.Organization, dupReq.ID), "duplicate"), dupReq)
 	if err != nil {
 		return nil, err
 	}
@@ -131,6 +162,33 @@ type CreateServiceTokenRequest struct {
 	Organization string  `json:"-"`
 	Name         *string `json:"name,omitempty"`
 	TTL          *int    `json:"ttl,omitempty"`
+}
+
+type UpdateServiceTokenRequest struct {
+	Organization string                 `json:"-"`
+	ID           string                 `json:"-"`
+	Name         *string                `json:"name,omitempty"`
+	TTL          *UpdateServiceTokenTTL `json:"ttl,omitempty"`
+}
+
+// UpdateServiceTokenTTL is a service-token lifetime in seconds.
+// Never clears the expiry; it is encoded as JSON null.
+type UpdateServiceTokenTTL struct {
+	Never   bool
+	Seconds int
+}
+
+func (t UpdateServiceTokenTTL) MarshalJSON() ([]byte, error) {
+	if t.Never {
+		return []byte("null"), nil
+	}
+	return json.Marshal(t.Seconds)
+}
+
+type DuplicateServiceTokenRequest struct {
+	Organization string `json:"-"`
+	ID           string `json:"-"`
+	Name         string `json:"name"`
 }
 
 type GetServiceTokenRequest struct {

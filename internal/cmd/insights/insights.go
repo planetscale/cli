@@ -34,6 +34,7 @@ see pscale inspect.`,
 	cmd.AddCommand(AnomaliesCmd(ch))
 	cmd.AddCommand(TagsCmd(ch))
 	cmd.AddCommand(RecommendationsCmd(ch))
+	cmd.AddCommand(AgentCmd(ch))
 
 	return cmd
 }
@@ -41,11 +42,17 @@ see pscale inspect.`,
 // notFoundError maps a not-found API error to a message explaining both
 // causes: a missing database/branch, or insights not being enabled.
 func notFoundError(ch *cmdutil.Helper, err error, database, branch string) error {
+	return featureNotFoundError(ch, err, database, branch, "query insights is not enabled for the database")
+}
+
+// featureNotFoundError maps a not-found API error to a missing database or
+// branch, or to the disabled feature that also answers with not found.
+func featureNotFoundError(ch *cmdutil.Helper, err error, database, branch, disabled string) error {
 	switch cmdutil.ErrCode(err) {
 	case ps.ErrNotFound:
 		if branch != "" {
-			return fmt.Errorf("branch %s does not exist in database %s (organization: %s) or query insights is not enabled for the database",
-				printer.BoldBlue(branch), printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))
+			return fmt.Errorf("branch %s does not exist in database %s (organization: %s) or %s",
+				printer.BoldBlue(branch), printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization), disabled)
 		}
 		return fmt.Errorf("database %s does not exist in organization %s",
 			printer.BoldBlue(database), printer.BoldBlue(ch.Config.Organization))

@@ -188,15 +188,12 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 
 	rootCmd.Flags().BoolVar(&skillFlag, "skill", false, "Print the agent skill file and exit")
 
-	cfg, err := config.New()
-	if err != nil {
-		return err
-	}
+	cfg := config.New()
 
 	rootCmd.PersistentFlags().StringVar(&cfg.BaseURL,
 		"api-url", ps.DefaultBaseURL, "The base URL for the PlanetScale API.")
 	rootCmd.PersistentFlags().StringVar(&cfg.AccessToken,
-		"api-token", cfg.AccessToken, "The API token to use for authenticating against the PlanetScale API.")
+		"api-token", "", "The API token to use for authenticating against the PlanetScale API.")
 
 	rootCmd.PersistentFlags().VarP(printer.NewFormatValue(printer.Human, format), "format", "f",
 		"Show output in a specific format. Possible values: [human, json, csv]")
@@ -241,9 +238,6 @@ func runCmd(ctx context.Context, ver, commit, buildDate string, format *printer.
 
 	rootCmd.PersistentFlags().MarkDeprecated("service-token-name", "use --service-token-id instead")
 	rootCmd.PersistentFlags().MarkHidden("service-token-name")
-
-	// We don't want to show the default value
-	rootCmd.PersistentFlags().Lookup("api-token").DefValue = ""
 
 	// Add command groups for better organization
 	// Every command's help/usage output ends with a pointer to the embedded
