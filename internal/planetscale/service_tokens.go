@@ -189,6 +189,7 @@ type DuplicateServiceTokenRequest struct {
 	Organization string `json:"-"`
 	ID           string `json:"-"`
 	Name         string `json:"name"`
+	TTL          *int   `json:"ttl,omitempty"`
 }
 
 type GetServiceTokenRequest struct {
