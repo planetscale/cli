@@ -66,6 +66,10 @@ type OrganizationsService interface {
 	ListTeamMembers(context.Context, *ListOrganizationTeamMembersRequest, ...ListOption) ([]*OrganizationTeamMembership, error)
 	AddTeamMember(context.Context, *AddOrganizationTeamMemberRequest) (*OrganizationTeamMembership, error)
 	RemoveTeamMember(context.Context, *RemoveOrganizationTeamMemberRequest) error
+	ListCustomRoles(context.Context, *ListOrganizationCustomRolesRequest, ...ListOption) ([]*OrganizationCustomRole, error)
+	ListInvitations(context.Context, *ListOrganizationInvitationsRequest, ...ListOption) ([]*OrganizationInvitation, error)
+	CreateInvitation(context.Context, *CreateOrganizationInvitationRequest) (*OrganizationInvitation, error)
+	CancelInvitation(context.Context, *CancelOrganizationInvitationRequest) error
 }
 
 // ListRegionsRequest encapsulates the request for getting a list of regions for

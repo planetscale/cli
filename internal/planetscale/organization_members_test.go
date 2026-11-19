@@ -68,6 +68,35 @@ func TestOrganizations_UpdateMember(t *testing.T) {
 	c.Assert(member.UpdatedAt, qt.Equals, time.Date(2021, time.January, 14, 10, 19, 23, 0, time.UTC))
 }
 
+func TestOrganizations_UpdateMember_CustomRoleSlug(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodPatch)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/members/user-1")
+		var body struct {
+			Role string `json:"role"`
+		}
+		c.Assert(json.NewDecoder(r.Body).Decode(&body), qt.IsNil)
+		c.Assert(body.Role, qt.Equals, "billing-admin")
+		w.WriteHeader(200)
+		out := `{"id":"mem-1","role":"billing-admin","user":{"id":"user-1","name":"Ada","email":"ada@example.com","display_name":"Ada","avatar_url":"","two_factor_auth_configured":false,"created_at":"2021-01-14T10:19:23.000Z","updated_at":"2021-01-14T10:19:23.000Z"},"created_at":"2021-01-14T10:19:23.000Z","updated_at":"2021-01-14T10:19:23.000Z"}`
+		_, err := w.Write([]byte(out))
+		c.Assert(err, qt.IsNil)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	member, err := client.Organizations.UpdateMember(context.Background(), &UpdateOrganizationMemberRequest{
+		Organization: "my-org",
+		UserID:       "user-1",
+		Role:         "billing-admin",
+	})
+	c.Assert(err, qt.IsNil)
+	c.Assert(member.Role, qt.Equals, "billing-admin")
+}
+
 func TestOrganizations_RemoveMember(t *testing.T) {
 	c := qt.New(t)
 
