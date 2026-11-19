@@ -92,6 +92,7 @@ func AgentRunsCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.AddCommand(AgentRunShowCmd(ch))
 	cmd.AddCommand(AgentRunCreateCmd(ch))
 	cmd.AddCommand(AgentRunCancelCmd(ch))
+	cmd.AddCommand(AgentRunFeedbackCmd(ch))
 
 	return cmd
 }

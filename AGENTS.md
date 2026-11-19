@@ -376,6 +376,7 @@ pscale insights agent runs show <database> <branch> <number> --org <org> --forma
 pscale insights agent runs create <database> <branch> --org <org> --format json --fingerprint <fingerprint> --keyspace <keyspace>  # review up to 5 slow queries
 pscale insights agent runs create <database> <branch> --org <org> --format json --schema-recommendation <number>  # implement up to 5 recommendations
 pscale insights agent runs cancel <database> <branch> <number> --org <org> --format json --force
+pscale insights agent runs feedback <database> <branch> <number> --org <org> --format json --rating not_useful --reason too_risky --note "..."  # rate a completed run; --reason and --note optional
 pscale insights agent schedules <database> <branch> --org <org> --format json
 pscale insights agent schedules update <database> <branch> <run-type> --org <org> --format json --enabled --frequency week --day-of-week 1 --time 03:00 --time-zone UTC
 pscale branch query-patterns list <database> <branch> --org <org> --format json
