@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -14,7 +15,6 @@ import (
 	"github.com/planetscale/cli/internal/mock"
 	ps "github.com/planetscale/cli/internal/planetscale"
 	"github.com/planetscale/cli/internal/printer"
-	"github.com/spf13/pflag"
 )
 
 func TestKeyspace_UpdateSettingsCmd_OnlyVReplicationFlags(t *testing.T) {
@@ -2134,7 +2134,7 @@ func TestKeyspace_UpdateSettingsCmd_StorageIOFlagsHidden(t *testing.T) {
 	}
 }
 
-func TestKeyspace_UpdateSettingsCmd_InteractiveRejectsOtherFlags(t *testing.T) {
+func TestKeyspace_UpdateSettingsCmd_InteractiveRejectsStorageIOFlags(t *testing.T) {
 	c := qt.New(t)
 
 	format := printer.JSON
@@ -2149,32 +2149,68 @@ func TestKeyspace_UpdateSettingsCmd_InteractiveRejectsOtherFlags(t *testing.T) {
 		},
 	}
 
-	cmd := UpdateSettingsCmd(ch)
-
-	var flags []string
-	cmd.Flags().VisitAll(func(f *pflag.Flag) {
-		if f.Name != "interactive" {
-			flags = append(flags, f.Name)
-		}
-	})
-	c.Assert(flags, qt.Not(qt.HasLen), 0)
-
-	for _, name := range flags {
-		c.Run(name, func(c *qt.C) {
-			value := "1"
-			if name == "disk-scaling-strategy" {
-				value = "grow"
-			}
-			if name == "replication-durability-constraints-strategy" {
-				value = "maximum"
-			}
+	for _, arg := range []string{"--storage-iops=6000", "--storage-throughput=500", "--reset-storage-iops", "--reset-storage-throughput"} {
+		c.Run(arg, func(c *qt.C) {
+			name := strings.TrimPrefix(strings.SplitN(arg, "=", 2)[0], "--")
 
 			cmd := UpdateSettingsCmd(ch)
-			cmd.SetArgs([]string{"planetscale", "main", "sharded", "--interactive", "--" + name + "=" + value})
+			cmd.SetArgs([]string{"planetscale", "main", "sharded", "--interactive", arg})
 			err := cmd.Execute()
 			c.Assert(err, qt.ErrorMatches, `.*\[interactive `+name+`\] were all set.*|.*\[`+name+` interactive\] were all set.*`)
 			c.Assert(svc.GetFnInvoked, qt.IsFalse)
 			c.Assert(svc.UpdateSettingsFnInvoked, qt.IsFalse)
 		})
 	}
+}
+
+// Flags that existed before IOPS and throughput were accepted, and ignored,
+// with --interactive, so they still are, with a warning.
+func TestKeyspace_UpdateSettingsCmd_InteractiveWarnsOnOtherFlags(t *testing.T) {
+	c := qt.New(t)
+
+	format := printer.Human
+	p := printer.NewPrinter(&format)
+
+	// Failing to create the client stops the interactive form before it
+	// needs a terminal. The warning is printed before that.
+	errNoClient := errors.New("no client in test")
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: "planetscale"},
+		Client: func() (*ps.Client, error) {
+			return nil, errNoClient
+		},
+	}
+
+	var stderr bytes.Buffer
+	cmd := UpdateSettingsCmd(ch)
+	cmd.SetErr(&stderr)
+	cmd.SetArgs([]string{"planetscale", "main", "sharded", "-i", "--max-rollout=2", "--disk-scaling-strategy=grow"})
+	err := cmd.Execute()
+	c.Assert(err, qt.Equals, errNoClient)
+	c.Assert(stderr.String(), qt.Contains, "Warning: ignoring --disk-scaling-strategy, --max-rollout because --interactive is set. Run without --interactive to apply these flags.\n")
+}
+
+func TestKeyspace_UpdateSettingsCmd_InteractiveWithoutOtherFlagsDoesNotWarn(t *testing.T) {
+	c := qt.New(t)
+
+	format := printer.Human
+	p := printer.NewPrinter(&format)
+
+	errNoClient := errors.New("no client in test")
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: "planetscale"},
+		Client: func() (*ps.Client, error) {
+			return nil, errNoClient
+		},
+	}
+
+	var stderr bytes.Buffer
+	cmd := UpdateSettingsCmd(ch)
+	cmd.SetErr(&stderr)
+	cmd.SetArgs([]string{"planetscale", "main", "sharded", "--interactive"})
+	err := cmd.Execute()
+	c.Assert(err, qt.Equals, errNoClient)
+	c.Assert(stderr.String(), qt.Not(qt.Contains), "Warning")
 }

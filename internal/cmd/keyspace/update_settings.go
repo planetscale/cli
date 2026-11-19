@@ -18,6 +18,9 @@ import (
 	"github.com/spf13/pflag"
 )
 
+// storageIOFlags are the flags that set disk IOPS and throughput.
+var storageIOFlags = []string{"storage-iops", "storage-throughput", "reset-storage-iops", "reset-storage-throughput"}
+
 // diskScalingStrategies are the disk scaling strategies accepted by the
 // --disk-scaling-strategy flag.
 var diskScalingStrategies = []string{"grow", "disable", "shrink"}
@@ -58,6 +61,19 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 			updateReq.Keyspace = keyspace
 
 			if flags.interactive {
+				// The interactive form returns before the other flags are
+				// read. Older scripts may pass them along with --interactive,
+				// so they are ignored with a warning instead of an error.
+				var ignored []string
+				cmd.LocalNonPersistentFlags().VisitAll(func(f *pflag.Flag) {
+					if f.Changed && f.Name != "interactive" {
+						ignored = append(ignored, "--"+f.Name)
+					}
+				})
+				if len(ignored) > 0 {
+					fmt.Fprintf(cmd.ErrOrStderr(), "Warning: ignoring %s because --interactive is set. Run without --interactive to apply these flags.\n", strings.Join(ignored, ", "))
+				}
+
 				return updateInteractive(ctx, ch, updateReq)
 			}
 
@@ -278,21 +294,19 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().BoolVar(&flags.resetStorageThroughput, "reset-storage-throughput", false, "Clear the throughput override so the storage class default applies.")
 	// Configurable disk IOPS and throughput are behind a feature flag on the
 	// API, so the flags stay hidden until they are generally available.
-	_ = cmd.Flags().MarkHidden("storage-iops")
-	_ = cmd.Flags().MarkHidden("storage-throughput")
-	_ = cmd.Flags().MarkHidden("reset-storage-iops")
-	_ = cmd.Flags().MarkHidden("reset-storage-throughput")
+	for _, name := range storageIOFlags {
+		_ = cmd.Flags().MarkHidden(name)
+	}
 	cmd.Flags().BoolVarP(&flags.interactive, "interactive", "i", false, "Run the command in interactive mode")
 	cmd.MarkFlagsMutuallyExclusive("storage-iops", "reset-storage-iops")
 	cmd.MarkFlagsMutuallyExclusive("storage-throughput", "reset-storage-throughput")
 
-	// The interactive form only covers some settings and returns before the
-	// other flags are read, so they would be silently ignored.
-	cmd.Flags().VisitAll(func(f *pflag.Flag) {
-		if f.Name != "interactive" {
-			cmd.MarkFlagsMutuallyExclusive("interactive", f.Name)
-		}
-	})
+	// The interactive form does not cover IOPS and throughput. These flags
+	// are new, so unlike the older flags they are rejected with
+	// --interactive instead of ignored.
+	for _, name := range storageIOFlags {
+		cmd.MarkFlagsMutuallyExclusive("interactive", name)
+	}
 
 	_ = cmd.RegisterFlagCompletionFunc("disk-scaling-strategy", cobra.FixedCompletions(diskScalingStrategies, cobra.ShellCompDirectiveNoFileComp))
 
