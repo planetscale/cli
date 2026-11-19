@@ -28,6 +28,7 @@ type InsightsAgentService interface {
 	GetRun(context.Context, *GetInsightsAgentRunRequest) (*InsightsAgentRun, error)
 	CreateRun(context.Context, *CreateInsightsAgentRunRequest) (*InsightsAgentRun, error)
 	CancelRun(context.Context, *CancelInsightsAgentRunRequest) (*InsightsAgentRun, error)
+	RateRun(context.Context, *RateInsightsAgentRunRequest) (*InsightsAgentRunFeedback, error)
 	ListSchedules(context.Context, *ListInsightsAgentSchedulesRequest) ([]*InsightsAgentSchedule, error)
 	UpdateSchedule(context.Context, *UpdateInsightsAgentScheduleRequest) (*InsightsAgentSchedule, error)
 }
@@ -159,6 +160,26 @@ type CancelInsightsAgentRunRequest struct {
 	Number       int
 }
 
+// RateInsightsAgentRunRequest saves the caller's feedback on a completed run.
+type RateInsightsAgentRunRequest struct {
+	Organization string `json:"-"`
+	Database     string `json:"-"`
+	Branch       string `json:"-"`
+	Number       int    `json:"-"`
+	Rating       string `json:"rating"`
+	Reason       string `json:"reason,omitempty"`
+	Note         string `json:"note,omitempty"`
+}
+
+// InsightsAgentRunFeedback is the caller's feedback on a run.
+type InsightsAgentRunFeedback struct {
+	Rating    string    `json:"rating"`
+	Reason    string    `json:"reason"`
+	Note      string    `json:"note"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
 // ListInsightsAgentSchedulesRequest lists a branch's schedules.
 type ListInsightsAgentSchedulesRequest struct {
 	Organization string
@@ -218,6 +239,20 @@ func (s *insightsAgentService) CreateRun(ctx context.Context, request *CreateIns
 func (s *insightsAgentService) CancelRun(ctx context.Context, request *CancelInsightsAgentRunRequest) (*InsightsAgentRun, error) {
 	runPath := insightsAgentRunAPIPath(request.Organization, request.Database, request.Branch, request.Number)
 	return s.runRequest(ctx, http.MethodPost, path.Join(runPath, "cancel"), nil)
+}
+
+func (s *insightsAgentService) RateRun(ctx context.Context, request *RateInsightsAgentRunRequest) (*InsightsAgentRunFeedback, error) {
+	runPath := insightsAgentRunAPIPath(request.Organization, request.Database, request.Branch, request.Number)
+	req, err := s.client.newRequest(http.MethodPut, path.Join(runPath, "feedback"), request)
+	if err != nil {
+		return nil, err
+	}
+
+	feedback := &InsightsAgentRunFeedback{}
+	if err := s.client.do(ctx, req, feedback); err != nil {
+		return nil, err
+	}
+	return feedback, nil
 }
 
 func (s *insightsAgentService) ListSchedules(ctx context.Context, request *ListInsightsAgentSchedulesRequest) ([]*InsightsAgentSchedule, error) {
