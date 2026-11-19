@@ -300,7 +300,8 @@ func TestBuildKeyspaceSettings(t *testing.T) {
 	c.Assert(fixedSettings.Storage.IOPS, qt.Equals, "6000 (not configurable)")
 	c.Assert(fixedSettings.Storage.Throughput, qt.Equals, "500 MiB/s (not configurable)")
 
-	// Without a value there is nothing to mark.
+	// Null values mean the storage has no provisioned IOPS or throughput, so
+	// there is nothing to mark.
 	fixedNilKs := &ps.Keyspace{
 		ID:   "ks1",
 		Name: "test",
@@ -310,8 +311,13 @@ func TestBuildKeyspaceSettings(t *testing.T) {
 	}
 
 	fixedNilSettings := toKeyspaceSettings(fixedNilKs)
-	c.Assert(fixedNilSettings.Storage.IOPS, qt.Equals, "not set")
-	c.Assert(fixedNilSettings.Storage.Throughput, qt.Equals, "not set")
-	c.Assert(nilSettings.Storage.IOPS, qt.Equals, "not set")
-	c.Assert(nilSettings.Storage.Throughput, qt.Equals, "not set")
+	c.Assert(fixedNilSettings.Storage.IOPS, qt.Equals, "none")
+	c.Assert(fixedNilSettings.Storage.Throughput, qt.Equals, "none")
+
+	// Without configurable disk I/O the API leaves the fields out, and the
+	// columns stay empty.
+	c.Assert(settings.Storage.IOPS, qt.Equals, "")
+	c.Assert(settings.Storage.Throughput, qt.Equals, "")
+	c.Assert(nilSettings.Storage.IOPS, qt.Equals, "")
+	c.Assert(nilSettings.Storage.Throughput, qt.Equals, "")
 }
