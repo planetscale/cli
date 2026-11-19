@@ -1290,7 +1290,7 @@ func TestKeyspace_UpdateSettingsCmd_StorageIOMustBePositive(t *testing.T) {
 		{arg: "--storage-iops=-1", wantErr: "--storage-iops must be greater than 0"},
 		{arg: "--storage-throughput=0", wantErr: "--storage-throughput must be greater than 0"},
 		{arg: "--storage-throughput=-1", wantErr: "--storage-throughput must be greater than 0"},
-		{arg: "--storage-iops=9223372036854775808", wantErr: `invalid argument .* for "--storage-iops" flag: .*out of range`},
+		{arg: "--storage-iops=9223372036854775808", wantErr: `invalid argument "9223372036854775808" for "--storage-iops" flag: .*`},
 	}
 
 	for _, tt := range tests {
