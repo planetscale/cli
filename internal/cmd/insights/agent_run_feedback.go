@@ -2,6 +2,8 @@ package insights
 
 import (
 	"fmt"
+	"slices"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -10,8 +12,27 @@ import (
 	"github.com/planetscale/cli/internal/printer"
 )
 
+// feedbackReasons matches the reason labels on the run page in the dashboard.
+var feedbackReasons = []struct{ value, label string }{
+	{"wrong_diagnosis", "Wrong diagnosis"},
+	{"fix_wont_work", "Fix wouldn’t work"},
+	{"too_risky", "Too risky"},
+	{"already_known", "Already knew this"},
+	{"doesnt_fit", "Doesn’t fit our code or setup"},
+	{"other", "Other"},
+}
+
 // AgentRunFeedbackCmd rates a completed Insights Agent run.
 func AgentRunFeedbackCmd(ch *cmdutil.Helper) *cobra.Command {
+	reasonValues := make([]string, 0, len(feedbackReasons))
+	reasonHelp := make([]string, 0, len(feedbackReasons))
+	reasonCompletions := make([]cobra.Completion, 0, len(feedbackReasons))
+	for _, r := range feedbackReasons {
+		reasonValues = append(reasonValues, r.value)
+		reasonHelp = append(reasonHelp, fmt.Sprintf("%s (%s)", r.value, r.label))
+		reasonCompletions = append(reasonCompletions, cobra.CompletionWithDesc(r.value, r.label))
+	}
+
 	var flags struct {
 		rating string
 		reason string
@@ -35,6 +56,9 @@ again replaces your earlier feedback.`,
 			}
 			if flags.rating != "useful" && flags.rating != "not_useful" {
 				return fmt.Errorf("invalid --rating %q: must be useful or not_useful", flags.rating)
+			}
+			if flags.reason != "" && !slices.Contains(reasonValues, flags.reason) {
+				return fmt.Errorf("invalid --reason %q: must be one of %s", flags.reason, strings.Join(reasonValues, ", "))
 			}
 
 			client, err := ch.Client()
@@ -74,9 +98,15 @@ again replaces your earlier feedback.`,
 	}
 
 	cmd.Flags().StringVar(&flags.rating, "rating", "", "Whether the run was useful: useful or not_useful")
-	cmd.Flags().StringVar(&flags.reason, "reason", "", "Why the run was not useful: wrong_diagnosis, fix_wont_work, too_risky, already_known, doesnt_fit, or other")
+	cmd.Flags().StringVar(&flags.reason, "reason", "", "Why the run was not useful: "+strings.Join(reasonHelp, ", "))
 	cmd.Flags().StringVar(&flags.note, "note", "", "A note about the run, up to 2000 characters")
 	cmd.MarkFlagRequired("rating") // nolint:errcheck
+
+	cmd.RegisterFlagCompletionFunc("rating", cobra.FixedCompletions([]cobra.Completion{ // nolint:errcheck
+		cobra.CompletionWithDesc("useful", "Useful"),
+		cobra.CompletionWithDesc("not_useful", "Not useful"),
+	}, cobra.ShellCompDirectiveNoFileComp))
+	cmd.RegisterFlagCompletionFunc("reason", cobra.FixedCompletions(reasonCompletions, cobra.ShellCompDirectiveNoFileComp)) // nolint:errcheck
 
 	return cmd
 }
