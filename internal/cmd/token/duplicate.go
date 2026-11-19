@@ -11,6 +11,7 @@ import (
 
 func DuplicateCmd(ch *cmdutil.Helper) *cobra.Command {
 	var name string
+	var ttl int
 
 	cmd := &cobra.Command{
 		Use:   "duplicate <id>",
@@ -28,6 +29,7 @@ func DuplicateCmd(ch *cmdutil.Helper) *cobra.Command {
 				Organization: ch.Config.Organization,
 				ID:           id,
 				Name:         name,
+				TTL:          intPtrOrNil(ttl),
 			}
 
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Duplicating service token %s in org %s",
@@ -53,6 +55,7 @@ func DuplicateCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	cmd.Flags().StringVar(&name, "name", "", "name for the duplicated service token")
 	cmd.MarkFlagRequired("name") // nolint:errcheck
+	cmd.Flags().IntVar(&ttl, "ttl", 0, "Time to live (in seconds) for the duplicated service token. The token will be invalid when TTL has passed")
 
 	return cmd
 }

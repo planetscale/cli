@@ -219,6 +219,46 @@ func TestServiceToken_DuplicateCmd(t *testing.T) {
 	c.Assert(buf.String(), qt.JSONEquals, &ServiceTokenWithSecret{orig: orig})
 }
 
+func TestServiceToken_DuplicateCmdWithTTL(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	var requests int
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/planetscale/service-tokens/123456/duplicate")
+		body, err := io.ReadAll(r.Body)
+		c.Assert(err, qt.IsNil)
+		c.Assert(string(body), qt.Equals, "{\"name\":\"copy-token\",\"ttl\":3600}\n")
+
+		_, err = io.WriteString(w, `{"id":"654321","type":"ServiceToken","token":"d2980bbd91a4ab878601ef0573a7af7b1b15e705","name":"copy-token","created_at":"2025-01-15T10:30:00.000Z","expires_at":"2025-01-15T11:30:00.000Z"}`)
+		c.Assert(err, qt.IsNil)
+	}))
+	t.Cleanup(ts.Close)
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: "planetscale",
+			AccessToken:  "test-token",
+		},
+		Client: func() (*ps.Client, error) {
+			return ps.NewClient(ps.WithBaseURL(ts.URL), ps.WithAccessToken("test-token"))
+		},
+	}
+
+	cmd := TokenCmd(ch)
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	cmd.SetArgs([]string{"duplicate", "123456", "--name", "copy-token", "--ttl", "3600", "--org", "planetscale"})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(requests, qt.Equals, 1)
+}
+
 func TestServiceToken_UpdateCmd(t *testing.T) {
 	c := qt.New(t)
 
