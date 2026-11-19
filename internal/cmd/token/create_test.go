@@ -316,3 +316,147 @@ func TestServiceToken_UpdateCmd(t *testing.T) {
 	})
 	c.Assert(buf.String(), qt.Not(qt.Contains), secret)
 }
+
+func TestServiceToken_CreateCmdWithoutTTLWarns(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	svc := &mock.ServiceTokenService{
+		CreateFn: func(ctx context.Context, req *ps.CreateServiceTokenRequest) (*ps.ServiceToken, error) {
+			c.Assert(req.TTL, qt.IsNil)
+			return &ps.ServiceToken{ID: "123456"}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: "planetscale",
+		},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{
+				ServiceTokens: svc,
+			}, nil
+		},
+	}
+
+	var errBuf bytes.Buffer
+	cmd := CreateCmd(ch)
+	cmd.SetErr(&errBuf)
+	cmd.SetArgs([]string{})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.CreateFnInvoked, qt.IsTrue)
+	c.Assert(errBuf.String(), qt.Contains, "Service tokens will soon require an expiration. Pass --ttl with a number of seconds.")
+}
+
+func TestServiceToken_CreateCmdWithTTLDoesNotWarn(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	svc := &mock.ServiceTokenService{
+		CreateFn: func(ctx context.Context, req *ps.CreateServiceTokenRequest) (*ps.ServiceToken, error) {
+			return &ps.ServiceToken{ID: "123456"}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: "planetscale",
+		},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{
+				ServiceTokens: svc,
+			}, nil
+		},
+	}
+
+	var errBuf bytes.Buffer
+	cmd := CreateCmd(ch)
+	cmd.SetErr(&errBuf)
+	cmd.SetArgs([]string{"--ttl", "3600"})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(errBuf.String(), qt.Equals, "")
+}
+
+func TestServiceToken_UpdateCmdWithNeverWarns(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, err := io.WriteString(w, `{"id":"123456","type":"ServiceToken","name":"forever","created_at":"2025-01-15T10:30:00.000Z","expires_at":null}`)
+		c.Assert(err, qt.IsNil)
+	}))
+	t.Cleanup(ts.Close)
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: "planetscale",
+			AccessToken:  "test-token",
+		},
+		Client: func() (*ps.Client, error) {
+			return ps.NewClient(ps.WithBaseURL(ts.URL), ps.WithAccessToken("test-token"))
+		},
+	}
+
+	var errBuf bytes.Buffer
+	cmd := TokenCmd(ch)
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(&errBuf)
+	cmd.SetArgs([]string{"update", "123456", "--ttl", "never", "--org", "planetscale"})
+	c.Assert(cmd.Execute(), qt.IsNil)
+
+	c.Assert(errBuf.String(), qt.Contains, "Service tokens will soon require an expiration. Pass --ttl with a number of seconds.")
+}
+
+func TestServiceToken_DuplicateCmdWithoutTTLWarns(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, err := io.WriteString(w, `{"id":"654321","type":"ServiceToken","token":"d2980bbd91a4ab878601ef0573a7af7b1b15e705","name":"copy-token","created_at":"2025-01-15T10:30:00.000Z"}`)
+		c.Assert(err, qt.IsNil)
+	}))
+	t.Cleanup(ts.Close)
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config: &config.Config{
+			Organization: "planetscale",
+			AccessToken:  "test-token",
+		},
+		Client: func() (*ps.Client, error) {
+			return ps.NewClient(ps.WithBaseURL(ts.URL), ps.WithAccessToken("test-token"))
+		},
+	}
+
+	var errBuf bytes.Buffer
+	cmd := TokenCmd(ch)
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(&errBuf)
+	cmd.SetArgs([]string{"duplicate", "123456", "--name", "copy-token", "--org", "planetscale"})
+	c.Assert(cmd.Execute(), qt.IsNil)
+
+	c.Assert(errBuf.String(), qt.Contains, "Service tokens will soon require an expiration. Pass --ttl with a number of seconds.")
+}

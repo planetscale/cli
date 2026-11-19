@@ -25,6 +25,10 @@ func DuplicateCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			id := args[0]
+			if ttl == 0 {
+				printTTLRequiredWarning(cmd.ErrOrStderr())
+			}
+
 			req := &planetscale.DuplicateServiceTokenRequest{
 				Organization: ch.Config.Organization,
 				ID:           id,

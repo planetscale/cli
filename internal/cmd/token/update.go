@@ -45,6 +45,9 @@ func UpdateCmd(ch *cmdutil.Helper) *cobra.Command {
 				if err != nil {
 					return err
 				}
+				if parsed.Never {
+					printTTLRequiredWarning(cmd.ErrOrStderr())
+				}
 				req.TTL = parsed
 			}
 
