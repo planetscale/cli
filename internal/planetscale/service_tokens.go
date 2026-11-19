@@ -162,13 +162,19 @@ type CreateServiceTokenRequest struct {
 	Organization string  `json:"-"`
 	Name         *string `json:"name,omitempty"`
 	TTL          *int    `json:"ttl,omitempty"`
+	// CIDRs sets IP restrictions when non-nil. Nil omits the field.
+	CIDRs *[]string `json:"cidrs,omitempty"`
 }
 
+// UpdateServiceTokenRequest changes a service token's name, expiry, or IP
+// restrictions. Unset fields are omitted. A pointer to an empty CIDR slice
+// clears the restriction.
 type UpdateServiceTokenRequest struct {
 	Organization string                 `json:"-"`
 	ID           string                 `json:"-"`
 	Name         *string                `json:"name,omitempty"`
 	TTL          *UpdateServiceTokenTTL `json:"ttl,omitempty"`
+	CIDRs        *[]string              `json:"cidrs,omitempty"`
 }
 
 // UpdateServiceTokenTTL is a service-token lifetime in seconds.
@@ -240,6 +246,7 @@ type ServiceToken struct {
 	LastUsedIP              *string    `json:"last_used_ip"`
 	LastUsedAsnOrganization *string    `json:"last_used_asn_organization"`
 	ExpiresAt               *time.Time `json:"expires_at"`
+	CIDRs                   []string   `json:"cidrs"`
 }
 
 type ServiceTokenGrant struct {

@@ -36,6 +36,7 @@ func TestServiceToken_CreateCmd(t *testing.T) {
 		CreateFn: func(ctx context.Context, req *ps.CreateServiceTokenRequest) (*ps.ServiceToken, error) {
 			c.Assert(req.Organization, qt.Equals, org)
 			c.Assert(req.Name, qt.IsNil)
+			c.Assert(req.CIDRs, qt.IsNil)
 			return orig, nil
 		},
 	}
@@ -107,6 +108,46 @@ func TestServiceToken_CreateCmdWithName(t *testing.T) {
 
 	res := &ServiceTokenWithSecret{orig: orig}
 	c.Assert(buf.String(), qt.JSONEquals, res)
+}
+
+func TestServiceToken_CreateCmdWithCIDRs(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	org := "planetscale"
+	id := "123456"
+	createdAt := time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC)
+	cidrs := []string{"10.0.0.0/8", "192.168.1.1/32"}
+
+	orig := &ps.ServiceToken{ID: id, CreatedAt: createdAt, CIDRs: cidrs}
+
+	svc := &mock.ServiceTokenService{
+		CreateFn: func(ctx context.Context, req *ps.CreateServiceTokenRequest) (*ps.ServiceToken, error) {
+			c.Assert(req.CIDRs, qt.IsNotNil)
+			c.Assert(*req.CIDRs, qt.DeepEquals, cidrs)
+			return orig, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: org},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{ServiceTokens: svc}, nil
+		},
+	}
+
+	cmd := CreateCmd(ch)
+	cmd.SetArgs([]string{"--cidrs", "10.0.0.0/8,192.168.1.1/32"})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.CreateFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.JSONEquals, &ServiceTokenWithSecret{orig: orig})
 }
 
 func TestServiceToken_CreateCmdWithTTL(t *testing.T) {
@@ -185,7 +226,7 @@ func TestServiceToken_DuplicateCmd(t *testing.T) {
 		c.Assert(err, qt.IsNil)
 		c.Assert(string(body), qt.Equals, "{\"name\":\"copy-token\"}\n")
 
-		_, err = io.WriteString(w, `{"id":"654321","type":"ServiceToken","token":"d2980bbd91a4ab878601ef0573a7af7b1b15e705","name":"copy-token","created_at":"2025-01-15T10:30:00.000Z"}`)
+		_, err = io.WriteString(w, `{"id":"654321","type":"ServiceToken","token":"d2980bbd91a4ab878601ef0573a7af7b1b15e705","name":"copy-token","created_at":"2025-01-15T10:30:00.000Z","cidrs":["203.0.113.10/32"]}`)
 		c.Assert(err, qt.IsNil)
 	}))
 	t.Cleanup(ts.Close)
@@ -215,6 +256,7 @@ func TestServiceToken_DuplicateCmd(t *testing.T) {
 		Token:     secret,
 		Name:      &tokenName,
 		CreatedAt: createdAt,
+		CIDRs:     []string{"203.0.113.10/32"},
 	}
 	c.Assert(buf.String(), qt.JSONEquals, &ServiceTokenWithSecret{orig: orig})
 }

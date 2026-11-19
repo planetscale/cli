@@ -29,6 +29,7 @@ func TestServiceToken_ShowCmd(t *testing.T) {
 	lastUsedAt := time.Date(2025, 1, 20, 14, 45, 0, 0, time.UTC)
 	lastUsedIP := "203.0.113.5"
 	lastUsedOrganization := "Example Networks"
+	cidrs := []string{"10.0.0.0/8", "192.168.1.1/32"}
 	token := &ps.ServiceToken{
 		ID:                      id,
 		Name:                    &name,
@@ -37,6 +38,7 @@ func TestServiceToken_ShowCmd(t *testing.T) {
 		LastUsedAt:              &lastUsedAt,
 		LastUsedIP:              &lastUsedIP,
 		LastUsedAsnOrganization: &lastUsedOrganization,
+		CIDRs:                   cidrs,
 	}
 
 	svc := &mock.ServiceTokenService{
@@ -63,6 +65,7 @@ func TestServiceToken_ShowCmd(t *testing.T) {
 		"last_used_ip":               "203.0.113.5",
 		"last_used_asn_organization": "Example Networks",
 		"expires_at":                 nil,
+		"cidrs":                      cidrs,
 	})
 	c.Assert(buf.String(), qt.Not(qt.Contains), token.Token)
 }
@@ -88,6 +91,7 @@ func TestServiceToken_ShowCmdHuman(t *testing.T) {
 				CreatedAt:               time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC),
 				LastUsedIP:              &lastUsedIP,
 				LastUsedAsnOrganization: &lastUsedOrganization,
+				CIDRs:                   []string{"10.0.0.0/8", "192.168.1.1/32"},
 			}, nil
 		},
 	}
@@ -102,6 +106,7 @@ func TestServiceToken_ShowCmdHuman(t *testing.T) {
 	c.Assert(buf.String(), qt.Contains, "deploy-token")
 	c.Assert(buf.String(), qt.Contains, "203.0.113.5")
 	c.Assert(buf.String(), qt.Contains, "Example Networks")
+	c.Assert(buf.String(), qt.Contains, "10.0.0.0/8, 192.168.1.1/32")
 	c.Assert(buf.String(), qt.Not(qt.Contains), "must-not-be-printed")
 }
 
