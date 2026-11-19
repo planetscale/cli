@@ -2,6 +2,7 @@ package token
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/planetscale/cli/internal/cmdutil"
 	"github.com/planetscale/cli/internal/planetscale"
@@ -24,6 +25,10 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			client, err := ch.Client()
 			if err != nil {
 				return err
+			}
+
+			if ttl == 0 {
+				printTTLRequiredWarning(cmd.ErrOrStderr())
 			}
 
 			req := &planetscale.CreateServiceTokenRequest{
@@ -61,6 +66,10 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 		"IP addresses and CIDR ranges allowed to use this service token. Omit to leave the token unrestricted")
 
 	return cmd
+}
+
+func printTTLRequiredWarning(w io.Writer) {
+	fmt.Fprintf(w, "%s Service tokens will soon require an expiration. Pass --ttl with a number of seconds.\n", printer.BoldYellow("Warning:"))
 }
 
 func stringPtrOrNil(s string) *string {
