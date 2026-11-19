@@ -21,7 +21,6 @@ func OrgCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.AddCommand(UpdateCmd(ch))
 	cmd.AddCommand(MemberCmd(ch))
 	cmd.AddCommand(CustomRoleCmd(ch))
-	cmd.AddCommand(InviteCmd(ch))
 	cmd.AddCommand(SSOCmd(ch))
 	cmd.AddCommand(TeamCmd(ch))
 
