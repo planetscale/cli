@@ -232,4 +232,5 @@ func TestKeyspace_CreateCmdWarnsWhenMaxRolloutNotApplied(t *testing.T) {
 	cmd.SetErr(&stderr)
 	c.Assert(cmd.Execute(), qt.IsNil)
 	c.Assert(stderr.String(), qt.Contains, "--max-rollout was not applied")
+	c.Assert(stderr.String(), qt.Contains, "update-settings planetscale main sharded --org planetscale --max-rollout 8")
 }

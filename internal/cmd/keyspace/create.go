@@ -84,7 +84,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			if createReq.MaxRollout != nil && (k.MaxRollout == nil || *k.MaxRollout != *createReq.MaxRollout) {
-				fmt.Fprintf(cmd.ErrOrStderr(), "Warning: --max-rollout was not applied; set it with 'pscale keyspace update-settings %s %s %s --max-rollout %d'.\n", database, branch, keyspace, *createReq.MaxRollout)
+				fmt.Fprintf(cmd.ErrOrStderr(), "Warning: --max-rollout was not applied; set it with 'pscale keyspace update-settings %s %s %s --org %s --max-rollout %d'.\n", database, branch, keyspace, ch.Config.Organization, *createReq.MaxRollout)
 			}
 
 			if ch.Printer.Format() == printer.Human {
