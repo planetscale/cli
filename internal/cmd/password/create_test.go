@@ -335,33 +335,37 @@ func TestPassword_CreateCmd_Replica(t *testing.T) {
 }
 
 func TestPassword_CreateCmd_ClientTabletTargetingPolicy(t *testing.T) {
-	c := qt.New(t)
+	for _, policy := range []string{"apply", "ignore"} {
+		t.Run(policy, func(t *testing.T) {
+			c := qt.New(t)
 
-	format := printer.JSON
-	p := printer.NewPrinter(&format)
+			format := printer.JSON
+			p := printer.NewPrinter(&format)
 
-	svc := &mock.PasswordsService{
-		CreateFn: func(ctx context.Context, req *ps.DatabaseBranchPasswordRequest) (*ps.DatabaseBranchPassword, error) {
-			c.Assert(req.Replica, qt.IsTrue)
-			c.Assert(req.ClientTabletTargetingPolicy, qt.Equals, "ignore")
-			return &ps.DatabaseBranchPassword{Name: "foo"}, nil
-		},
+			svc := &mock.PasswordsService{
+				CreateFn: func(ctx context.Context, req *ps.DatabaseBranchPasswordRequest) (*ps.DatabaseBranchPassword, error) {
+					c.Assert(req.Replica, qt.IsTrue)
+					c.Assert(req.ClientTabletTargetingPolicy, qt.Equals, policy)
+					return &ps.DatabaseBranchPassword{Name: "foo"}, nil
+				},
+			}
+
+			ch := &cmdutil.Helper{
+				Printer: p,
+				Config:  &config.Config{Organization: "planetscale"},
+				Client: func() (*ps.Client, error) {
+					return &ps.Client{Passwords: svc}, nil
+				},
+			}
+
+			cmd := CreateCmd(ch)
+			cmd.SetArgs([]string{"planetscale", "main", "production-replica-password", "--replica", "--client-tablet-targeting-policy", policy})
+			err := cmd.Execute()
+
+			c.Assert(err, qt.IsNil)
+			c.Assert(svc.CreateFnInvoked, qt.IsTrue)
+		})
 	}
-
-	ch := &cmdutil.Helper{
-		Printer: p,
-		Config:  &config.Config{Organization: "planetscale"},
-		Client: func() (*ps.Client, error) {
-			return &ps.Client{Passwords: svc}, nil
-		},
-	}
-
-	cmd := CreateCmd(ch)
-	cmd.SetArgs([]string{"planetscale", "main", "production-replica-password", "--replica", "--client-tablet-targeting-policy", "ignore"})
-	err := cmd.Execute()
-
-	c.Assert(err, qt.IsNil)
-	c.Assert(svc.CreateFnInvoked, qt.IsTrue)
 }
 
 func TestPassword_CreateCmd_ReplicaWithoutRole(t *testing.T) {

@@ -124,7 +124,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().StringVar(&flags.readOnlyRegion, "read-only-region", "",
 		"Create a password scoped to a Vitess read-only region (region slug, display name, or id). List regions with: pscale database read-only-regions list <database>.")
 	cmd.Flags().StringVar(&flags.clientTabletTargetingPolicy, "client-tablet-targeting-policy", "",
-		"How a replica password handles a tablet type set by the client, such as USE @replica or mydb@replica. Allowed value: ignore.")
+		"How a replica password handles a tablet type set by the client, such as USE @replica or mydb@replica. Allowed values: apply, ignore.")
 
 	return cmd
 }

@@ -9,24 +9,23 @@ import (
 )
 
 type DatabaseBranchPassword struct {
-	PublicID                          string         `json:"id"`
-	Name                              string         `json:"name"`
-	Hostname                          string         `json:"access_host_url"`
-	Username                          string         `json:"username"`
-	Role                              string         `json:"role"`
-	Actor                             *Actor         `json:"actor"`
-	Branch                            DatabaseBranch `json:"database_branch"`
-	Region                            Region         `json:"region"`
-	CreatedAt                         time.Time      `json:"created_at"`
-	DeletedAt                         time.Time      `json:"deleted_at"`
-	ExpiresAt                         time.Time      `json:"expires_at"`
-	PlainText                         string         `json:"plain_text"`
-	TTL                               int            `json:"ttl_seconds"`
-	Renewable                         bool           `json:"renewable"`
-	Replica                           bool           `json:"replica"`
-	CIDRs                             []string       `json:"cidrs"`
-	ClientTabletTargetingPolicy       string         `json:"client_tablet_targeting_policy"`
-	ClientTabletTargetingPolicyLocked bool           `json:"client_tablet_targeting_policy_locked"`
+	PublicID                    string         `json:"id"`
+	Name                        string         `json:"name"`
+	Hostname                    string         `json:"access_host_url"`
+	Username                    string         `json:"username"`
+	Role                        string         `json:"role"`
+	Actor                       *Actor         `json:"actor"`
+	Branch                      DatabaseBranch `json:"database_branch"`
+	Region                      Region         `json:"region"`
+	CreatedAt                   time.Time      `json:"created_at"`
+	DeletedAt                   time.Time      `json:"deleted_at"`
+	ExpiresAt                   time.Time      `json:"expires_at"`
+	PlainText                   string         `json:"plain_text"`
+	TTL                         int            `json:"ttl_seconds"`
+	Renewable                   bool           `json:"renewable"`
+	Replica                     bool           `json:"replica"`
+	CIDRs                       []string       `json:"cidrs"`
+	ClientTabletTargetingPolicy string         `json:"client_tablet_targeting_policy"`
 
 	// ReadOnlyRegion is set client-side when the password is known to be scoped to a
 	// Vitess read-only region (the API does not currently return a dedicated flag).

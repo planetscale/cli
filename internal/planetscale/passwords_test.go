@@ -121,8 +121,7 @@ func TestPasswords_CreateClientTabletTargetingPolicy(t *testing.T) {
     "role": "reader",
     "name": "planetscale-go-test-replica-password",
     "replica": true,
-    "client_tablet_targeting_policy": "ignore",
-    "client_tablet_targeting_policy_locked": true
+    "client_tablet_targeting_policy": "ignore"
 }`, testPasswordID)
 		_, err := w.Write([]byte(out))
 		c.Assert(err, qt.IsNil)
@@ -141,12 +140,11 @@ func TestPasswords_CreateClientTabletTargetingPolicy(t *testing.T) {
 	})
 
 	want := &DatabaseBranchPassword{
-		Name:                              "planetscale-go-test-replica-password",
-		PublicID:                          testPasswordID,
-		Role:                              "reader",
-		Replica:                           true,
-		ClientTabletTargetingPolicy:       "ignore",
-		ClientTabletTargetingPolicyLocked: true,
+		Name:                        "planetscale-go-test-replica-password",
+		PublicID:                    testPasswordID,
+		Role:                        "reader",
+		Replica:                     true,
+		ClientTabletTargetingPolicy: "ignore",
 	}
 
 	c.Assert(err, qt.IsNil)
