@@ -80,6 +80,7 @@ type CreateKeyspaceRequest struct {
 	ClusterSize   string `json:"cluster_size"`
 	ExtraReplicas int    `json:"extra_replicas"`
 	Shards        int    `json:"shards"`
+	MaxRollout    *int   `json:"max_rollout,omitempty"`
 }
 
 type ExternalDatasource struct {

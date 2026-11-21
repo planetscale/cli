@@ -2,6 +2,7 @@ package keyspace
 
 import (
 	"encoding/json"
+	"errors"
 
 	"github.com/planetscale/cli/internal/cmdutil"
 	ps "github.com/planetscale/cli/internal/planetscale"
@@ -120,4 +121,11 @@ func (k *Keyspace) MarshalJSON() ([]byte, error) {
 
 func (k *Keyspace) MarshalCSVValue() interface{} {
 	return []*Keyspace{k}
+}
+
+func validateMaxRollout(n int) error {
+	if n < 1 || n > 32 {
+		return errors.New("--max-rollout must be between 1 and 32")
+	}
+	return nil
 }
