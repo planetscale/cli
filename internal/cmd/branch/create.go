@@ -310,7 +310,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().BoolVar(&flags.dataBranching, "seed-data", false, "Add seed data using the Data Branching™ feature. This branch will be created with the same resources as the base branch.")
 	cmd.Flags().BoolVar(&flags.wait, "wait", false, "Wait until the branch is ready")
 	cmd.Flags().StringVar(&flags.majorVersion, "major-version", "", "For PostgreSQL databases, the PostgreSQL major version to use for the branch. Defaults to the major version of the parent branch if it exists or the database's default branch major version. Ignored for branches restored from backups.")
-	cmd.Flags().IntVar(&flags.replicas, "replicas", 0, "Number of additional replicas for a PostgreSQL branch, not including the primary. 0 creates a single-node branch; omit to use the cluster size default.")
+	cmd.Flags().IntVar(&flags.replicas, "replicas", 0, "Number of replicas for a PostgreSQL branch. 0 is a single-node branch with no replicas; 2-8 is HA. Omit to use the cluster size default.")
 	cmd.Flags().Int64Var(&flags.minStorage, "min-storage", 0, "Minimum storage size in bytes")
 	cmd.Flags().Int64Var(&flags.maxStorage, "max-storage", 0, "Maximum storage size in bytes for autoscaling")
 	cmd.Flags().Int64Var(&flags.storageIOPS, "storage-iops", 0, "Storage IOPS for a PostgreSQL restore. Requires --restore or --restore-point.")
