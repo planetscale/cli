@@ -381,34 +381,42 @@ func TestPasswords_Get(t *testing.T) {
 	c.Assert(password, qt.DeepEquals, want)
 }
 
-func TestPasswords_GetNullClientTabletTargetingPolicy(t *testing.T) {
-	c := qt.New(t)
+func TestPasswords_GetWithoutClientTabletTargetingPolicy(t *testing.T) {
+	for name, field := range map[string]string{
+		"missing": "",
+		"null": `,
+    "client_tablet_targeting_policy": null`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			c := qt.New(t)
 
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(200)
-		out := fmt.Sprintf(`{
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(200)
+				out := fmt.Sprintf(`{
     "id": "%s",
     "role": "reader",
     "name": "planetscale-go-test-replica-password",
-    "replica": true,
-    "client_tablet_targeting_policy": null
-}`, testPasswordID)
-		_, err := w.Write([]byte(out))
-		c.Assert(err, qt.IsNil)
-	}))
+    "replica": true%s
+}`, testPasswordID, field)
+				_, err := w.Write([]byte(out))
+				c.Assert(err, qt.IsNil)
+			}))
+			defer ts.Close()
 
-	client, err := NewClient(WithBaseURL(ts.URL))
-	c.Assert(err, qt.IsNil)
+			client, err := NewClient(WithBaseURL(ts.URL))
+			c.Assert(err, qt.IsNil)
 
-	password, err := client.Passwords.Get(context.Background(), &GetDatabaseBranchPasswordRequest{
-		Organization: "my-org",
-		Database:     "planetscale-go-test-db",
-		Branch:       "my-branch",
-		PasswordId:   testPasswordID,
-	})
+			password, err := client.Passwords.Get(context.Background(), &GetDatabaseBranchPasswordRequest{
+				Organization: "my-org",
+				Database:     "planetscale-go-test-db",
+				Branch:       "my-branch",
+				PasswordId:   testPasswordID,
+			})
 
-	c.Assert(err, qt.IsNil)
-	c.Assert(password.ClientTabletTargetingPolicy, qt.Equals, "")
+			c.Assert(err, qt.IsNil)
+			c.Assert(password.ClientTabletTargetingPolicy, qt.Equals, "")
+		})
+	}
 }
 
 func TestPasswords_Update(t *testing.T) {
