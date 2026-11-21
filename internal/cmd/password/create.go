@@ -12,10 +12,11 @@ import (
 
 func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
-		role           string
-		ttl            cmdutil.TTLFlag
-		replica        bool
-		readOnlyRegion string
+		role                        string
+		ttl                         cmdutil.TTLFlag
+		replica                     bool
+		readOnlyRegion              string
+		clientTabletTargetingPolicy string
 	}
 
 	cmd := &cobra.Command{
@@ -83,14 +84,15 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 			defer end()
 
 			pass, err := client.Passwords.Create(cmd.Context(), &ps.DatabaseBranchPasswordRequest{
-				Database:         database,
-				Branch:           branch,
-				Organization:     ch.Config.Organization,
-				Name:             name,
-				Role:             flags.role,
-				TTL:              int(flags.ttl.Value.Seconds()),
-				Replica:          flags.replica,
-				ReadOnlyRegionID: readOnlyRegionID,
+				Database:                    database,
+				Branch:                      branch,
+				Organization:                ch.Config.Organization,
+				Name:                        name,
+				Role:                        flags.role,
+				TTL:                         int(flags.ttl.Value.Seconds()),
+				Replica:                     flags.replica,
+				ReadOnlyRegionID:            readOnlyRegionID,
+				ClientTabletTargetingPolicy: flags.clientTabletTargetingPolicy,
 			})
 			if err != nil {
 				switch cmdutil.ErrCode(err) {
@@ -121,6 +123,8 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().BoolVar(&flags.replica, "replica", false, "When enabled, the password will route all reads to the branch's primary replicas and all read-only regions.")
 	cmd.Flags().StringVar(&flags.readOnlyRegion, "read-only-region", "",
 		"Create a password scoped to a Vitess read-only region (region slug, display name, or id). List regions with: pscale database read-only-regions list <database>.")
+	cmd.Flags().StringVar(&flags.clientTabletTargetingPolicy, "client-tablet-targeting-policy", "",
+		"How a replica password handles a tablet type set by the client, such as USE @replica or mydb@replica. Allowed value: ignore.")
 
 	return cmd
 }
