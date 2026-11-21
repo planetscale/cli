@@ -57,6 +57,18 @@ type OrganizationsService struct {
 
 	RemoveTeamMemberFn        func(context.Context, *ps.RemoveOrganizationTeamMemberRequest) error
 	RemoveTeamMemberFnInvoked bool
+
+	ListCustomRolesFn        func(context.Context, *ps.ListOrganizationCustomRolesRequest, ...ps.ListOption) ([]*ps.OrganizationCustomRole, error)
+	ListCustomRolesFnInvoked bool
+
+	CreateCustomRoleFn        func(context.Context, *ps.CreateOrganizationCustomRoleRequest) (*ps.OrganizationCustomRole, error)
+	CreateCustomRoleFnInvoked bool
+
+	UpdateCustomRoleFn        func(context.Context, *ps.UpdateOrganizationCustomRoleRequest) (*ps.OrganizationCustomRole, error)
+	UpdateCustomRoleFnInvoked bool
+
+	DeleteCustomRoleFn        func(context.Context, *ps.DeleteOrganizationCustomRoleRequest) error
+	DeleteCustomRoleFnInvoked bool
 }
 
 func (o *OrganizationsService) Get(ctx context.Context, req *ps.GetOrganizationRequest) (*ps.Organization, error) {
@@ -142,4 +154,24 @@ func (o *OrganizationsService) AddTeamMember(ctx context.Context, req *ps.AddOrg
 func (o *OrganizationsService) RemoveTeamMember(ctx context.Context, req *ps.RemoveOrganizationTeamMemberRequest) error {
 	o.RemoveTeamMemberFnInvoked = true
 	return o.RemoveTeamMemberFn(ctx, req)
+}
+
+func (o *OrganizationsService) ListCustomRoles(ctx context.Context, req *ps.ListOrganizationCustomRolesRequest, opts ...ps.ListOption) ([]*ps.OrganizationCustomRole, error) {
+	o.ListCustomRolesFnInvoked = true
+	return o.ListCustomRolesFn(ctx, req, opts...)
+}
+
+func (o *OrganizationsService) CreateCustomRole(ctx context.Context, req *ps.CreateOrganizationCustomRoleRequest) (*ps.OrganizationCustomRole, error) {
+	o.CreateCustomRoleFnInvoked = true
+	return o.CreateCustomRoleFn(ctx, req)
+}
+
+func (o *OrganizationsService) UpdateCustomRole(ctx context.Context, req *ps.UpdateOrganizationCustomRoleRequest) (*ps.OrganizationCustomRole, error) {
+	o.UpdateCustomRoleFnInvoked = true
+	return o.UpdateCustomRoleFn(ctx, req)
+}
+
+func (o *OrganizationsService) DeleteCustomRole(ctx context.Context, req *ps.DeleteOrganizationCustomRoleRequest) error {
+	o.DeleteCustomRoleFnInvoked = true
+	return o.DeleteCustomRoleFn(ctx, req)
 }
