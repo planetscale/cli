@@ -23,16 +23,17 @@ func PromoteCmd(ch *cmdutil.Helper) *cobra.Command {
 		Short: "Promote a branch to production",
 		Long: `Promote a branch to production.
 
-This command is supported for MySQL databases and for enabled Postgres branches. Neki databases are not supported.
+This command is supported for MySQL databases and for enabled Postgres and Neki branches.
 
 --cluster-size sets the cluster size to use. PS-DEV is not permitted. When
-omitted, a PS-DEV Postgres branch uses the smallest production size. For
-MySQL, the size applies to the default keyspace. Changing the size requires
-the write_database permission.
+omitted, a PS-DEV Postgres or Neki branch uses the smallest production size.
+For MySQL, the size applies to the default keyspace. Changing the size
+requires the write_database permission.
 
---replicas sets the Postgres replica count, not including the primary. 0 is a
-single node. 2 to 8 is high availability. Omit it to leave the count
-unchanged. Changing the replica count requires the write_database permission.`,
+--replicas sets the Postgres or Neki replica count, not including the primary.
+0 is a single node. 2 to 8 is high availability. Omit it to leave the count
+unchanged. Vitess ignores this option. Changing the replica count requires
+the write_database permission.`,
 		Example: `  pscale branch promote mydb dev
   pscale branch promote mydb dev --cluster-size PS-10
   pscale branch promote mydb dev --cluster-size PS-10 --replicas 2`,
@@ -117,7 +118,7 @@ unchanged. Changing the replica count requires the write_database permission.`,
 	}
 
 	cmd.Flags().StringVar(&flags.clusterSize, "cluster-size", "", "Cluster size to apply when promoting (for example, PS-10). PS-DEV is not permitted. Use 'pscale size cluster list' to see valid sizes.")
-	cmd.Flags().IntVar(&flags.replicas, "replicas", 0, "Postgres replica count, not including the primary. 0 is a single node. 2 to 8 is high availability.")
+	cmd.Flags().IntVar(&flags.replicas, "replicas", 0, "Postgres or Neki replica count, not including the primary. 0 is a single node. 2 to 8 is high availability. Vitess ignores this option.")
 
 	cmd.RegisterFlagCompletionFunc("cluster-size", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return cmdutil.ClusterSizesCompletionFunc(ch, cmd, args, toComplete)

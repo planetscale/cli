@@ -21,14 +21,14 @@ func DemoteCmd(ch *cmdutil.Helper) *cobra.Command {
 		Short: "Demote a production branch to development",
 		Long: `Demote a production branch to development.
 
-This command is supported for MySQL databases and for enabled Postgres branches. Neki databases are not supported.
+This command is supported for MySQL databases and for enabled Postgres and Neki branches.
 
---cluster-size sets the Postgres cluster size to use. PS-DEV is allowed. Omit
-it to leave the size unchanged. Changing the size requires the write_database
-permission.
+--cluster-size sets the Postgres or Neki cluster size to use. PS-DEV is
+allowed. Omit it to leave the size unchanged. Changing the size requires the
+write_database permission.
 
---replicas sets the Postgres replica count, not including the primary. 0 is a
-single node. 2 to 8 is high availability. Omit it to leave the count
+--replicas sets the Postgres or Neki replica count, not including the primary.
+0 is a single node. 2 to 8 is high availability. Omit it to leave the count
 unchanged. Changing the replica count requires the write_database permission.
 
 Vitess ignores both options.`,
@@ -81,8 +81,8 @@ Vitess ignores both options.`,
 		},
 	}
 
-	cmd.Flags().StringVar(&flags.clusterSize, "cluster-size", "", "Postgres cluster size to apply when demoting (for example, PS-DEV). Use 'pscale size cluster list' to see valid sizes.")
-	cmd.Flags().IntVar(&flags.replicas, "replicas", 0, "Postgres replica count, not including the primary. 0 is a single node. 2 to 8 is high availability.")
+	cmd.Flags().StringVar(&flags.clusterSize, "cluster-size", "", "Postgres or Neki cluster size to apply when demoting (for example, PS-DEV). Use 'pscale size cluster list' to see valid sizes.")
+	cmd.Flags().IntVar(&flags.replicas, "replicas", 0, "Postgres or Neki replica count, not including the primary. 0 is a single node. 2 to 8 is high availability. Vitess ignores this option.")
 
 	cmd.RegisterFlagCompletionFunc("cluster-size", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return cmdutil.ClusterSizesIncludingDevelopmentCompletionFunc(ch, cmd, args, toComplete)

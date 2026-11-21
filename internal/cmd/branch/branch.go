@@ -40,7 +40,7 @@ func BranchCmd(ch *cmdutil.Helper) *cobra.Command {
 
 	cmd.AddGroup(
 		&cobra.Group{ID: branchGroupDatabase, Title: printer.Bold("MySQL, Postgres, and Neki branch commands:")},
-		&cobra.Group{ID: branchGroupMySQLPostgres, Title: printer.Bold("MySQL and Postgres:")},
+		&cobra.Group{ID: branchGroupMySQLPostgres, Title: printer.Bold("MySQL, Postgres, and Neki:")},
 		&cobra.Group{ID: branchGroupVitess, Title: printer.Bold("Vitess/MySQL-specific:")},
 		&cobra.Group{ID: branchGroupPostgres, Title: printer.Bold("Postgres-specific:")},
 		&cobra.Group{ID: branchGroupPostgresNeki, Title: printer.Bold("Postgres and Neki:")},
