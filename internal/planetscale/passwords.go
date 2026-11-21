@@ -9,22 +9,23 @@ import (
 )
 
 type DatabaseBranchPassword struct {
-	PublicID  string         `json:"id"`
-	Name      string         `json:"name"`
-	Hostname  string         `json:"access_host_url"`
-	Username  string         `json:"username"`
-	Role      string         `json:"role"`
-	Actor     *Actor         `json:"actor"`
-	Branch    DatabaseBranch `json:"database_branch"`
-	Region    Region         `json:"region"`
-	CreatedAt time.Time      `json:"created_at"`
-	DeletedAt time.Time      `json:"deleted_at"`
-	ExpiresAt time.Time      `json:"expires_at"`
-	PlainText string         `json:"plain_text"`
-	TTL       int            `json:"ttl_seconds"`
-	Renewable bool           `json:"renewable"`
-	Replica   bool           `json:"replica"`
-	CIDRs     []string       `json:"cidrs"`
+	PublicID                    string         `json:"id"`
+	Name                        string         `json:"name"`
+	Hostname                    string         `json:"access_host_url"`
+	Username                    string         `json:"username"`
+	Role                        string         `json:"role"`
+	Actor                       *Actor         `json:"actor"`
+	Branch                      DatabaseBranch `json:"database_branch"`
+	Region                      Region         `json:"region"`
+	CreatedAt                   time.Time      `json:"created_at"`
+	DeletedAt                   time.Time      `json:"deleted_at"`
+	ExpiresAt                   time.Time      `json:"expires_at"`
+	PlainText                   string         `json:"plain_text"`
+	TTL                         int            `json:"ttl_seconds"`
+	Renewable                   bool           `json:"renewable"`
+	Replica                     bool           `json:"replica"`
+	CIDRs                       []string       `json:"cidrs"`
+	ClientTabletTargetingPolicy string         `json:"client_tablet_targeting_policy"`
 
 	// ReadOnlyRegion is set client-side when the password is known to be scoped to a
 	// Vitess read-only region (the API does not currently return a dedicated flag).
@@ -34,14 +35,15 @@ type DatabaseBranchPassword struct {
 // DatabaseBranchPasswordRequest encapsulates the request for creating/getting/deleting a
 // database branch password.
 type DatabaseBranchPasswordRequest struct {
-	Organization     string `json:"-"`
-	Database         string `json:"-"`
-	Branch           string `json:"-"`
-	Role             string `json:"role,omitempty"`
-	Name             string `json:"name"`
-	TTL              int    `json:"ttl,omitempty"`
-	Replica          bool   `json:"replica,omitempty"`
-	ReadOnlyRegionID string `json:"read_only_region_id,omitempty"`
+	Organization                string `json:"-"`
+	Database                    string `json:"-"`
+	Branch                      string `json:"-"`
+	Role                        string `json:"role,omitempty"`
+	Name                        string `json:"name"`
+	TTL                         int    `json:"ttl,omitempty"`
+	Replica                     bool   `json:"replica,omitempty"`
+	ReadOnlyRegionID            string `json:"read_only_region_id,omitempty"`
+	ClientTabletTargetingPolicy string `json:"client_tablet_targeting_policy,omitempty"`
 }
 
 // ListDatabaseBranchPasswordRequest encapsulates the request for listing all passwords
@@ -63,7 +65,7 @@ type GetDatabaseBranchPasswordRequest struct {
 }
 
 // UpdateDatabaseBranchPasswordRequest encapsulates the request for updating a
-// password's name or IP restrictions.
+// password's name, IP restrictions or client tablet targeting policy.
 type UpdateDatabaseBranchPasswordRequest struct {
 	Organization string `json:"-"`
 	Database     string `json:"-"`
@@ -74,7 +76,8 @@ type UpdateDatabaseBranchPasswordRequest struct {
 	Name string `json:"name,omitempty"`
 	// CIDRs replaces the IP restrictions when set. A pointer to an empty slice
 	// clears them.
-	CIDRs *[]string `json:"cidrs,omitempty"`
+	CIDRs                       *[]string `json:"cidrs,omitempty"`
+	ClientTabletTargetingPolicy string    `json:"client_tablet_targeting_policy,omitempty"`
 }
 
 // DeleteDatabaseBranchPasswordRequest encapsulates the request for deleting a password
@@ -168,7 +171,7 @@ func (d *passwordsService) Get(ctx context.Context, getReq *GetDatabaseBranchPas
 	return password, nil
 }
 
-// Update an existing password's name or IP restrictions.
+// Update an existing password's name, IP restrictions or client tablet targeting policy.
 func (d *passwordsService) Update(ctx context.Context, updateReq *UpdateDatabaseBranchPasswordRequest) (*DatabaseBranchPassword, error) {
 	pathStr := passwordBranchAPIPath(updateReq.Organization, updateReq.Database, updateReq.Branch, updateReq.PasswordId)
 	req, err := d.client.newRequest(http.MethodPatch, pathStr, updateReq)

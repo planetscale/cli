@@ -107,6 +107,50 @@ func TestPasswords_CreateReplica(t *testing.T) {
 	c.Assert(password, qt.DeepEquals, want)
 }
 
+func TestPasswords_CreateClientTabletTargetingPolicy(t *testing.T) {
+	c := qt.New(t)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]any
+		c.Assert(json.NewDecoder(r.Body).Decode(&body), qt.IsNil)
+		c.Assert(body["replica"], qt.Equals, true)
+		c.Assert(body["client_tablet_targeting_policy"], qt.Equals, "ignore")
+
+		w.WriteHeader(200)
+		out := fmt.Sprintf(`{
+    "id": "%s",
+    "role": "reader",
+    "name": "planetscale-go-test-replica-password",
+    "replica": true,
+    "client_tablet_targeting_policy": "ignore"
+}`, testPasswordID)
+		_, err := w.Write([]byte(out))
+		c.Assert(err, qt.IsNil)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	password, err := client.Passwords.Create(context.Background(), &DatabaseBranchPasswordRequest{
+		Organization:                "my-org",
+		Database:                    "my-db",
+		Branch:                      "my-branch",
+		Role:                        "reader",
+		Replica:                     true,
+		ClientTabletTargetingPolicy: "ignore",
+	})
+
+	want := &DatabaseBranchPassword{
+		Name:                        "planetscale-go-test-replica-password",
+		PublicID:                    testPasswordID,
+		Role:                        "reader",
+		Replica:                     true,
+		ClientTabletTargetingPolicy: "ignore",
+	}
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(password, qt.DeepEquals, want)
+}
+
 func TestPasswords_List(t *testing.T) {
 	c := qt.New(t)
 
@@ -409,6 +453,35 @@ func TestPasswords_UpdateClearsCIDRs(t *testing.T) {
 
 	c.Assert(err, qt.IsNil)
 	c.Assert(password.CIDRs, qt.HasLen, 0)
+}
+
+func TestPasswords_UpdateClientTabletTargetingPolicy(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]any
+		c.Assert(json.NewDecoder(r.Body).Decode(&body), qt.IsNil)
+		c.Assert(body, qt.DeepEquals, map[string]any{"client_tablet_targeting_policy": "apply"})
+
+		w.WriteHeader(200)
+		out := fmt.Sprintf(`{"id":"%s","name":"planetscale-go-test-password","client_tablet_targeting_policy":"apply"}`, testPasswordID)
+		_, err := w.Write([]byte(out))
+		c.Assert(err, qt.IsNil)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	password, err := client.Passwords.Update(context.Background(), &UpdateDatabaseBranchPasswordRequest{
+		Organization:                "my-org",
+		Database:                    "planetscale-go-test-db",
+		Branch:                      "my-branch",
+		PasswordId:                  testPasswordID,
+		ClientTabletTargetingPolicy: "apply",
+	})
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(password.ClientTabletTargetingPolicy, qt.Equals, "apply")
 }
 
 func TestPasswords_Renew(t *testing.T) {
