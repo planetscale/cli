@@ -87,6 +87,8 @@ type Storage struct {
 	DiskScalingStrategy string `header:"disk scaling strategy" json:"disk_scaling_strategy"`
 	StorageBytes        string `header:"storage" json:"storage_bytes"`
 	MaxStorageBytes     string `header:"max storage" json:"max_storage_bytes"`
+	IOPS                string `header:"iops" json:"iops"`
+	Throughput          string `header:"throughput" json:"throughput"`
 }
 
 func toKeyspaces(keyspaces []*ps.Keyspace) []*Keyspace {

@@ -120,6 +120,32 @@ func toKeyspaceSettings(ks *ps.Keyspace) *KeyspaceSettings {
 				settings.Storage.MaxStorageBytes += " (set by PlanetScale staff)"
 			}
 		}
+		// The API only returns IOPS and throughput when configurable disk I/O
+		// is enabled for the organization, and then reports the storage class
+		// default unless the keyspace overrides it. Without the fields the
+		// columns stay empty, because the disks still have the default IOPS
+		// and "not set" would read as none. Null means the storage has no
+		// provisioned IOPS or throughput.
+		if ks.Storage.IOConfigurable != nil {
+			settings.Storage.IOPS = "none"
+			settings.Storage.Throughput = "none"
+		}
+		if ks.Storage.StorageIOPS != nil {
+			settings.Storage.IOPS = strconv.FormatInt(*ks.Storage.StorageIOPS, 10)
+		}
+		if ks.Storage.StorageThroughputMiBs != nil {
+			settings.Storage.Throughput = fmt.Sprintf("%d MiB/s", *ks.Storage.StorageThroughputMiBs)
+		}
+		// The API reports the storage class default even when the values
+		// cannot be changed, so the table says so.
+		if ks.Storage.IOConfigurable != nil && !*ks.Storage.IOConfigurable {
+			if ks.Storage.StorageIOPS != nil {
+				settings.Storage.IOPS += " (not configurable)"
+			}
+			if ks.Storage.StorageThroughputMiBs != nil {
+				settings.Storage.Throughput += " (not configurable)"
+			}
+		}
 	}
 
 	return settings
