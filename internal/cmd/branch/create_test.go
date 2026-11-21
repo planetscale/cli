@@ -1275,15 +1275,19 @@ func TestBranch_CreateCmdWithRestorePointMySQLError(t *testing.T) {
 	c.Assert(svc.CreateFnInvoked, qt.IsFalse)
 }
 
-func TestBranch_CreateCmdWithPostgresRestoreReplicas(t *testing.T) {
+func TestBranch_CreateCmdWithPostgresReplicas(t *testing.T) {
 	zero := 0
+	two := 2
 	tests := []struct {
 		name         string
 		args         []string
 		wantReplicas *int
+		wantBackupID string
 	}{
-		{name: "omitted", args: []string{"planetscale", "restored", "--restore", "backup-id"}},
-		{name: "explicit zero", args: []string{"planetscale", "restored", "--restore", "backup-id", "--replicas", "0"}, wantReplicas: &zero},
+		{name: "restore omitted", args: []string{"planetscale", "restored", "--restore", "backup-id"}, wantBackupID: "backup-id"},
+		{name: "restore explicit zero", args: []string{"planetscale", "restored", "--restore", "backup-id", "--replicas", "0"}, wantReplicas: &zero, wantBackupID: "backup-id"},
+		{name: "ordinary branch", args: []string{"planetscale", "development", "--replicas", "2"}, wantReplicas: &two},
+		{name: "ordinary explicit zero", args: []string{"planetscale", "development", "--replicas", "0"}, wantReplicas: &zero},
 	}
 
 	for _, tt := range tests {
@@ -1295,10 +1299,10 @@ func TestBranch_CreateCmdWithPostgresRestoreReplicas(t *testing.T) {
 			p := printer.NewPrinter(&format)
 			p.SetResourceOutput(&buf)
 
-			res := &ps.PostgresBranch{Name: "restored"}
+			res := &ps.PostgresBranch{Name: tt.args[1]}
 			svc := &mock.PostgresBranchesService{
 				CreateFn: func(ctx context.Context, req *ps.CreatePostgresBranchRequest) (*ps.PostgresBranch, error) {
-					c.Assert(req.BackupID, qt.Equals, "backup-id")
+					c.Assert(req.BackupID, qt.Equals, tt.wantBackupID)
 					if tt.wantReplicas == nil {
 						c.Assert(req.Replicas, qt.IsNil)
 					} else {
@@ -1327,26 +1331,6 @@ func TestBranch_CreateCmdWithPostgresRestoreReplicas(t *testing.T) {
 			c.Assert(cmd.Execute(), qt.IsNil)
 			c.Assert(svc.CreateFnInvoked, qt.IsTrue)
 			c.Assert(buf.String(), qt.JSONEquals, res)
-		})
-	}
-}
-
-func TestBranch_CreateCmdRejectsReplicasWithoutRestore(t *testing.T) {
-	tests := []struct {
-		name string
-		args []string
-	}{
-		{name: "ordinary branch", args: []string{"planetscale", "development", "--replicas", "2"}},
-		{name: "data branching", args: []string{"planetscale", "development", "--seed-data", "--replicas", "2"}},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			c := qt.New(t)
-			cmd := CreateCmd(&cmdutil.Helper{})
-			cmd.SetArgs(tt.args)
-
-			c.Assert(cmd.Execute(), qt.ErrorMatches, ".*--replicas can only be used with a PostgreSQL backup restore or point-in-time recovery.*")
 		})
 	}
 }
