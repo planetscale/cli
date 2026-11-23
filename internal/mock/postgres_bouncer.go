@@ -27,6 +27,15 @@ type PostgresBouncersService struct {
 
 	CancelResizesFn        func(context.Context, *ps.CancelPostgresBouncerResizesRequest) error
 	CancelResizesFnInvoked bool
+
+	CreateRestartFn        func(context.Context, *ps.CreatePostgresBouncerRestartRequest) (*ps.PostgresBouncerRestart, error)
+	CreateRestartFnInvoked bool
+
+	ListRestartsFn        func(context.Context, *ps.ListPostgresBouncerRestartsRequest, ...ps.ListOption) ([]*ps.PostgresBouncerRestart, error)
+	ListRestartsFnInvoked bool
+
+	GetRestartFn        func(context.Context, *ps.GetPostgresBouncerRestartRequest) (*ps.PostgresBouncerRestart, error)
+	GetRestartFnInvoked bool
 }
 
 func (s *PostgresBouncersService) List(ctx context.Context, req *ps.ListPostgresBouncersRequest, opts ...ps.ListOption) ([]*ps.PostgresBouncer, error) {
@@ -62,4 +71,19 @@ func (s *PostgresBouncersService) Resize(ctx context.Context, req *ps.ResizePost
 func (s *PostgresBouncersService) CancelResizes(ctx context.Context, req *ps.CancelPostgresBouncerResizesRequest) error {
 	s.CancelResizesFnInvoked = true
 	return s.CancelResizesFn(ctx, req)
+}
+
+func (s *PostgresBouncersService) CreateRestart(ctx context.Context, req *ps.CreatePostgresBouncerRestartRequest) (*ps.PostgresBouncerRestart, error) {
+	s.CreateRestartFnInvoked = true
+	return s.CreateRestartFn(ctx, req)
+}
+
+func (s *PostgresBouncersService) ListRestarts(ctx context.Context, req *ps.ListPostgresBouncerRestartsRequest, opts ...ps.ListOption) ([]*ps.PostgresBouncerRestart, error) {
+	s.ListRestartsFnInvoked = true
+	return s.ListRestartsFn(ctx, req, opts...)
+}
+
+func (s *PostgresBouncersService) GetRestart(ctx context.Context, req *ps.GetPostgresBouncerRestartRequest) (*ps.PostgresBouncerRestart, error) {
+	s.GetRestartFnInvoked = true
+	return s.GetRestartFn(ctx, req)
 }

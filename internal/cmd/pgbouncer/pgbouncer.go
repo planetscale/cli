@@ -19,7 +19,8 @@ func Cmd(ch *cmdutil.Helper) *cobra.Command {
 Dedicated PgBouncers run separately from the database nodes and provide
 connection pooling for primary or replica traffic. This is distinct from the
 local PgBouncer on port 6432 and from pgbouncer.* parameters on
-'pscale branch resize'.
+'pscale branch resize'. The one exception is 'pscale pgbouncer restart', which
+also accepts "primary" to restart the primary's local PgBouncer.
 
 This command is only available for PostgreSQL databases.`,
 		PersistentPreRunE: cmdutil.CheckAuthentication(ch.Config),
@@ -33,6 +34,7 @@ This command is only available for PostgreSQL databases.`,
 	cmd.AddCommand(CreateCmd(ch))
 	cmd.AddCommand(ResizeCmd(ch))
 	cmd.AddCommand(DeleteCmd(ch))
+	cmd.AddCommand(RestartCmd(ch))
 
 	return cmd
 }
