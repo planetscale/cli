@@ -293,7 +293,8 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().BoolVar(&flags.resetStorageIOPS, "reset-storage-iops", false, "Clear the IOPS override so the storage class default applies.")
 	cmd.Flags().BoolVar(&flags.resetStorageThroughput, "reset-storage-throughput", false, "Clear the throughput override so the storage class default applies.")
 	// Configurable disk IOPS and throughput are behind a feature flag on the
-	// API, so the flags stay hidden until they are generally available.
+	// API. Keep these flags hidden until that feature flag is fully rolled
+	// out.
 	for _, name := range storageIOFlags {
 		_ = cmd.Flags().MarkHidden(name)
 	}
