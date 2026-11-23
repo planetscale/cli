@@ -18,7 +18,7 @@ func TestBranchCmdGroupsCommandsByEngine(t *testing.T) {
 		groups[group.ID] = group.Title
 	}
 	c.Assert(groups[branchGroupDatabase], qt.Contains, "MySQL, Postgres, and Neki branch commands:")
-	c.Assert(groups[branchGroupMySQLPostgres], qt.Contains, "MySQL and Postgres:")
+	c.Assert(groups[branchGroupMySQLPostgres], qt.Contains, "MySQL, Postgres, and Neki:")
 	c.Assert(groups[branchGroupVitess], qt.Contains, "Vitess/MySQL-specific:")
 	c.Assert(groups[branchGroupPostgres], qt.Contains, "Postgres-specific:")
 	c.Assert(groups[branchGroupPostgresNeki], qt.Contains, "Postgres and Neki:")
