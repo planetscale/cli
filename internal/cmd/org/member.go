@@ -124,3 +124,19 @@ func resolveMember(ctx context.Context, ch *cmdutil.Helper, client *ps.Client, i
 
 	return nil, memberNotFound(org, id)
 }
+
+// resolveMemberToRemove skips the members list when the target is the caller.
+func resolveMemberToRemove(ctx context.Context, ch *cmdutil.Helper, client *ps.Client, id string) (*ps.OrganizationMembership, error) {
+	user, err := client.Users.GetCurrent(ctx)
+	if err == nil && (user.ID == id || strings.EqualFold(user.Email, id)) {
+		return &ps.OrganizationMembership{
+			User: ps.OrganizationMemberUser{
+				ID:          user.ID,
+				Name:        user.Name,
+				DisplayName: user.DisplayName,
+				Email:       user.Email,
+			},
+		}, nil
+	}
+	return resolveMember(ctx, ch, client, id)
+}
