@@ -273,18 +273,71 @@ func TestOrg_MemberRemoveCmd(t *testing.T) {
 			return nil
 		},
 	}
+	users := &mock.UsersService{
+		GetCurrentFn: func(ctx context.Context) (*ps.User, error) {
+			return &ps.User{ID: "user-me", Email: "me@example.com"}, nil
+		},
+	}
 
 	ch := &cmdutil.Helper{
 		Printer: p,
 		Config:  &config.Config{Organization: "planetscale"},
 		Client: func() (*ps.Client, error) {
-			return &ps.Client{Organizations: svc}, nil
+			return &ps.Client{Organizations: svc, Users: users}, nil
 		},
 	}
 
 	cmd := MemberRemoveCmd(ch)
 	cmd.SetArgs([]string{"user-1", "--force", "--delete-passwords"})
 	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(svc.ListMembersFnInvoked, qt.IsTrue)
 	c.Assert(svc.RemoveMemberFnInvoked, qt.IsTrue)
 	c.Assert(buf.String(), qt.Contains, "member removed")
+}
+
+func TestOrg_MemberRemoveCmd_SelfByEmailSkipsMemberList(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	svc := &mock.OrganizationsService{
+		ListMembersFn: func(ctx context.Context, req *ps.ListOrganizationMembersRequest, opts ...ps.ListOption) ([]*ps.OrganizationMembership, error) {
+			c.Fatalf("listing members should be skipped when removing yourself")
+			return nil, errors.New("listing members is not allowed")
+		},
+		RemoveMemberFn: func(ctx context.Context, req *ps.RemoveOrganizationMemberRequest) error {
+			c.Assert(req.UserID, qt.Equals, "user-1")
+			return nil
+		},
+	}
+	users := &mock.UsersService{
+		GetCurrentFn: func(ctx context.Context) (*ps.User, error) {
+			return &ps.User{
+				ID:          "user-1",
+				Name:        "Ada",
+				DisplayName: "Ada Lovelace",
+				Email:       "ada@example.com",
+			}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: "planetscale"},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{Organizations: svc, Users: users}, nil
+		},
+	}
+
+	cmd := MemberRemoveCmd(ch)
+	cmd.SetArgs([]string{"ada@example.com", "--force"})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(users.GetCurrentFnInvoked, qt.IsTrue)
+	c.Assert(svc.ListMembersFnInvoked, qt.IsFalse)
+	c.Assert(svc.RemoveMemberFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.Contains, "member removed")
+	c.Assert(buf.String(), qt.Contains, `"user": "user-1"`)
 }

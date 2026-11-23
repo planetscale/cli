@@ -36,7 +36,7 @@ Removing someone else requires organization admin. You can remove yourself
 			}
 
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Fetching member %s in %s...", printer.BoldBlue(id), printer.BoldBlue(ch.Config.Organization)))
-			member, err := resolveMember(ctx, ch, client, id)
+			member, err := resolveMemberToRemove(ctx, ch, client, id)
 			end()
 			if err != nil {
 				return err
