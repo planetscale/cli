@@ -119,6 +119,8 @@ scoops:
   - repository:
       owner: planetscale
       name: scoop-bucket
+      pull_request:
+        enabled: true
     homepage: "https://github.com/planetscale/cli"
     description: "The PlanetScale CLI"
     license: Apache 2.0
@@ -130,6 +132,8 @@ brews:
     repository:
       owner: planetscale
       name: homebrew-tap
+      pull_request:
+        enabled: true
     dependencies:
       - name: mysql # needed for 'pscale shell'
         type: optional
