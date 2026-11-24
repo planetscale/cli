@@ -29,6 +29,7 @@ jobs:
           app-id: ${{ vars.CLI_APP_ID }}
           private-key: ${{ secrets.CLI_APP_PRIVATE_KEY }}
           permission-contents: write
+          permission-pull-requests: write
           owner: planetscale
           repositories: |
             cli
