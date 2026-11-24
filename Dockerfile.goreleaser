@@ -1,7 +1,31 @@
 FROM ubuntu:noble@sha256:fe81560990fae86dc4743202b2cb4d3df98d0bcf949173cecef15ce1127ef852
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates mysql-client openssh-client \
-    && rm -rf /var/lib/apt/lists/*
+ARG TARGETARCH
+ARG MYSQL_VERSION=8.4.13.1
+# Oracle MySQL client. amd64 comes from the official MySQL APT repo, which has no
+# arm64 packages, so arm64 uses Oracle's signed generic aarch64 binary tarball.
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends ca-certificates curl gpg openssh-client; \
+    curl -fsSL https://repo.mysql.com/RPM-GPG-KEY-mysql-2025 -o /tmp/mysql.key; \
+    gpg --show-keys --with-colons /tmp/mysql.key | grep -qx 'fpr:::::::::BCA43417C3B485DD128EC6D4B7B3B788A8D3785C:'; \
+    gpg --dearmor -o /usr/share/keyrings/mysql.gpg /tmp/mysql.key; \
+    if [ "$TARGETARCH" = amd64 ]; then \
+        echo 'deb [signed-by=/usr/share/keyrings/mysql.gpg] https://repo.mysql.com/apt/ubuntu noble mysql-8.4-lts' > /etc/apt/sources.list.d/mysql.list; \
+        apt-get update; \
+        apt-get install -y --no-install-recommends "mysql-community-client-core=${MYSQL_VERSION}-1ubuntu24.04"; \
+        rm /etc/apt/sources.list.d/mysql.list; \
+    else \
+        f="mysql-${MYSQL_VERSION}-linux-glibc2.28-aarch64.tar.xz"; \
+        curl -fsSLO "https://cdn.mysql.com/Downloads/MySQL-8.4/$f"; \
+        curl -fsSLO "https://cdn.mysql.com/Downloads/MySQL-8.4/$f.asc"; \
+        gpgv --keyring /usr/share/keyrings/mysql.gpg "$f.asc" "$f"; \
+        apt-get install -y --no-install-recommends libncurses6 xz-utils; \
+        tar -xJf "$f" -C /usr/local --strip-components=1 --wildcards '*/bin/mysql' '*/lib/private/libssl.so.3' '*/lib/private/libcrypto.so.3'; \
+        rm -f "$f" "$f.asc"; \
+        apt-get purge -y --auto-remove xz-utils; \
+    fi; \
+    apt-get purge -y --auto-remove curl gpg; \
+    rm -rf /var/lib/apt/lists/* /tmp/* /usr/share/keyrings/mysql.gpg /root/.gnupg
 EXPOSE 3306
 
 ENTRYPOINT ["/usr/bin/pscale"] 
