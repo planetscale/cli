@@ -63,6 +63,7 @@ jobs:
         run: script/bump-version.sh
 
       - name: Publish artifacts
+        id: publish
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           GORELEASER_CURRENT_TAG: ${{ steps.bump.outputs.RELEASE_VERSION }}
@@ -70,3 +71,34 @@ jobs:
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
           AUR_KEY: ${{ secrets.AUR_KEY }}
         run: script/release.sh
+
+      - name: Post the tap pull requests
+        # The release is already published, and this job cannot be rerun.
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          SLACK_WEBHOOK_URL: ${{ secrets.OPS_SLACK_WEBHOOK_URL }}
+          RELEASE_VERSION: ${{ steps.bump.outputs.RELEASE_VERSION }}
+          ACTOR: ${{ github.actor }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: script/notify-release.sh
+
+      - name: Post a release failure
+        if: failure() && steps.publish.outcome != 'success'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.OPS_SLACK_WEBHOOK_URL }}
+          ACTOR: ${{ github.actor }}
+          RELEASE_VERSION: ${{ steps.bump.outputs.RELEASE_VERSION }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ -z "${SLACK_WEBHOOK_URL:-}" ]; then
+            echo "error: OPS_SLACK_WEBHOOK_URL is not set on the release environment" >&2
+            exit 1
+          fi
+          if [ -n "${RELEASE_VERSION:-}" ]; then
+            text=$(printf 'CLI %s failed. %s started it: %s' "$RELEASE_VERSION" "$ACTOR" "$RUN_URL")
+          else
+            text=$(printf 'CLI release failed. %s started it: %s' "$ACTOR" "$RUN_URL")
+          fi
+          payload=$(jq -n --arg text "$text" '{text: $text}')
+          curl -sfS -X POST -H 'Content-type: application/json' --data "$payload" "$SLACK_WEBHOOK_URL"

@@ -119,6 +119,7 @@ scoops:
   - repository:
       owner: planetscale
       name: scoop-bucket
+      branch: "pscale-{{ .Version }}"
       pull_request:
         enabled: true
     homepage: "https://github.com/planetscale/cli"
@@ -132,6 +133,7 @@ brews:
     repository:
       owner: planetscale
       name: homebrew-tap
+      branch: "pscale-{{ .Version }}"
       pull_request:
         enabled: true
     dependencies:
