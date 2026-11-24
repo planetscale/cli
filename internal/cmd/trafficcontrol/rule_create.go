@@ -84,7 +84,7 @@ func RuleCreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().StringVar(&flags.kind, "kind", "match", "Kind of rule")
 	cmd.Flags().StringVar(&flags.fingerprint, "fingerprint", "", "SQL fingerprint to match")
 	cmd.Flags().StringVar(&flags.keyspace, "keyspace", "", "Keyspace to match")
-	cmd.Flags().StringArrayVar(&flags.tags, "tag", nil, "Tag in the format key=<key>,value=<value>,source=<source> (repeatable)")
+	cmd.Flags().StringArrayVar(&flags.tags, "tag", nil, "Tag in the format key=<key>,value=<value>,source=<source> (repeatable). An empty value (value=) matches queries without the tag.")
 
 	return cmd
 }
@@ -103,6 +103,7 @@ func parseTags(raw []string) ([]ps.TrafficRuleTag, error) {
 
 func parseTag(s string) (ps.TrafficRuleTag, error) {
 	tag := ps.TrafficRuleTag{}
+	hasValue := false
 	for part := range strings.SplitSeq(s, ",") {
 		k, v, ok := strings.Cut(part, "=")
 		if !ok {
@@ -113,6 +114,7 @@ func parseTag(s string) (ps.TrafficRuleTag, error) {
 			tag.Key = v
 		case "value":
 			tag.Value = v
+			hasValue = true
 		case "source":
 			tag.Source = v
 		default:
@@ -122,7 +124,7 @@ func parseTag(s string) (ps.TrafficRuleTag, error) {
 	if tag.Key == "" {
 		return tag, fmt.Errorf("tag %q is missing required field 'key'", s)
 	}
-	if tag.Value == "" {
+	if !hasValue {
 		return tag, fmt.Errorf("tag %q is missing required field 'value'", s)
 	}
 	if tag.Source == "" {

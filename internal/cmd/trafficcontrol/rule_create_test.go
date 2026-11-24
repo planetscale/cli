@@ -186,3 +186,18 @@ func TestRuleCreateCmd_MultipleTags(t *testing.T) {
 	res := &TrafficRuleDisplay{orig: created}
 	c.Assert(buf.String(), qt.JSONEquals, res)
 }
+
+func TestParseTag_EmptyValue(t *testing.T) {
+	c := qt.New(t)
+
+	tag, err := parseTag("key=app,value=")
+	c.Assert(err, qt.IsNil)
+	c.Assert(tag, qt.Equals, ps.TrafficRuleTag{Key: "app", Value: "", Source: "sql"})
+}
+
+func TestParseTag_MissingValue(t *testing.T) {
+	c := qt.New(t)
+
+	_, err := parseTag("key=app")
+	c.Assert(err, qt.ErrorMatches, `tag "key=app" is missing required field 'value'`)
+}
