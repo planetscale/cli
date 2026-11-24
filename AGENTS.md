@@ -106,7 +106,18 @@ pscale --org <org> database list --format json
    pscale org member remove user@example.com --org <org> --format json --force
    ```
 
-   Only org admins can change another member's role or remove someone else. Nobody can change their own role. `--role` is `admin`, `member`, or `analyst`.
+   Only org admins can change another member's role or remove someone else. Nobody can change their own role. `--role` is a built-in name (`admin`, `member`, or `analyst`) or a custom role slug.
+
+   Organization custom roles (identified by slug). `--permissions` is repeatable or comma-separated and must include `show_organization`. Delete needs `--force` in JSON:
+
+   ```bash
+   pscale org custom-role list --org <org> --format json
+   pscale org custom-role list --org <org> --format json --page 2 --per-page 25
+   pscale org custom-role show <slug> --org <org> --format json
+   pscale org custom-role create --org <org> --format json --name "Billing admin" --permissions show_organization,show_invoice
+   pscale org custom-role update <slug> --org <org> --format json --name "Billing admin" --description "Can view billing" --permissions show_organization,show_invoice
+   pscale org custom-role delete <slug> --org <org> --format json --force
+   ```
 
    Organization SSO (admin session, or a token with `manage_sso`). Disable, directory disable, and domain delete need `--force` in JSON. Success JSON includes `next_steps`. Configure, directory enable, and domain verify return `portal_url` and `browser_opened`; if `browser_opened` is false, open `portal_url`. `enable` JSON includes `domain_verification_url` when present. `domain verify` does not return a domain id. Prefer `domain verify --wait`: it prints the portal URL, polls `domain list` until a new domain id appears, then polls `domain show` until that domain is verified or failed. Without `--wait`, open `portal_url`, then `domain list` and `domain show <domain-id>` to check state. `--idp-sso-managed-roles` is for SSO profile roles; `--idp-managed-roles` is for directory sync roles. They are mutually exclusive: enabling one turns the other off, and enabling both in one call is rejected.
 

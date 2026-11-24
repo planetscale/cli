@@ -255,6 +255,52 @@ func TestOrg_MemberUpdateCmd(t *testing.T) {
 	c.Assert(buf.String(), qt.Contains, `"role": "admin"`)
 }
 
+func TestOrg_MemberUpdateCmd_CustomRoleSlug(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	svc := &mock.OrganizationsService{
+		ListMembersFn: func(ctx context.Context, req *ps.ListOrganizationMembersRequest, opts ...ps.ListOption) ([]*ps.OrganizationMembership, error) {
+			return []*ps.OrganizationMembership{testMember()}, nil
+		},
+		UpdateMemberFn: func(ctx context.Context, req *ps.UpdateOrganizationMemberRequest) (*ps.OrganizationMembership, error) {
+			c.Assert(req.UserID, qt.Equals, "user-1")
+			c.Assert(req.Role, qt.Equals, "billing-admin")
+			m := testMember()
+			m.Role = "billing-admin"
+			return m, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: "planetscale"},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{Organizations: svc}, nil
+		},
+	}
+
+	cmd := MemberUpdateCmd(ch)
+	cmd.SetArgs([]string{"user-1", "--role", "billing-admin"})
+	c.Assert(cmd.Execute(), qt.IsNil)
+	c.Assert(svc.UpdateMemberFnInvoked, qt.IsTrue)
+	c.Assert(buf.String(), qt.Contains, `"role": "billing-admin"`)
+}
+
+func TestOrg_MemberUpdateCmd_RequiresRole(t *testing.T) {
+	c := qt.New(t)
+
+	cmd := MemberUpdateCmd(&cmdutil.Helper{
+		Config: &config.Config{Organization: "planetscale"},
+	})
+	cmd.SetArgs([]string{"user-1"})
+	c.Assert(cmd.Execute(), qt.ErrorMatches, "must specify --role")
+}
+
 func TestOrg_MemberRemoveCmd(t *testing.T) {
 	c := qt.New(t)
 

@@ -19,19 +19,14 @@ func MemberUpdateCmd(ch *cmdutil.Helper) *cobra.Command {
 
 Identify the member by email or by the USER_ID from 'org member list'.
 Only organization admins can do this. You cannot change your own role.
-Assignable roles: admin, member, analyst.`,
+--role is a built-in name (admin, member, analyst) or a custom role slug.`,
 		Args: cmdutil.RequiredArgs("email|user-id"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			id := args[0]
 
 			if role == "" {
-				return fmt.Errorf("must specify --role (admin, member, or analyst)")
-			}
-			switch role {
-			case "admin", "member", "analyst":
-			default:
-				return fmt.Errorf("--role accepts admin, member, or analyst, got %q", role)
+				return fmt.Errorf("must specify --role")
 			}
 
 			client, err := ch.Client()
@@ -80,6 +75,6 @@ Assignable roles: admin, member, analyst.`,
 		},
 	}
 
-	cmd.Flags().StringVar(&role, "role", "", "Role to assign: admin, member, or analyst")
+	cmd.Flags().StringVar(&role, "role", "", "Role to assign: a built-in name (admin, member, analyst) or a custom role slug")
 	return cmd
 }
