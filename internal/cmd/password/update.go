@@ -13,25 +13,28 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// UpdateCmd updates the name or IP restrictions of a branch password. It never
-// changes the password secret; use create and delete, or renew, for that.
+// UpdateCmd updates the name, IP restrictions or client tablet targeting policy
+// of a branch password. It never changes the password secret; use create and
+// delete, or renew, for that.
 func UpdateCmd(ch *cmdutil.Helper) *cobra.Command {
 	var flags struct {
-		name    string
-		newName string
-		cidrs   []string
+		name                        string
+		newName                     string
+		cidrs                       []string
+		clientTabletTargetingPolicy string
 	}
 
 	cmd := &cobra.Command{
 		Use:   "update <database> <branch> [<password-id>]",
-		Short: "Update a branch password's name or IP restrictions",
-		Long: `Update a branch password's name or IP restrictions.
+		Short: "Update a branch password's name, IP restrictions or client tablet targeting policy",
+		Long: `Update a branch password's name, IP restrictions or client tablet targeting policy.
 
 This does not change the password itself. To rotate a password, create a new
 one and delete the old one.`,
 		Example: `  pscale password update mydb main pscale_pw_xxx --new-name reporting
   pscale password update mydb main --name reporting --cidrs 10.0.0.0/8,192.168.1.1/32
-  pscale password update mydb main --name reporting --cidrs ""`,
+  pscale password update mydb main --name reporting --cidrs ""
+  pscale password update mydb main --name reporting --client-tablet-targeting-policy ignore`,
 		Args: cobra.RangeArgs(2, 3),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -44,8 +47,9 @@ one and delete the old one.`,
 
 			newNameSet := cmd.Flags().Changed("new-name")
 			cidrsSet := cmd.Flags().Changed("cidrs")
-			if !newNameSet && !cidrsSet {
-				return errors.New("at least one of --new-name or --cidrs must be provided")
+			clientTabletTargetingPolicySet := cmd.Flags().Changed("client-tablet-targeting-policy")
+			if !newNameSet && !cidrsSet && !clientTabletTargetingPolicySet {
+				return errors.New("at least one of --new-name, --cidrs or --client-tablet-targeting-policy must be provided")
 			}
 			if newNameSet && flags.newName == "" {
 				return errors.New("--new-name cannot be empty")
@@ -79,6 +83,9 @@ one and delete the old one.`,
 				cidrs := normalizeCIDRs(flags.cidrs)
 				updateReq.CIDRs = &cidrs
 			}
+			if clientTabletTargetingPolicySet {
+				updateReq.ClientTabletTargetingPolicy = flags.clientTabletTargetingPolicy
+			}
 
 			end := ch.Printer.PrintProgress(fmt.Sprintf("Updating password %s in %s/%s",
 				printer.BoldBlue(passwordId), printer.BoldBlue(database), printer.BoldBlue(branch)))
@@ -107,6 +114,9 @@ one and delete the old one.`,
 						ch.Printer.Printf("IP restrictions: %s\n", strings.Join(password.CIDRs, ", "))
 					}
 				}
+				if clientTabletTargetingPolicySet {
+					ch.Printer.Printf("Client tablet targeting: %s\n", password.ClientTabletTargetingPolicy)
+				}
 				return nil
 			}
 
@@ -118,6 +128,8 @@ one and delete the old one.`,
 	cmd.Flags().StringVar(&flags.newName, "new-name", "", "New name for the password")
 	cmd.Flags().StringSliceVar(&flags.cidrs, "cidrs", nil,
 		"Replace the IP addresses and CIDR ranges allowed to use this password. Pass an empty value to remove all restrictions")
+	cmd.Flags().StringVar(&flags.clientTabletTargetingPolicy, "client-tablet-targeting-policy", "",
+		"How a replica password handles a tablet type set by the client, such as USE @replica or mydb@replica. Allowed values: apply, ignore.")
 
 	return cmd
 }

@@ -18,3 +18,13 @@ func TestToConnectionTypeDesc(t *testing.T) {
 		Region:         ps.Region{Slug: "eu-west"},
 	}), qt.Equals, "Read-only region (eu-west)")
 }
+
+func TestToPasswordClientTabletTargetingPolicy(t *testing.T) {
+	c := qt.New(t)
+
+	password := &ps.DatabaseBranchPassword{Replica: true, ClientTabletTargetingPolicy: "ignore"}
+
+	c.Assert(toPassword(password).ClientTabletTargetingPolicy, qt.Equals, "ignore")
+	c.Assert(toPasswordWithoutTTL(password).ClientTabletTargetingPolicy, qt.Equals, "ignore")
+	c.Assert(toPasswordWithPlainText(password).ClientTabletTargetingPolicy, qt.Equals, "ignore")
+}

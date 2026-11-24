@@ -123,6 +123,37 @@ func TestPassword_UpdateCmdClearsCIDRs(t *testing.T) {
 	c.Assert(svc.UpdateFnInvoked, qt.IsTrue)
 }
 
+func TestPassword_UpdateCmdSetsClientTabletTargetingPolicy(t *testing.T) {
+	c := qt.New(t)
+
+	format := printer.JSON
+	p := printer.NewPrinter(&format)
+
+	svc := &mock.PasswordsService{
+		UpdateFn: func(ctx context.Context, req *ps.UpdateDatabaseBranchPasswordRequest) (*ps.DatabaseBranchPassword, error) {
+			c.Assert(req.Name, qt.Equals, "")
+			c.Assert(req.CIDRs, qt.IsNil)
+			c.Assert(req.ClientTabletTargetingPolicy, qt.Equals, "apply")
+			return &ps.DatabaseBranchPassword{PublicID: "pscale_pw_xxx", ClientTabletTargetingPolicy: "apply"}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: "planetscale"},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{Passwords: svc}, nil
+		},
+	}
+
+	cmd := UpdateCmd(ch)
+	cmd.SetArgs([]string{"planetscale", "development", "pscale_pw_xxx", "--client-tablet-targeting-policy", "apply"})
+	err := cmd.Execute()
+
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.UpdateFnInvoked, qt.IsTrue)
+}
+
 func TestPassword_UpdateCmdByName(t *testing.T) {
 	c := qt.New(t)
 
@@ -180,6 +211,6 @@ func TestPassword_UpdateCmdRequiresAFlag(t *testing.T) {
 	err := cmd.Execute()
 
 	c.Assert(err, qt.IsNotNil)
-	c.Assert(err.Error(), qt.Contains, "at least one of --new-name or --cidrs")
+	c.Assert(err.Error(), qt.Contains, "at least one of --new-name, --cidrs or --client-tablet-targeting-policy")
 	c.Assert(svc.UpdateFnInvoked, qt.IsFalse)
 }
