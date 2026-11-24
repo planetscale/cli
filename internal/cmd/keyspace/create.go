@@ -20,6 +20,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 		shards             int
 		clusterSize        string
 		additionalReplicas int
+		maxRollout         int
 		wait               bool
 	}
 
@@ -30,6 +31,13 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			database, branch, keyspace := args[0], args[1], args[2]
+
+			if cmd.Flags().Changed("max-rollout") {
+				if err := validateMaxRollout(flags.maxRollout); err != nil {
+					return err
+				}
+				createReq.MaxRollout = &flags.maxRollout
+			}
 
 			createReq.Organization = ch.Config.Organization
 			createReq.Database = database
@@ -75,6 +83,10 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 				end()
 			}
 
+			if createReq.MaxRollout != nil && (k.MaxRollout == nil || *k.MaxRollout != *createReq.MaxRollout) {
+				fmt.Fprintf(cmd.ErrOrStderr(), "Warning: --max-rollout was not applied; set it with 'pscale keyspace update-settings %s %s %s --org %s --max-rollout %d'.\n", database, branch, keyspace, ch.Config.Organization, *createReq.MaxRollout)
+			}
+
 			if ch.Printer.Format() == printer.Human {
 				ch.Printer.Printf("Keyspace %s was successfully created.\n", printer.BoldBlue(k.Name))
 				return nil
@@ -86,6 +98,7 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().IntVar(&flags.shards, "shards", 1, "Number of shards in the keyspace")
 	cmd.Flags().StringVar(&flags.clusterSize, "cluster-size", "", "cluster size for the keyspace. Use `pscale size cluster list` to get a list of valid sizes.")
 	cmd.Flags().IntVar(&flags.additionalReplicas, "additional-replicas", 0, "number of additional replicas per shard. By default, each production cluster includes 2 replicas.")
+	cmd.Flags().IntVar(&flags.maxRollout, "max-rollout", 0, "Maximum number of shards to roll out changes to concurrently (1-32). Defaults to a value based on the shard count.")
 	cmd.Flags().BoolVar(&flags.wait, "wait", false, "Wait until the keyspace is ready")
 
 	cmd.MarkFlagRequired("cluster-size")

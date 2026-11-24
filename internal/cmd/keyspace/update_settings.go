@@ -81,8 +81,10 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 				return errors.New("--throttler-threshold must be greater than or equal to 0")
 			}
 
-			if maxRolloutChanged && (flags.maxRollout < 1 || flags.maxRollout > 32) {
-				return errors.New("--max-rollout must be between 1 and 32")
+			if maxRolloutChanged {
+				if err := validateMaxRollout(flags.maxRollout); err != nil {
+					return err
+				}
 			}
 
 			if strategyChanged && !slices.Contains(diskScalingStrategies, flags.diskScalingStrategy) {
@@ -212,7 +214,7 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().BoolVar(&flags.vreplicationFlags.VPlayerBatching, "vreplication-batch-replication-events", false, "When enabled, sends fewer queries to MySQL to improve performance.")
 	cmd.Flags().BoolVar(&flags.throttlerEnabled, "throttler-enabled", true, "Pause schema migrations and VReplication workflows when replication lag rises above the threshold.")
 	cmd.Flags().Float64Var(&flags.throttlerThreshold, "throttler-threshold", 5, "Replication lag in seconds above which migrations and workflows are paused.")
-	cmd.Flags().IntVar(&flags.maxRollout, "max-rollout", 1, "Maximum number of shards to roll out changes to concurrently (1-32).")
+	cmd.Flags().IntVar(&flags.maxRollout, "max-rollout", 0, "Maximum number of shards to roll out changes to concurrently (1-32).")
 	cmd.Flags().StringVar(&flags.diskScalingStrategy, "disk-scaling-strategy", "grow", fmt.Sprintf("The disk scaling strategy (%s). 'grow' lets dedicated disks grow automatically up to --max-storage; 'disable' turns autoscaling off; 'shrink' recreates disks at --storage and then disables autoscaling.", strings.Join(diskScalingStrategies, ", ")))
 	cmd.Flags().StringVar(&flags.maxStorage, "max-storage", "", "The maximum size that dedicated disks may autoscale to, in bytes or with a unit such as 200GiB or 1TiB. Must be at least 12 GiB and no smaller than the current disk size. Cannot be raised above the organization default (4 TiB, or 16 TiB for managed tenancy). Read-only while PlanetScale staff have raised it above that default.")
 	cmd.Flags().StringVar(&flags.storage, "storage", "", "The disk size to recreate disks at, in bytes or with a unit such as 200GiB or 1TiB. Must be a multiple of 1 GiB. Only accepted when the disk scaling strategy is shrink, either passed with --disk-scaling-strategy or already set on the keyspace.")
