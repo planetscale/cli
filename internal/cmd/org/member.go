@@ -23,7 +23,8 @@ show, update, and remove take an email or a user id (the USER_ID column from
 
 Only organization admins can change another member's role or remove someone
 else. Nobody can change their own role. Members can still leave the organization
-themselves.`,
+themselves. A role is a built-in name (admin, member, analyst) or a custom
+role slug.`,
 	}
 
 	cmd.PersistentFlags().StringVar(&ch.Config.Organization, "org", ch.Config.Organization, "The organization for the current user")

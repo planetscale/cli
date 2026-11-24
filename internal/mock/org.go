@@ -57,6 +57,18 @@ type OrganizationsService struct {
 
 	RemoveTeamMemberFn        func(context.Context, *ps.RemoveOrganizationTeamMemberRequest) error
 	RemoveTeamMemberFnInvoked bool
+
+	ListCustomRolesFn        func(context.Context, *ps.ListOrganizationCustomRolesRequest, ...ps.ListOption) ([]*ps.OrganizationCustomRole, error)
+	ListCustomRolesFnInvoked bool
+
+	ListInvitationsFn        func(context.Context, *ps.ListOrganizationInvitationsRequest, ...ps.ListOption) ([]*ps.OrganizationInvitation, error)
+	ListInvitationsFnInvoked bool
+
+	CreateInvitationFn        func(context.Context, *ps.CreateOrganizationInvitationRequest) (*ps.OrganizationInvitation, error)
+	CreateInvitationFnInvoked bool
+
+	CancelInvitationFn        func(context.Context, *ps.CancelOrganizationInvitationRequest) error
+	CancelInvitationFnInvoked bool
 }
 
 func (o *OrganizationsService) Get(ctx context.Context, req *ps.GetOrganizationRequest) (*ps.Organization, error) {
@@ -142,4 +154,24 @@ func (o *OrganizationsService) AddTeamMember(ctx context.Context, req *ps.AddOrg
 func (o *OrganizationsService) RemoveTeamMember(ctx context.Context, req *ps.RemoveOrganizationTeamMemberRequest) error {
 	o.RemoveTeamMemberFnInvoked = true
 	return o.RemoveTeamMemberFn(ctx, req)
+}
+
+func (o *OrganizationsService) ListCustomRoles(ctx context.Context, req *ps.ListOrganizationCustomRolesRequest, opts ...ps.ListOption) ([]*ps.OrganizationCustomRole, error) {
+	o.ListCustomRolesFnInvoked = true
+	return o.ListCustomRolesFn(ctx, req, opts...)
+}
+
+func (o *OrganizationsService) ListInvitations(ctx context.Context, req *ps.ListOrganizationInvitationsRequest, opts ...ps.ListOption) ([]*ps.OrganizationInvitation, error) {
+	o.ListInvitationsFnInvoked = true
+	return o.ListInvitationsFn(ctx, req, opts...)
+}
+
+func (o *OrganizationsService) CreateInvitation(ctx context.Context, req *ps.CreateOrganizationInvitationRequest) (*ps.OrganizationInvitation, error) {
+	o.CreateInvitationFnInvoked = true
+	return o.CreateInvitationFn(ctx, req)
+}
+
+func (o *OrganizationsService) CancelInvitation(ctx context.Context, req *ps.CancelOrganizationInvitationRequest) error {
+	o.CancelInvitationFnInvoked = true
+	return o.CancelInvitationFn(ctx, req)
 }
