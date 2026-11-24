@@ -123,17 +123,18 @@ type passwordWithoutTTL struct {
 }
 
 type PasswordWithPlainText struct {
-	Name           string `header:"name" json:"name"`
-	Branch         string `header:"branch" json:"branch"`
-	PublicID       string `header:"id" json:"public_id"`
-	Username       string `header:"username" json:"username"`
-	AccessHostUrl  string `header:"access host url" json:"access_host_url"`
-	Role           string `header:"role" json:"role"`
-	RoleDesc       string `header:"role description" json:"role_description"`
-	ConnectionType string `header:"connection type" json:"connection_type"`
-	PlainText      string `header:"password" json:"password"`
-	TTL            int    `header:"ttl" json:"ttl"`
-	orig           *ps.DatabaseBranchPassword
+	Name                        string `header:"name" json:"name"`
+	Branch                      string `header:"branch" json:"branch"`
+	PublicID                    string `header:"id" json:"public_id"`
+	Username                    string `header:"username" json:"username"`
+	AccessHostUrl               string `header:"access host url" json:"access_host_url"`
+	Role                        string `header:"role" json:"role"`
+	RoleDesc                    string `header:"role description" json:"role_description"`
+	ConnectionType              string `header:"connection type" json:"connection_type"`
+	ClientTabletTargetingPolicy string `header:"client tablet targeting" json:"client_tablet_targeting_policy"`
+	PlainText                   string `header:"password" json:"password"`
+	TTL                         int    `header:"ttl" json:"ttl"`
+	orig                        *ps.DatabaseBranchPassword
 }
 
 func (b *Password) MarshalJSON() ([]byte, error) {
@@ -225,17 +226,18 @@ func toPasswordsWithoutTTL(passwords []*ps.DatabaseBranchPassword) []*passwordWi
 
 func toPasswordWithPlainText(password *ps.DatabaseBranchPassword) *PasswordWithPlainText {
 	return &PasswordWithPlainText{
-		Name:           password.Name,
-		Branch:         password.Branch.Name,
-		PublicID:       password.PublicID,
-		Username:       password.Username,
-		PlainText:      password.PlainText,
-		AccessHostUrl:  password.Hostname,
-		Role:           password.Role,
-		RoleDesc:       toRoleDesc(password.Role),
-		ConnectionType: toConnectionTypeDesc(password),
-		TTL:            password.TTL,
-		orig:           password,
+		Name:                        password.Name,
+		Branch:                      password.Branch.Name,
+		PublicID:                    password.PublicID,
+		Username:                    password.Username,
+		PlainText:                   password.PlainText,
+		AccessHostUrl:               password.Hostname,
+		Role:                        password.Role,
+		RoleDesc:                    toRoleDesc(password.Role),
+		ConnectionType:              toConnectionTypeDesc(password),
+		ClientTabletTargetingPolicy: password.ClientTabletTargetingPolicy,
+		TTL:                         password.TTL,
+		orig:                        password,
 	}
 }
 

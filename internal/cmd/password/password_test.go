@@ -26,4 +26,5 @@ func TestToPasswordClientTabletTargetingPolicy(t *testing.T) {
 
 	c.Assert(toPassword(password).ClientTabletTargetingPolicy, qt.Equals, "ignore")
 	c.Assert(toPasswordWithoutTTL(password).ClientTabletTargetingPolicy, qt.Equals, "ignore")
+	c.Assert(toPasswordWithPlainText(password).ClientTabletTargetingPolicy, qt.Equals, "ignore")
 }
