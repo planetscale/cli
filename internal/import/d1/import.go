@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"slices"
@@ -673,15 +674,114 @@ func runPsqlFile(ctx context.Context, destURI, path string) error {
 		return err
 	}
 
+	// Command-line arguments are visible to every local user via ps, so the
+	// password travels in the child's environment instead.
+	conninfo, password, err := splitConnPassword(destURI)
+	if err != nil {
+		return err
+	}
+
 	return withConnectionRetry(ctx, func() error {
 		// --single-transaction: roll back the whole file if any statement fails.
-		cmd := execabs.CommandContext(ctx, psqlPath, destURI, "-v", "ON_ERROR_STOP=1", "--single-transaction", "-f", path)
+		cmd := execabs.CommandContext(ctx, psqlPath, conninfo, "-v", "ON_ERROR_STOP=1", "--single-transaction", "-f", path)
+		if password != "" {
+			cmd.Env = append(os.Environ(), "PGPASSWORD="+password)
+		}
 		out, err := cmd.CombinedOutput()
 		if err != nil {
 			return fmt.Errorf("psql %s: %w: %s", filepath.Base(path), err, string(out))
 		}
 		return nil
 	})
+}
+
+// splitConnPassword removes the password from a libpq connection string in
+// either URI or keyword/value form and returns it separately.
+func splitConnPassword(conninfo string) (string, string, error) {
+	if strings.HasPrefix(conninfo, "postgres://") || strings.HasPrefix(conninfo, "postgresql://") {
+		u, err := url.Parse(conninfo)
+		if err != nil {
+			return "", "", fmt.Errorf("parse destination URI: %w", err)
+		}
+		var password string
+		if u.User != nil {
+			password, _ = u.User.Password()
+			u.User = url.User(u.User.Username())
+		}
+		q := u.Query()
+		if p := q.Get("password"); p != "" {
+			password = p
+			q.Del("password")
+			u.RawQuery = q.Encode()
+		}
+		return u.String(), password, nil
+	}
+
+	var kept []string
+	var password string
+	i := 0
+	for {
+		for i < len(conninfo) && isConnSpace(conninfo[i]) {
+			i++
+		}
+		if i >= len(conninfo) {
+			break
+		}
+		start := i
+		for i < len(conninfo) && conninfo[i] != '=' && !isConnSpace(conninfo[i]) {
+			i++
+		}
+		key := conninfo[start:i]
+		for i < len(conninfo) && isConnSpace(conninfo[i]) {
+			i++
+		}
+		if i >= len(conninfo) || conninfo[i] != '=' {
+			return "", "", fmt.Errorf("malformed connection string: missing \"=\" after %q", key)
+		}
+		i++
+		for i < len(conninfo) && isConnSpace(conninfo[i]) {
+			i++
+		}
+
+		var value strings.Builder
+		quoted := i < len(conninfo) && conninfo[i] == '\''
+		if quoted {
+			i++
+		}
+		closed := !quoted
+		for i < len(conninfo) {
+			c := conninfo[i]
+			if c == '\\' && i+1 < len(conninfo) {
+				value.WriteByte(conninfo[i+1])
+				i += 2
+				continue
+			}
+			if quoted && c == '\'' {
+				closed = true
+				i++
+				break
+			}
+			if !quoted && isConnSpace(c) {
+				break
+			}
+			value.WriteByte(c)
+			i++
+		}
+		if !closed {
+			return "", "", errors.New("malformed connection string: unterminated quoted value")
+		}
+
+		if key == "password" {
+			password = value.String()
+			continue
+		}
+		kept = append(kept, strings.TrimSpace(conninfo[start:i]))
+	}
+	return strings.Join(kept, " "), password, nil
+}
+
+func isConnSpace(c byte) bool {
+	return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f' || c == '\v'
 }
 
 // Status returns migration state for status polling.
