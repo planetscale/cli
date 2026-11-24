@@ -1299,14 +1299,14 @@ func TestKeyspace_UpdateSettingsCmd_StorageAcceptsHumanReadableSize(t *testing.T
 		}
 
 		cmd := UpdateSettingsCmd(ch)
-		cmd.SetArgs([]string{"planetscale", "main", "sharded", "--disk-scaling-strategy=shrink", "--storage=" + tt.arg})
+		cmd.SetArgs([]string{"planetscale", "main", "sharded", "--disk-scaling-strategy=fixed", "--storage=" + tt.arg})
 		err := cmd.Execute()
 		c.Assert(err, qt.IsNil)
 		c.Assert(svc.UpdateSettingsFnInvoked, qt.IsTrue)
 	}
 }
 
-func TestKeyspace_UpdateSettingsCmd_ShrinkStorage(t *testing.T) {
+func TestKeyspace_UpdateSettingsCmd_FixedStorage(t *testing.T) {
 	c := qt.New(t)
 
 	var buf bytes.Buffer
@@ -1325,7 +1325,7 @@ func TestKeyspace_UpdateSettingsCmd_ShrinkStorage(t *testing.T) {
 		Name: keyspace,
 		Storage: &ps.KeyspaceStorage{
 			StorageBytes:        214748364800,
-			DiskScalingStrategy: "shrink",
+			DiskScalingStrategy: "fixed",
 		},
 	}
 
@@ -1335,7 +1335,7 @@ func TestKeyspace_UpdateSettingsCmd_ShrinkStorage(t *testing.T) {
 		},
 		UpdateSettingsFn: func(ctx context.Context, req *ps.UpdateKeyspaceSettingsRequest) (*ps.Keyspace, error) {
 			c.Assert(req.Storage, qt.Not(qt.IsNil))
-			c.Assert(*req.Storage.DiskScalingStrategy, qt.Equals, "shrink")
+			c.Assert(*req.Storage.DiskScalingStrategy, qt.Equals, "fixed")
 			c.Assert(req.Storage.StorageBytes, qt.Not(qt.IsNil))
 			c.Assert(*req.Storage.StorageBytes, qt.Equals, int64(214748364800))
 			c.Assert(req.Storage.MaxStorageBytes, qt.IsNil)
@@ -1357,12 +1357,97 @@ func TestKeyspace_UpdateSettingsCmd_ShrinkStorage(t *testing.T) {
 	}
 
 	cmd := UpdateSettingsCmd(ch)
-	cmd.SetArgs([]string{db, branch, keyspace, "--disk-scaling-strategy=shrink", "--storage=214748364800"})
+	cmd.SetArgs([]string{db, branch, keyspace, "--disk-scaling-strategy=fixed", "--storage=214748364800"})
 	err := cmd.Execute()
 	c.Assert(err, qt.IsNil)
 	c.Assert(svc.GetFnInvoked, qt.IsFalse)
 	c.Assert(svc.UpdateSettingsFnInvoked, qt.IsTrue)
 	c.Assert(buf.String(), qt.JSONEquals, updatedKs)
+}
+
+func TestKeyspace_UpdateSettingsCmd_DeprecatedShrinkSendsFixed(t *testing.T) {
+	c := qt.New(t)
+
+	var buf, human bytes.Buffer
+	format := printer.Human
+
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+	p.SetHumanOutput(&human)
+
+	svc := &mock.KeyspacesService{
+		UpdateSettingsFn: func(ctx context.Context, req *ps.UpdateKeyspaceSettingsRequest) (*ps.Keyspace, error) {
+			c.Assert(req.Storage, qt.Not(qt.IsNil))
+			c.Assert(*req.Storage.DiskScalingStrategy, qt.Equals, "fixed")
+			c.Assert(*req.Storage.StorageBytes, qt.Equals, int64(214748364800))
+
+			return &ps.Keyspace{
+				ID:   "ks1",
+				Name: "sharded",
+				Storage: &ps.KeyspaceStorage{
+					StorageBytes:        214748364800,
+					DiskScalingStrategy: "fixed",
+				},
+			}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: "planetscale"},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{Keyspaces: svc}, nil
+		},
+	}
+
+	cmd := UpdateSettingsCmd(ch)
+	cmd.SetArgs([]string{"planetscale", "main", "sharded", "--disk-scaling-strategy=shrink", "--storage=200GiB"})
+	err := cmd.Execute()
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.UpdateSettingsFnInvoked, qt.IsTrue)
+	c.Assert(human.String(), qt.Contains, "--disk-scaling-strategy shrink is deprecated, use fixed instead")
+}
+
+func TestKeyspace_UpdateSettingsCmd_MinimumStorageWithGrow(t *testing.T) {
+	c := qt.New(t)
+
+	var buf bytes.Buffer
+	format := printer.JSON
+
+	p := printer.NewPrinter(&format)
+	p.SetResourceOutput(&buf)
+
+	svc := &mock.KeyspacesService{
+		UpdateSettingsFn: func(ctx context.Context, req *ps.UpdateKeyspaceSettingsRequest) (*ps.Keyspace, error) {
+			c.Assert(req.Storage, qt.Not(qt.IsNil))
+			c.Assert(*req.Storage.DiskScalingStrategy, qt.Equals, "grow")
+			c.Assert(*req.Storage.StorageBytes, qt.Equals, int64(536870912000))
+			c.Assert(req.Storage.MaxStorageBytes, qt.IsNil)
+
+			return &ps.Keyspace{
+				ID:   "ks1",
+				Name: "sharded",
+				Storage: &ps.KeyspaceStorage{
+					StorageBytes:        536870912000,
+					DiskScalingStrategy: "grow",
+				},
+			}, nil
+		},
+	}
+
+	ch := &cmdutil.Helper{
+		Printer: p,
+		Config:  &config.Config{Organization: "planetscale"},
+		Client: func() (*ps.Client, error) {
+			return &ps.Client{Keyspaces: svc}, nil
+		},
+	}
+
+	cmd := UpdateSettingsCmd(ch)
+	cmd.SetArgs([]string{"planetscale", "main", "sharded", "--disk-scaling-strategy=grow", "--storage=500GiB"})
+	err := cmd.Execute()
+	c.Assert(err, qt.IsNil)
+	c.Assert(svc.UpdateSettingsFnInvoked, qt.IsTrue)
 }
 
 func TestKeyspace_UpdateSettingsCmd_DisableDiskScaling(t *testing.T) {
@@ -1445,7 +1530,7 @@ func TestKeyspace_UpdateSettingsCmd_RejectsInvalidDiskScalingStrategy(t *testing
 	cmd := UpdateSettingsCmd(ch)
 	cmd.SetArgs([]string{"planetscale", "main", "sharded", "--disk-scaling-strategy=nonsense"})
 	err := cmd.Execute()
-	c.Assert(err, qt.ErrorMatches, `invalid --disk-scaling-strategy "nonsense", must be one of: grow, disable, shrink`)
+	c.Assert(err, qt.ErrorMatches, `invalid --disk-scaling-strategy "nonsense", must be one of: grow, disable, fixed`)
 	c.Assert(svc.GetFnInvoked, qt.IsFalse)
 	c.Assert(svc.UpdateSettingsFnInvoked, qt.IsFalse)
 }
@@ -1475,7 +1560,7 @@ func TestKeyspace_UpdateSettingsCmd_StorageWithoutStrategy(t *testing.T) {
 				Name: "sharded",
 				Storage: &ps.KeyspaceStorage{
 					StorageBytes:        214748364800,
-					DiskScalingStrategy: "shrink",
+					DiskScalingStrategy: "fixed",
 				},
 			}, nil
 		},
@@ -1511,24 +1596,24 @@ func TestKeyspace_UpdateSettingsCmd_RejectsInvalidStorageSizes(t *testing.T) {
 		err  string
 	}{
 		{
-			args: []string{"--disk-scaling-strategy=shrink", "--storage=53687091201"},
+			args: []string{"--disk-scaling-strategy=fixed", "--storage=53687091201"},
 			err:  "--storage must be a multiple of 1 GiB",
 		},
 		{
-			args: []string{"--disk-scaling-strategy=shrink", "--storage=0"},
+			args: []string{"--disk-scaling-strategy=fixed", "--storage=0"},
 			err:  "--storage must be greater than 0",
 		},
 		{
-			args: []string{"--disk-scaling-strategy=shrink", "--storage=lots"},
+			args: []string{"--disk-scaling-strategy=fixed", "--storage=lots"},
 			err:  `invalid --storage "lots": must be a size in bytes or with a unit, such as 200GiB`,
 		},
 		{
 			// Decimal units are not GiB-aligned.
-			args: []string{"--disk-scaling-strategy=shrink", "--storage=10TB"},
+			args: []string{"--disk-scaling-strategy=fixed", "--storage=10TB"},
 			err:  "--storage must be a multiple of 1 GiB",
 		},
 		{
-			args: []string{"--disk-scaling-strategy=shrink", "--storage=-1"},
+			args: []string{"--disk-scaling-strategy=fixed", "--storage=-1"},
 			err:  "--storage must be greater than 0",
 		},
 		{
