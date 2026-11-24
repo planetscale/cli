@@ -61,14 +61,14 @@ type OrganizationsService struct {
 	ListCustomRolesFn        func(context.Context, *ps.ListOrganizationCustomRolesRequest, ...ps.ListOption) ([]*ps.OrganizationCustomRole, error)
 	ListCustomRolesFnInvoked bool
 
-	ListInvitationsFn        func(context.Context, *ps.ListOrganizationInvitationsRequest, ...ps.ListOption) ([]*ps.OrganizationInvitation, error)
-	ListInvitationsFnInvoked bool
+	CreateCustomRoleFn        func(context.Context, *ps.CreateOrganizationCustomRoleRequest) (*ps.OrganizationCustomRole, error)
+	CreateCustomRoleFnInvoked bool
 
-	CreateInvitationFn        func(context.Context, *ps.CreateOrganizationInvitationRequest) (*ps.OrganizationInvitation, error)
-	CreateInvitationFnInvoked bool
+	UpdateCustomRoleFn        func(context.Context, *ps.UpdateOrganizationCustomRoleRequest) (*ps.OrganizationCustomRole, error)
+	UpdateCustomRoleFnInvoked bool
 
-	CancelInvitationFn        func(context.Context, *ps.CancelOrganizationInvitationRequest) error
-	CancelInvitationFnInvoked bool
+	DeleteCustomRoleFn        func(context.Context, *ps.DeleteOrganizationCustomRoleRequest) error
+	DeleteCustomRoleFnInvoked bool
 }
 
 func (o *OrganizationsService) Get(ctx context.Context, req *ps.GetOrganizationRequest) (*ps.Organization, error) {
@@ -161,17 +161,17 @@ func (o *OrganizationsService) ListCustomRoles(ctx context.Context, req *ps.List
 	return o.ListCustomRolesFn(ctx, req, opts...)
 }
 
-func (o *OrganizationsService) ListInvitations(ctx context.Context, req *ps.ListOrganizationInvitationsRequest, opts ...ps.ListOption) ([]*ps.OrganizationInvitation, error) {
-	o.ListInvitationsFnInvoked = true
-	return o.ListInvitationsFn(ctx, req, opts...)
+func (o *OrganizationsService) CreateCustomRole(ctx context.Context, req *ps.CreateOrganizationCustomRoleRequest) (*ps.OrganizationCustomRole, error) {
+	o.CreateCustomRoleFnInvoked = true
+	return o.CreateCustomRoleFn(ctx, req)
 }
 
-func (o *OrganizationsService) CreateInvitation(ctx context.Context, req *ps.CreateOrganizationInvitationRequest) (*ps.OrganizationInvitation, error) {
-	o.CreateInvitationFnInvoked = true
-	return o.CreateInvitationFn(ctx, req)
+func (o *OrganizationsService) UpdateCustomRole(ctx context.Context, req *ps.UpdateOrganizationCustomRoleRequest) (*ps.OrganizationCustomRole, error) {
+	o.UpdateCustomRoleFnInvoked = true
+	return o.UpdateCustomRoleFn(ctx, req)
 }
 
-func (o *OrganizationsService) CancelInvitation(ctx context.Context, req *ps.CancelOrganizationInvitationRequest) error {
-	o.CancelInvitationFnInvoked = true
-	return o.CancelInvitationFn(ctx, req)
+func (o *OrganizationsService) DeleteCustomRole(ctx context.Context, req *ps.DeleteOrganizationCustomRoleRequest) error {
+	o.DeleteCustomRoleFnInvoked = true
+	return o.DeleteCustomRoleFn(ctx, req)
 }
