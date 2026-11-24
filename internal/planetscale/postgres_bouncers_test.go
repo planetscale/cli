@@ -311,3 +311,105 @@ func TestPostgresBouncers_Resize_NoChange(t *testing.T) {
 	c.Assert(err, qt.IsNil)
 	c.Assert(resize, qt.IsNil)
 }
+
+const testRestartJSON = `{
+	"id":"restart-1",
+	"state":"running",
+	"target":"local",
+	"bouncer":"primary",
+	"started_at":"2021-01-14T10:19:24.000Z",
+	"completed_at":null,
+	"created_at":"2021-01-14T10:19:23.000Z",
+	"updated_at":"2021-01-14T10:19:24.000Z",
+	"actor":{"id":"user-1","display_name":"Alice","avatar_url":"https://example.com/a.png"}
+}`
+
+func TestPostgresBouncers_CreateRestart(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodPost)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/my-db/branches/main/bouncers/primary/restarts")
+		w.WriteHeader(201)
+		_, err := w.Write([]byte(testRestartJSON))
+		c.Assert(err, qt.IsNil)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	restart, err := client.PostgresBouncers.CreateRestart(context.Background(), &CreatePostgresBouncerRestartRequest{
+		Organization: testOrg,
+		Database:     "my-db",
+		Branch:       "main",
+		Bouncer:      PostgresBouncerLocalName,
+	})
+	c.Assert(err, qt.IsNil)
+	c.Assert(restart.ID, qt.Equals, "restart-1")
+	c.Assert(restart.State, qt.Equals, PostgresBouncerRestartStateRunning)
+	c.Assert(restart.Target, qt.Equals, "local")
+	c.Assert(restart.Bouncer, qt.Equals, "primary")
+	c.Assert(restart.Actor.Name, qt.Equals, "Alice")
+	c.Assert(restart.StartedAt, qt.IsNotNil)
+	c.Assert(restart.CompletedAt, qt.IsNil)
+}
+
+func TestPostgresBouncers_ListRestarts(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodGet)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/my-db/branches/main/bouncers/read-pool/restarts")
+		c.Assert(r.URL.Query().Get("per_page"), qt.Equals, "1")
+		w.WriteHeader(200)
+		_, err := w.Write([]byte(`{"data":[` + testRestartJSON + `]}`))
+		c.Assert(err, qt.IsNil)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	restarts, err := client.PostgresBouncers.ListRestarts(context.Background(), &ListPostgresBouncerRestartsRequest{
+		Organization: testOrg,
+		Database:     "my-db",
+		Branch:       "main",
+		Bouncer:      "read-pool",
+	}, WithPerPage(1))
+	c.Assert(err, qt.IsNil)
+	c.Assert(restarts, qt.HasLen, 1)
+	c.Assert(restarts[0].ID, qt.Equals, "restart-1")
+}
+
+func TestPostgresBouncers_GetRestart(t *testing.T) {
+	c := qt.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Method, qt.Equals, http.MethodGet)
+		c.Assert(r.URL.Path, qt.Equals, "/v1/organizations/my-org/databases/my-db/branches/main/bouncers/read-pool/restarts/restart-1")
+		w.WriteHeader(200)
+		_, err := w.Write([]byte(testRestartJSON))
+		c.Assert(err, qt.IsNil)
+	}))
+
+	client, err := NewClient(WithBaseURL(ts.URL))
+	c.Assert(err, qt.IsNil)
+
+	restart, err := client.PostgresBouncers.GetRestart(context.Background(), &GetPostgresBouncerRestartRequest{
+		Organization: testOrg,
+		Database:     "my-db",
+		Branch:       "main",
+		Bouncer:      "read-pool",
+		ID:           "restart-1",
+	})
+	c.Assert(err, qt.IsNil)
+	c.Assert(restart.ID, qt.Equals, "restart-1")
+}
+
+func TestPostgresBouncerRestart_Finished(t *testing.T) {
+	c := qt.New(t)
+	c.Assert((&PostgresBouncerRestart{State: PostgresBouncerRestartStatePending}).Finished(), qt.IsFalse)
+	c.Assert((&PostgresBouncerRestart{State: PostgresBouncerRestartStateRunning}).Finished(), qt.IsFalse)
+	c.Assert((&PostgresBouncerRestart{State: PostgresBouncerRestartStateSucceeded}).Finished(), qt.IsTrue)
+	c.Assert((&PostgresBouncerRestart{State: PostgresBouncerRestartStateFailed}).Finished(), qt.IsTrue)
+	c.Assert((&PostgresBouncerRestart{State: PostgresBouncerRestartStateCanceled}).Finished(), qt.IsTrue)
+}

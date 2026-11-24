@@ -437,7 +437,14 @@ func (c *Client) doWithHeaders(ctx context.Context, req *http.Request, v interfa
 // handleResponse makes an HTTP request and populates the given struct v from
 // the response.  This is meant for internal testing and shouldn't be used
 // directly. Instead please use `Client.do`.
-func (c *Client) handleResponse(ctx context.Context, res *http.Response, v interface{}) error {
+func (c *Client) handleResponse(ctx context.Context, res *http.Response, v interface{}) (retErr error) {
+	defer func() {
+		var apiErr *Error
+		if res.StatusCode >= 400 && errors.As(retErr, &apiErr) {
+			apiErr.HTTPStatus = res.StatusCode
+		}
+	}()
+
 	out, err := io.ReadAll(res.Body)
 	if err != nil {
 		return err
@@ -737,6 +744,10 @@ type Error struct {
 	// APICode is the raw code from the API error JSON body (e.g.
 	// "schema_mutation_blocked"). Empty when the response had no code field.
 	APICode string
+
+	// HTTPStatus is the error response's status code, or 0 if there was no
+	// HTTP error response.
+	HTTPStatus int
 
 	// Meta contains additional information depending on the error code. As an
 	// example, if the Code is "ErrResponseMalformed", the map will be: ["body"]

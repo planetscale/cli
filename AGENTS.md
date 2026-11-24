@@ -23,7 +23,7 @@ PlanetScale is a serverless database platform for **MySQL** (via Vitess), **Post
 
 On Vitess/MySQL, schema changes ship via **deploy requests**: online, non-blocking migrations you review and then deploy.
 
-Many commands are engine-specific, and some operations use different commands per engine. Schema changes: Vitess/MySQL uses `deploy-request`; Postgres and Neki branches apply DDL directly. Access: Vitess/MySQL uses `password`; Postgres and Neki use `role`. Resize: Vitess/MySQL uses `keyspace resize`; Postgres uses `branch resize`; Neki uses `branch config-profile`, `router`, and `shard`. Vitess/MySQL-only: `deploy-request`, `keyspace` (including `keyspace create-external`), `branch vtctld move-tables`, `connect`, `password`. `pscale workflow` is deprecated; use `pscale branch vtctld move-tables` to move tables. Postgres-only: `traffic-control`, branch `switchover`/`parameters`, `branch extensions enable`/`disable`, `branch maintenance window`/`event`, and `import d1`. Postgres and Neki: `role`, `branch maintenance run`. Neki-only: `branch shard`, `config-profile`, `router`, `sidecar`, `admin`, `data-topology`, `changes`. The rest (`database`, `branch`, `sql`, `shell`, `insights`, `metrics`, `backup`, `org`, `auth`, `api`) work on all three.
+Many commands are engine-specific, and some operations use different commands per engine. Schema changes: Vitess/MySQL uses `deploy-request`; Postgres and Neki branches apply DDL directly. Access: Vitess/MySQL uses `password`; Postgres and Neki use `role`. Resize: Vitess/MySQL uses `keyspace resize`; Postgres uses `branch resize`; Neki uses `branch config-profile`, `router`, and `shard`. Vitess/MySQL-only: `deploy-request`, `keyspace` (including `keyspace create-external`), `branch vtctld move-tables`, `connect`, `password`. `pscale workflow` is deprecated; use `pscale branch vtctld move-tables` to move tables. Postgres-only: `traffic-control`, `pgbouncer`, branch `switchover`/`parameters`, `branch extensions enable`/`disable`, `branch maintenance window`/`event`, and `import d1`. Postgres and Neki: `role`, `branch maintenance run`. Neki-only: `branch shard`, `config-profile`, `router`, `sidecar`, `admin`, `data-topology`, `changes`. The rest (`database`, `branch`, `sql`, `shell`, `insights`, `metrics`, `backup`, `org`, `auth`, `api`) work on all three.
 
 When a database is "weird" (slow, erroring, locked, bloated):
 
@@ -685,6 +685,25 @@ pscale branch switchover show <database> <branch> <id> --org <org> --format json
 - Writes are briefly interrupted while the switch completes. A branch accepts one switchover at a time.
 - A switchover that ends in `failed` has an unconfirmed outcome: the primary may still have moved and nothing is rolled back. Check the current primary with `pscale branch infra <database> <branch> --org <org> --format json` before retrying.
 - `--candidate` is rejected for branches without replicas. Poll status with `pscale branch switchover show <database> <branch> <id> --org <org> --format json`.
+
+## Postgres PgBouncer restarts
+
+`pscale pgbouncer restart` restarts a dedicated PgBouncer one instance at a time. Pass `primary` as the name to restart the primary's local PgBouncer. Postgres only.
+
+```bash
+pscale pgbouncer restart <database> <branch> <name> --org <org> --format json --force
+pscale pgbouncer restart <database> <branch> primary --org <org> --format json --force --wait
+
+# Latest restart, or one restart by id
+pscale pgbouncer restart status <database> <branch> <name> --org <org> --format json
+pscale pgbouncer restart status <database> <branch> <name> <restart-id> --org <org> --format json
+```
+
+- Ask the user before running `restart`. Each instance drains for up to two minutes, then closes any remaining connections and interrupts their in-flight transactions.
+- JSON output requires `--force`. Without `--wait`, the command returns the restart (`id`, `state`) and exits. `--wait` polls until the restart finishes or `--wait-timeout` expires (default 30m). A timeout leaves the restart running. JSON returns `action_required` with code `PGBOUNCER_RESTART_WAIT_TIMEOUT` and exits 1. Poll `restart status` instead of starting another restart.
+- A `failed` or `canceled` restart prints a JSON error with code `PGBOUNCER_RESTART_FAILED` or `PGBOUNCER_RESTART_CANCELED` and exits 2. A failed restart may have restarted some instances; nothing is rolled back.
+- After a restart is created, `--wait` errors include its `id`, `state`, and a `restart status` next step. Check its status before starting another restart.
+- `restart status` without an id prints `[]` when the PgBouncer has never been restarted.
 
 ## Branch maintenance
 
