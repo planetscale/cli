@@ -345,7 +345,7 @@ type CreateDeployRequestRequest struct {
 	Branch            string `json:"branch"`
 	IntoBranch        string `json:"into_branch,omitempty"`
 	Notes             string `json:"notes"`
-	AutoCutover       bool   `json:"auto_cutover,omitempty"`
+	AutoCutover       *bool  `json:"auto_cutover,omitempty"`
 	AutoDeleteBranch  bool   `json:"auto_delete_branch,omitempty"`
 	AggressiveCutover bool   `json:"aggressive_cutover,omitempty"`
 }

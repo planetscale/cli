@@ -50,10 +50,9 @@ func CreateCmd(ch *cmdutil.Helper) *cobra.Command {
 				Notes:        flags.notes,
 			}
 
-			if flags.enable_auto_apply {
-				request.AutoCutover = true
-			} else if flags.disable_auto_apply {
-				request.AutoCutover = false
+			if flags.enable_auto_apply || flags.disable_auto_apply {
+				autoCutover := flags.enable_auto_apply
+				request.AutoCutover = &autoCutover
 			}
 
 			if flags.auto_delete_branch {
