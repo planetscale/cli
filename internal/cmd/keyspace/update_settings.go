@@ -15,7 +15,11 @@ import (
 	ps "github.com/planetscale/cli/internal/planetscale"
 	"github.com/planetscale/cli/internal/printer"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
+
+// storageIOFlags are the flags that set disk IOPS and throughput.
+var storageIOFlags = []string{"storage-iops", "storage-throughput", "reset-storage-iops", "reset-storage-throughput"}
 
 // diskScalingStrategies are the disk scaling strategies accepted by the
 // --disk-scaling-strategy flag.
@@ -33,6 +37,10 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 		diskScalingStrategy              string
 		maxStorage                       string
 		storage                          string
+		storageIOPS                      int64
+		storageThroughput                int64
+		resetStorageIOPS                 bool
+		resetStorageThroughput           bool
 		interactive                      bool
 	}
 
@@ -53,6 +61,19 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 			updateReq.Keyspace = keyspace
 
 			if flags.interactive {
+				// The interactive form returns before the other flags are
+				// read. Older scripts may pass them along with --interactive,
+				// so they are ignored with a warning instead of an error.
+				var ignored []string
+				cmd.LocalNonPersistentFlags().VisitAll(func(f *pflag.Flag) {
+					if f.Changed && f.Name != "interactive" {
+						ignored = append(ignored, "--"+f.Name)
+					}
+				})
+				if len(ignored) > 0 {
+					fmt.Fprintf(cmd.ErrOrStderr(), "Warning: ignoring %s because --interactive is set. Run without --interactive to apply these flags.\n", strings.Join(ignored, ", "))
+				}
+
 				return updateInteractive(ctx, ch, updateReq)
 			}
 
@@ -70,7 +91,12 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 			strategyChanged := cmd.Flags().Changed("disk-scaling-strategy")
 			maxStorageChanged := cmd.Flags().Changed("max-storage")
 			storageChanged := cmd.Flags().Changed("storage")
-			diskStorageChanged := strategyChanged || maxStorageChanged || storageChanged
+			storageIOPSChanged := cmd.Flags().Changed("storage-iops")
+			storageThroughputChanged := cmd.Flags().Changed("storage-throughput")
+			resetStorageIOPS := flags.resetStorageIOPS
+			resetStorageThroughput := flags.resetStorageThroughput
+			diskStorageChanged := strategyChanged || maxStorageChanged || storageChanged ||
+				storageIOPSChanged || storageThroughputChanged || resetStorageIOPS || resetStorageThroughput
 
 			if !rdcChanged && !vrfChanged && !throttlerChanged && !maxRolloutChanged && !diskStorageChanged {
 				ch.Printer.Println("No changes were requested. No update performed.")
@@ -102,6 +128,14 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 				if maxStorageBytes <= 0 {
 					return errors.New("--max-storage must be greater than 0")
 				}
+			}
+
+			if storageIOPSChanged && flags.storageIOPS <= 0 {
+				return errors.New("--storage-iops must be greater than 0")
+			}
+
+			if storageThroughputChanged && flags.storageThroughput <= 0 {
+				return errors.New("--storage-throughput must be greater than 0")
 			}
 
 			var storageBytes int64
@@ -193,6 +227,17 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 				if storageChanged {
 					updateReq.Storage.StorageBytes = &storageBytes
 				}
+
+				if storageIOPSChanged {
+					updateReq.Storage.StorageIOPS = &flags.storageIOPS
+				}
+
+				if storageThroughputChanged {
+					updateReq.Storage.StorageThroughputMiBs = &flags.storageThroughput
+				}
+
+				updateReq.Storage.ResetStorageIOPS = resetStorageIOPS
+				updateReq.Storage.ResetStorageThroughputMiBs = resetStorageThroughput
 			}
 
 			k, err := updateKeyspaceSettings(ctx, client, updateReq)
@@ -201,6 +246,33 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 			}
 
 			end()
+
+			// The API ignores IOPS and throughput for organizations without
+			// configurable disk I/O and still answers with success, so check
+			// that the returned keyspace has the requested values.
+			if storageIOPSChanged {
+				if err := checkStorageIOApplied("--storage-iops", &flags.storageIOPS, storageIOPS(k)); err != nil {
+					return err
+				}
+			}
+
+			if storageThroughputChanged {
+				if err := checkStorageIOApplied("--storage-throughput", &flags.storageThroughput, storageThroughputMiBs(k)); err != nil {
+					return err
+				}
+			}
+
+			if resetStorageIOPS {
+				if err := checkStorageIOApplied("--reset-storage-iops", nil, storageIOPS(k)); err != nil {
+					return err
+				}
+			}
+
+			if resetStorageThroughput {
+				if err := checkStorageIOApplied("--reset-storage-throughput", nil, storageThroughputMiBs(k)); err != nil {
+					return err
+				}
+			}
 
 			return ch.Printer.PrintResource(toKeyspaceSettings(k))
 		},
@@ -216,7 +288,26 @@ func UpdateSettingsCmd(ch *cmdutil.Helper) *cobra.Command {
 	cmd.Flags().StringVar(&flags.diskScalingStrategy, "disk-scaling-strategy", "grow", fmt.Sprintf("The disk scaling strategy (%s). 'grow' lets dedicated disks grow automatically up to --max-storage; 'disable' turns autoscaling off; 'shrink' recreates disks at --storage and then disables autoscaling.", strings.Join(diskScalingStrategies, ", ")))
 	cmd.Flags().StringVar(&flags.maxStorage, "max-storage", "", "The maximum size that dedicated disks may autoscale to, in bytes or with a unit such as 200GiB or 1TiB. Must be at least 12 GiB and no smaller than the current disk size. Cannot be raised above the organization default (4 TiB, or 16 TiB for managed tenancy). Read-only while PlanetScale staff have raised it above that default.")
 	cmd.Flags().StringVar(&flags.storage, "storage", "", "The disk size to recreate disks at, in bytes or with a unit such as 200GiB or 1TiB. Must be a multiple of 1 GiB. Only accepted when the disk scaling strategy is shrink, either passed with --disk-scaling-strategy or already set on the keyspace.")
+	cmd.Flags().Int64Var(&flags.storageIOPS, "storage-iops", 0, "The provisioned IOPS for each disk. Only available for keyspaces on AWS gp3 disks when configurable disk I/O is enabled for the organization. At least 3000. The current maximum depends on the smallest disk and on whether larger cluster sizes are enabled for the organization; 'keyspace settings --format json' shows it as max_storage_iops. Applied asynchronously without replacing disks. AWS allows one change per disk every 6 hours, so further disk changes, including automatic disk growth, can be delayed for up to 6 hours.")
+	cmd.Flags().Int64Var(&flags.storageThroughput, "storage-throughput", 0, "The provisioned throughput in MiB/s for each disk. Only available for keyspaces on AWS gp3 disks when configurable disk I/O is enabled for the organization. At least 125, and at most 0.25 MiB/s per provisioned IOPS, up to 2000. Applied asynchronously without replacing disks. AWS allows one change per disk every 6 hours, so further disk changes, including automatic disk growth, can be delayed for up to 6 hours.")
+	cmd.Flags().BoolVar(&flags.resetStorageIOPS, "reset-storage-iops", false, "Clear the IOPS override so the storage class default applies.")
+	cmd.Flags().BoolVar(&flags.resetStorageThroughput, "reset-storage-throughput", false, "Clear the throughput override so the storage class default applies.")
+	// Configurable disk IOPS and throughput are behind a feature flag on the
+	// API. Keep these flags hidden until that feature flag is fully rolled
+	// out.
+	for _, name := range storageIOFlags {
+		_ = cmd.Flags().MarkHidden(name)
+	}
 	cmd.Flags().BoolVarP(&flags.interactive, "interactive", "i", false, "Run the command in interactive mode")
+	cmd.MarkFlagsMutuallyExclusive("storage-iops", "reset-storage-iops")
+	cmd.MarkFlagsMutuallyExclusive("storage-throughput", "reset-storage-throughput")
+
+	// The interactive form does not cover IOPS and throughput. These flags
+	// are new, so unlike the older flags they are rejected with
+	// --interactive instead of ignored.
+	for _, name := range storageIOFlags {
+		cmd.MarkFlagsMutuallyExclusive("interactive", name)
+	}
 
 	_ = cmd.RegisterFlagCompletionFunc("disk-scaling-strategy", cobra.FixedCompletions(diskScalingStrategies, cobra.ShellCompDirectiveNoFileComp))
 
@@ -393,6 +484,37 @@ func updateKeyspaceSettings(ctx context.Context, client *ps.Client, updateReq *p
 	}
 
 	return k, nil
+}
+
+func storageIOPS(k *ps.Keyspace) *int64 {
+	if k.Storage == nil {
+		return nil
+	}
+	return k.Storage.StorageIOPS
+}
+
+func storageThroughputMiBs(k *ps.Keyspace) *int64 {
+	if k.Storage == nil {
+		return nil
+	}
+	return k.Storage.StorageThroughputMiBs
+}
+
+// checkStorageIOApplied returns an error when the keyspace returned by the API
+// does not have the requested IOPS or throughput value. The API leaves the
+// value out when configurable disk I/O is not enabled for the organization.
+// A nil want is a reset to the storage class default, which the CLI does not
+// know, so then only the presence of the value is checked.
+func checkStorageIOApplied(flag string, want, got *int64) error {
+	if got == nil {
+		return fmt.Errorf("%s was not applied: configurable disk IOPS and throughput are not enabled for this keyspace. Any other requested settings were applied", flag)
+	}
+
+	if want != nil && *got != *want {
+		return fmt.Errorf("%s was not applied: the keyspace reports %d instead of %d. Any other requested settings were applied", flag, *got, *want)
+	}
+
+	return nil
 }
 
 // Helper function for translating the API value to a more semantic string.
