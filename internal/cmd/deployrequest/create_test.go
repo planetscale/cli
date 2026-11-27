@@ -33,7 +33,7 @@ func TestDeployRequest_CreateCmd(t *testing.T) {
 			c.Assert(req.Organization, qt.Equals, org)
 			c.Assert(req.Database, qt.Equals, db)
 			c.Assert(req.Branch, qt.Equals, branch)
-			c.Assert(req.AutoCutover, qt.Equals, false)
+			c.Assert(req.AutoCutover, qt.IsNil)
 			c.Assert(req.AggressiveCutover, qt.Equals, false)
 			c.Assert(req.Notes, qt.Equals, notes)
 			c.Assert(req.AutoDeleteBranch, qt.Equals, true)
@@ -84,7 +84,8 @@ func TestDeployRequest_CreateCmdEnableAutoApplyFlag(t *testing.T) {
 			c.Assert(req.Organization, qt.Equals, org)
 			c.Assert(req.Database, qt.Equals, db)
 			c.Assert(req.Branch, qt.Equals, branch)
-			c.Assert(req.AutoCutover, qt.Equals, true)
+			c.Assert(req.AutoCutover, qt.IsNotNil)
+			c.Assert(*req.AutoCutover, qt.IsTrue)
 
 			return &ps.DeployRequest{Number: number}, nil
 		},
@@ -131,7 +132,8 @@ func TestDeployRequest_CreateCmdDisableAutoApplyFlag(t *testing.T) {
 			c.Assert(req.Organization, qt.Equals, org)
 			c.Assert(req.Database, qt.Equals, db)
 			c.Assert(req.Branch, qt.Equals, branch)
-			c.Assert(req.AutoCutover, qt.Equals, false)
+			c.Assert(req.AutoCutover, qt.IsNotNil)
+			c.Assert(*req.AutoCutover, qt.IsFalse)
 
 			return &ps.DeployRequest{Number: number}, nil
 		},

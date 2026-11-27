@@ -495,7 +495,6 @@ func TestDeployRequests_Create(t *testing.T) {
 		Database:         testDatabase,
 		Notes:            "",
 		AutoDeleteBranch: true,
-		AutoCutover:      false,
 	})
 
 	testTime := time.Date(2021, time.January, 14, 10, 19, 23, 0, time.UTC)
@@ -557,6 +556,19 @@ func TestDeployRequests_CreateOmitsAggressiveCutoverUnlessSet(t *testing.T) {
 	c.Assert(json.Unmarshal([]byte(gotBody), &sent), qt.IsNil)
 	c.Assert(sent.AggressiveCutover, qt.IsNotNil)
 	c.Assert(*sent.AggressiveCutover, qt.IsTrue)
+}
+
+func TestCreateDeployRequestRequest_AutoCutoverJSON(t *testing.T) {
+	c := qt.New(t)
+
+	unset, err := json.Marshal(&CreateDeployRequestRequest{Branch: "development"})
+	c.Assert(err, qt.IsNil)
+	c.Assert(string(unset), qt.Not(qt.Contains), "auto_cutover")
+
+	disabled := false
+	body, err := json.Marshal(&CreateDeployRequestRequest{Branch: "development", AutoCutover: &disabled})
+	c.Assert(err, qt.IsNil)
+	c.Assert(string(body), qt.Contains, `"auto_cutover":false`)
 }
 
 func TestDeployRequests_AggressiveCutover(t *testing.T) {
