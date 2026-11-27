@@ -43,7 +43,7 @@ type KeyspaceStorage struct {
 	// limit above the organization default. The limit is read-only while set.
 	MaxStorageBytesManagedByStaff bool `json:"max_storage_bytes_managed_by_staff"`
 	// DiskScalingStrategy is the disk scaling strategy: "grow", "disable" or
-	// "shrink".
+	// "fixed".
 	DiskScalingStrategy string `json:"disk_scaling_strategy"`
 }
 
